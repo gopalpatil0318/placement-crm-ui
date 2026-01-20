@@ -2,11 +2,10 @@
 import DashboardLayout from '@/components/sysadmin/DashboardLayout'
 import React from 'react'
 
-
-const CreateCollege = () => {
+const ViewColleges = () => {
   return (
-    <DashboardLayout>CreateCollege</DashboardLayout>
+    <DashboardLayout>ViewColleges</DashboardLayout>
   )
 }
 
-export default CreateCollege
+export default ViewColleges

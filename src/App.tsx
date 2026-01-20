@@ -7,6 +7,8 @@ import './App.css'
 import SuperAdminLogin from './pages/SuperAdmin/SuperAdminLogin'
 import Dashboard from './pages/SuperAdmin/Dashboard'
 import CreateCollege from './pages/SuperAdmin/CreateCollege'
+import ViewColleges from './pages/SuperAdmin/ViewColleges'
+import College from './pages/SuperAdmin/College'
 
 function App() {
 
@@ -37,6 +39,23 @@ function App() {
             </ProtectedRoute>
           }
         />
+           <Route
+          path="/sysadmin/view-colleges"
+          element={
+            <ProtectedRoute allowedRoles={["sysadmin"]}>
+              <ViewColleges/>
+              
+            </ProtectedRoute>
+          }
+        />
+        <Route
+  path="/sysadmin/view-colleges/:collegeId"
+  element={
+    <ProtectedRoute allowedRoles={["sysadmin"]}>
+      <College />
+    </ProtectedRoute>
+  }
+/>
 
 
         {/* Unauthorized */}
