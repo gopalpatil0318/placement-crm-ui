@@ -1,6 +1,5 @@
 'use client'
 import DashboardLayout from '@/components/sysadmin/DashboardLayout'
-import React from 'react'
 
   import { useParams } from 'react-router-dom'
 
