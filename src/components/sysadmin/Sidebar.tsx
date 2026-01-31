@@ -9,8 +9,11 @@ import {
   Database,
   LineChart,
   GraduationCap,
+  LogOut, // Import LogOut icon
+  User as UserIcon // Generic user icon
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/sysadmin/useAuth"; // Import your custom hook
 
 interface SubItem {
   label: string;
@@ -25,6 +28,7 @@ interface NavItemProps {
   subItems?: SubItem[];
 }
 
+// Your existing nav items
 const navItems: { section: string; items: NavItemProps[] }[] = [
   {
     section: "Super Admin",
@@ -82,8 +86,9 @@ const navItems: { section: string; items: NavItemProps[] }[] = [
 
 export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   const location = useLocation();
+  const { user, logout } = useAuth(); // Get user data and logout function
 
-  // Initialize expandedItems with the section containing the active path
+  // Initialize expandedItems
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
     const activeSection = navItems
       .flatMap(section => section.items)
@@ -103,7 +108,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
     );
   };
 
-  // Auto-expand active section on navigation (for internal link changes)
+  // Auto-expand active section
   useEffect(() => {
     const activeSection = navItems
       .flatMap(section => section.items)
@@ -115,37 +120,45 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
     }
   }, [location.pathname]);
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Navigation to login is handled inside useAuth or by the ProtectedRoute
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
+
   return (
     <aside className={`h-screen bg-white border-r flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "w-[280px]" : "w-0"}`}>
-      <div className="min-w-[280px]">
-        {/* Logo */}
+      <div className="flex flex-col h-full min-w-[280px]">
+        
+        {/* Header: Logo */}
         <div className="px-6 py-5 flex items-center gap-2">
           <span className="text-2xl font-bold text-blue-600 tracking-tight">PCRM</span>
         </div>
 
-        {/* Profile Card */}
-        <div className="px-4">
+        {/* Header: Profile Card (Now Dynamic) */}
+        <div className="px-4 mb-2">
           <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-100 transition-colors group">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
-                👨🏻‍💻
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                <UserIcon size={20} />
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">John Smith</p>
-                <p className="text-xs text-gray-500">Administrator</p>
+              <div className="truncate">
+                <p className="text-sm font-semibold text-gray-900 truncate" title={user?.email}>
+                  {user?.email || "User"}
+                </p>
+                <p className="text-xs text-gray-500 capitalize">
+                  {user?.role?.replace("_", " ") || "Admin"}
+                </p>
               </div>
             </div>
-
-            <button className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors text-gray-400 hover:text-gray-600">
-              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 8h10M5 4h6M5 12h6" strokeLinecap="round" />
-              </svg>
-            </button>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 mt-6 px-4 text-sm overflow-y-auto custom-scrollbar">
+        {/* Scrollable Navigation */}
+        <nav className="flex-1 mt-2 px-4 text-sm overflow-y-auto custom-scrollbar pb-4">
           {navItems.map((section, idx) => (
             <div key={section.section} className={idx !== 0 ? "mt-8" : ""}>
               <p className="mb-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -165,11 +178,23 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
             </div>
           ))}
         </nav>
+
+        {/* Footer: Logout Button */}
+        <div className="p-4 border-t border-gray-100 bg-white">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200 group font-medium"
+          >
+            <LogOut size={18} className="group-hover:scale-110 transition-transform" />
+            <span>Log Out</span>
+          </button>
+        </div>
       </div>
     </aside>
   );
 }
 
+// Sub-component for individual items (Unchanged logic, just keeping it consistent)
 function NavItem({
   icon,
   label,
@@ -255,4 +280,3 @@ function NavItem({
     </div>
   );
 }
-

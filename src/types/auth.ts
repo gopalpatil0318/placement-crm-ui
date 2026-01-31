@@ -1,29 +1,30 @@
-export type UserRole =  "sysadmin" | "college_admin" | "student"
-
+export type UserRole = "sysadmin" | "college_admin" | "student"
 
 export interface User {
   id: string
   email: string
   role: UserRole
   type?: string
-  collegeId?: string // For college admin and students
+  collegeId?: string
   isActive: boolean
 }
 
-export interface LoginRequest {
-  email: string
-  password: string
+export interface ApiLoginResponse {
+  success: boolean
+  message: string
+  data: {
+    role: string
+    email: string
+    type: string
+    // Any other backend fields
+  }
 }
 
-export interface LoginResponse {
-  user: User
-  token: string
-}
-
-export interface AuthState {
+// Context specific type
+export interface AuthContextType {
   user: User | null
-  token: string | null
   isAuthenticated: boolean
   isLoading: boolean
-  error: string | null
+  login: (email: string, password: string) => Promise<void>
+  logout: () => Promise<void>
 }
