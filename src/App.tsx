@@ -7,13 +7,15 @@ import './App.css'
 import SuperAdminLogin from './pages/SuperAdmin/SuperAdminLogin'
 import Dashboard from './pages/SuperAdmin/Dashboard'
 import CreateCollege from './pages/SuperAdmin/CreateCollege'
+
 import ViewColleges from './pages/SuperAdmin/ViewColleges'
 import College from './pages/SuperAdmin/College'
+import EditCollege from './pages/SuperAdmin/EditCollege'
 
 function App() {
 
   return (
- <Router>
+    <Router>
       <Routes>
         {/* Public Routes */}
         {/* <Route path="/login" element={<LoginPage />} /> */}
@@ -30,32 +32,42 @@ function App() {
           }
         />
 
-         <Route
+        <Route
           path="/sysadmin/create-college"
           element={
             <ProtectedRoute allowedRoles={["sysadmin"]}>
               <CreateCollege />
-              
+
             </ProtectedRoute>
           }
         />
-           <Route
-          path="/sysadmin/view-colleges"
+
+        <Route
+          path="/sysadmin/edit-college/:collegeId"
           element={
             <ProtectedRoute allowedRoles={["sysadmin"]}>
-              <ViewColleges/>
-              
+              <EditCollege />
+
             </ProtectedRoute>
           }
         />
         <Route
-  path="/sysadmin/view-colleges/:collegeId"
-  element={
-    <ProtectedRoute allowedRoles={["sysadmin"]}>
-      <College />
-    </ProtectedRoute>
-  }
-/>
+          path="/sysadmin/view-colleges"
+          element={
+            <ProtectedRoute allowedRoles={["sysadmin"]}>
+              <ViewColleges />
+
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sysadmin/view-colleges/:collegeId"
+          element={
+            <ProtectedRoute allowedRoles={["sysadmin"]}>
+              <College />
+            </ProtectedRoute>
+          }
+        />
 
 
         {/* Unauthorized */}
