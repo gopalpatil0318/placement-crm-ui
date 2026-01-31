@@ -1,12 +1,25 @@
-'use client'
 import DashboardLayout from '@/components/sysadmin/DashboardLayout'
-import React from 'react'
-
+import CollegeForm from "@/components/sysadmin/CollegeForm";
+import PageHeader from '@/components/sysadmin/PageHeader';
 
 const CreateCollege = () => {
-  return (
-    <DashboardLayout>CreateCollege</DashboardLayout>
-  )
-}
+  const breadcrumbs = [
+    { label: "Super Admin" },
+    { label: "Colleges" },
+    { label: "Create New", active: true },
+  ];
 
-export default CreateCollege
+  return (
+    <DashboardLayout>
+      <div className="space-y-8">
+        {/* Page Header */}
+        <PageHeader title="Create New College" breadcrumbs={breadcrumbs} />
+
+        {/* Form Component */}
+        <CollegeForm />
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default CreateCollege;
