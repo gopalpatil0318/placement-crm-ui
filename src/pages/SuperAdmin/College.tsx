@@ -1,6 +1,7 @@
 'use client'
 import DashboardLayout from '@/components/sysadmin/DashboardLayout'
 
+
   import { useParams } from 'react-router-dom'
 
 const College = () => {
