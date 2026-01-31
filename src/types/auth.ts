@@ -13,6 +13,7 @@ export interface ApiLoginResponse {
   success: boolean
   message: string
   data: {
+    id?: string;
     role: string
     email: string
     type: string
@@ -22,6 +23,7 @@ export interface ApiLoginResponse {
 
 // Context specific type
 export interface AuthContextType {
+  // id: string
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
