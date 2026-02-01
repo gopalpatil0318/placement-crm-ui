@@ -1,16 +1,27 @@
-'use client'
-import DashboardLayout from '@/components/sysadmin/DashboardLayout'
+"use client"
 
+import DashboardLayout from '@/components/sysadmin/DashboardLayout';
+import CollegeProfile from "@/components/sysadmin/CollegeProfile";
+import PageHeader from '@/components/sysadmin/PageHeader';
 
-  import { useParams } from 'react-router-dom'
+const CollegePage = () => {
+  const breadcrumbs = [
+    { label: "Super Admin" },
+    { label: "Colleges" },
+    { label: "College Profile", active: true },
+  ];
 
-const College = () => {
-  const { collegeId } = useParams<{ collegeId: string }>()
   return (
+    <DashboardLayout>
+      <div className="space-y-8">
+        {/* Page Header */}
+        <PageHeader title="Institution Profile" breadcrumbs={breadcrumbs} />
 
-    <DashboardLayout>College{collegeId}</DashboardLayout>
+        {/* Profile Component with internal hook logic */}
+        <CollegeProfile />
+      </div>
+    </DashboardLayout>
+  );
+};
 
-  )
-}
-
-export default College
+export default CollegePage;
