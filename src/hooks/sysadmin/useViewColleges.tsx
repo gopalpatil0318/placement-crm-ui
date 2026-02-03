@@ -21,7 +21,9 @@ export const useViewColleges = () => {
     try {
       const response = await api.get("/sysadmin/colleges");
       setColleges(response.data.data || []);
-    } catch (err: any) {
+    } 
+    
+    catch (err: any) {
       const errorMessage = err.message || "Failed to fetch colleges";
       setError(errorMessage);
       showToast({
@@ -29,7 +31,9 @@ export const useViewColleges = () => {
         title: 'Fetch Error',
         description: errorMessage,
       });
-    } finally {
+
+    }
+     finally {
       setLoading(false);
     }
   }, []);

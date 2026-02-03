@@ -35,3 +35,5 @@ export const collegeSchema = z.object({
 });
 
 export type CollegeSchemaType = z.infer<typeof collegeSchema>;
+
+
