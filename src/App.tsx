@@ -96,7 +96,6 @@ import { AuthProvider } from "./context/AuthContext"
 import { ProtectedRoute } from "./components/routes/ProtectedRoute"
 import { PublicRoute } from "./components/routes/PublicRoute"
 
-// Import Super Admin Pages
 import SuperAdminLogin from './pages/SuperAdmin/SuperAdminLogin'
 import Dashboard from './pages/SuperAdmin/Dashboard'
 import CreateCollege from './pages/SuperAdmin/CreateCollege'
@@ -104,9 +103,10 @@ import ViewColleges from './pages/SuperAdmin/ViewColleges'
 import College from './pages/SuperAdmin/College'
 import EditCollege from './pages/SuperAdmin/EditCollege'
 
-// Import College Admin Pages
 import CollegeAdminLogin from './pages/collegeadmin/CollegeAdminLogin'
 import CollegeDashboard from './pages/collegeadmin/Dashboard'
+import ViewUser from './pages/collegeadmin/ViewUser'
+
 
 import './App.css'
 
@@ -115,7 +115,6 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          
           <Route 
             path="/sysadmin/login" 
             element={
@@ -124,7 +123,6 @@ function App() {
               </PublicRoute>
             } 
           />
-          
           
           <Route 
             path="/collegeadmin/login" 
@@ -135,10 +133,8 @@ function App() {
             } 
           />
 
-          
           <Route path="/login" element={<Navigate to="/sysadmin/login" replace />} />
 
-          
           <Route
             path="/sysadmin/dashboard"
             element={
@@ -147,35 +143,30 @@ function App() {
               </ProtectedRoute>
             }
           />
-
-          <Route
-            path="/sysadmin/create-college"
-            element={
-              <ProtectedRoute allowedRoles={["sysadmin"]}>
-                <CreateCollege />
-              </ProtectedRoute>
-            }
-          />
-
-          
+          <Route path="/sysadmin/create-college" element={<ProtectedRoute allowedRoles={["sysadmin"]}><CreateCollege /></ProtectedRoute>} />
           <Route path="/sysadmin/edit-college/:collegeId" element={<ProtectedRoute allowedRoles={["sysadmin"]}><EditCollege /></ProtectedRoute>} />
           <Route path="/sysadmin/view-colleges" element={<ProtectedRoute allowedRoles={["sysadmin"]}><ViewColleges /></ProtectedRoute>} />
           <Route path="/sysadmin/view-colleges/:collegeId" element={<ProtectedRoute allowedRoles={["sysadmin"]}><College /></ProtectedRoute>} />
 
-          
           <Route
             path="/collegeadmin/dashboard"
             element={
-              <ProtectedRoute allowedRoles={["college_admin"]}>
+              <ProtectedRoute allowedRoles={["admin"]}>
                 <CollegeDashboard />
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/collegeadmin/view-users"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <ViewUser />
+              </ProtectedRoute>
+            }
+          />
 
-          
           <Route path="/unauthorized" element={<div className="p-10 text-center text-xl font-bold">Unauthorized Access</div>} />
 
-          
           <Route path="/" element={<Navigate to="/sysadmin/login" replace />} />
           <Route path="*" element={<Navigate to="/sysadmin/login" replace />} />
         </Routes>

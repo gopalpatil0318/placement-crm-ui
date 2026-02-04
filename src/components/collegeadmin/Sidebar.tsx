@@ -48,9 +48,8 @@ const navItems: { section: string; items: NavItemProps[] }[] = [
         icon: <GraduationCap size={18} />,
         label: "Students",
         subItems: [
-          { label: "All Students", path: "/collegeadmin/students" },
-          { label: "Attendance", path: "/collegeadmin/attendance" },
-          { label: "Academic Records", path: "/collegeadmin/academic-records" },
+          { label: "All Users", path: "/collegeadmin/students" },
+          { label: "View Users", path: "/collegeadmin/attendance" },
         ],
       },
       {
