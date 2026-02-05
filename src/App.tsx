@@ -1,15 +1,142 @@
+// // import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+// // import { AuthProvider } from "./context/AuthContext"
+// // import { ProtectedRoute } from "./components/routes/ProtectedRoute"
+// // import { PublicRoute } from "./components/routes/PublicRoute"
+
+// // // Import Pages
+// // import SuperAdminLogin from './pages/SuperAdmin/SuperAdminLogin'
+// // import Dashboard from './pages/SuperAdmin/Dashboard'
+// // import CreateCollege from './pages/SuperAdmin/CreateCollege'
+// // import ViewColleges from './pages/SuperAdmin/ViewColleges'
+// // import College from './pages/SuperAdmin/College'
+// // import EditCollege from './pages/SuperAdmin/EditCollege'
+// // import ViewUser from './pages/collegeadmin/ViewUser'
+// // import './App.css'
+// // import CollegeDashboard from './pages/collegeadmin/Dashboard'
+// // import CollegeAdminLogin from "./pages/collegeadmin/CollegeAdminLogin"
+
+// // function App() {
+// //   return (
+// //     <AuthProvider>
+// //       <Router>
+// //         <Routes>
+// //           {/* --- Public Routes (Accessible only if NOT logged in) --- */}
+// //           <Route 
+// //             path="/sysadmin/login" 
+// //             element={
+// //               <PublicRoute>
+// //                 <SuperAdminLogin />
+// //               </PublicRoute>
+// //             } 
+// //           />
+          
+// //           {/* Legacy login redirect */}
+// //           <Route path="/login" element={<Navigate to="/sysadmin/login" replace />} />
+
+// //           {/* --- Protected Routes (Require Login + Role) --- */}
+// //           <Route
+// //             path="/sysadmin/dashboard"
+// //             element={
+// //               <ProtectedRoute allowedRoles={["sysadmin"]}>
+// //                 <Dashboard />
+// //               </ProtectedRoute>
+// //             }
+// //           />
+
+// //           <Route
+// //             path="/sysadmin/create-college"
+// //             element={
+// //               <ProtectedRoute allowedRoles={["sysadmin"]}>
+// //                 <CreateCollege />
+// //               </ProtectedRoute>
+// //             }
+// //           />
+
+// //           <Route
+// //             path="/sysadmin/edit-college/:collegeId"
+// //             element={
+// //               <ProtectedRoute allowedRoles={["sysadmin"]}>
+// //                 <EditCollege />
+// //               </ProtectedRoute>
+// //             }
+// //           />
+
+// //           <Route
+// //             path="/sysadmin/view-colleges"
+// //             element={
+// //               <ProtectedRoute allowedRoles={["sysadmin"]}>
+// //                 <ViewColleges />
+// //               </ProtectedRoute>
+// //             }
+// //           />
+
+// //           <Route
+// //             path="/sysadmin/view-colleges/:collegeId"
+// //             element={
+// //               <ProtectedRoute allowedRoles={["sysadmin"]}>
+// //                 <College />
+// //               </ProtectedRoute>
+// //             }
+// //           />
+          
+// //           <Route
+// //             path="/collegeadmin/ViewUser/:UserId"
+// //             element={
+// //               <ProtectedRoute allowedRoles={["admin"]}>
+// //                 <ViewUser />
+// //               </ProtectedRoute>
+// //             }
+// //           />
+
+// //           <Route 
+// //             path="/collegeadmin/login" 
+// //             element={
+// //               <PublicRoute>
+// //                 <CollegeAdminLogin />
+// //                </PublicRoute>
+// //              } 
+// //           />
+
+// //            <Route
+// //         path="/sysadmin/dashboard"
+// //           element={
+// //              <ProtectedRoute allowedRoles={["sysadmin"]}>
+// //                <Dashboard />
+// //              </ProtectedRoute>
+// //            }
+// //          />
+
+
+// //           {/* --- Common Routes --- */}
+// //           <Route path="/unauthorized" element={<div className="p-10 text-center text-xl">Unauthorized Access</div>} />
+
+// //           {/* Default Catch-all */}
+// //           <Route path="/" element={<Navigate to="/sysadmin/login" replace />} />
+// //           <Route path="*" element={<Navigate to="/sysadmin/login" replace />} />
+// //         </Routes>
+// //       </Router>
+// //     </AuthProvider>
+// //   )
+// // }
+
+// // export default App
+
 // import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 // import { AuthProvider } from "./context/AuthContext"
 // import { ProtectedRoute } from "./components/routes/ProtectedRoute"
 // import { PublicRoute } from "./components/routes/PublicRoute"
 
-// // Import Pages
 // import SuperAdminLogin from './pages/SuperAdmin/SuperAdminLogin'
 // import Dashboard from './pages/SuperAdmin/Dashboard'
 // import CreateCollege from './pages/SuperAdmin/CreateCollege'
 // import ViewColleges from './pages/SuperAdmin/ViewColleges'
 // import College from './pages/SuperAdmin/College'
 // import EditCollege from './pages/SuperAdmin/EditCollege'
+
+// import CollegeAdminLogin from './pages/collegeadmin/CollegeAdminLogin'
+// import CollegeDashboard from './pages/collegeadmin/Dashboard'
+// import ViewUser from './pages/collegeadmin/ViewUser'
+
 
 // import './App.css'
 
@@ -18,7 +145,6 @@
 //     <AuthProvider>
 //       <Router>
 //         <Routes>
-//           {/* --- Public Routes (Accessible only if NOT logged in) --- */}
 //           <Route 
 //             path="/sysadmin/login" 
 //             element={
@@ -28,10 +154,17 @@
 //             } 
 //           />
           
-//           {/* Legacy login redirect */}
+//           <Route 
+//             path="/collegeadmin/login" 
+//             element={
+//               <PublicRoute>
+//                 <CollegeAdminLogin />
+//               </PublicRoute>
+//             } 
+//           />
+
 //           <Route path="/login" element={<Navigate to="/sysadmin/login" replace />} />
 
-//           {/* --- Protected Routes (Require Login + Role) --- */}
 //           <Route
 //             path="/sysadmin/dashboard"
 //             element={
@@ -40,47 +173,30 @@
 //               </ProtectedRoute>
 //             }
 //           />
+//           <Route path="/sysadmin/create-college" element={<ProtectedRoute allowedRoles={["sysadmin"]}><CreateCollege /></ProtectedRoute>} />
+//           <Route path="/sysadmin/edit-college/:collegeId" element={<ProtectedRoute allowedRoles={["sysadmin"]}><EditCollege /></ProtectedRoute>} />
+//           <Route path="/sysadmin/view-colleges" element={<ProtectedRoute allowedRoles={["sysadmin"]}><ViewColleges /></ProtectedRoute>} />
+//           <Route path="/sysadmin/view-colleges/:collegeId" element={<ProtectedRoute allowedRoles={["sysadmin"]}><College /></ProtectedRoute>} />
 
 //           <Route
-//             path="/sysadmin/create-college"
+//             path="/collegeadmin/dashboard"
 //             element={
-//               <ProtectedRoute allowedRoles={["sysadmin"]}>
-//                 <CreateCollege />
+//               <ProtectedRoute allowedRoles={["admin"]}>
+//                 <CollegeDashboard />
+//               </ProtectedRoute>
+//             }
+//           />
+//           <Route
+//             path="/collegeadmin/view-users"
+//             element={
+//               <ProtectedRoute allowedRoles={["admin"]}>
+//                 <ViewUser />
 //               </ProtectedRoute>
 //             }
 //           />
 
-//           <Route
-//             path="/sysadmin/edit-college/:collegeId"
-//             element={
-//               <ProtectedRoute allowedRoles={["sysadmin"]}>
-//                 <EditCollege />
-//               </ProtectedRoute>
-//             }
-//           />
+//           <Route path="/unauthorized" element={<div className="p-10 text-center text-xl font-bold">Unauthorized Access</div>} />
 
-//           <Route
-//             path="/sysadmin/view-colleges"
-//             element={
-//               <ProtectedRoute allowedRoles={["sysadmin"]}>
-//                 <ViewColleges />
-//               </ProtectedRoute>
-//             }
-//           />
-
-//           <Route
-//             path="/sysadmin/view-colleges/:collegeId"
-//             element={
-//               <ProtectedRoute allowedRoles={["sysadmin"]}>
-//                 <College />
-//               </ProtectedRoute>
-//             }
-//           />
-
-//           {/* --- Common Routes --- */}
-//           <Route path="/unauthorized" element={<div className="p-10 text-center text-xl">Unauthorized Access</div>} />
-
-//           {/* Default Catch-all */}
 //           <Route path="/" element={<Navigate to="/sysadmin/login" replace />} />
 //           <Route path="*" element={<Navigate to="/sysadmin/login" replace />} />
 //         </Routes>
@@ -151,21 +267,43 @@ function App() {
           <Route
             path="/collegeadmin/dashboard"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["collegeadmin"]}>
                 <CollegeDashboard />
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/collegeadmin/view-users"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={["collegeadmin"]}>
                 <ViewUser />
               </ProtectedRoute>
             }
           />
 
-          <Route path="/unauthorized" element={<div className="p-10 text-center text-xl font-bold">Unauthorized Access</div>} />
+          <Route
+            path="/sysadmin/view-colleges"
+            element={
+              <ProtectedRoute allowedRoles={["sysadmin"]}>
+                <ViewColleges />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/sysadmin/view-colleges/:collegeId"
+            element={
+              <ProtectedRoute allowedRoles={["sysadmin"]}>
+                <College />
+              </ProtectedRoute>
+            }
+          />
+
+          
+
+          {/* --- Common Routes --- */}
+          <Route path="/unauthorized" element={<div className="p-10 text-center text-xl">Unauthorized Access</div>} />
 
           <Route path="/" element={<Navigate to="/sysadmin/login" replace />} />
           <Route path="*" element={<Navigate to="/sysadmin/login" replace />} />

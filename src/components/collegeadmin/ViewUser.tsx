@@ -33,7 +33,7 @@ const ViewUser: React.FC<Props> = ({ user, onClose }) => {
 
                 <div className="row mb-3">
                     <div className="col-md-4 fw-semibold">Role</div>
-                    <div className="col-md-8 text-capitalize">{user.role || "College Admin"}</div>
+                    <div className="col-md-8 text-capitalize">{user.role || "Admin"}</div>
                 </div>
                 
                 

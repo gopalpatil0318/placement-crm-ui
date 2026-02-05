@@ -28,6 +28,7 @@ export default function SuperAdminLogin() {
       // The hook handles the API call and LocalStorage updates
       await login(email, password)
       navigate("/sysadmin/dashboard")
+      
     } catch (err: any) {
       // Axios errors are processed in api.ts, so err.message is clean here
       setFormError(err.message || "Invalid credentials")

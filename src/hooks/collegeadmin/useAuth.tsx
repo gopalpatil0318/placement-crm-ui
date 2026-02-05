@@ -23,7 +23,7 @@ export const useAuth = () => {
   const hasRole = (role: UserRole) => user?.role === role
   
   // Specific role check for College Administrators
-  const isCollegeAdmin = () => user?.role === "admin"
+  const isCollegeAdmin = () => user?.role === "collegeadmin"
 
   return {
     user,

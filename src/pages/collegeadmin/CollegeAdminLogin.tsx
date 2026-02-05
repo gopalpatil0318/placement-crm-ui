@@ -28,8 +28,9 @@ export default function CollegeAdminLogin() {
     try {
       await login(email, password)
       
-      // Navigate to the specific college admin dashboard
       navigate("/collegeadmin/dashboard")
+
+
     } catch (err: any) {
       setFormError(err.message || "Invalid institution credentials")
     } finally {
