@@ -150,8 +150,8 @@
 
 
 // components/sysadmin/CollegeForm.tsx
-import React, { useState } from "react";
-import { useCreateCollege } from "@/hooks/useCreateCollege";
+import  { useState } from "react";
+import { useCreateCollege } from "@/hooks/sysadmin/useCreateCollege";
 import { Eye, EyeOff } from "lucide-react";
 
 interface CollegeFormProps {
@@ -164,7 +164,7 @@ interface CollegeFormProps {
     };
 }
 
-const CollegeForm = ({ isEdit = false, initialData }: CollegeFormProps) => {
+const CollegeForm = ({ isEdit = false }: CollegeFormProps) => {
     const {
         formData,
         errors,

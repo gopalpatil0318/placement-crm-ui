@@ -29,7 +29,7 @@
 // //               </PublicRoute>
 // //             } 
 // //           />
-          
+
 // //           {/* Legacy login redirect */}
 // //           <Route path="/login" element={<Navigate to="/sysadmin/login" replace />} />
 
@@ -78,7 +78,7 @@
 // //               </ProtectedRoute>
 // //             }
 // //           />
-          
+
 // //           <Route
 // //             path="/collegeadmin/ViewUser/:UserId"
 // //             element={
@@ -153,7 +153,7 @@
 //               </PublicRoute>
 //             } 
 //           />
-          
+
 //           <Route 
 //             path="/collegeadmin/login" 
 //             element={
@@ -225,28 +225,30 @@ import ViewUser from './pages/collegeadmin/ViewUser'
 
 
 import './App.css'
+import CreateUser from "./pages/collegeadmin/CreateUser"
+import UpdateUser from "./pages/collegeadmin/UpdateUser"
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          <Route 
-            path="/sysadmin/login" 
+          <Route
+            path="/sysadmin/login"
             element={
               <PublicRoute>
                 <SuperAdminLogin />
               </PublicRoute>
-            } 
+            }
           />
-          
-          <Route 
-            path="/collegeadmin/login" 
+
+          <Route
+            path="/collegeadmin/login"
             element={
               <PublicRoute>
                 <CollegeAdminLogin />
               </PublicRoute>
-            } 
+            }
           />
 
           <Route path="/login" element={<Navigate to="/sysadmin/login" replace />} />
@@ -300,7 +302,24 @@ function App() {
             }
           />
 
-          
+
+          <Route
+            path="/collegeadmin/create-user"
+            element={
+              <ProtectedRoute allowedRoles={["collegeadmin"]}>
+                <CreateUser />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/collegeadmin/update-user/:userId"
+            element={
+              <ProtectedRoute allowedRoles={["collegeadmin"]}>
+                <UpdateUser />
+              </ProtectedRoute>
+            }
+          />
+
 
           {/* --- Common Routes --- */}
           <Route path="/unauthorized" element={<div className="p-10 text-center text-xl">Unauthorized Access</div>} />

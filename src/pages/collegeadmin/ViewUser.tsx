@@ -139,7 +139,7 @@ const ViewUser: React.FC = () => {
                             onClick={(e) => {
                               e.stopPropagation();
                               navigate(
-                                `/collegeadmin/edit-user/${user.user_id}`
+                                `/collegeadmin/update-user/${user.user_id}`
                               );
                             }}
                             className="hover:text-green-600"

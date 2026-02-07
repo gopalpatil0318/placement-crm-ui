@@ -86,7 +86,7 @@ export default function SuperAdminLogin() {
                   placeholder="admin@pcrm.in"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-11 border-1 border-[#cccccc]"
+                  className="pl-10 h-11 border-[#cccccc]"
                   required
                 />
               </div>
@@ -102,7 +102,7 @@ export default function SuperAdminLogin() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 h-11 border-1 border-[#cccccc]"
+                  className="pl-10 h-11 border-[#cccccc]"
                   required
                 />
               </div>

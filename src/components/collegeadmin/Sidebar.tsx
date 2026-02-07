@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   ChevronDown,
-  Users,
   GraduationCap,
   BriefcaseBusiness,
   Settings,
@@ -49,7 +48,7 @@ const navItems: { section: string; items: NavItemProps[] }[] = [
         label: "Users",
         subItems: [
           { label: "All Users", path: "/collegeadmin/view-users" },
-          { label: "Create Users", path: "/collegeadmin/create-users" },
+          { label: "Create Users", path: "/collegeadmin/create-user" },
         ],
       },
       {
@@ -235,7 +234,7 @@ function NavItem({ icon, label, path, badge, subItems, isExpanded, onToggle, act
       )}
 
       {hasSubItems && isExpanded && (
-        <div className="ml-9 mt-1.5 space-y-1 relative before:absolute before:left-[-14px] before:top-0 before:bottom-2 before:w-[1px] before:bg-gray-100">
+        <div className="ml-9 mt-1.5 space-y-1 relative before:absolute before:top-0 before:bottom-2 before:bg-gray-100">
           {subItems.map((sub: any) => (
             <Link key={sub.path} to={sub.path} className={`flex items-center gap-2 py-2 px-3 rounded-md transition-all duration-200 group ${activePath === sub.path ? "text-blue-600 bg-blue-50/50 font-medium" : "text-gray-500 hover:text-blue-600"}`}>
               <span className={`h-1.5 w-1.5 rounded-full transition-all ${activePath === sub.path ? "bg-blue-600 scale-125" : "bg-gray-300 group-hover:bg-blue-600"}`} />

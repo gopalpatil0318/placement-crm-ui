@@ -1,37 +1,25 @@
+import DashboardLayout from '@/components/sysadmin/DashboardLayout';
+import EditCollegeForm from "@/components/sysadmin/EditCollegeForm";
+import PageHeader from '@/components/sysadmin/PageHeader';
 
-import { useParams } from "react-router-dom";
-import DashboardLayout from "@/components/sysadmin/DashboardLayout";
-import CollegeForm from "@/components/sysadmin/CollegeForm";
-import PageHeader from "@/components/sysadmin/PageHeader";
+const CreateCollege = () => {
+  const breadcrumbs = [
+    { label: "Super Admin" },
+    { label: "Colleges" },
+    { label: "Edit Existing", active: true },
+  ];
 
-const EditCollege = () => {
-    const { collegeId } = useParams();
+  return (
+    <DashboardLayout>
+      <div className="space-y-8">
+        {/* Page Header */}
+        <PageHeader title="Create New College" breadcrumbs={breadcrumbs} />
 
-    // Mock initial data - in a real app, you'd fetch this using collegeId
-    const mockCollegeData = {
-        college_name: "Example University",
-        subdomain: "example",
-        admin_name: "Admin User",
-        admin_email: "admin@example.com",
-    };
-
-    const breadcrumbs = [
-        { label: "Super Admin" },
-        { label: "Colleges" },
-        { label: "Edit College", active: true },
-    ];
-
-    return (
-        <DashboardLayout>
-            <div className="space-y-8">
-                {/* Page Header */}
-                <PageHeader title={`Edit College: #${collegeId}`} breadcrumbs={breadcrumbs} />
-
-                {/* Form Component in Edit Mode */}
-                <CollegeForm isEdit={true} initialData={mockCollegeData} />
-            </div>
-        </DashboardLayout>
-    );
+        {/* Form Component with hook logic */}
+        <EditCollegeForm />
+      </div>
+    </DashboardLayout>
+  );
 };
 
-export default EditCollege;
+export default CreateCollege;

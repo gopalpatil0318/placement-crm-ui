@@ -15,7 +15,9 @@ export const useViewUsers = () => {
       const response = await api.get("/college/users");
 
       // Backend response: response.data.data
-      setUsers(response?.data?.data || []);
+      const apiData = response?.data?.data;
+
+      setUsers(Array.isArray(apiData?.users) ? apiData.users : []);
     } catch (err: any) {
       const errorMessage =
         err?.response?.data?.message ||
