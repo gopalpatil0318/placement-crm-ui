@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import api from "../../lib/api";
+import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 
 export const useViewUsers = () => {
@@ -12,10 +12,7 @@ export const useViewUsers = () => {
     setError(null);
 
     try {
-      const response = await api.get("/college/users");
-
-      // Backend response: response.data.data
-      const apiData = response?.data?.data;
+      const apiData = await CollegeAdminService.getUsers();
 
       setUsers(Array.isArray(apiData?.users) ? apiData.users : []);
     } catch (err: any) {

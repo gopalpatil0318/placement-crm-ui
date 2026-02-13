@@ -1,6 +1,6 @@
 // hooks/useCreateCollege.ts
 import { useState } from "react";
-import api from "@/lib/api"; // Adjust path if your api file is elsewhere
+import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils"; // Adjust path to your ToastUtils
 import { useNavigate } from "react-router-dom";
 import { userSchemaCreate } from "@/validators/UserSchemaCreate";
@@ -40,7 +40,7 @@ export const useCreateUser = () => {
     if (!result.success) {
       // Show the first validation error as a toast warning
       const firstErrorMessage = result.error.issues[0].message;
-      
+
       showToast({
         type: 'warning',
         title: 'Validation Failed',
@@ -55,15 +55,16 @@ export const useCreateUser = () => {
     try {
       // 2. API CALL
       // Using 'api' instance. Note: '/api' is already in baseURL, so we just use the endpoint.
-      const response = await api.post("/college/create-user", {
-        user_name: formData.userName,
-        user_email: formData.userEmail,
-        user_password: formData.userPassword,
+      // 2. API CALL
+      const response = await CollegeAdminService.createUser({
+        userName: formData.userName,
+        userEmail: formData.userEmail,
+        userPassword: formData.userPassword,
       });
 
       // 3. SUCCESS TOAST
       // Use the message from the backend response if available
-      const successMessage = response.data?.message || "User created successfully";
+      const successMessage = response?.message || "User created successfully";
 
       showToast({
         type: 'success',
@@ -76,7 +77,7 @@ export const useCreateUser = () => {
         userName: "",
         userEmail: "",
         userPassword: "",
-        
+
       });
 
       navigate("/collegeadmin/view-users")
@@ -88,7 +89,7 @@ export const useCreateUser = () => {
         title: 'Error Creating User',
         description: error.message || "Something went wrong, please try again",
       });
-      
+
     } finally {
       setLoading(false);
     }

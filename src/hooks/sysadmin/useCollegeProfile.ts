@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import api from "../../lib/api";
+import { SysAdminService } from "@/services/sysadmin/sysadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 
 
@@ -13,21 +13,21 @@ export const useCollegeProfile = () => {
   useEffect(() => {
     if (!collegeId) return;
 
-    const fetchCollege = async () => {    
+    const fetchCollege = async () => {
       try {
         setLoading(true);
-        const res = await api.get(`/sysadmin/colleges/${collegeId}`);
-        setCollege(res.data.data);
-      } 
-      catch (error : any) {
-         const errorMessage = error.message || "Failed to fetch colleges";
-               setError(errorMessage);
-               showToast({
-                 type: 'error',
-                 title: 'Fetch Error',
-                 description: errorMessage,
-               });
-      } 
+        const data = await SysAdminService.getCollegeProfile(collegeId);
+        setCollege(data);
+      }
+      catch (error: any) {
+        const errorMessage = error.message || "Failed to fetch colleges";
+        setError(errorMessage);
+        showToast({
+          type: 'error',
+          title: 'Fetch Error',
+          description: errorMessage,
+        });
+      }
       finally {
         setLoading(false);
       }

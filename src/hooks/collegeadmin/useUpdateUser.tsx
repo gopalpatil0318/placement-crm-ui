@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 import { userSchemaUpdate } from "@/validators/UserSchemaUpdate";
 
 interface UpdateUserForm {
   userName: string;
   userEmail: string;
- 
+
 }
 
 type FormErrors = Partial<UpdateUserForm>;
@@ -15,7 +15,7 @@ export const useUpdateUser = (userId: string) => {
   const [formData, setFormData] = useState<UpdateUserForm>({
     userName: "",
     userEmail: "",
-  
+
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -31,9 +31,9 @@ export const useUpdateUser = (userId: string) => {
     const fetchUser = async () => {
       setFetching(true);
       try {
-        const response = await api.get(`/college/user/${userId}`);
+        const user = await CollegeAdminService.getUser(userId);
 
-        const user = response.data?.data;
+        // const user = response.data?.data; // Service returns data directly
 
         setFormData({
           userName: user?.user_name || "",
@@ -88,17 +88,13 @@ export const useUpdateUser = (userId: string) => {
     setLoading(true);
 
     try {
-      const response = await api.put(
-        `/college/update-user/${userId}`,
-        {
-          user_name: formData.userName,
-          user_email: formData.userEmail,
-          
-        }
-      );
+      const response = await CollegeAdminService.updateUser(userId, {
+        userName: formData.userName,
+        userEmail: formData.userEmail,
+      });
 
       const successMessage =
-        response.data?.message || "User updated successfully";
+        response?.message || "User updated successfully";
 
       showToast({
         type: "success",

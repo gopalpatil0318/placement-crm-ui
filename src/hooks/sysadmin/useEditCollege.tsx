@@ -1,49 +1,73 @@
-import api from "../../lib/api";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCollegeProfile } from "./useCollegeProfile";
 import { showToast } from "@/utils/ToastUtils";
+import { SysAdminService } from "@/services/sysadmin/sysadmin.services";
 
 
 export const useEditCollege = () => {
   const { college, loading } = useCollegeProfile();
 
+  const [formData, setFormData] = useState({
+    college_id: "",
+    college_name: "",
+    college_subdomain: "",
+    college_status: "",
+  });
+
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const updateCollege = async (payload: any) => {
-    // 1. FIX: Use the correct property name (college_id)
-    const id = college?.college_id || college?.id; 
+  // Sync formData with college data when loaded
+  useEffect(() => {
+    if (college) {
+      setFormData({
+        college_id: college.college_id || "",
+        college_name: college.college_name || "",
+        college_subdomain: college.college_subdomain || college.subdomain || "",
+        college_status: college.college_status || "active",
+      });
+    }
+  }, [college]);
 
-    // 2. FIX: Check the specific ID variable
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleStatusToggle = () => {
+    setFormData((prev) => ({
+      ...prev,
+      college_status: prev.college_status === "active" ? "inactive" : "active",
+    }));
+  };
+
+  const handleUpdate = async () => {
+    const id = formData.college_id;
+
     if (!id) {
-        console.error("Cannot update: Missing College ID"); 
-        return;
+      console.error("Cannot update: Missing College ID");
+      return;
     }
 
-    console.log("I am here")
     try {
       setUpdating(true);
       setError(null);
 
-      // 3. FIX: Use the variable in the URL
-      const res = await api.put(
-        `/sysadmin/update-college/${id}`,
-        payload
-      );
-      
-      if(res.data?.success){
-        showToast({
-                type: 'success',
-                title: 'Updated College SuccessFully',
-                description: res.data.data.message,
-              });
-      }
-      return res.data;
+      const res = await SysAdminService.updateCollege(id, formData);
 
-    } catch (err) {
+      if (res?.success) {
+        showToast({
+          type: 'success',
+          title: 'Updated College Successfully',
+          description: res.data.message,
+        });
+      }
+      return res;
+
+    } catch (err: any) {
       console.error(err);
       setError("Failed to update college");
-      throw err;
+
     } finally {
       setUpdating(false);
     }
@@ -54,6 +78,9 @@ export const useEditCollege = () => {
     loading,
     updating,
     error,
-    updateCollege,
+    formData,
+    handleChange,
+    handleStatusToggle,
+    handleUpdate,
   };
 };
