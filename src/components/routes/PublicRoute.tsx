@@ -7,16 +7,24 @@ interface PublicRouteProps {
 }
 
 export const PublicRoute = ({ children }: PublicRouteProps) => {
-  const { isAuthenticated, isSuperAdmin } = useAuth()
+  const { isAuthenticated, isSuperAdmin, isCollegeAdmin } = useAuth()
 
   if (isAuthenticated) {
     // Logic: Redirect to dashboard based on role
     if (isSuperAdmin()) {
       return <Navigate to="/sysadmin/dashboard" replace />
+
+    }
+
+    if (isCollegeAdmin()) {
+      return <Navigate to="/collegeadmin/dashboard" replace />
+      
     }
     // Add other role redirects here if needed
     return <Navigate to="/" replace />
   }
+
+
 
   return <>{children}</>
 }

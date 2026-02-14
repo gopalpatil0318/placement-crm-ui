@@ -1,60 +1,39 @@
-import React, { useState } from "react";
+"use client";
+
+import React from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/sysadmin/DashboardLayout";
 import PageHeader from "@/components/sysadmin/PageHeader";
+import { useViewColleges } from "@/hooks/sysadmin/useViewColleges";
 
-interface College {
-  id: number;
-  name: string;
-  subdomain: string;
-  adminEmail: string;
-}
 
-const collegesData: College[] = [
-  {
-    id: 1,
-    name: "ABC Engineering College",
-    subdomain: "abc.college.com",
-    adminEmail: "admin@abc.com",
-  },
-  {
-    id: 2,
-    name: "XYZ Medical College",
-    subdomain: "xyz.college.com",
-    adminEmail: "admin@xyz.com",
-  },
-  {
-    id: 3,
-    name: "National Arts College",
-    subdomain: "arts.college.com",
-    adminEmail: "admin@arts.com",
-  },
+const BREADCRUMBS = [
+  { label: "Super Admin" },
+  { label: "Colleges" },
+  { label: "View List", active: true },
 ];
 
+
 const ViewCollege: React.FC = () => {
-  const [search, setSearch] = useState("");
-
-  const filteredData = collegesData.filter(
-    (college) =>
-      college.name.toLowerCase().includes(search.toLowerCase()) ||
-      college.subdomain.toLowerCase().includes(search.toLowerCase()) ||
-      college.adminEmail.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const breadcrumbs = [
-    { label: "Super Admin" },
-    { label: "Colleges" },
-    { label: "View List", active: true },
-  ];
+  const {
+    loading,
+    search,
+    entriesPerPage,
+    filteredData,
+    paginatedData,
+    handleSearchChange,
+    handleEntriesChange,
+    handleNavigateToAddCollege,
+    handleNavigateToViewCollege,
+    handleNavigateToEditCollege,
+  } = useViewColleges();
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        {/* Page Header */}
-        <PageHeader title="Colleges List" breadcrumbs={breadcrumbs} />
+        <PageHeader title="Colleges List" breadcrumbs={BREADCRUMBS} />
         <div className="w-full">
           <div className="p-8 bg-white rounded-xl border">
-            {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
               <h1 className="text-xl font-semibold text-gray-800">
                 College List
@@ -64,23 +43,28 @@ const ViewCollege: React.FC = () => {
                 <button className="px-4 py-2 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100">
                   Apply College
                 </button>
-                <button className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                <button
+                  onClick={handleNavigateToAddCollege}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all font-bold"
+                >
                   Add College
                 </button>
               </div>
             </div>
 
-            {/* Body */}
             <div>
-              {/* Top Controls */}
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 font-semibold">
                   Show
-                  <select className="mx-2 border border-gray-300 rounded px-2 py-1">
-                    <option>5</option>
-                    <option selected>10</option>
-                    <option>15</option>
-                    <option>20</option>
+                  <select
+                    value={entriesPerPage}
+                    onChange={handleEntriesChange}
+                    className="mx-2 border border-gray-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                    <option value={20}>20</option>
                   </select>
                   entries
                 </div>
@@ -89,55 +73,86 @@ const ViewCollege: React.FC = () => {
                   type="search"
                   placeholder="Search..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={handleSearchChange}
                   className="w-full md:w-64 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              {/* Table */}
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gray-50 text-left text-sm font-semibold text-gray-700">
                       <th className="px-4 py-3">COLLEGE NAME</th>
                       <th className="px-4 py-3">SUBDOMAIN</th>
-                      <th className="px-4 py-3">ADMIN EMAIL</th>
+                      <th className="px-4 py-3">STATUS</th>
                       <th className="px-4 py-3 text-center">ACTION</th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {filteredData.map((college) => (
-                      <tr
-                        key={college.id}
-                        className="border-b hover:bg-gray-50 text-sm"
-                      >
-                        <td className="px-4 py-3 font-medium text-gray-800">
-                          {college.name}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {college.subdomain}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {college.adminEmail}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-center gap-3 text-gray-500">
-                            <button className="hover:text-blue-600">
-                              <Eye size={18} />
-                            </button>
-                            <button className="hover:text-green-600">
-                              <Pencil size={18} />
-                            </button>
-                            <button className="hover:text-red-600">
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
+                    {loading ? (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="text-center py-10 text-gray-500 italic"
+                        >
+                          Loading data...
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      paginatedData.map((college) => (
+                        <tr
+                          key={college.college_id}
+                          // --- Added onClick to entire Row ---
+                          onClick={() =>
+                            handleNavigateToViewCollege(college.college_id)
+                          }
+                          className="border-b hover:bg-gray-50 text-sm cursor-pointer transition-colors"
+                        >
+                          <td className="px-4 py-3 font-medium text-gray-800">
+                            {college.college_name}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            {college.college_subdomain}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 capitalize font-semibold">
+                            {college.college_status}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-center gap-3 text-gray-500">
+                              {/* Eye icon also works, but row handles it now */}
+                              <button className="hover:text-blue-600 transition-colors">
+                                <Eye size={18} />
+                              </button>
 
-                    {filteredData.length === 0 && (
+                              {/* e.stopPropagation ensures clicking Edit/Delete doesn't open the profile row click */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleNavigateToEditCollege(
+                                    college.college_id
+                                  );
+                                }}
+                                className="hover:text-green-600 transition-colors"
+                              >
+                                <Pencil size={18} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Logic for delete can go here
+                                }}
+                                className="hover:text-red-600 transition-colors"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+
+                    {!loading && filteredData.length === 0 && (
                       <tr>
                         <td
                           colSpan={4}
@@ -151,21 +166,20 @@ const ViewCollege: React.FC = () => {
                 </table>
               </div>
 
-              {/* Footer */}
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mt-4 text-sm text-gray-600">
-                <div>Showing 1 to {filteredData.length} entries</div>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between mt-4 text-sm text-gray-600 font-semibold italic">
+                <div>
+                  Showing 1 to {Math.min(entriesPerPage, filteredData.length)} of{" "}
+                  {filteredData.length} entries
+                </div>
 
                 <div className="flex items-center gap-1 mt-2 md:mt-0">
                   <button className="px-3 py-1 border rounded hover:bg-gray-100">
                     ‹
                   </button>
-                  <button className="px-3 py-1 border rounded bg-blue-600 text-white">
+                  <button className="px-3 py-1 border rounded bg-blue-600 text-white font-bold shadow-sm">
                     1
                   </button>
-                  <button className="px-3 py-1 border rounded hover:bg-gray-100">
-                    2
-                  </button>
-                  <button className="px-3 py-1 border rounded hover:bg-gray-100">
+                  <button className="px-3 py-1 border rounded hover:bg-gray-100 transition-colors">
                     ›
                   </button>
                 </div>

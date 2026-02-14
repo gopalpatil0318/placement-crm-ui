@@ -37,3 +37,5 @@ const ViewCollege: React.FC<Props> = ({ college, onClose }) => {
 };
 
 export default ViewCollege;
+
+

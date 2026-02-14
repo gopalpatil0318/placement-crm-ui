@@ -1,7 +1,7 @@
 // src/validators/collegeSchema.ts
 import { z } from "zod";
 
-export const collegeSchema = z.object({
+export const collegeSchemaUpdate = z.object({
   collegeName: z
     .string()
     .min(2, { message: "College name must be at least 2 characters" })
@@ -34,6 +34,4 @@ export const collegeSchema = z.object({
     }),
 });
 
-export type CollegeSchemaType = z.infer<typeof collegeSchema>;
-
-
+export type CollegeSchemaType = z.infer<typeof collegeSchemaUpdate>;
