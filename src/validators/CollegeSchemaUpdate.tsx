@@ -1,13 +1,12 @@
-// src/validators/collegeSchema.ts
 import { z } from "zod";
 
 export const collegeSchemaUpdate = z.object({
-  collegeName: z
+  college_name: z
     .string()
     .min(2, { message: "College name must be at least 2 characters" })
     .max(200, { message: "College name cannot exceed 200 characters" }),
 
-  collegeSubdomain: z
+  college_subdomain: z
     .string()
     .min(2, { message: "Subdomain must be at least 2 characters" })
     .max(50, { message: "Subdomain cannot exceed 50 characters" })
@@ -16,22 +15,40 @@ export const collegeSchemaUpdate = z.object({
         "Subdomain must contain only lowercase letters, numbers, and hyphens",
     }),
 
-  adminName: z
+  college_type: z
     .string()
-    .min(2, { message: "Admin name must be at least 2 characters" })
-    .max(100, { message: "Admin name cannot exceed 100 characters" }),
+    .min(1, { message: "Please select a college type" }),
 
-  adminEmail: z
+  college_address: z
     .string()
-    .email({ message: "Invalid email format" }),
+    .min(2, { message: "College address must be at least 2 characters" })
+    .max(500, { message: "College address cannot exceed 500 characters" }),
 
-  adminPassword: z
+  college_city: z
     .string()
-    .min(8, { message: "Password must be at least 8 characters" })
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
-      message:
-        "Password must contain uppercase, lowercase, and numeric characters",
-    }),
+    .min(2, { message: "City must be at least 2 characters" })
+    .max(100, { message: "City cannot exceed 100 characters" }),
+
+  college_taluka: z
+    .string()
+    .min(2, { message: "Taluka must be at least 2 characters" })
+    .max(100, { message: "Taluka cannot exceed 100 characters" }),
+
+  college_district: z
+    .string()
+    .min(2, { message: "District must be at least 2 characters" })
+    .max(100, { message: "District cannot exceed 100 characters" }),
+
+  college_state: z
+    .string()
+    .min(2, { message: "State must be at least 2 characters" })
+    .max(100, { message: "State cannot exceed 100 characters" }),
+
+  college_pincode: z
+    .string()
+    .min(6, { message: "Pincode must be at least 6 digits" })
+    .max(6, { message: "Pincode must be exactly 6 digits" })
+    .regex(/^\d{6}$/, { message: "Pincode must be a valid 6-digit number" }),
 });
 
-export type CollegeSchemaType = z.infer<typeof collegeSchemaUpdate>;
+export type CollegeSchemaUpdateType = z.infer<typeof collegeSchemaUpdate>;
