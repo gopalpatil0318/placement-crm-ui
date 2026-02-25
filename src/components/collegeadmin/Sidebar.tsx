@@ -53,22 +53,27 @@ const navItems: { section: string; items: NavItemProps[] }[] = [
       },
       {
         icon: <UserCheck size={18} />,
-        label: "Faculty",
-        path: "/collegeadmin/faculty",
+        label: "Students",
+        subItems: [
+          { label: "Bulk Registration", path: "/collegeadmin/bulk-register" },
+        ],
       },
       {
         icon: <BookOpen size={18} />,
         label: "Departments",
-        path: "/collegeadmin/departments",
+        subItems: [
+          { label: "All Departments", path: "/collegeadmin/departments" },
+          { label: "Create Department", path: "/collegeadmin/create-department" },
+        ],
       },
     ],
   },
   {
     section: "Career & Placement",
     items: [
-      { 
-        icon: <BriefcaseBusiness size={18} />, 
-        label: "Placements", 
+      {
+        icon: <BriefcaseBusiness size={18} />,
+        label: "Placements",
         badge: "Active",
         subItems: [
           { label: "Job Drives", path: "/collegeadmin/placements/drives" },
@@ -132,7 +137,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   return (
     <aside className={`h-screen bg-white border-r flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "w-[280px]" : "w-0"}`}>
       <div className="flex flex-col h-full min-w-[280px]">
-        
+
         {/* Header: Logo consistent with sysadmin */}
         <div className="px-6 py-5 flex items-center gap-2">
           <span className="text-2xl font-bold text-blue-600 tracking-tight">PCRM</span>
@@ -204,10 +209,10 @@ function NavItem({ icon, label, path, badge, subItems, isExpanded, onToggle, act
       {hasSubItems ? (
         <button
           onClick={onToggle}
-          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer ${isActive 
-            ? "bg-blue-50 text-blue-600 font-medium" 
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer ${isActive
+            ? "bg-blue-50 text-blue-600 font-medium"
             : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
-          }`}
+            }`}
         >
           <div className="flex items-center gap-3">
             <span className={`${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"} transition-colors`}>

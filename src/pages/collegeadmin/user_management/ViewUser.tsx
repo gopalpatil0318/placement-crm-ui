@@ -2,24 +2,26 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Pencil, Trash2, UserPlus } from "lucide-react";
+import { Pencil, Plus, Eye } from "lucide-react";
 import DashboardLayout from "@/components/collegeadmin/DashboardLayout";
 import PageHeader from "@/components/collegeadmin/PageHeader";
-import { useViewUsers } from "@/hooks/collegeadmin/useViewUsers";
+import { useViewUsers } from "@/hooks/collegeadmin/user_management/useViewUsers";
+import ViewUserDetail from "@/components/collegeadmin/user_management/ViewUser";
 
 const ViewUser: React.FC = () => {
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const navigate = useNavigate();
   const { users, loading } = useViewUsers();
 
-  // ✅ Filter using BACKEND fields
+  // Filter users
   const filteredData = users.filter((user) => {
     const query = search.toLowerCase();
-
     return (
-      user.user_name?.toLowerCase().includes(query) ||
-      user.user_email?.toLowerCase().includes(query)
+      user.name?.toLowerCase().includes(query) ||
+      user.email?.toLowerCase().includes(query) ||
+      user.role?.toLowerCase().includes(query)
     );
   });
 
@@ -36,6 +38,14 @@ const ViewUser: React.FC = () => {
       <div className="space-y-8">
         <PageHeader title="Users List" breadcrumbs={breadcrumbs} />
 
+        {/* User Detail Modal */}
+        {selectedUser && (
+          <ViewUserDetail
+            user={selectedUser}
+            onClose={() => setSelectedUser(null)}
+          />
+        )}
+
         <div className="w-full">
           <div className="p-8 bg-white rounded-xl border">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -47,7 +57,7 @@ const ViewUser: React.FC = () => {
                 onClick={() => navigate("/collegeadmin/create-user")}
                 className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold"
               >
-                <UserPlus size={16} />
+                <Plus size={16} />
                 Add User
               </button>
             </div>
@@ -71,7 +81,7 @@ const ViewUser: React.FC = () => {
 
               <input
                 type="search"
-                placeholder="Search by name or email..."
+                placeholder="Search by name, email or role..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full md:w-64 border rounded-md px-3 py-2 text-sm"
@@ -83,10 +93,10 @@ const ViewUser: React.FC = () => {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-gray-50 text-left text-sm font-semibold text-gray-700">
-                    <th className="px-4 py-3">FULL NAME</th>
+                    <th className="px-4 py-3">NAME</th>
                     <th className="px-4 py-3">EMAIL</th>
+                    <th className="px-4 py-3">PHONE</th>
                     <th className="px-4 py-3">ROLE</th>
-                    <th className="px-4 py-3">STATUS</th>
                     <th className="px-4 py-3 text-center">ACTION</th>
                   </tr>
                 </thead>
@@ -98,71 +108,62 @@ const ViewUser: React.FC = () => {
                         Loading users...
                       </td>
                     </tr>
-                  ) : paginatedData.map((user) => (
-                    <tr
-                      key={user.user_id}
-                      onClick={() =>
-                        navigate(`/collegeadmin/view-user/${user.user_id}`)
-                      }
-                      className="border-b hover:bg-gray-50 text-sm cursor-pointer"
-                    >
-                      {/* ✅ backend fields */}
-                      <td className="px-4 py-3 font-medium">
-                        {user.user_name}
-                      </td>
-
-                      <td className="px-4 py-3 text-gray-600">
-                        {user.user_email}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                          {user.user_role}
-                        </span>
-                      </td>
-
-                      <td
-                        className={`px-4 py-3 font-semibold capitalize ${
-                          user.user_status === "active"
-                            ? "text-green-600"
-                            : "text-red-500"
-                        }`}
+                  ) : (
+                    paginatedData.map((user) => (
+                      <tr
+                        key={user._id}
+                        className="border-b hover:bg-gray-50 text-sm"
                       >
-                        {user.user_status}
-                      </td>
+                        <td className="px-4 py-3 font-medium">
+                          {user.name}
+                        </td>
 
-                      <td className="px-4 py-3">
-                        <div className="flex justify-center gap-3 text-gray-500">
-                          <Eye size={18} />
+                        <td className="px-4 py-3 text-gray-600">
+                          {user.email}
+                        </td>
 
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(
-                                `/collegeadmin/update-user/${user.user_id}`
-                              );
-                            }}
-                            className="hover:text-green-600"
-                          >
-                            <Pencil size={18} />
-                          </button>
+                        <td className="px-4 py-3 text-gray-600">
+                          {user.phone || "N/A"}
+                        </td>
 
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                            className="hover:text-red-600"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 capitalize">
+                            {user.role || "Admin"}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <div className="flex justify-center gap-3 text-gray-500">
+                            <button
+                              onClick={() => setSelectedUser(user)}
+                              className="hover:text-blue-600"
+                              title="View User"
+                            >
+                              <Eye size={18} />
+                            </button>
+                            <button
+                              onClick={() =>
+                                navigate(
+                                  `/collegeadmin/update-user/${user._id}`
+                                )
+                              }
+                              className="hover:text-green-600"
+                              title="Edit User"
+                            >
+                              <Pencil size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
 
                   {!loading && filteredData.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="text-center py-6 text-gray-500">
+                      <td
+                        colSpan={5}
+                        className="text-center py-6 text-gray-500"
+                      >
                         No users found
                       </td>
                     </tr>
