@@ -100,6 +100,8 @@ const BulkRegistrationView = () => {
                     <BulkResultSection
                         result={result}
                         onReset={handleReset}
+                        originalData={csvData}
+                        headers={headers}
                     />
                 ) : (
                     /* Upload Section */

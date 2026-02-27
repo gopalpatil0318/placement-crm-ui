@@ -6,8 +6,11 @@ interface BulkRegisterResponse {
     success: boolean;
     message: string;
     data: {
-        success: any[];
-        failed: { student_email: string; error: string }[];
+        total: number;
+        successful: number;
+        failed: number;
+        errors?: any[];
+        [key: string]: any;
     };
 }
 
@@ -22,7 +25,11 @@ export const useBulkRegistration = () => {
         setResult(null);
         try {
             const response = await CollegeAdminService.bulkRegistration(students);
-            setResult(response);
+            setResult({
+                success: response.success,
+                message: response.message,
+                data: response.data,
+            });
 
             showToast({
                 type: 'success',
@@ -34,7 +41,6 @@ export const useBulkRegistration = () => {
             const errorMessage = err.response?.data?.message || err.message || "Failed to upload file";
             setError(errorMessage);
 
-            // If the error response contains the detailed data (e.g., partial failure), set the result
             if (err.response?.data?.data && (err.response.data.data.success || err.response.data.data.failed)) {
                 setResult(err.response.data);
             }

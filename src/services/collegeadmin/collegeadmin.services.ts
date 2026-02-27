@@ -36,7 +36,7 @@ export const CollegeAdminService = {
     },
 
     bulkRegistration: async (students: any[]) => {
-        const response = await api.post("/college/bulk_register", { students });
+        const response = await api.post("/college/bulk_register_students", { students });
         return response.data;
     },
 

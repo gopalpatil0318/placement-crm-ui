@@ -1,4 +1,4 @@
-import { Upload, FileText, HelpCircle, CloudUpload, Loader2, X, Table as TableIcon } from "lucide-react";
+import { FileText, HelpCircle, CloudUpload, Loader2, X, Table as TableIcon } from "lucide-react";
 
 interface BulkUploadSectionProps {
     onFileChange: (file: File) => void;
