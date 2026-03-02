@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await api.post<ApiLoginResponse>("/auth/login", { email, password });
+      const response = await api.post<ApiLoginResponse>("/sysadmin/login", { email, password });
       
       // Destructure 'data' (the user object) and 'message' (success text) from the API body
       const { data: userData, message } = response.data;
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      const response = await api.post("/auth/logout");
+      const response = await api.post("/sysadmin/logout");
       
       // 1. Success Toast for Logout
       // Using optional chaining incase response structure differs slightly

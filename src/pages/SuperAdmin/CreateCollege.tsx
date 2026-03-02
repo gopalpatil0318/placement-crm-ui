@@ -22,3 +22,4 @@ const CreateCollege = () => {
 };
 
 export default CreateCollege;
+ 

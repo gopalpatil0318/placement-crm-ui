@@ -16,6 +16,7 @@ const CreateCollege = () => {
         <PageHeader title="Create New College" breadcrumbs={breadcrumbs} />
 
         {/* Form Component with hook logic */}
+        
         <EditCollegeForm />
       </div>
     </DashboardLayout>

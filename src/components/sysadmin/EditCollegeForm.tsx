@@ -8,33 +8,26 @@ const EditCollegePage = () => {
     loading,
     updating,
     error,
+    errors,
     formData,
     handleChange,
-    handleStatusToggle,
-    handleUpdate
+    handleUpdate,
   } = useEditCollege();
 
   return (
-    <div className="bg-slate-100 px-6 py-8">
+    <div className="p-8 bg-white rounded-xl border">
       <div className="mx-auto max-w-5xl">
         {/* Page Title */}
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-xl font-semibold text-gray-800 mb-6">
             Edit College
           </h1>
         </div>
 
         {/* Card */}
-        <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-          {/* Card Header */}
-          <div className="border-b border-slate-200 px-6 py-4">
-            <h2 className="text-base font-semibold text-slate-800">
-              College Details
-            </h2>
-          </div>
-
+        <div className="  ">
           {/* Card Body */}
-          <div className="px-6 py-6">
+          <div className="space-y-6">
             {error && (
               <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
@@ -66,56 +59,155 @@ const EditCollegePage = () => {
                   onChange={handleChange}
                   disabled={loading}
                   placeholder="Enter college name"
-                  className="h-11 rounded-md border border-slate-300 px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_name ? "border-red-500" : "border-slate-300"
+                    }`}
                 />
+
               </div>
 
-              {/* Subdomain */}
+              {/* College Subdomain */}
               <div>
                 <Label className="mb-1 block text-sm font-medium text-slate-700">
-                  Subdomain
+                  College Subdomain
                 </Label>
                 <Input
                   name="college_subdomain"
                   value={formData.college_subdomain}
                   onChange={handleChange}
                   disabled={loading}
-                  placeholder="college.example.com"
-                  className="h-11 rounded-md border border-slate-300 px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="Enter subdomain"
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_subdomain ? "border-red-500" : "border-slate-300"
+                    }`}
                 />
+
               </div>
 
-              {/* College Status */}
+              {/* College Type */}
               <div>
-                <Label className="mb-2 block text-sm font-medium text-slate-700">
-                  College Status
+                <Label className="mb-1 block text-sm font-medium text-slate-700">
+                  College Type
                 </Label>
+                <select
+                  name="college_type"
+                  value={formData.college_type}
+                  onChange={handleChange}
+                  disabled={loading}
+                  className={`h-11 w-full rounded-md border bg-white px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_type ? "border-red-500" : "border-slate-300"
+                    }`}
+                >
+                  <option value="">Select Type</option>
+                  <option value="engineering">Engineering</option>
+                  <option value="diploma">Diploma</option>
+                  <option value="mba">MBA</option>
+                  <option value="polytechnic">Polytechnic</option>
+                  <option value="degree">Degree</option>
+                  <option value="medical">Medical</option>
+                </select>
 
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleStatusToggle}
-                    className={`relative inline-flex h-4.5 w-7.5 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${formData.college_status === "active"
-                        ? "bg-blue-500"
-                        : "bg-slate-300"
-                      }`}
-                  >
-                    <span
-                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform duration-200 ${formData.college_status === "active"
-                          ? "translate-x-4"
-                          : "translate-x-0.75"
-                        }`}
-                    />
-                  </button>
-
-                  <p className="text-sm text-slate-600">
-                    Status:
-                    <span className="ml-1 font-medium capitalize">
-                      {formData.college_status}
-                    </span>
-                  </p>
-                </div>
               </div>
+
+              {/* College Address */}
+              <div className="md:col-span-2">
+                <Label className="mb-1 block text-sm font-medium text-slate-700">
+                  College Address
+                </Label>
+                <Input
+                  name="college_address"
+                  value={formData.college_address}
+                  onChange={handleChange}
+                  disabled={loading}
+                  placeholder="Enter full address"
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_address ? "border-red-500" : "border-slate-300"
+                    }`}
+                />
+
+              </div>
+
+              {/* College City */}
+              <div>
+                <Label className="mb-1 block text-sm font-medium text-slate-700">
+                  College City
+                </Label>
+                <Input
+                  name="college_city"
+                  value={formData.college_city}
+                  onChange={handleChange}
+                  disabled={loading}
+                  placeholder="Enter city"
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_city ? "border-red-500" : "border-slate-300"
+                    }`}
+                />
+
+              </div>
+
+              {/* College Taluka */}
+              <div>
+                <Label className="mb-1 block text-sm font-medium text-slate-700">
+                  College Taluka
+                </Label>
+                <Input
+                  name="college_taluka"
+                  value={formData.college_taluka}
+                  onChange={handleChange}
+                  disabled={loading}
+                  placeholder="Enter taluka"
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_taluka ? "border-red-500" : "border-slate-300"
+                    }`}
+                />
+
+              </div>
+
+              {/* College District */}
+              <div>
+                <Label className="mb-1 block text-sm font-medium text-slate-700">
+                  College District
+                </Label>
+                <Input
+                  name="college_district"
+                  value={formData.college_district}
+                  onChange={handleChange}
+                  disabled={loading}
+                  placeholder="Enter district"
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_district ? "border-red-500" : "border-slate-300"
+                    }`}
+                />
+
+              </div>
+
+              {/* College State */}
+              <div>
+                <Label className="mb-1 block text-sm font-medium text-slate-700">
+                  College State
+                </Label>
+                <Input
+                  name="college_state"
+                  value={formData.college_state}
+                  onChange={handleChange}
+                  disabled={loading}
+                  placeholder="Enter state"
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_state ? "border-red-500" : "border-slate-300"
+                    }`}
+                />
+
+              </div>
+
+              {/* College Pincode */}
+              <div>
+                <Label className="mb-1 block text-sm font-medium text-slate-700">
+                  College Pincode
+                </Label>
+                <Input
+                  name="college_pincode"
+                  value={formData.college_pincode}
+                  onChange={handleChange}
+                  disabled={loading}
+                  placeholder="Enter pincode"
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_pincode ? "border-red-500" : "border-slate-300"
+                    }`}
+                />
+
+              </div>
+
             </div>
 
             {/* Button Row */}
