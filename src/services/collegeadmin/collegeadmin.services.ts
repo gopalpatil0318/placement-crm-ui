@@ -40,6 +40,23 @@ export const CollegeAdminService = {
         return response.data;
     },
 
+    getAllStudents: async (params: {
+        dept_id?: string;
+        student_passout_year?: number;
+        student_status?: string;
+        page?: number;
+        limit?: number;
+    }) => {
+        const query = new URLSearchParams();
+        if (params.dept_id) query.append("dept_id", params.dept_id);
+        if (params.student_passout_year) query.append("student_passout_year", String(params.student_passout_year));
+        if (params.student_status) query.append("student_status", params.student_status);
+        if (params.page) query.append("page", String(params.page));
+        if (params.limit) query.append("limit", String(params.limit));
+        const response = await api.get(`/college/get_all_students?${query.toString()}`);
+        return response.data;
+    },
+
     // ========================
     // DEPARTMENT MANAGEMENT
     // ========================
@@ -91,6 +108,17 @@ export const CollegeAdminService = {
     toggleDepartmentStatus: async (id: string, isActive: boolean) => {
         const response = await api.patch(`/college/toggle_department_status/${id}`, {
             is_active: isActive,
+        });
+        return response.data;
+    },
+
+    // ========================
+    // STUDENT STATUS MANAGEMENT
+    // ========================
+
+    updateStudentStatus: async (studentId: string, status: string) => {
+        const response = await api.patch(`/college/toggle_student_status/${studentId}`, {
+            student_status: status,
         });
         return response.data;
     },

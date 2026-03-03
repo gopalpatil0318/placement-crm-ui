@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, X } from "lucide-react";
 import DashboardLayout from "@/components/collegeadmin/DashboardLayout";
 import PageHeader from "@/components/collegeadmin/PageHeader";
 import { useViewDepartments } from "@/hooks/collegeadmin/departmentManagement/useViewDepartments";
@@ -33,8 +33,21 @@ const ViewDepartments: React.FC = () => {
         { label: "View List", active: true },
     ];
 
-    const handleToggle = async (deptId: string, currentStatus: boolean) => {
-        await toggleStatus(deptId, currentStatus, refresh);
+    // Confirmation modal state
+    const [pendingToggle, setPendingToggle] = useState<{ deptId: string; currentStatus: boolean; deptName: string } | null>(null);
+
+    const handleToggle = (deptId: string, currentStatus: boolean, deptName: string) => {
+        setPendingToggle({ deptId, currentStatus, deptName });
+    };
+
+    const confirmToggle = async () => {
+        if (!pendingToggle) return;
+        await toggleStatus(pendingToggle.deptId, pendingToggle.currentStatus, refresh);
+        setPendingToggle(null);
+    };
+
+    const cancelToggle = () => {
+        setPendingToggle(null);
     };
 
     return (
@@ -139,7 +152,7 @@ const ViewDepartments: React.FC = () => {
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            handleToggle(dept.dept_id, dept.is_active);
+                                                            handleToggle(dept.dept_id, dept.is_active, dept.dept_name);
                                                         }}
                                                         disabled={toggleLoading}
                                                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${dept.is_active ? "bg-green-500" : "bg-gray-300"
@@ -196,6 +209,64 @@ const ViewDepartments: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* ===== Confirmation Modal ===== */}
+            {pendingToggle && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+                    onClick={cancelToggle}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
+                            <h2 className="text-lg font-bold text-gray-800">Confirm Status Change</h2>
+                            <button
+                                onClick={cancelToggle}
+                                disabled={toggleLoading}
+                                className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="px-6 py-5">
+                            <p className="text-sm text-gray-600">
+                                Are you sure you want to{" "}
+                                <span className="font-bold">
+                                    {pendingToggle.currentStatus ? "deactivate" : "activate"}
+                                </span>{" "}
+                                the department{" "}
+                                <span className="font-bold">"{pendingToggle.deptName}"</span>?
+                            </p>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="px-6 py-3 border-t bg-gray-50 flex items-center justify-end gap-3">
+                            <button
+                                onClick={cancelToggle}
+                                disabled={toggleLoading}
+                                className="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-40"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmToggle}
+                                disabled={toggleLoading}
+                                className="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {toggleLoading && (
+                                    <div className="h-4 w-4 border-2 border-blue-200 border-t-white rounded-full animate-spin" />
+                                )}
+                                {toggleLoading ? "Updating..." : "Confirm"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </DashboardLayout>
     );
 };

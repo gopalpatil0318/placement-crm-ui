@@ -55,6 +55,7 @@ const navItems: { section: string; items: NavItemProps[] }[] = [
         icon: <UserCheck size={18} />,
         label: "Students",
         subItems: [
+          { label: "All Students", path: "/collegeadmin/students" },
           { label: "Bulk Registration", path: "/collegeadmin/bulk-register" },
         ],
       },
