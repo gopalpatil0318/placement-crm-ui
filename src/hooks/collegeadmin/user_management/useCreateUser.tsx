@@ -8,6 +8,7 @@ interface CreateUserForm {
     userName: string;
     userEmail: string;
     userPassword: string;
+    userRole: string;
 }
 
 type FormErrors = Partial<CreateUserForm>;
@@ -17,6 +18,7 @@ export const useCreateUser = () => {
         userName: "",
         userEmail: "",
         userPassword: "",
+        userRole: ""
     });
     const navigate = useNavigate();
     const [errors, setErrors] = useState<FormErrors>({});
@@ -56,6 +58,7 @@ export const useCreateUser = () => {
                 userName: formData.userName,
                 userEmail: formData.userEmail,
                 userPassword: formData.userPassword,
+                userRole: formData.userRole
             });
 
             // 3. SUCCESS TOAST
@@ -72,6 +75,7 @@ export const useCreateUser = () => {
                 userName: "",
                 userEmail: "",
                 userPassword: "",
+                userRole: ""
             });
 
             navigate("/collegeadmin/view-users")

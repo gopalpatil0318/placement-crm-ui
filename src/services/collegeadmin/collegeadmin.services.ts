@@ -1,15 +1,18 @@
 import api from "@/lib/api";
+import { use } from "react";
 
 export const CollegeAdminService = {
     createUser: async (data: {
         userName: string;
         userEmail: string;
         userPassword: string;
+        userRole: string;
     }) => {
         const response = await api.post("/college/create_user", {
             user_name: data.userName,
             user_email: data.userEmail,
             user_password: data.userPassword,
+            user_role: data.userRole,
         });
         return response.data;
     },
@@ -26,6 +29,8 @@ export const CollegeAdminService = {
         const response = await api.put(`/college/update_user/${id}`, {
             user_name: data.userName,
             user_email: data.userEmail,
+            user_role: data.userRole,
+            user_status: data.userStatus,
         });
         return response.data;
     },
@@ -37,6 +42,11 @@ export const CollegeAdminService = {
 
     bulkRegistration: async (students: any[]) => {
         const response = await api.post("/college/bulk_register", { students });
+        return response.data;
+    },
+
+    createStudent: async (data: any) => {
+        const response = await api.post("/college/register_student", data);
         return response.data;
     },
 

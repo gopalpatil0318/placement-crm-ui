@@ -5,13 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { Pencil, Plus, Eye } from "lucide-react";
 import DashboardLayout from "@/components/collegeadmin/DashboardLayout";
 import PageHeader from "@/components/collegeadmin/PageHeader";
-import { useViewUsers } from "@/hooks/collegeadmin/user_management/useViewUsers";
+import { useViewUsers, type User } from "@/hooks/collegeadmin/user_management/useViewUsers";
 import ViewUserDetail from "@/components/collegeadmin/user_management/ViewUser";
 
 const ViewUser: React.FC = () => {
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const navigate = useNavigate();
   const { users, loading } = useViewUsers();
 
@@ -19,9 +19,9 @@ const ViewUser: React.FC = () => {
   const filteredData = users.filter((user) => {
     const query = search.toLowerCase();
     return (
-      user.name?.toLowerCase().includes(query) ||
-      user.email?.toLowerCase().includes(query) ||
-      user.role?.toLowerCase().includes(query)
+      user.user_name?.toLowerCase().includes(query) ||
+      user.user_email?.toLowerCase().includes(query) ||
+      user.user_role?.toLowerCase().includes(query)
     );
   });
 
@@ -98,6 +98,7 @@ const ViewUser: React.FC = () => {
                     <th className="px-4 py-3">PHONE</th>
                     <th className="px-4 py-3">ROLE</th>
                     <th className="px-4 py-3 text-center">ACTION</th>
+                    <th className="px-4 py-3 text-center">STATUS</th>
                   </tr>
                 </thead>
 
@@ -111,24 +112,24 @@ const ViewUser: React.FC = () => {
                   ) : (
                     paginatedData.map((user) => (
                       <tr
-                        key={user._id}
+                        key={user.user_id}
                         className="border-b hover:bg-gray-50 text-sm"
                       >
                         <td className="px-4 py-3 font-medium">
-                          {user.name}
+                          {user.user_name}
                         </td>
 
                         <td className="px-4 py-3 text-gray-600">
-                          {user.email}
+                          {user.user_email}
                         </td>
 
                         <td className="px-4 py-3 text-gray-600">
-                          {user.phone || "N/A"}
+                          {user.user_phone || "N/A"}
                         </td>
 
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 capitalize">
-                            {user.role || "Admin"}
+                            {user.user_role || "Admin"}
                           </span>
                         </td>
 
@@ -144,7 +145,7 @@ const ViewUser: React.FC = () => {
                             <button
                               onClick={() =>
                                 navigate(
-                                  `/collegeadmin/update-user/${user._id}`
+                                  `/collegeadmin/update-user/${user.user_id}`
                                 )
                               }
                               className="hover:text-green-600"
@@ -152,6 +153,7 @@ const ViewUser: React.FC = () => {
                             >
                               <Pencil size={18} />
                             </button>
+                           
                           </div>
                         </td>
                       </tr>

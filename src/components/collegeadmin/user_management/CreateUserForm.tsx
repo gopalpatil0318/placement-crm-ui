@@ -50,6 +50,24 @@ const UserForm = ({ isEdit = false, }: UserFormProps) => {
                             <p className="text-xs text-gray-500 mt-1">{errors.userName}</p>
                         )}
                     </div>
+
+
+                    <div>
+
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            User Role <span className="text-red-500 ml-0.5">*</span>
+                        </label>
+                        <input
+                            name="userRole"           // map to hook
+                            value={formData.userRole}
+                            onChange={handleChange}
+                            placeholder="User Role"
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {errors.userRole && (
+                            <p className="text-xs text-gray-500 mt-1">{errors.userRole}</p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Row 3 */}

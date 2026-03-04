@@ -26,6 +26,7 @@ import ViewDepartments from "./pages/collegeadmin/ViewDepartments"
 import CreateDepartment from "./pages/collegeadmin/CreateDepartment"
 import UpdateDepartment from "./pages/collegeadmin/UpdateDepartment"
 import ViewDepartment from "./pages/collegeadmin/departmentManagement/ViewDepartment"
+import StudentRegister from "./pages/collegeadmin/student_management/StudentRegister"
 
 function App() {
   return (
@@ -132,6 +133,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
                   <BulkRegister />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/collegeadmin/create-student"
+              element={
+                <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                  <StudentRegister />
                 </ProtectedRoute>
               }
             />

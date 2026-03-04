@@ -6,6 +6,9 @@ import { userSchemaUpdate } from "@/validators/UserSchemaUpdate";
 interface UpdateUserForm {
     userName: string;
     userEmail: string;
+    userRole: string;
+    userStatus: string;
+
 }
 
 type FormErrors = Partial<UpdateUserForm>;
@@ -14,6 +17,8 @@ export const useUpdateUser = (userId: string) => {
     const [formData, setFormData] = useState<UpdateUserForm>({
         userName: "",
         userEmail: "",
+        userRole: "",
+        userStatus:""
     });
 
     const [errors, setErrors] = useState<FormErrors>({});
@@ -34,6 +39,9 @@ export const useUpdateUser = (userId: string) => {
                 setFormData({
                     userName: user?.user_name || "",
                     userEmail: user?.user_email || "",
+                    userRole: user?.user_role || "",
+                    userStatus: user?.user_status || "",
+
                 });
             } catch (error: any) {
                 showToast({
@@ -86,6 +94,8 @@ export const useUpdateUser = (userId: string) => {
             const response = await CollegeAdminService.updateUser(userId, {
                 userName: formData.userName,
                 userEmail: formData.userEmail,
+                userRole: formData.userRole,
+                userStatus: formData.userStatus,
             });
 
             const successMessage =
