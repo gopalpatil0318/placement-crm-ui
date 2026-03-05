@@ -17,16 +17,12 @@ export default function DashboardLayout({
     <div className="min-h-screen w-full flex bg-[#f2f2f230]">
       {/* Sidebar - Controlled by local state */}
       <Sidebar isOpen={isSidebarOpen} />
-      
+
       {/* Main Content Area */}
       <main className="flex-1 bg-[#f2f2f230] overflow-y-auto blob-backdrop flex flex-col">
-       
         <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
-        
-        
-        <div className="blob-content flex-1 text-black p-6">
-          {children}
-        </div>
+
+        <div className="blob-content flex-1 text-black p-6">{children}</div>
       </main>
     </div>
   );

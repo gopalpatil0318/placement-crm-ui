@@ -10,7 +10,7 @@ import {
   LineChart,
   GraduationCap,
   LogOut, // Import LogOut icon
-  User as UserIcon // Generic user icon
+  User as UserIcon, // Generic user icon
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/sysadmin/useAuth"; // Import your custom hook
@@ -66,9 +66,17 @@ const navItems: { section: string; items: NavItemProps[] }[] = [
   {
     section: "Widget",
     items: [
-      { icon: <BarChart3 size={18} />, label: "Statistics", path: "/sysadmin/statistics" },
+      {
+        icon: <BarChart3 size={18} />,
+        label: "Statistics",
+        path: "/sysadmin/statistics",
+      },
       { icon: <Database size={18} />, label: "Data", path: "/sysadmin/data" },
-      { icon: <LineChart size={18} />, label: "Chart", path: "/sysadmin/chart" },
+      {
+        icon: <LineChart size={18} />,
+        label: "Chart",
+        path: "/sysadmin/chart",
+      },
     ],
   },
   {
@@ -91,9 +99,10 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   // Initialize expandedItems
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
     const activeSection = navItems
-      .flatMap(section => section.items)
-      .find(item => item.subItems?.some(sub => location.pathname.startsWith(sub.path)))
-      ?.label;
+      .flatMap((section) => section.items)
+      .find((item) =>
+        item.subItems?.some((sub) => location.pathname.startsWith(sub.path)),
+      )?.label;
 
     const initial = ["Dashboard"];
     if (activeSection && !initial.includes(activeSection)) {
@@ -104,19 +113,24 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
 
   const toggleExpand = (label: string) => {
     setExpandedItems((prev) =>
-      prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label]
+      prev.includes(label)
+        ? prev.filter((item) => item !== label)
+        : [...prev, label],
     );
   };
 
   // Auto-expand active section
   useEffect(() => {
     const activeSection = navItems
-      .flatMap(section => section.items)
-      .find(item => item.subItems?.some(sub => location.pathname.startsWith(sub.path)))
-      ?.label;
+      .flatMap((section) => section.items)
+      .find((item) =>
+        item.subItems?.some((sub) => location.pathname.startsWith(sub.path)),
+      )?.label;
 
     if (activeSection) {
-      setExpandedItems(prev => prev.includes(activeSection) ? prev : [...prev, activeSection]);
+      setExpandedItems((prev) =>
+        prev.includes(activeSection) ? prev : [...prev, activeSection],
+      );
     }
   }, [location.pathname]);
 
@@ -130,12 +144,15 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   };
 
   return (
-    <aside className={`h-screen bg-white border-r flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "w-[280px]" : "w-0"}`}>
+    <aside
+      className={`h-screen bg-white border-r flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "w-[280px]" : "w-0"}`}
+    >
       <div className="flex flex-col h-full min-w-[280px]">
-        
         {/* Header: Logo */}
         <div className="px-6 py-5 flex items-center gap-2">
-          <span className="text-2xl font-bold text-blue-600 tracking-tight">PCRM</span>
+          <span className="text-2xl font-bold text-blue-600 tracking-tight">
+            PCRM
+          </span>
         </div>
 
         {/* Header: Profile Card (Now Dynamic) */}
@@ -146,7 +163,10 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                 <UserIcon size={20} />
               </div>
               <div className="truncate">
-                <p className="text-sm font-semibold text-gray-900 truncate" title={user?.email}>
+                <p
+                  className="text-sm font-semibold text-gray-900 truncate"
+                  title={user?.email}
+                >
                   {user?.email || "User"}
                 </p>
                 <p className="text-xs text-gray-500 capitalize">
@@ -185,7 +205,10 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200 group font-medium"
           >
-            <LogOut size={18} className="group-hover:scale-110 transition-transform" />
+            <LogOut
+              size={18}
+              className="group-hover:scale-110 transition-transform"
+            />
             <span>Log Out</span>
           </button>
         </div>
@@ -210,20 +233,24 @@ function NavItem({
   activePath: string;
 }) {
   const hasSubItems = subItems && subItems.length > 0;
-  const isActive = path === activePath || subItems?.some((sub) => sub.path === activePath);
+  const isActive =
+    path === activePath || subItems?.some((sub) => sub.path === activePath);
 
   return (
     <div className="mb-1">
       {hasSubItems ? (
         <button
           onClick={onToggle}
-          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 group ${isActive
-            ? "bg-blue-50 text-blue-600 font-medium"
-            : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
-            }`}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+            isActive
+              ? "bg-blue-50 text-blue-600 font-medium"
+              : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+          }`}
         >
           <div className="flex items-center gap-3">
-            <span className={`${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"} transition-colors`}>
+            <span
+              className={`${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"} transition-colors`}
+            >
               {icon}
             </span>
             {label}
@@ -237,20 +264,26 @@ function NavItem({
             )}
             <ChevronDown
               size={16}
-              className={`transition-transform duration-300 ${isExpanded ? "rotate-180" : ""} ${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"
-                }`}
+              className={`transition-transform duration-300 ${isExpanded ? "rotate-180" : ""} ${
+                isActive
+                  ? "text-blue-600"
+                  : "text-gray-400 group-hover:text-blue-600"
+              }`}
             />
           </div>
         </button>
       ) : (
         <Link
           to={path || "#"}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${activePath === path
-            ? "bg-blue-50 text-blue-600 font-medium"
-            : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
-            }`}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+            activePath === path
+              ? "bg-blue-50 text-blue-600 font-medium"
+              : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+          }`}
         >
-          <span className={`${activePath === path ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"} transition-colors`}>
+          <span
+            className={`${activePath === path ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"} transition-colors`}
+          >
             {icon}
           </span>
           {label}
@@ -263,14 +296,18 @@ function NavItem({
             <Link
               key={sub.path}
               to={sub.path}
-              className={`flex items-center gap-2 py-2 px-3 rounded-md transition-all duration-200 group ${activePath === sub.path
-                ? "text-blue-600 bg-blue-50/50 font-medium"
-                : "text-gray-500 hover:text-blue-600"
-                }`}
+              className={`flex items-center gap-2 py-2 px-3 rounded-md transition-all duration-200 group ${
+                activePath === sub.path
+                  ? "text-blue-600 bg-blue-50/50 font-medium"
+                  : "text-gray-500 hover:text-blue-600"
+              }`}
             >
               <span
-                className={`h-1.5 w-1.5 rounded-full transition-all ${activePath === sub.path ? "bg-blue-600 scale-125" : "bg-gray-300 group-hover:bg-blue-600"
-                  }`}
+                className={`h-1.5 w-1.5 rounded-full transition-all ${
+                  activePath === sub.path
+                    ? "bg-blue-600 scale-125"
+                    : "bg-gray-300 group-hover:bg-blue-600"
+                }`}
               />
               {sub.label}
             </Link>

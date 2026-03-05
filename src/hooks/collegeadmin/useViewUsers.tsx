@@ -13,8 +13,9 @@ export const useViewUsers = () => {
 
     try {
       const apiData = await CollegeAdminService.getUsers();
-
+      console.log("apiData", apiData)
       setUsers(Array.isArray(apiData?.users) ? apiData.users : []);
+      console.log("users", users)
     } catch (err: any) {
       const errorMessage =
         err?.response?.data?.message ||

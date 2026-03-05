@@ -1,66 +1,47 @@
-// import type { ReactNode } from "react"
-// import { Navigate } from "react-router-dom"
-// import { useAuth } from "@/hooks/sysadmin/useAuth"
-// import type { UserRole } from "../../types/auth"
-
-// interface ProtectedRouteProps {
-//   children: ReactNode
-//   allowedRoles?: UserRole[]
-// }
-
-// export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-//   const { isAuthenticated, user, isLoading } = useAuth()
-
-//   console.log('user', user);
-//   if (isLoading) return <div>Loading...</div> // Or a spinner component
-
-//   if (!isAuthenticated) {
-//     return <Navigate to="/sysadmin/login" replace />
-//   }
-
-//   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-//     return <Navigate to="/unauthorized" replace />
-//   }
-
-//   return <>{children}</>
-// }
-
-
-import type { ReactNode } from "react"
-import { Navigate, useLocation } from "react-router-dom"
-// Use your central auth hook
-import { useAuth } from "@/hooks/sysadmin/useAuth" 
-import type { UserRole } from "../../types/auth"
+import type { ReactNode } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useContext } from "react";
+import { SysAdminAuthContext } from "@/context/SysAdminAuthContext";
+import { CollegeAuthContext } from "@/context/CollegeAuthContext";
+import type { UserRole } from "@/types/auth";
 
 interface ProtectedRouteProps {
-  children: ReactNode
-  allowedRoles?: UserRole[]
+  children: ReactNode;
+  allowedRoles?: UserRole[];
 }
 
-export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { isAuthenticated, user, isLoading } = useAuth()
-  const location = useLocation() // To detect the current path
+export const ProtectedRoute = ({
+  children,
+  allowedRoles,
+}: ProtectedRouteProps) => {
+  const location = useLocation();
+  const isCollegePath = location.pathname.startsWith("/collegeadmin");
 
-  console.log('Current User Role:', user?.role);
+  // Pick the correct auth context based on the route
+  const sysAdminAuth = useContext(SysAdminAuthContext);
+  const collegeAuth = useContext(CollegeAuthContext);
 
-  if (isLoading) return <div className="p-10 text-center">Loading...</div>
+  const auth = isCollegePath ? collegeAuth : sysAdminAuth;
+  const user = auth?.user ?? null;
+  const isAuthenticated = auth?.isAuthenticated ?? false;
+  const isLoading = auth?.isLoading ?? false;
 
-  // 1. Dynamic Login Redirect
+  if (isLoading) return <div className="p-10 text-center">Loading...</div>;
+
+  // 1. Not authenticated → redirect to the correct login page
   if (!isAuthenticated) {
-    // Determine which login page to show based on the URL path
-    const loginPath = location.pathname.startsWith("/collegeadmin") 
-      ? "/collegeadmin/login" 
-      : "/sysadmin/login";
-      
-    return <Navigate to={loginPath} replace />
+    const loginPath = isCollegePath ? "/collegeadmin/login" : "/sysadmin/login";
+    return <Navigate to={loginPath} replace />;
   }
 
-  // 2. Role Verification Logic
-  // Check if user's role exists in the allowedRoles array defined in App.tsx
+  // 2. Role check
   if (allowedRoles && user && !allowedRoles.includes(user.role as UserRole)) {
-    console.warn("Access Denied: Role mismatch", { userRole: user.role, allowed: allowedRoles });
-    return <Navigate to="/unauthorized" replace />
+    console.warn("Access Denied: Role mismatch", {
+      userRole: user.role,
+      allowed: allowedRoles,
+    });
+    return <Navigate to="/unauthorized" replace />;
   }
 
-  return <>{children}</>
-}
+  return <>{children}</>;
+};

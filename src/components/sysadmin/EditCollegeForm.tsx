@@ -59,10 +59,10 @@ const EditCollegePage = () => {
                   onChange={handleChange}
                   disabled={loading}
                   placeholder="Enter college name"
-                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_name ? "border-red-500" : "border-slate-300"
-                    }`}
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                    errors.college_name ? "border-red-500" : "border-slate-300"
+                  }`}
                 />
-
               </div>
 
               {/* College Subdomain */}
@@ -76,10 +76,12 @@ const EditCollegePage = () => {
                   onChange={handleChange}
                   disabled={loading}
                   placeholder="Enter subdomain"
-                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_subdomain ? "border-red-500" : "border-slate-300"
-                    }`}
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                    errors.college_subdomain
+                      ? "border-red-500"
+                      : "border-slate-300"
+                  }`}
                 />
-
               </div>
 
               {/* College Type */}
@@ -92,8 +94,9 @@ const EditCollegePage = () => {
                   value={formData.college_type}
                   onChange={handleChange}
                   disabled={loading}
-                  className={`h-11 w-full rounded-md border bg-white px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_type ? "border-red-500" : "border-slate-300"
-                    }`}
+                  className={`h-11 w-full rounded-md border bg-white px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                    errors.college_type ? "border-red-500" : "border-slate-300"
+                  }`}
                 >
                   <option value="">Select Type</option>
                   <option value="engineering">Engineering</option>
@@ -103,7 +106,6 @@ const EditCollegePage = () => {
                   <option value="degree">Degree</option>
                   <option value="medical">Medical</option>
                 </select>
-
               </div>
 
               {/* College Address */}
@@ -117,10 +119,12 @@ const EditCollegePage = () => {
                   onChange={handleChange}
                   disabled={loading}
                   placeholder="Enter full address"
-                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_address ? "border-red-500" : "border-slate-300"
-                    }`}
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                    errors.college_address
+                      ? "border-red-500"
+                      : "border-slate-300"
+                  }`}
                 />
-
               </div>
 
               {/* College City */}
@@ -134,10 +138,10 @@ const EditCollegePage = () => {
                   onChange={handleChange}
                   disabled={loading}
                   placeholder="Enter city"
-                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_city ? "border-red-500" : "border-slate-300"
-                    }`}
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                    errors.college_city ? "border-red-500" : "border-slate-300"
+                  }`}
                 />
-
               </div>
 
               {/* College Taluka */}
@@ -151,10 +155,12 @@ const EditCollegePage = () => {
                   onChange={handleChange}
                   disabled={loading}
                   placeholder="Enter taluka"
-                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_taluka ? "border-red-500" : "border-slate-300"
-                    }`}
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                    errors.college_taluka
+                      ? "border-red-500"
+                      : "border-slate-300"
+                  }`}
                 />
-
               </div>
 
               {/* College District */}
@@ -168,10 +174,12 @@ const EditCollegePage = () => {
                   onChange={handleChange}
                   disabled={loading}
                   placeholder="Enter district"
-                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_district ? "border-red-500" : "border-slate-300"
-                    }`}
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                    errors.college_district
+                      ? "border-red-500"
+                      : "border-slate-300"
+                  }`}
                 />
-
               </div>
 
               {/* College State */}
@@ -185,10 +193,10 @@ const EditCollegePage = () => {
                   onChange={handleChange}
                   disabled={loading}
                   placeholder="Enter state"
-                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_state ? "border-red-500" : "border-slate-300"
-                    }`}
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                    errors.college_state ? "border-red-500" : "border-slate-300"
+                  }`}
                 />
-
               </div>
 
               {/* College Pincode */}
@@ -202,12 +210,13 @@ const EditCollegePage = () => {
                   onChange={handleChange}
                   disabled={loading}
                   placeholder="Enter pincode"
-                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${errors.college_pincode ? "border-red-500" : "border-slate-300"
-                    }`}
+                  className={`h-11 rounded-md border px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                    errors.college_pincode
+                      ? "border-red-500"
+                      : "border-slate-300"
+                  }`}
                 />
-
               </div>
-
             </div>
 
             {/* Button Row */}
