@@ -60,6 +60,7 @@ export const useCreateUser = () => {
         userName: formData.userName,
         userEmail: formData.userEmail,
         userPassword: formData.userPassword,
+        userRole: ""
       });
 
       // 3. SUCCESS TOAST

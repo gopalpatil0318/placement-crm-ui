@@ -1,5 +1,4 @@
 import api from "@/lib/api";
-import { use } from "react";
 
 export const CollegeAdminService = {
     createUser: async (data: {
@@ -25,6 +24,8 @@ export const CollegeAdminService = {
     updateUser: async (id: string, data: {
         userName: string;
         userEmail: string;
+        userRole: string;
+        userStatus: string;
     }) => {
         const response = await api.put(`/college/update_user/${id}`, {
             user_name: data.userName,
