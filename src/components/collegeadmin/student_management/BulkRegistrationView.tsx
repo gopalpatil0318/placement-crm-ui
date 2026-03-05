@@ -129,9 +129,15 @@ const BulkRegistrationView = () => {
       />
 
       <div className="p-16 bg-white rounded-xl border border-gray-200 shadow-none max-w-5xl">
+
         {/* Result Section */}
         {result ? (
-          <BulkResultSection result={result} onReset={handleReset} />
+          <BulkResultSection
+            result={result}
+            onReset={handleReset}
+            originalData={csvData}
+            headers={headers}
+          />
         ) : (
           /* Upload Section */
           <BulkUploadSection

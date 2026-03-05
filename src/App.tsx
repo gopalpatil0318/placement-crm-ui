@@ -22,6 +22,8 @@ import './App.css'
 import CreateUser from "./pages/collegeadmin/user_management/CreateUser"
 import UpdateUser from "./pages/collegeadmin/user_management/UpdateUser"
 import BulkRegister from "./pages/collegeadmin/student_management/BulkRegister"
+import StudentList from "./pages/collegeadmin/student_management/StudentList"
+import DepartmentCards from "./pages/collegeadmin/student_management/DepartmentCards"
 import ViewDepartments from "./pages/collegeadmin/ViewDepartments"
 import CreateDepartment from "./pages/collegeadmin/CreateDepartment"
 import UpdateDepartment from "./pages/collegeadmin/UpdateDepartment"
@@ -125,6 +127,22 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
                   <ViewDepartment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/collegeadmin/students"
+              element={
+                <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                  <DepartmentCards />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/collegeadmin/students/:deptId"
+              element={
+                <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                  <StudentList />
                 </ProtectedRoute>
               }
             />
