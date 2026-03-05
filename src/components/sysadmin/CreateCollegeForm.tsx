@@ -1,8 +1,6 @@
 // import { useCreateCollege } from "@/hooks/sysadmin/useCreateCollege";
 // import { Eye, EyeOff } from "lucide-react";
 
-
-
 // const CreateCollegeForm = () => {
 //     const {
 //         formData,
@@ -19,8 +17,6 @@
 //             <h1 className="text-xl font-semibold text-gray-800 mb-6">
 //                 Create College Form
 //             </h1>
-
-
 
 //             <form onSubmit={handleSubmit} className="space-y-6">
 //                 {/* Row 1 */}
@@ -125,7 +121,6 @@
 
 //                 {/* Checkbox */}
 
-
 //                 {/* Submit */}
 //                 <button
 //                     type="submit"
@@ -151,7 +146,6 @@
 
 // export default CreateCollegeForm;
 
-
 // import { useCreateCollege } from "@/hooks/sysadmin/useCreateCollege";
 // import { Eye, EyeOff } from "lucide-react";
 
@@ -172,7 +166,6 @@
 //   { length: 15 },
 //   (_, i) => currentYear - 5 + i
 // );
-
 
 //   return (
 //     <div className="p-8 bg-white rounded-xl border">
@@ -198,7 +191,6 @@
 //             />
 //           </div>
 
-
 //           <div>
 //             <label className="block text-sm font-medium text-gray-700 mb-1">
 //               Subdomain <span className="text-red-500">*</span>
@@ -212,7 +204,6 @@
 //             />
 //           </div>
 //         </div>
-
 
 //         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 //           {/* College Type */}
@@ -427,7 +418,6 @@
 
 // export default CreateCollegeForm;
 
-
 import { useCreateCollege } from "@/hooks/sysadmin/useCreateCollege";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -446,9 +436,8 @@ const CreateCollegeForm = () => {
 
   const passingYears = Array.from(
     { length: 15 },
-    (_, i) => currentYear - 5 + i
+    (_, i) => currentYear - 5 + i,
   );
-
 
   return (
     <div className="p-8 bg-white rounded-xl border">
@@ -457,7 +446,6 @@ const CreateCollegeForm = () => {
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-
         {/* Row 1 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* College Name */}
@@ -531,7 +519,6 @@ const CreateCollegeForm = () => {
               ))}
             </select>
           </div>
-
         </div>
 
         {/* Row 3 - Address Full Width */}

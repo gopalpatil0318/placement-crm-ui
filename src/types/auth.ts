@@ -1,4 +1,7 @@
-export type UserRole = "sysadmin" | "collegeadmin" | "student"
+export type UserRole = "sysadmin" | "collegeadmin" | "teacher" | "hod" | "tpo" | "tpc" | "student"
+
+
+export const COLLEGE_ROLES: UserRole[] = ["collegeadmin", "teacher", "hod", "tpo", "tpc"]
 
 export interface User {
   id: string
