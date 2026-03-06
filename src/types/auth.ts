@@ -36,10 +36,6 @@ export interface StudentAuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (
-    collegeId: string,
-    email: string,
-    password: string
-  ) => Promise<void>
+  login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
 }

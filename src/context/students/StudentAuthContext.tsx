@@ -23,9 +23,9 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const login = async (collegeId: string, email: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
-      const response = await api.post("/student/login", { collegeId, email, password });
+      const response = await api.post("/student/login", { email, password });
 
       const { data: userData, message } = response.data;
 
@@ -37,7 +37,7 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
         id: userData?.id || email,
         email: userData.email,
         role: "student",
-        collegeId: userData.collegeId || collegeId,
+        collegeId: userData.collegeId,
         isActive: userData.isActive ?? true,
       };
 

@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Mail, Lock, ArrowRight, School } from "lucide-react"
+import { AlertCircle, Mail, Lock, ArrowRight } from "lucide-react"
 import { useStudentAuth } from "@/hooks/student/useStudentAuth"
 
 export default function StudentLogin() {
-    const [collegeId, setCollegeId] = useState("")
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [formError, setFormError] = useState("")
@@ -25,7 +24,7 @@ export default function StudentLogin() {
         setIsSubmitting(true)
 
         try {
-            await login(collegeId, email, password)
+            await login(email, password)
             navigate("/student/dashboard")
         } catch (err: any) {
             setFormError(err?.message || "Invalid credentials")
