@@ -40,6 +40,18 @@ import StudentLogin from "./pages/Students/StudentLogin"
 import StudentDashboard from "./pages/Students/StudentDashboard"
 import StudentProfile from "./pages/Students/StudentProfile"
 
+// Student Form Pages (from friend's code)
+import PersonalInfo from "./pages/student/PersonalInfo"
+import AcademicInfo from "./pages/student/AcademicInfo"
+import SemInfo from "./pages/student/SemInfo"
+import Skills from "./pages/student/Skills"
+import Experience from "./pages/student/Experience"
+import Projects from "./pages/student/Projects"
+import Certificates from "./pages/student/Certificates"
+import Achievements from "./pages/student/Achievements"
+import Activities from "./pages/student/Activities"
+import ProfileLinks from "./pages/student/ProfileLinks"
+
 import './App.css'
 
 function App() {
@@ -200,6 +212,86 @@ function App() {
                 element={
                   <StudentProtectedRoute>
                     <StudentProfile />
+                  </StudentProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/personal-info"
+                element={
+                  <StudentProtectedRoute>
+                    <PersonalInfo />
+                  </StudentProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/academic-info"
+                element={
+                  <StudentProtectedRoute>
+                    <AcademicInfo />
+                  </StudentProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/sem-info"
+                element={
+                  <StudentProtectedRoute>
+                    <SemInfo />
+                  </StudentProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/skills"
+                element={
+                  <StudentProtectedRoute>
+                    <Skills />
+                  </StudentProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/experience"
+                element={
+                  <StudentProtectedRoute>
+                    <Experience />
+                  </StudentProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/projects"
+                element={
+                  <StudentProtectedRoute>
+                    <Projects />
+                  </StudentProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/certificates"
+                element={
+                  <StudentProtectedRoute>
+                    <Certificates />
+                  </StudentProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/achievements"
+                element={
+                  <StudentProtectedRoute>
+                    <Achievements />
+                  </StudentProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/activities"
+                element={
+                  <StudentProtectedRoute>
+                    <Activities />
+                  </StudentProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/profile-links"
+                element={
+                  <StudentProtectedRoute>
+                    <ProfileLinks />
                   </StudentProtectedRoute>
                 }
               />
