@@ -17,6 +17,7 @@ const CreateCollege = () => {
 
         {/* Form Component with hook logic */}
         
+        
         <EditCollegeForm />
       </div>
     </DashboardLayout>

@@ -6,7 +6,6 @@ export const SysAdminService = {
         return response.data.data;
     },
 
-
     createCollege: async (data: {
         collegeName: string;
         collegeSubdomain: string;

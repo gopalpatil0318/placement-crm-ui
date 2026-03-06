@@ -1,6 +1,5 @@
 export type UserRole = "sysadmin" | "collegeadmin" | "teacher" | "hod" | "tpo" | "tpc" | "student"
 
-
 export const COLLEGE_ROLES: UserRole[] = ["collegeadmin", "teacher", "hod", "tpo", "tpc"]
 
 export interface User {
@@ -24,9 +23,16 @@ export interface ApiLoginResponse {
   }
 }
 
-// Context specific type
 export interface AuthContextType {
   // id: string
+  user: User | null
+  isAuthenticated: boolean
+  isLoading: boolean
+  login: (email: string, password: string) => Promise<void>
+  logout: () => Promise<void>
+}
+
+export interface StudentAuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean

@@ -10,7 +10,7 @@ export const useCollegeProfile = () => {
   const [toggling, setToggling] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+ 
   useEffect(() => {
     if (!collegeId) return;
 
@@ -28,7 +28,7 @@ export const useCollegeProfile = () => {
           description: errorMessage,
         });
       } finally {
-        setLoading(false);
+        setLoading(false) ;
       }
     };
 
