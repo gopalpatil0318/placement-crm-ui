@@ -30,3 +30,47 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
 }
+
+
+export type UserRole = "sysadmin" | "collegeadmin" | "student"
+
+export interface User {
+  id: string
+  email: string
+  role: UserRole
+  type?: string
+  collegeId?: string
+  isActive: boolean
+}
+
+export interface ApiLoginResponse {
+  success: boolean
+  message: string
+  data: {
+    id?: string;
+    role: string
+    email: string
+    type: string
+    // Any other backend fields
+  }
+}
+export interface AuthContextType {
+  // id: string
+  user: User | null
+  isAuthenticated: boolean
+  isLoading: boolean
+  login: (email: string, password: string) => Promise<void>
+  logout: () => Promise<void>
+}
+
+export interface StudentAuthContextType {
+  user: User | null
+  isAuthenticated: boolean
+  isLoading: boolean
+  login: (
+    collegeId: string,
+    email: string,
+    password: string
+  ) => Promise<void>
+  logout: () => Promise<void>
+}
