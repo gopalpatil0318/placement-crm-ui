@@ -1,33 +1,59 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { SysAdminService } from "@/services/sysadmin/sysadmin.services";
+import {
+  SysAdminService,
+  type CollegeListParams,
+} from "@/services/sysadmin/sysadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 
 export interface College {
   college_id: string;
   college_name: string;
   college_subdomain: string;
+  college_type: string;
   college_status: string;
+  college_city: string;
+  college_state: string;
+  default_academic_year: number;
+  enabled_features: string[];
   created_at: string;
+  updated_at: string;
 }
 
 export const useViewColleges = () => {
   const [colleges, setColleges] = useState<College[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  });
   const navigate = useNavigate();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchColleges = useCallback(async () => {
+  const fetchColleges = useCallback(async (searchTerm?: string) => {
     setLoading(true);
-    setError(null);
     try {
-      const data = await SysAdminService.getCollegesData();
-      setColleges(data || []);      
-    } catch (err: any) {
-      const errorMessage = err.message || "Failed to fetch colleges";
-      setError(errorMessage);
+      const params: CollegeListParams = { page, limit };
+      const currentSearch = searchTerm !== undefined ? searchTerm : search;
+      if (currentSearch) params.search = currentSearch;
+      if (statusFilter) params.status = statusFilter;
+      if (typeFilter) params.type = typeFilter;
+
+      const response = await SysAdminService.getCollegesData(params);
+      setColleges(response.data ?? []);
+      if (response.pagination) {
+        setPagination(response.pagination);
+      }
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to fetch colleges";
       showToast({
         type: "error",
         title: "Fetch Error",
@@ -36,56 +62,86 @@ export const useViewColleges = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, limit, statusFilter, typeFilter]);
 
   useEffect(() => {
     fetchColleges();
   }, [fetchColleges]);
 
-  const filteredData = useMemo(() => {
-    return colleges.filter(
-      (college) =>
-        college.college_name.toLowerCase().includes(search.toLowerCase()) ||
-        college.college_subdomain.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [colleges, search]);
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, typeFilter]);
 
-  const paginatedData = useMemo(() => {
-    return filteredData.slice(0, entriesPerPage);
-  }, [filteredData, entriesPerPage]);
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
+    const value = e.target.value;
+    setSearch(value);
+
+    // Debounce 300ms
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      setPage(1);
+      fetchColleges(value);
+    }, 300);
   };
 
-  const handleEntriesChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setEntriesPerPage(Number(e.target.value));
+  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(e.target.value);
+  };
+
+  const handleTypeFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setTypeFilter(e.target.value);
+  };
+
+  const handleLimitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setLimit(Number(e.target.value));
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setPage(newPage);
+    }
   };
 
   const handleNavigateToAddCollege = () => {
-    navigate("/sysadmin/create-college");
+    navigate("/sysadmin/colleges/create");
   };
 
   const handleNavigateToViewCollege = (id: string) => {
-    navigate(`/sysadmin/view-colleges/${id}`);
+    navigate(`/sysadmin/colleges/${id}`);
   };
 
   const handleNavigateToEditCollege = (id: string) => {
-    navigate(`/sysadmin/edit-college/${id}`);
+    navigate(`/sysadmin/colleges/${id}/edit`);
   };
 
   return {
     colleges,
-    filteredData,
-    paginatedData,
     loading,
-    error,
     search,
-    entriesPerPage,
-    setSearch,
-    setEntriesPerPage,
+    statusFilter,
+    typeFilter,
+    page,
+    limit,
+    pagination,
     handleSearchChange,
-    handleEntriesChange,
+    handleStatusFilterChange,
+    handleTypeFilterChange,
+    handleLimitChange,
+    handlePageChange,
     handleNavigateToAddCollege,
     handleNavigateToViewCollege,
     handleNavigateToEditCollege,

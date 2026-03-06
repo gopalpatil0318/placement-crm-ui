@@ -1,18 +1,14 @@
-"use client"
-
-import DashboardLayout from '@/components/sysadmin/DashboardLayout';
+import DashboardLayout from "@/components/sysadmin/DashboardLayout";
 import CollegeProfile from "@/components/sysadmin/CollegeProfile";
-import PageHeader from '@/components/sysadmin/PageHeader';
+import PageHeader from "@/components/sysadmin/PageHeader";
 
 const BREADCRUMBS = [
   { label: "Super Admin" },
-  { label: "Colleges" },
+  { label: "Colleges", path: "/sysadmin/colleges" },
   { label: "College Profile", active: true },
 ];
 
-const CollegePage = () => {
-
-
+export default function CollegePage() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -21,6 +17,4 @@ const CollegePage = () => {
       </div>
     </DashboardLayout>
   );
-};
-
-export default CollegePage;
+}

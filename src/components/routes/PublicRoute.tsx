@@ -12,13 +12,13 @@ export const PublicRoute = ({ children }: PublicRouteProps) => {
   if (isAuthenticated) {
     // Logic: Redirect to dashboard based on role
     if (isSuperAdmin()) {
-      return <Navigate to="/sysadmin/dashboard" replace />
+      return <Navigate to="/sysadmin/colleges" replace />
 
     }
 
     if (isCollegeAdmin()) {
       return <Navigate to="/collegeadmin/dashboard" replace />
-      
+
     }
     // Add other role redirects here if needed
     return <Navigate to="/" replace />

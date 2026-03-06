@@ -1,8 +1,6 @@
-"use client"
-
-
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { School, Globe, ShieldCheck, UserCog } from "lucide-react";
+import { School, Globe, ShieldCheck, UserCog, MapPin, Calendar, ArrowLeft } from "lucide-react";
 import { useCollegeProfile } from "@/hooks/sysadmin/useCollegeProfile";
 import {
   Dialog,
@@ -14,6 +12,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
+const ALL_FEATURES = [
+  { key: "core", label: "Core Modules", description: "Essential placement management features", locked: true },
+  { key: "training", label: "Training Programs", description: "Manage training sessions and enrollments" },
+  { key: "feedback", label: "Placement Feedback", description: "Collect post-placement feedback from students" },
+  { key: "interview_questions", label: "Interview Questions", description: "Share interview questions across batches" },
+];
+
 const CollegeProfile = () => {
   const navigate = useNavigate();
   const {
@@ -24,7 +29,69 @@ const CollegeProfile = () => {
     requestStatusToggle,
     confirmStatusToggle,
     cancelStatusToggle,
+    updateFeatures,
+    updateAcademicYear,
   } = useCollegeProfile();
+
+  // Features modal state
+  const [showFeaturesModal, setShowFeaturesModal] = useState(false);
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [savingFeatures, setSavingFeatures] = useState(false);
+
+  // Academic year modal state
+  const [showYearModal, setShowYearModal] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<number>(2025);
+  const [savingYear, setSavingYear] = useState(false);
+
+  const academicYears = Array.from({ length: 21 }, (_, i) => 2020 + i);
+
+  const openFeaturesModal = () => {
+    setSelectedFeatures(college?.enabled_features || ["core"]);
+    setShowFeaturesModal(true);
+  };
+
+  const toggleFeature = (key: string) => {
+    if (key === "core") return; // Can't toggle core
+    setSelectedFeatures((prev) =>
+      prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key]
+    );
+  };
+
+  const handleSaveFeatures = async () => {
+    setSavingFeatures(true);
+    try {
+      await updateFeatures(selectedFeatures);
+      setShowFeaturesModal(false);
+    } finally {
+      setSavingFeatures(false);
+    }
+  };
+
+  const openYearModal = () => {
+    setSelectedYear(college?.default_academic_year || 2025);
+    setShowYearModal(true);
+  };
+
+  const handleSaveYear = async () => {
+    setSavingYear(true);
+    try {
+      await updateAcademicYear(selectedYear);
+      setShowYearModal(false);
+    } finally {
+      setSavingYear(false);
+    }
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
 
   if (loading) return (
     <div className="p-8 text-slate-500 font-medium animate-pulse text-center">
@@ -39,11 +106,18 @@ const CollegeProfile = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-['Public_Sans',_sans-serif]">
+    <div className="font-['Public_Sans',_sans-serif]">
+      {/* Back button */}
+      <button
+        onClick={() => navigate("/sysadmin/colleges")}
+        className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 mb-4 transition-colors"
+      >
+        <ArrowLeft size={16} /> Back to Colleges
+      </button>
 
       {/* 1. Top Section */}
-      <div className="bg-white rounded-2xl p-8 md:p-10 border border-slate-100 shadow-sm mb-8 relative group transition-all hover:shadow-md">
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="bg-white rounded-2xl p-8 md:p-10 border border-slate-100 shadow-sm mb-8">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-6">
             <div className="h-20 w-20 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100 shadow-sm">
               <School className="h-10 w-10" />
@@ -62,46 +136,58 @@ const CollegeProfile = () => {
                   }`}>
                   {college.college_status}
                 </span>
+                <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
+                  {college.college_type}
+                </span>
               </div>
             </div>
           </div>
 
           <button
-            onClick={() => navigate(`/sysadmin/edit-college/${college.college_id}`)}
+            onClick={() => navigate(`/sysadmin/colleges/${college.college_id}/edit`)}
             className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-blue-600 transition-all active:scale-95"
           >
             <UserCog size={18} />
-            Edit Profile
+            Edit College
           </button>
         </div>
       </div>
 
-      {/* 2. Key Statistics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <StatCard
-          value={college.college_status.toUpperCase()}
-          label="Instance Status"
-          description="Overall operational state of the college."
-          themeColor="text-blue-600"
-          waveColor="#4680ff"
-        />
-        <StatCard
-          value={new Date(college.created_at).toLocaleDateString('en-GB')}
-          label="Registration Date"
-          description="Date when college was added to the system."
-          themeColor="text-emerald-600"
-          waveColor="#2ca87f"
-        />
-        <StatCard
-          value={college.college_subdomain}
-          label="Access Subdomain"
-          description="Direct link for the college login."
-          themeColor="text-purple-600"
-          waveColor="#673ab7"
-        />
+      {/* 2. Info Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Address Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8">
+          <div className="flex items-center gap-2 mb-6">
+            <MapPin className="h-5 w-5 text-blue-500" />
+            <h2 className="text-lg font-bold text-slate-800">Address Information</h2>
+          </div>
+          <div className="space-y-4">
+            <InfoRow label="Address" value={college.college_address} />
+            <InfoRow label="City" value={college.college_city} />
+            <InfoRow label="Taluka" value={college.college_taluka} />
+            <InfoRow label="District" value={college.college_district} />
+            <InfoRow label="State" value={college.college_state} />
+            <InfoRow label="Pincode" value={college.college_pincode} />
+          </div>
+        </div>
+
+        {/* Admin & Meta Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8">
+          <div className="flex items-center gap-2 mb-6">
+            <UserCog className="h-5 w-5 text-blue-500" />
+            <h2 className="text-lg font-bold text-slate-800">Admin & Details</h2>
+          </div>
+          <div className="space-y-4">
+            <InfoRow label="Admin Name" value={college.admin_name} />
+            <InfoRow label="Admin Email" value={college.admin_email} />
+            <InfoRow label="Academic Year" value={college.default_academic_year} />
+            <InfoRow label="Created At" value={formatDateTime(college.created_at)} />
+            <InfoRow label="Last Updated" value={formatDateTime(college.updated_at)} />
+          </div>
+        </div>
       </div>
 
-      {/* 3. Configuration & Technical Data */}
+      {/* 3. Configuration & Actions */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8">
         <div className="flex items-center gap-2 mb-8">
           <ShieldCheck className="h-5 w-5 text-blue-500" />
@@ -109,27 +195,29 @@ const CollegeProfile = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          {/* Features */}
           <div>
-            <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-4">Enabled Features</p>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Enabled Features</p>
+              <button
+                onClick={openFeaturesModal}
+                className="text-xs text-blue-600 font-semibold hover:underline"
+              >
+                Update Features
+              </button>
+            </div>
             <div className="flex flex-wrap gap-3">
               {college.enabled_features?.map((feature: string) => (
-                <span key={feature} className="px-5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 text-sm font-semibold hover:border-blue-300 transition-colors capitalize cursor-default">
-                  {feature.replace('_', ' ')}
+                <span key={feature} className="px-5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 text-sm font-semibold capitalize cursor-default">
+                  {feature.replace(/_/g, ' ')}
                 </span>
               ))}
             </div>
           </div>
 
+          {/* Status Toggle + Academic Year */}
           <div className="p-6 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Technical Reference</p>
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs text-slate-500 font-semibold">UID / College ID:</p>
-                <p className="text-slate-800 font-mono text-[13px] font-bold break-all leading-relaxed">
-                  {college.college_id}
-                </p>
-              </div>
-
+            <div className="space-y-6">
               {/* Status Toggle */}
               <div>
                 <p className="text-xs text-slate-500 font-semibold mb-2">College Status:</p>
@@ -138,15 +226,11 @@ const CollegeProfile = () => {
                     type="button"
                     onClick={requestStatusToggle}
                     disabled={toggling}
-                    className={`relative inline-flex h-[18px] w-[30px] items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 ${college.college_status === "active"
-                      ? "bg-blue-500"
-                      : "bg-slate-300"
+                    className={`relative inline-flex h-[18px] w-[30px] items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${college.college_status === "active" ? "bg-blue-500" : "bg-slate-300"
                       }`}
                   >
                     <span
-                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform duration-200 ${college.college_status === "active"
-                        ? "translate-x-4"
-                        : "translate-x-[3px]"
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform duration-200 ${college.college_status === "active" ? "translate-x-4" : "translate-x-[3px]"
                         }`}
                     />
                   </button>
@@ -156,41 +240,141 @@ const CollegeProfile = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Academic Year */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-slate-500 font-semibold">Academic Year:</p>
+                  <button
+                    onClick={openYearModal}
+                    className="text-xs text-blue-600 font-semibold hover:underline"
+                  >
+                    Update
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm font-bold text-slate-800">{college.default_academic_year}</span>
+                </div>
+              </div>
+
+              {/* College ID */}
+              <div>
+                <p className="text-xs text-slate-500 font-semibold">College ID:</p>
+                <p className="text-slate-800 font-mono text-[13px] font-bold break-all leading-relaxed">
+                  {college.college_id}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Confirmation Dialog */}
+      {/* Status Toggle Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={cancelStatusToggle}>
         <DialogContent showCloseButton={false} className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Confirm Status Change</DialogTitle>
             <DialogDescription>
-              Are you sure you want to change the college status from{" "}
-              <span className="font-semibold capitalize">
-                {college?.college_status}
-              </span>{" "}
-              to{" "}
-              <span className="font-semibold capitalize">
-                {college?.college_status === "active" ? "inactive" : "active"}
-              </span>
-              ?
+              {college.college_status === "active" ? (
+                <>
+                  Are you sure you want to deactivate <span className="font-semibold">{college.college_name}</span>?
+                  All users of this college will be unable to log in.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to activate <span className="font-semibold">{college.college_name}</span>?
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
-            <Button
-              variant="outline"
-              onClick={cancelStatusToggle}
-              className="cursor-pointer"
-            >
+            <Button variant="outline" onClick={cancelStatusToggle} className="cursor-pointer">
               Cancel
             </Button>
             <Button
               onClick={confirmStatusToggle}
-              className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+              className={`text-white cursor-pointer ${college.college_status === "active"
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
             >
               Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Features Modal */}
+      <Dialog open={showFeaturesModal} onOpenChange={setShowFeaturesModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Features</DialogTitle>
+            <DialogDescription>
+              Toggle features for this college. Core Modules cannot be disabled.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {ALL_FEATURES.map((feature) => (
+              <div key={feature.key} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-blue-200 transition-colors">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">{feature.label}</p>
+                  <p className="text-xs text-slate-500">{feature.description}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleFeature(feature.key)}
+                  disabled={feature.locked}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${selectedFeatures.includes(feature.key) ? "bg-blue-500" : "bg-slate-300"
+                    } ${feature.locked ? "opacity-60 cursor-not-allowed" : ""}`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200 ${selectedFeatures.includes(feature.key) ? "translate-x-[18px]" : "translate-x-[3px]"
+                    }`} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFeaturesModal(false)}>Cancel</Button>
+            <Button
+              onClick={handleSaveFeatures}
+              disabled={savingFeatures}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {savingFeatures ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Academic Year Modal */}
+      <Dialog open={showYearModal} onOpenChange={setShowYearModal}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Update Academic Year</DialogTitle>
+            <DialogDescription>
+              Current Academic Year: <span className="font-semibold">{college.default_academic_year}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="w-full h-11 rounded-md border border-slate-300 bg-white px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              {academicYears.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowYearModal(false)}>Cancel</Button>
+            <Button
+              onClick={handleSaveYear}
+              disabled={savingYear || selectedYear === college.default_academic_year}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {savingYear ? "Updating..." : "Update"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -199,20 +383,20 @@ const CollegeProfile = () => {
   );
 };
 
-const StatCard = ({ value, label, description, themeColor, waveColor }: any) => (
-  <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden relative group hover:shadow-md transition-shadow">
-    <div className="p-6 pb-20 relative z-10">
-      <h3 className={`text-2xl font-black mb-1 ${themeColor}`}>{value}</h3>
-      <p className={`text-[14px] font-bold mb-4 ${themeColor} opacity-80 uppercase tracking-wide`}>{label}</p>
-      <p className="text-slate-400 text-[13px] leading-relaxed font-medium">
-        {description}
-      </p>
-    </div>
-    <div className="absolute bottom-0 left-0 w-full leading-[0]">
-      <svg viewBox="0 0 500 150" preserveAspectRatio="none" className="w-full h-14 opacity-30 group-hover:h-16 transition-all duration-300">
-        <path d="M0,80 C150,150 350,0 500,80 L500,150 L0,150 Z" fill={waveColor}></path>
-      </svg>
-    </div>
+const InfoRow = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | undefined;
+}) => (
+  <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+    <span className="text-xs font-semibold text-slate-500 sm:w-32 shrink-0">
+      {label}:
+    </span>
+    <span className="text-sm text-slate-800 font-medium">
+      {value ?? "—"}
+    </span>
   </div>
 );
 

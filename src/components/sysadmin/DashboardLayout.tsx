@@ -1,25 +1,21 @@
-"use client";
-
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+interface DashboardLayoutProps {
+  children: ReactNode;
+}
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
-    <div className="min-h-screen w-full flex bg-[#f2f2f230]">
-      {/* Sidebar */}
+    <div className="h-screen w-full flex overflow-hidden bg-[#f2f2f230]">
       <Sidebar isOpen={isSidebarOpen} />
-      {/* Right Section */}
-      <main className="flex-1 bg-[#f2f2f230] overflow-y-auto blob-backdrop flex flex-col">
-        <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
-        <div className="blob-content flex-1 text-black p-6">{children}</div>
-      </main>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <Header onMenuClick={() => setIsSidebarOpen((prev) => !prev)} />
+        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+      </div>
     </div>
   );
 }

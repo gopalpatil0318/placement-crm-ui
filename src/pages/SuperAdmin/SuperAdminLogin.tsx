@@ -1,22 +1,22 @@
 import type React from "react"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { useAuth } from "@/hooks/sysadmin/useAuth" // Import our new hook
+import { useAuth } from "@/hooks/sysadmin/useAuth"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Mail, Lock, ArrowRight } from "lucide-react"
+import { AlertCircle, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react"
 
 export default function SuperAdminLogin() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [formError, setFormError] = useState("") // Renamed to avoid confusion with hook error
+  const [showPassword, setShowPassword] = useState(false)
+  const [formError, setFormError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const navigate = useNavigate()
-  // Use the custom hook
   const { login } = useAuth()
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -25,13 +25,15 @@ export default function SuperAdminLogin() {
     setIsSubmitting(true)
 
     try {
-      // The hook handles the API call and LocalStorage updates
       await login(email, password)
-      navigate("/sysadmin/dashboard")
-      
+      navigate("/sysadmin/colleges")
     } catch (err: any) {
-      // Axios errors are processed in api.ts, so err.message is clean here
-      setFormError(err.message || "Invalid credentials")
+      // Handle 429 rate limit
+      if (err?.response?.status === 429) {
+        setFormError("Too many attempts. Please try again in 15 minutes.")
+      } else {
+        setFormError(err.message || "Invalid credentials")
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -39,7 +41,7 @@ export default function SuperAdminLogin() {
 
   return (
     <div className="min-h-screen w-full flex bg-background">
-      {/* Left Section - Unchanged */}
+      {/* Left Section */}
       <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -98,13 +100,22 @@ export default function SuperAdminLogin() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 h-11 border-[#cccccc]"
+                  className="pl-10 pr-10 h-11 border-[#cccccc]"
                   required
+                  minLength={8}
+                  maxLength={128}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 

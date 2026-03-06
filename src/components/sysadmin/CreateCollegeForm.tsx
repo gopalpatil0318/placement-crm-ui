@@ -1,466 +1,47 @@
-// import { useCreateCollege } from "@/hooks/sysadmin/useCreateCollege";
-// import { Eye, EyeOff } from "lucide-react";
-
-
-
-// const CreateCollegeForm = () => {
-//     const {
-//         formData,
-//         errors,
-//         loading,
-//         handleChange,
-//         handleSubmit,
-//         showPassword,
-//         togglePassword,
-//     } = useCreateCollege();
-
-//     return (
-//         <div className="p-8 bg-white rounded-xl border">
-//             <h1 className="text-xl font-semibold text-gray-800 mb-6">
-//                 Create College Form
-//             </h1>
-
-
-
-//             <form onSubmit={handleSubmit} className="space-y-6">
-//                 {/* Row 1 */}
-//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//                     <div>
-
-//                         <label className="block text-sm font-medium text-gray-700 mb-1">
-//                             College Name <span className="text-red-500 ml-0.5">*</span>
-//                         </label>
-//                         <input
-//                             name="collegeName"           // map to hook
-//                             value={formData.collegeName}
-//                             onChange={handleChange}
-//                             placeholder="College Name"
-//                             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                         />
-//                         {errors.collegeName && (
-//                             <p className="text-xs text-gray-500 mt-1">{errors.collegeName}</p>
-//                         )}
-//                     </div>
-
-//                     <div>
-//                         <label className="block text-sm font-medium text-gray-700 mb-1">
-//                             Subdomain <span className="text-red-500 ml-0.5">*</span>
-//                         </label>
-//                         <input
-//                             name="collegeSubdomain"     // map to hook
-//                             value={formData.collegeSubdomain}
-//                             onChange={handleChange}
-//                             placeholder="yourcollege"
-//                             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                         />
-//                         {errors.collegeSubdomain && (
-//                             <p className="text-xs text-gray-500 mt-1">{errors.collegeSubdomain}</p>
-//                         )}
-//                     </div>
-//                 </div>
-
-//                 {/* Row 2 */}
-//                 <div>
-//                     <label className="block text-sm font-medium text-gray-700 mb-1">
-//                         Admin Name <span className="text-red-500 ml-0.5">*</span>
-//                     </label>
-//                     <input
-//                         name="adminName"
-//                         value={formData.adminName}
-//                         onChange={handleChange}
-//                         placeholder="Admin Full Name"
-//                         className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                     />
-//                     {errors.adminName && (
-//                         <p className="text-xs text-gray-500 mt-1">{errors.adminName}</p>
-//                     )}
-//                 </div>
-
-//                 {/* Row 3 */}
-//                 <div className={`grid grid-cols-1 md:grid-cols-2 gap-6`}>
-//                     <div>
-//                         <label className="block text-sm font-medium text-gray-700 mb-1">
-//                             Admin Email <span className="text-red-500 ml-0.5">*</span>
-//                         </label>
-//                         <input
-//                             type="email"
-//                             name="adminEmail"
-//                             value={formData.adminEmail}
-//                             onChange={handleChange}
-//                             placeholder="admin@email.com"
-//                             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                         />
-//                         {errors.adminEmail && (
-//                             <p className="text-xs text-gray-500 mt-1">{errors.adminEmail}</p>
-//                         )}
-//                     </div>
-
-//                     <div>
-//                         <label className="block text-sm font-medium text-gray-700 mb-1">
-//                             Admin Password <span className="text-red-500 ml-0.5">*</span>
-//                         </label>
-//                         <div className="relative">
-//                             <input
-//                                 type={showPassword ? "text" : "password"}
-//                                 name="adminPassword"
-//                                 value={formData.adminPassword}
-//                                 onChange={handleChange}
-//                                 placeholder="Password"
-//                                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                             />
-//                             <button
-//                                 type="button"
-//                                 onClick={togglePassword}
-//                                 className="absolute right-3 top-2.5 text-gray-500"
-//                             >
-//                                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-//                             </button>
-//                         </div>
-//                         {errors.adminPassword && (
-//                             <p className="text-xs text-gray-500 mt-1">{errors.adminPassword}</p>
-//                         )}
-//                     </div>
-
-//                 </div>
-
-//                 {/* Checkbox */}
-
-
-//                 {/* Submit */}
-//                 <button
-//                     type="submit"
-//                     disabled={loading}
-//                     className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-medium transition"
-//                 >
-//                     {/* {loading ? "Creating..." : isEdit ? "Save Changes" : "Create College"} */}
-//                     {loading ? (
-//                         <div className="flex items-center gap-2">
-//                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-//                             Creating...
-//                         </div>
-//                     ) : (
-//                         <>
-//                             Create College
-//                         </>
-//                     )}
-//                 </button>
-//             </form>
-//         </div>
-//     );
-// };
-
-// export default CreateCollegeForm;
-
-
-// import { useCreateCollege } from "@/hooks/sysadmin/useCreateCollege";
-// import { Eye, EyeOff } from "lucide-react";
-
-// const CreateCollegeForm = () => {
-//   const {
-//     formData,
-//     errors,
-//     loading,
-//     handleChange,
-//     handleSubmit,
-//     showPassword,
-//     togglePassword,
-//   } = useCreateCollege();
-
-//   const currentYear = new Date().getFullYear();
-
-// const passingYears = Array.from(
-//   { length: 15 },
-//   (_, i) => currentYear - 5 + i
-// );
-
-
-//   return (
-//     <div className="p-8 bg-white rounded-xl border">
-//       <h1 className="text-xl font-semibold text-gray-800 mb-6">
-//         Create College Form
-//       </h1>
-
-//       <form onSubmit={handleSubmit} className="space-y-6">
-
-//         {/* Row 1 */}
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//           {/* College Name */}
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               College Name <span className="text-red-500">*</span>
-//             </label>
-//             <input
-//               name="collegeName"
-//               value={formData.collegeName}
-//               onChange={handleChange}
-//               placeholder="College Name"
-//               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//             />
-//           </div>
-
-
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               Subdomain <span className="text-red-500">*</span>
-//             </label>
-//             <input
-//               name="collegeSubdomain"
-//               value={formData.collegeSubdomain}
-//               onChange={handleChange}
-//               placeholder="yourcollege"
-//               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//             />
-//           </div>
-//         </div>
-
-
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//           {/* College Type */}
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               College Type <span className="text-red-500">*</span>
-//             </label>
-//             <select
-//               name="collegeType"
-//               value={formData.collegeType}
-//               onChange={handleChange}
-//               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//             >
-//               <option value="">Select Type</option>
-//               <option value="engineering">Engineering</option>
-//               <option value="medical">Medical</option>
-//               <option value="arts">Arts</option>
-//               <option value="commerce">Commerce</option>
-//             </select>
-//           </div>
-
-//           {/* Academic Year */}
-//           <div>
-//   <label className="block text-sm font-medium text-gray-700 mb-1">
-//     Default Academic Year <span className="text-red-500">*</span>
-//   </label>
-//   <select
-//     name="defaultAcademicYear"
-//     value={formData.defaultAcademicYear}
-//     onChange={handleChange}
-//     className="w-full rounded-lg border border-gray-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-//   >
-//     <option value="">Select Year</option>
-//     {passingYears.map((year) => (
-//       <option key={year} value={year}>
-//         {year}
-//       </option>
-//     ))}
-//   </select>
-// </div>
-
-//         </div>
-
-//         {/* Row 3 - Address Full Width */}
-//         <div>
-//           <label className="block text-sm font-medium text-gray-700 mb-1">
-//             College Address <span className="text-red-500">*</span>
-//           </label>
-//           <input
-//             name="collegeAddress"
-//             value={formData.collegeAddress}
-//             onChange={handleChange}
-//             placeholder="Full Address"
-//             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//           />
-//         </div>
-
-//         {/* Row 4 */}
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//           {/* City */}
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               City <span className="text-red-500">*</span>
-//             </label>
-//             <input
-//               name="collegeCity"
-//               value={formData.collegeCity}
-//               onChange={handleChange}
-//               placeholder="City"
-//               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//             />
-//           </div>
-
-//           {/* Taluka */}
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               Taluka <span className="text-red-500">*</span>
-//             </label>
-//             <input
-//               name="collegeTaluka"
-//               value={formData.collegeTaluka}
-//               onChange={handleChange}
-//               placeholder="Taluka"
-//               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//             />
-//           </div>
-//         </div>
-
-//         {/* Row 5 */}
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//           {/* District */}
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               District <span className="text-red-500">*</span>
-//             </label>
-//             <input
-//               name="collegeDistrict"
-//               value={formData.collegeDistrict}
-//               onChange={handleChange}
-//               placeholder="District"
-//               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//             />
-//           </div>
-
-//           {/* State */}
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               State <span className="text-red-500">*</span>
-//             </label>
-//             <input
-//               name="collegeState"
-//               value={formData.collegeState}
-//               onChange={handleChange}
-//               placeholder="State"
-//               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//             />
-//           </div>
-//         </div>
-
-//         {/* Row 6 */}
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//           {/* Pincode */}
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               Pincode <span className="text-red-500">*</span>
-//             </label>
-//             <input
-//               name="collegePincode"
-//               value={formData.collegePincode}
-//               onChange={handleChange}
-//               placeholder="411041"
-//               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//             />
-//           </div>
-
-//           {/* Admin Name */}
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               Admin Name <span className="text-red-500">*</span>
-//             </label>
-//             <input
-//               name="adminName"
-//               value={formData.adminName}
-//               onChange={handleChange}
-//               placeholder="Admin Full Name"
-//               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//             />
-//           </div>
-//         </div>
-
-//         {/* Row 7 */}
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//           {/* Admin Email */}
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               Admin Email <span className="text-red-500">*</span>
-//             </label>
-//             <input
-//               type="email"
-//               name="adminEmail"
-//               value={formData.adminEmail}
-//               onChange={handleChange}
-//               placeholder="admin@email.com"
-//               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//             />
-//           </div>
-
-//           {/* Admin Password */}
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               Admin Password <span className="text-red-500">*</span>
-//             </label>
-//             <div className="relative">
-//               <input
-//                 type={showPassword ? "text" : "password"}
-//                 name="adminPassword"
-//                 value={formData.adminPassword}
-//                 onChange={handleChange}
-//                 placeholder="Password"
-//                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//               />
-//               <button
-//                 type="submit"
-//                 onClick={togglePassword}
-//                 className="absolute right-3 top-2.5 text-gray-500"
-//               >
-//                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-//               </button>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Submit */}
-//         <button
-//           type="submit"
-//           disabled={loading}
-//           className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-medium transition"
-//         >
-//           {loading ? (
-//             <div className="flex items-center gap-2">
-//               <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-//               Creating...
-//             </div>
-//           ) : (
-//             "Create College"
-//           )}
-//         </button>
-//       </form>
-//     </div>
-//   );
-// };
-
-// export default CreateCollegeForm;
-
-
 import { useCreateCollege } from "@/hooks/sysadmin/useCreateCollege";
 import { Eye, EyeOff } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const CreateCollegeForm = () => {
   const {
     formData,
-    errors,
     loading,
     handleChange,
     handleSubmit,
     showPassword,
     togglePassword,
+    passwordStrength,
   } = useCreateCollege();
 
-  const currentYear = new Date().getFullYear();
+  const navigate = useNavigate();
 
-  const passingYears = Array.from(
-    { length: 15 },
-    (_, i) => currentYear - 5 + i
-  );
 
+  const academicYears = Array.from({ length: 21 }, (_, i) => 2020 + i); // 2020–2040
+
+  const getStrengthColor = () => {
+    if (passwordStrength === "strong") return "bg-green-500";
+    if (passwordStrength === "medium") return "bg-yellow-500";
+    if (passwordStrength === "weak") return "bg-red-500";
+    return "bg-gray-200";
+  };
+
+  const getStrengthWidth = () => {
+    if (passwordStrength === "strong") return "w-full";
+    if (passwordStrength === "medium") return "w-2/3";
+    if (passwordStrength === "weak") return "w-1/3";
+    return "w-0";
+  };
 
   return (
     <div className="p-8 bg-white rounded-xl border">
-      <h1 className="text-xl font-semibold text-gray-800 mb-6">
-        Create College Form
-      </h1>
+      {/* Section 1: College Information */}
+      <h2 className="text-lg font-semibold text-gray-800 mb-6 pb-2 border-b">
+        College Information
+      </h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-
-        {/* Row 1 */}
+        {/* Row 1: College Name + Subdomain */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* College Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               College Name <span className="text-red-500">*</span>
@@ -470,11 +51,11 @@ const CreateCollegeForm = () => {
               value={formData.collegeName}
               onChange={handleChange}
               placeholder="College Name"
+              maxLength={200}
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          {/* Subdomain */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Subdomain <span className="text-red-500">*</span>
@@ -484,14 +65,19 @@ const CreateCollegeForm = () => {
               value={formData.collegeSubdomain}
               onChange={handleChange}
               placeholder="yourcollege"
+              maxLength={50}
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {formData.collegeSubdomain && (
+              <p className="text-xs text-blue-600 mt-1">
+                {formData.collegeSubdomain.toLowerCase()}.placementcrm.com
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Row 2 */}
+        {/* Row 2: College Type + Academic Year */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* College Type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               College Type <span className="text-red-500">*</span>
@@ -512,7 +98,6 @@ const CreateCollegeForm = () => {
             </select>
           </div>
 
-          {/* Academic Year */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Default Academic Year <span className="text-red-500">*</span>
@@ -524,126 +109,134 @@ const CreateCollegeForm = () => {
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Year</option>
-              {passingYears.map((year) => (
+              {academicYears.map((year) => (
                 <option key={year} value={year}>
                   {year}
                 </option>
               ))}
             </select>
           </div>
-
         </div>
 
-        {/* Row 3 - Address Full Width */}
+        {/* Row 3: Address (full width, textarea) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            College Address <span className="text-red-500">*</span>
+            College Address
           </label>
-          <input
+          <textarea
             name="collegeAddress"
             value={formData.collegeAddress}
             onChange={handleChange}
             placeholder="Full Address"
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            maxLength={500}
+            rows={2}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
         </div>
 
-        {/* Row 4 */}
+        {/* Row 4: City + Taluka */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* City */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              City <span className="text-red-500">*</span>
+              City
             </label>
             <input
               name="collegeCity"
               value={formData.collegeCity}
               onChange={handleChange}
               placeholder="City"
+              maxLength={100}
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          {/* Taluka */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Taluka <span className="text-red-500">*</span>
+              Taluka
             </label>
             <input
               name="collegeTaluka"
               value={formData.collegeTaluka}
               onChange={handleChange}
               placeholder="Taluka"
+              maxLength={100}
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
 
-        {/* Row 5 */}
+        {/* Row 5: District + State */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* District */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              District <span className="text-red-500">*</span>
+              District
             </label>
             <input
               name="collegeDistrict"
               value={formData.collegeDistrict}
               onChange={handleChange}
               placeholder="District"
+              maxLength={100}
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          {/* State */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              State <span className="text-red-500">*</span>
+              State
             </label>
             <input
               name="collegeState"
               value={formData.collegeState}
               onChange={handleChange}
               placeholder="State"
+              maxLength={100}
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
 
-        {/* Row 6 */}
+        {/* Pincode */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Pincode */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Pincode <span className="text-red-500">*</span>
+              Pincode
             </label>
             <input
               name="collegePincode"
               value={formData.collegePincode}
               onChange={handleChange}
-              placeholder="411041"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Admin Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Admin Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              name="adminName"
-              value={formData.adminName}
-              onChange={handleChange}
-              placeholder="Admin Full Name"
+              placeholder="400088"
+              maxLength={6}
+              inputMode="numeric"
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
 
-        {/* Row 7 */}
+        {/* Section 2: First Admin Account */}
+        <h2 className="text-lg font-semibold text-gray-800 mt-8 mb-2 pb-2 border-b">
+          First Admin Account
+        </h2>
+        <p className="text-xs text-gray-500 mb-4">
+          This account will be used by the college administrator to log in.
+        </p>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Admin Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            name="adminName"
+            value={formData.adminName}
+            onChange={handleChange}
+            placeholder="Admin Full Name"
+            maxLength={100}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Admin Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Admin Email <span className="text-red-500">*</span>
@@ -654,11 +247,11 @@ const CreateCollegeForm = () => {
               value={formData.adminEmail}
               onChange={handleChange}
               placeholder="admin@email.com"
+              maxLength={255}
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          {/* Admin Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Admin Password <span className="text-red-500">*</span>
@@ -670,6 +263,7 @@ const CreateCollegeForm = () => {
                 value={formData.adminPassword}
                 onChange={handleChange}
                 placeholder="Password"
+                maxLength={128}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
@@ -680,24 +274,53 @@ const CreateCollegeForm = () => {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            {/* Password Strength Indicator */}
+            {formData.adminPassword && (
+              <div className="mt-2">
+                <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${getStrengthColor()} ${getStrengthWidth()}`}
+                  />
+                </div>
+                <p
+                  className={`text-xs mt-1 capitalize font-medium ${passwordStrength === "strong"
+                    ? "text-green-600"
+                    : passwordStrength === "medium"
+                      ? "text-yellow-600"
+                      : "text-red-600"
+                    }`}
+                >
+                  {passwordStrength}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-medium transition"
-        >
-          {loading ? (
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-              Creating...
-            </div>
-          ) : (
-            "Create College"
-          )}
-        </button>
+        {/* Buttons */}
+        <div className="flex gap-4 pt-2">
+          <button
+            type="button"
+            onClick={() => navigate("/sysadmin/colleges")}
+            className="px-6 py-2.5 border border-gray-300 rounded-full font-medium text-gray-700 hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-medium transition"
+          >
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Creating...
+              </div>
+            ) : (
+              "Create College"
+            )}
+          </button>
+        </div>
       </form>
     </div>
   );

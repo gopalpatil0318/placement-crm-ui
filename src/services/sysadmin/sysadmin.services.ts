@@ -1,11 +1,30 @@
 import api from "../../lib/api";
 
-export const SysAdminService = {
-    getCollegesData: async () => {
-        const response = await api.get("/sysadmin/get_all_colleges");
-        return response.data.data;
-    },
+export interface CollegeListParams {
+    page?: number;
+    limit?: number;
+    status?: string;
+    type?: string;
+    search?: string;
+}
 
+export interface CollegeListResponse {
+    success: boolean;
+    message: string;
+    data: any[];
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    };
+}
+
+export const SysAdminService = {
+    getCollegesData: async (params?: CollegeListParams): Promise<CollegeListResponse> => {
+        const response = await api.get("/sysadmin/get_all_colleges", { params });
+        return response.data;
+    },
 
     createCollege: async (data: {
         collegeName: string;
@@ -37,11 +56,10 @@ export const SysAdminService = {
             admin_email: data.adminEmail,
             admin_password: data.adminPassword,
         });
-
-        return response.data;      
+        return response.data;
     },
 
-    updateCollege: async (id: string, payload: any) => {
+    updateCollege: async (id: string, payload: Record<string, any>) => {
         const response = await api.put(`/sysadmin/update_college/${id}`, payload);
         return response.data;
     },
@@ -59,4 +77,19 @@ export const SysAdminService = {
         return response.data;
     },
 
+    updateCollegeFeatures: async (id: string, features: string[]) => {
+        const response = await api.patch(
+            `/sysadmin/update_college_features/${id}`,
+            { enabled_features: features }
+        );
+        return response.data;
+    },
+
+    updateAcademicYear: async (id: string, year: number) => {
+        const response = await api.patch(
+            `/sysadmin/update_academic_year/${id}`,
+            { default_academic_year: year }
+        );
+        return response.data;
+    },
 };
