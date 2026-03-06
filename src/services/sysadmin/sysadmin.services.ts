@@ -38,7 +38,7 @@ export const SysAdminService = {
             admin_password: data.adminPassword,
         });
 
-        return response.data;
+        return response.data;      
     },
 
     updateCollege: async (id: string, payload: any) => {

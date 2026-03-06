@@ -65,7 +65,7 @@ export const useEditCollege = () => {
       ...prev,
       [name]: value,
     }));
-    // Clear the field-level error when user starts typing
+    
     if (errors[name as keyof EditCollegeForm]) {
       setErrors((prev) => ({
         ...prev,
@@ -78,7 +78,7 @@ export const useEditCollege = () => {
     const id = formData.college_id;
     if (!id) return;
 
-    // Validate only the editable fields (exclude college_id and college_status)
+    
     const validationData = {
       college_name: formData.college_name,
       college_subdomain: formData.college_subdomain,
@@ -94,7 +94,7 @@ export const useEditCollege = () => {
     const result = collegeSchemaUpdate.safeParse(validationData);
 
     if (!result.success) {
-      // Build field-level errors
+      
       const fieldErrors: FormErrors = {};
       for (const issue of result.error.issues) {
         const fieldName = issue.path[0] as keyof EditCollegeForm;
@@ -104,7 +104,7 @@ export const useEditCollege = () => {
       }
       setErrors(fieldErrors);
 
-      // Show toast for the first error
+      
       const firstErrorMessage = result.error.issues[0].message;
       showToast({
         type: "warning",
@@ -114,7 +114,7 @@ export const useEditCollege = () => {
       return;
     }
 
-    // Clear errors on successful validation
+    
     setErrors({});
 
     try {

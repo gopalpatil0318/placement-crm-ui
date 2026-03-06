@@ -24,7 +24,7 @@ export const useViewColleges = () => {
     setError(null);
     try {
       const data = await SysAdminService.getCollegesData();
-      setColleges(data || []);
+      setColleges(data || []);      
     } catch (err: any) {
       const errorMessage = err.message || "Failed to fetch colleges";
       setError(errorMessage);
