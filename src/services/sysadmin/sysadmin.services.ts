@@ -6,7 +6,6 @@ export const SysAdminService = {
         return response.data.data;
     },
 
-
     createCollege: async (data: {
         collegeName: string;
         collegeSubdomain: string;
@@ -38,7 +37,7 @@ export const SysAdminService = {
             admin_password: data.adminPassword,
         });
 
-        return response.data;      
+        return response.data;
     },
 
     updateCollege: async (id: string, payload: any) => {

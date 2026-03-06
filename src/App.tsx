@@ -17,18 +17,25 @@ import EditCollege from './pages/SuperAdmin/EditCollege'
 
 import CollegeAdminLogin from './pages/collegeadmin/CollegeAdminLogin'
 import CollegeDashboard from './pages/collegeadmin/Dashboard'
+
+// College Admin - User Management
 import ViewUser from './pages/collegeadmin/user_management/ViewUser'
 import CreateUser from "./pages/collegeadmin/user_management/CreateUser"
 import UpdateUser from "./pages/collegeadmin/user_management/UpdateUser"
+
+// College Admin - Student Management
 import BulkRegister from "./pages/collegeadmin/student_management/BulkRegister"
 import StudentList from "./pages/collegeadmin/student_management/StudentList"
 import DepartmentCards from "./pages/collegeadmin/student_management/DepartmentCards"
+import StudentRegister from "./pages/collegeadmin/student_management/StudentRegister"
+
+// College Admin - Department Management
 import ViewDepartments from "./pages/collegeadmin/ViewDepartments"
 import CreateDepartment from "./pages/collegeadmin/CreateDepartment"
 import UpdateDepartment from "./pages/collegeadmin/UpdateDepartment"
 import ViewDepartment from "./pages/collegeadmin/departmentManagement/ViewDepartment"
-import StudentRegister from "./pages/collegeadmin/student_management/StudentRegister"
 
+// Students
 import StudentLogin from "./pages/Students/StudentLogin"
 import StudentDashboard from "./pages/Students/StudentDashboard"
 import StudentProfile from "./pages/Students/StudentProfile"
