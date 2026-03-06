@@ -23,6 +23,7 @@ import StudentPublicRoute from "./components/routes/StudentPublicRoute"
 import StudentProtectedRoute from "./components/routes/StudentProtectedRoute"
 import StudentLogin from "./pages/Students/StudentLogin"
 import StudentDashboard from "./pages/Students/StudentDashboard"
+import StudentProfile from "./pages/Students/StudentProfile"
 import { StudentAuthProvider } from "./context/students/StudentAuthContext"
 
 function App() {
@@ -116,6 +117,15 @@ function App() {
               element={
                 <StudentProtectedRoute>
                   <StudentDashboard />
+                </StudentProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/student/profile"
+              element={
+                <StudentProtectedRoute>
+                  <StudentProfile />
                 </StudentProtectedRoute>
               }
             />

@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Mail, Lock, ArrowRight, School } from "lucide-react"
+import { AlertCircle, Mail, Lock, ArrowRight } from "lucide-react"
 import { useStudentAuth } from "@/hooks/student/useStudentAuth"
 
 export default function StudentLogin() {
-    const [collegeId, setCollegeId] = useState("")
+
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [formError, setFormError] = useState("")
@@ -26,7 +26,7 @@ export default function StudentLogin() {
         setIsSubmitting(true)
 
         try {
-            await login(collegeId, email, password)
+            await login(email, password)
             navigate("/student/dashboard")
         } catch (err: any) {
             setFormError(err?.message || "Invalid credentials")
@@ -77,22 +77,7 @@ export default function StudentLogin() {
 
                     <form onSubmit={handleLogin} className="space-y-6">
 
-                        {/* College ID */}
-                        <div className="space-y-2">
-                            <Label htmlFor="collegeId">College ID</Label>
-                            <div className="relative">
-                                <School className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    id="collegeId"
-                                    type="text"
-                                    placeholder="Enter College ID"
-                                    value={collegeId}
-                                    onChange={(e) => setCollegeId(e.target.value)}
-                                    className="pl-10 h-11 border border-[#cccccc]"
-                                    required
-                                />
-                            </div>
-                        </div>
+
 
                         {/* Email */}
                         <div className="space-y-2">
