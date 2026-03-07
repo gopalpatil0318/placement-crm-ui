@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import Header from "./StudentHeader";
 import Sidebar from "./StudentSidebar";
@@ -12,7 +10,7 @@ export default function StudentDashboardLayout({
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     return (
-        <div className="min-h-screen w-full flex bg-[#f2f2f230]">
+        <div className="h-screen w-full flex bg-[#f2f2f230] overflow-hidden">
             {/* Sidebar */}
             <Sidebar isOpen={isSidebarOpen} />
             {/* Right Section */}

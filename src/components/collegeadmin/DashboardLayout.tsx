@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 // Importing local collegeadmin components
 import Header from "./Header";
@@ -14,7 +12,7 @@ export default function DashboardLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
-    <div className="min-h-screen w-full flex bg-[#f2f2f230]">
+    <div className="h-screen w-full flex bg-[#f2f2f230] overflow-hidden">
       {/* Sidebar - Controlled by local state */}
       <Sidebar isOpen={isSidebarOpen} />
 

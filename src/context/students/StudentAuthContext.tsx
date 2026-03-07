@@ -9,14 +9,13 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Initialize from LocalStorage on mount (same as sysadmin AuthContext)
+  // Initialize from LocalStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem("student_user");
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse student user", e);
+      } catch {
         localStorage.removeItem("student_user");
       }
     }
@@ -24,75 +23,64 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const response = await api.post("/student/login", { email, password });
+    const response = await api.post("/student/login", { email, password });
 
-      const { data: userData, message } = response.data;
+    const { data: responseData, message } = response.data;
 
-      if (!userData) {
-        throw new Error("Invalid response: User data missing");
-      }
+    // API returns { data: { student: { ... } } }
+    const studentData = responseData?.student || responseData;
 
-      const newUser: User = {
-        id: userData?.id || email,
-        email: userData.email,
-        role: "student",
-        collegeId: userData.collegeId,
-        isActive: userData.isActive ?? true,
-      };
-
-      // 1. Update State
-      setUser(newUser);
-      localStorage.setItem("student_user", JSON.stringify(newUser));
-
-      // 2. Success Toast
-      showToast({
-        type: "success",
-        title: "Success",
-        description: message || "Welcome back!",
-      });
-
-    } catch (error: any) {
-      console.error("Student login error", error);
-
-      const errorMessage = error.response?.data?.message || error.message || "An unexpected error occurred";
-
-      // Error Toast
-      showToast({
-        type: "error",
-        title: "Login Failed",
-        description: errorMessage,
-      });
-
-      throw error;
+    if (!studentData) {
+      throw new Error("Invalid response: Student data missing");
     }
+
+    const newUser: User = {
+      id: studentData.student_id,
+      email: studentData.student_email,
+      role: "student",
+      firstName: studentData.first_name,
+      middleName: studentData.middle_name,
+      lastName: studentData.last_name,
+      name: `${studentData.first_name} ${studentData.last_name}`,
+      collegeId: studentData.college_id,
+      collegeName: studentData.college_name,
+      deptId: studentData.dept_id,
+      deptName: studentData.dept_name,
+      passoutYear: studentData.student_passout_year,
+      currentYear: studentData.current_year,
+      studentStatus: studentData.student_status,
+      profileComplete: studentData.profile_complete ?? false,
+      profileIsApproved: studentData.profile_is_approved ?? false,
+      isActive: studentData.student_status === "active",
+    };
+
+    setUser(newUser);
+    localStorage.setItem("student_user", JSON.stringify(newUser));
+
+    showToast({
+      type: "success",
+      title: "Success",
+      description: message || "Welcome back!",
+    });
   };
 
   const logout = async () => {
     try {
       const response = await api.post("/student/logout");
-
       const logoutMessage = response.data?.message || "You have been logged out successfully";
-
       showToast({
         type: "success",
         title: "Logged Out",
         description: logoutMessage,
       });
-
-    } catch (error: any) {
-      console.error("Student logout error", error);
-
-      const errorMessage = error.response?.data?.message || "Logout failed on server";
-
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Logout failed on server";
       showToast({
         type: "error",
         title: "Logout Issue",
-        description: errorMessage,
+        description: msg,
       });
-
     } finally {
-      // Always clear local state, even if the server API failed
       setUser(null);
       localStorage.removeItem("student_user");
     }

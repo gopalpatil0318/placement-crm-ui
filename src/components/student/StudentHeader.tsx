@@ -1,18 +1,14 @@
-"use client";
-
 import {
     Menu,
     Search,
     Sun,
-    Sliders,
     Settings,
-    Zap,
     Bell,
 } from "lucide-react";
 
 export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
     return (
-        <header className="w-full h-16 bg-white border-b flex items-center justify-between px-6">
+        <header className="sticky top-0 z-10 w-full h-16 bg-white border-b flex items-center justify-between px-6">
             {/* LEFT */}
             <div className="flex items-center gap-4">
                 {/* Hamburger */}
@@ -44,15 +40,7 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
                 </IconButton>
 
                 <IconButton>
-                    <Sliders size={18} />
-                </IconButton>
-
-                <IconButton>
                     <Settings size={18} />
-                </IconButton>
-
-                <IconButton>
-                    <Zap size={18} />
                 </IconButton>
 
                 {/* Notification */}
@@ -60,9 +48,6 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
                     <IconButton>
                         <Bell size={18} />
                     </IconButton>
-                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">
-                        3
-                    </span>
                 </div>
 
                 {/* Avatar */}

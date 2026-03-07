@@ -2,15 +2,13 @@ import DashboardLayout from '@/components/sysadmin/DashboardLayout';
 import CreateCollegeForm from "@/components/sysadmin/CreateCollegeForm";
 import PageHeader from '@/components/sysadmin/PageHeader';
 
-
 const BREADCRUMBS = [
-  { label: "Super Admin" },
-  { label: "Colleges" },
+  { label: "Dashboard", path: "/sysadmin/dashboard" },
+  { label: "Colleges", path: "/sysadmin/colleges" },
   { label: "Create New", active: true },
 ];
 
 const CreateCollege = () => {
-
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -22,4 +20,3 @@ const CreateCollege = () => {
 };
 
 export default CreateCollege;
- 

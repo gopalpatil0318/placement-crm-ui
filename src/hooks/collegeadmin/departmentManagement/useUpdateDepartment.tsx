@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { AxiosError } from "axios";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
-import { departmentSchema } from "@/validators/DepartmentSchema";
+
+// ========================
+// TYPES
+// ========================
 
 interface UpdateDepartmentForm {
     deptName: string;
@@ -13,7 +18,12 @@ interface UpdateDepartmentForm {
 
 type FormErrors = Partial<Record<keyof UpdateDepartmentForm, string>>;
 
+// ========================
+// HOOK
+// ========================
+
 export const useUpdateDepartment = (deptId: string) => {
+    const navigate = useNavigate();
     const [formData, setFormData] = useState<UpdateDepartmentForm>({
         deptName: "",
         deptCode: "",
@@ -21,6 +31,7 @@ export const useUpdateDepartment = (deptId: string) => {
         programDurationYears: 4,
         totalSemesters: 8,
     });
+    const originalDataRef = useRef<UpdateDepartmentForm | null>(null);
 
     const [errors, setErrors] = useState<FormErrors>({});
     const [loading, setLoading] = useState(false);
@@ -35,21 +46,25 @@ export const useUpdateDepartment = (deptId: string) => {
         const fetchDepartment = async () => {
             setFetching(true);
             try {
-                const dept = await CollegeAdminService.getDepartment(deptId);
+                const response = await CollegeAdminService.getDepartment(deptId);
+                const dept = response.data || response;
 
-                setFormData({
+                const loaded: UpdateDepartmentForm = {
                     deptName: dept?.dept_name || "",
                     deptCode: dept?.dept_code || "",
                     deptType: dept?.dept_type || "",
-                    programDurationYears: dept?.program_duration_years || 4,
-                    totalSemesters: dept?.total_semesters || 8,
-                });
-            } catch (error: any) {
-                showToast({
-                    type: "error",
-                    title: "Error",
-                    description: error.message || "Failed to fetch department data",
-                });
+                    programDurationYears: dept?.program_duration_years ?? 4,
+                    totalSemesters: dept?.total_semesters ?? 8,
+                };
+
+                setFormData(loaded);
+                originalDataRef.current = loaded;
+            } catch (error: unknown) {
+                const msg =
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to fetch department data";
+                showToast({ type: "error", title: "Error", description: msg });
             } finally {
                 setFetching(false);
             }
@@ -61,79 +76,125 @@ export const useUpdateDepartment = (deptId: string) => {
     // ==============================
     // HANDLE INPUT CHANGE
     // ==============================
-    const handleChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-    ) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]:
-                name === "programDurationYears" || name === "totalSemesters"
-                    ? Number(value)
-                    : value,
-        }));
-    };
+    const handleChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+            const { name, value } = e.target;
+
+            setFormData((prev) => ({
+                ...prev,
+                [name]:
+                    name === "programDurationYears" || name === "totalSemesters"
+                        ? Number(value)
+                        : name === "deptCode"
+                            ? value.toUpperCase()
+                            : value,
+            }));
+
+            // Clear field error on change
+            if (errors[name as keyof UpdateDepartmentForm]) {
+                setErrors((prev) => ({ ...prev, [name]: undefined }));
+            }
+        },
+        [errors]
+    );
 
     // ==============================
-    // HANDLE UPDATE SUBMIT
+    // HANDLE UPDATE SUBMIT (PARTIAL)
     // ==============================
-    const handleSubmit = async (
-        e: React.FormEvent<HTMLFormElement>
-    ): Promise<void> => {
-        e.preventDefault();
+    const handleSubmit = useCallback(
+        async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+            e.preventDefault();
 
-        // ZOD VALIDATION
-        const result = departmentSchema.safeParse(formData);
+            if (!originalDataRef.current) return;
 
-        if (!result.success) {
-            const firstErrorMessage = result.error.issues[0].message;
+            // Build partial payload — only changed fields
+            const payload: Record<string, string | number> = {};
+            const orig = originalDataRef.current;
 
-            showToast({
-                type: "warning",
-                title: "Validation Failed",
-                description: firstErrorMessage,
-            });
-            return;
-        }
+            if (formData.deptName !== orig.deptName) {
+                if (formData.deptName.length < 2) {
+                    setErrors({ deptName: "Department name must be at least 2 characters" });
+                    return;
+                }
+                payload.dept_name = formData.deptName;
+            }
+            if (formData.deptCode !== orig.deptCode) {
+                payload.dept_code = formData.deptCode;
+            }
+            if (formData.deptType !== orig.deptType) {
+                payload.dept_type = formData.deptType;
+            }
+            if (formData.programDurationYears !== orig.programDurationYears) {
+                payload.program_duration_years = formData.programDurationYears;
+            }
+            if (formData.totalSemesters !== orig.totalSemesters) {
+                payload.total_semesters = formData.totalSemesters;
+            }
 
-        setErrors({});
-        setLoading(true);
+            if (Object.keys(payload).length === 0) {
+                showToast({
+                    type: "info",
+                    title: "No Changes",
+                    description: "No fields were modified",
+                });
+                return;
+            }
 
-        try {
-            const response = await CollegeAdminService.updateDepartment(deptId, {
-                deptName: formData.deptName,
-                deptCode: formData.deptCode,
-                deptType: formData.deptType,
-                programDurationYears: formData.programDurationYears,
-                totalSemesters: formData.totalSemesters,
-            });
+            setErrors({});
+            setLoading(true);
 
-            const successMessage =
-                response?.message || "Department updated successfully";
+            try {
+                const response = await CollegeAdminService.updateDepartment(
+                    deptId,
+                    payload as Parameters<typeof CollegeAdminService.updateDepartment>[1]
+                );
 
-            showToast({
-                type: "success",
-                title: "Success",
-                description: successMessage,
-            });
-        } catch (error: any) {
-            showToast({
-                type: "error",
-                title: "Error Updating Department",
-                description: error.message || "Something went wrong",
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
+                showToast({
+                    type: "success",
+                    title: "Success",
+                    description:
+                        response?.message || "Department updated successfully",
+                });
+
+                navigate(`/college/department/${deptId}`);
+            } catch (error: unknown) {
+                const axiosErr = error as AxiosError<{
+                    error?: string;
+                    message?: string;
+                }>;
+                const status = axiosErr?.response?.status;
+                const errorMsg =
+                    axiosErr?.response?.data?.error ||
+                    axiosErr?.response?.data?.message ||
+                    "Something went wrong";
+
+                if (status === 409) {
+                    setErrors({ deptName: errorMsg });
+                }
+
+                showToast({
+                    type: "error",
+                    title: "Error Updating Department",
+                    description: errorMsg,
+                });
+            } finally {
+                setLoading(false);
+            }
+        },
+        [formData, deptId, navigate]
+    );
+
+    const handleCancel = useCallback(() => {
+        navigate(`/college/department/${deptId}`);
+    }, [navigate, deptId]);
 
     return {
         formData,
         errors,
         loading,
         fetching,
-        setErrors,
         handleChange,
         handleSubmit,
+        handleCancel,
     };
 };

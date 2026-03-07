@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react"
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { SysAdminAuthProvider } from "./context/SysAdminAuthContext"
 import { CollegeAuthProvider } from "./context/CollegeAuthContext"
@@ -8,49 +9,57 @@ import StudentPublicRoute from "./components/routes/StudentPublicRoute"
 import StudentProtectedRoute from "./components/routes/StudentProtectedRoute"
 import { COLLEGE_ROLES } from "./types/auth"
 
-import SuperAdminLogin from './pages/SuperAdmin/SuperAdminLogin'
-import Dashboard from './pages/SuperAdmin/Dashboard'
-import CreateCollege from './pages/SuperAdmin/CreateCollege'
-import ViewColleges from './pages/SuperAdmin/ViewColleges'
-import College from './pages/SuperAdmin/College'
-import EditCollege from './pages/SuperAdmin/EditCollege'
+const SuperAdminLogin = lazy(() => import('./pages/SuperAdmin/SuperAdminLogin'))
+const Dashboard = lazy(() => import('./pages/SuperAdmin/Dashboard'))
+const CreateCollege = lazy(() => import('./pages/SuperAdmin/CreateCollege'))
+const ViewColleges = lazy(() => import('./pages/SuperAdmin/ViewColleges'))
+const College = lazy(() => import('./pages/SuperAdmin/College'))
+const EditCollege = lazy(() => import('./pages/SuperAdmin/EditCollege'))
 
-import CollegeAdminLogin from './pages/collegeadmin/CollegeAdminLogin'
-import CollegeDashboard from './pages/collegeadmin/Dashboard'
+// College Admin
+const CollegeAdminLogin = lazy(() => import('./pages/collegeadmin/CollegeAdminLogin'))
+const CollegeDashboard = lazy(() => import('./pages/collegeadmin/Dashboard'))
+const ForgotPassword = lazy(() => import('./pages/collegeadmin/ForgotPassword'))
+const ChangePassword = lazy(() => import('./pages/collegeadmin/ChangePassword'))
 
 // College Admin - User Management
-import ViewUser from './pages/collegeadmin/user_management/ViewUser'
-import CreateUser from "./pages/collegeadmin/user_management/CreateUser"
-import UpdateUser from "./pages/collegeadmin/user_management/UpdateUser"
+const ViewUser = lazy(() => import('./pages/collegeadmin/user_management/ViewUser'))
+const CreateUser = lazy(() => import('./pages/collegeadmin/user_management/CreateUser'))
+const UpdateUser = lazy(() => import('./pages/collegeadmin/user_management/UpdateUser'))
+const UserDetail = lazy(() => import('./pages/collegeadmin/user_management/UserDetail'))
 
 // College Admin - Student Management
-import BulkRegister from "./pages/collegeadmin/student_management/BulkRegister"
-import StudentList from "./pages/collegeadmin/student_management/StudentList"
-import DepartmentCards from "./pages/collegeadmin/student_management/DepartmentCards"
-import StudentRegister from "./pages/collegeadmin/student_management/StudentRegister"
+const BulkRegister = lazy(() => import('./pages/collegeadmin/student_management/BulkRegister'))
+const StudentList = lazy(() => import('./pages/collegeadmin/student_management/StudentList'))
+const DepartmentCards = lazy(() => import('./pages/collegeadmin/student_management/DepartmentCards'))
+const StudentRegister = lazy(() => import('./pages/collegeadmin/student_management/StudentRegister'))
+const StudentDetail = lazy(() => import('./pages/collegeadmin/student_management/StudentDetail'))
+const EditStudent = lazy(() => import('./pages/collegeadmin/student_management/EditStudent'))
 
 // College Admin - Department Management
-import ViewDepartments from "./pages/collegeadmin/ViewDepartments"
-import CreateDepartment from "./pages/collegeadmin/CreateDepartment"
-import UpdateDepartment from "./pages/collegeadmin/UpdateDepartment"
-import ViewDepartment from "./pages/collegeadmin/departmentManagement/ViewDepartment"
+const ViewDepartments = lazy(() => import('./pages/collegeadmin/ViewDepartments'))
+const CreateDepartment = lazy(() => import('./pages/collegeadmin/CreateDepartment'))
+const UpdateDepartment = lazy(() => import('./pages/collegeadmin/UpdateDepartment'))
+const ViewDepartment = lazy(() => import('./pages/collegeadmin/departmentManagement/ViewDepartment'))
 
 // Students
-import StudentLogin from "./pages/Students/StudentLogin"
-import StudentDashboard from "./pages/Students/StudentDashboard"
-import StudentProfile from "./pages/Students/StudentProfile"
+const StudentLogin = lazy(() => import('./pages/Students/StudentLogin'))
+const StudentDashboard = lazy(() => import('./pages/Students/StudentDashboard'))
+const StudentProfile = lazy(() => import('./pages/Students/StudentProfile'))
+const StudentForgotPassword = lazy(() => import('./pages/Students/StudentForgotPassword'))
+const StudentChangePassword = lazy(() => import('./pages/Students/StudentChangePassword'))
 
-// Student Form Pages (from friend's code)
-import PersonalInfo from "./pages/student/PersonalInfo"
-import AcademicInfo from "./pages/student/AcademicInfo"
-import SemInfo from "./pages/student/SemInfo"
-import Skills from "./pages/student/Skills"
-import Experience from "./pages/student/Experience"
-import Projects from "./pages/student/Projects"
-import Certificates from "./pages/student/Certificates"
-import Achievements from "./pages/student/Achievements"
-import Activities from "./pages/student/Activities"
-import ProfileLinks from "./pages/student/ProfileLinks"
+// Student Form Pages
+const PersonalInfo = lazy(() => import('./pages/student/PersonalInfo'))
+const AcademicInfo = lazy(() => import('./pages/student/AcademicInfo'))
+const SemInfo = lazy(() => import('./pages/student/SemInfo'))
+const Skills = lazy(() => import('./pages/student/Skills'))
+const Experience = lazy(() => import('./pages/student/Experience'))
+const Projects = lazy(() => import('./pages/student/Projects'))
+const Certificates = lazy(() => import('./pages/student/Certificates'))
+const Achievements = lazy(() => import('./pages/student/Achievements'))
+const Activities = lazy(() => import('./pages/student/Activities'))
+const ProfileLinks = lazy(() => import('./pages/student/ProfileLinks'))
 
 import './App.css'
 
@@ -60,248 +69,299 @@ function App() {
       <CollegeAuthProvider>
         <StudentAuthProvider>
           <Router>
-            <Routes>
-              {/* SysAdmin Routes */}
-              <Route
-                path="/sysadmin/login"
-                element={
-                  <PublicRoute>
-                    <SuperAdminLogin />
-                  </PublicRoute>
-                }
-              />
-              <Route path="/login" element={<Navigate to="/sysadmin/login" replace />} />
-              <Route
-                path="/sysadmin/dashboard"
-                element={
-                  <ProtectedRoute allowedRoles={["sysadmin"]}>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/sysadmin/create-college" element={<ProtectedRoute allowedRoles={["sysadmin"]}><CreateCollege /></ProtectedRoute>} />
-              <Route path="/sysadmin/edit-college/:collegeId" element={<ProtectedRoute allowedRoles={["sysadmin"]}><EditCollege /></ProtectedRoute>} />
-              <Route path="/sysadmin/view-colleges" element={<ProtectedRoute allowedRoles={["sysadmin"]}><ViewColleges /></ProtectedRoute>} />
-              <Route path="/sysadmin/view-colleges/:collegeId" element={<ProtectedRoute allowedRoles={["sysadmin"]}><College /></ProtectedRoute>} />
+            <Suspense fallback={<div className="h-screen w-full flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" /></div>}>
+              <Routes>
+                {/* SysAdmin Routes */}
+                <Route
+                  path="/sysadmin/login"
+                  element={
+                    <PublicRoute>
+                      <SuperAdminLogin />
+                    </PublicRoute>
+                  }
+                />
+                <Route path="/login" element={<Navigate to="/sysadmin/login" replace />} />
+                <Route path="/sysadmin/dashboard" element={<ProtectedRoute allowedRoles={["sysadmin"]}><Dashboard /></ProtectedRoute>} />
+                <Route path="/sysadmin/colleges/create" element={<ProtectedRoute allowedRoles={["sysadmin"]}><CreateCollege /></ProtectedRoute>} />
+                <Route path="/sysadmin/colleges/:collegeId/edit" element={<ProtectedRoute allowedRoles={["sysadmin"]}><EditCollege /></ProtectedRoute>} />
+                <Route path="/sysadmin/colleges" element={<ProtectedRoute allowedRoles={["sysadmin"]}><ViewColleges /></ProtectedRoute>} />
+                <Route path="/sysadmin/colleges/:collegeId" element={<ProtectedRoute allowedRoles={["sysadmin"]}><College /></ProtectedRoute>} />
 
-              {/* College Admin Routes */}
-              <Route
-                path="/collegeadmin/login"
-                element={
-                  <PublicRoute>
-                    <CollegeAdminLogin />
-                  </PublicRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/dashboard"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <CollegeDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/view-users"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <ViewUser />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/create-user"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <CreateUser />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/update-user/:userId"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <UpdateUser />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/department/:deptId"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <ViewDepartment />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/students"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <DepartmentCards />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/students/:deptId"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <StudentList />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/bulk-register"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <BulkRegister />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/create-student"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <StudentRegister />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/departments"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <ViewDepartments />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/create-department"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <CreateDepartment />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/collegeadmin/update-department/:deptId"
-                element={
-                  <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
-                    <UpdateDepartment />
-                  </ProtectedRoute>
-                }
-              />
+                {/* College Admin Routes */}
+                <Route
+                  path="/college/login"
+                  element={
+                    <PublicRoute>
+                      <CollegeAdminLogin />
+                    </PublicRoute>
+                  }
+                />
+                <Route
+                  path="/college/forgot-password"
+                  element={
+                    <PublicRoute>
+                      <ForgotPassword />
+                    </PublicRoute>
+                  }
+                />
+                <Route
+                  path="/college/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <CollegeDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/change-password"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <ChangePassword />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/view-users"
+                  element={
+                    <ProtectedRoute allowedRoles={["collegeadmin"]}>
+                      <ViewUser />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/create-user"
+                  element={
+                    <ProtectedRoute allowedRoles={["collegeadmin"]}>
+                      <CreateUser />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/update-user/:userId"
+                  element={
+                    <ProtectedRoute allowedRoles={["collegeadmin"]}>
+                      <UpdateUser />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/user/:userId"
+                  element={
+                    <ProtectedRoute allowedRoles={["collegeadmin"]}>
+                      <UserDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/department/:deptId"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <ViewDepartment />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/students"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <DepartmentCards />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/students/:deptId"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <StudentList />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/student/:studentId"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <StudentDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/student/:studentId/edit"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <EditStudent />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/bulk-register"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <BulkRegister />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/create-student"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <StudentRegister />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/departments"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <ViewDepartments />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/create-department"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <CreateDepartment />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/update-department/:deptId"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <UpdateDepartment />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Student Routes */}
-              <Route
-                path="/student/login"
-                element={
-                  <StudentPublicRoute>
-                    <StudentLogin />
-                  </StudentPublicRoute>
-                }
-              />
-              <Route
-                path="/student/dashboard"
-                element={
-                  <StudentProtectedRoute>
-                    <StudentDashboard />
-                  </StudentProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/profile"
-                element={
-                  <StudentProtectedRoute>
-                    <StudentProfile />
-                  </StudentProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/personal-info"
-                element={
-                  <StudentProtectedRoute>
-                    <PersonalInfo />
-                  </StudentProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/academic-info"
-                element={
-                  <StudentProtectedRoute>
-                    <AcademicInfo />
-                  </StudentProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/sem-info"
-                element={
-                  <StudentProtectedRoute>
-                    <SemInfo />
-                  </StudentProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/skills"
-                element={
-                  <StudentProtectedRoute>
-                    <Skills />
-                  </StudentProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/experience"
-                element={
-                  <StudentProtectedRoute>
-                    <Experience />
-                  </StudentProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/projects"
-                element={
-                  <StudentProtectedRoute>
-                    <Projects />
-                  </StudentProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/certificates"
-                element={
-                  <StudentProtectedRoute>
-                    <Certificates />
-                  </StudentProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/achievements"
-                element={
-                  <StudentProtectedRoute>
-                    <Achievements />
-                  </StudentProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/activities"
-                element={
-                  <StudentProtectedRoute>
-                    <Activities />
-                  </StudentProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/profile-links"
-                element={
-                  <StudentProtectedRoute>
-                    <ProfileLinks />
-                  </StudentProtectedRoute>
-                }
-              />
+                {/* Student Routes */}
+                <Route
+                  path="/student/login"
+                  element={
+                    <StudentPublicRoute>
+                      <StudentLogin />
+                    </StudentPublicRoute>
+                  }
+                />
+                <Route
+                  path="/student/forgot-password"
+                  element={
+                    <StudentPublicRoute>
+                      <StudentForgotPassword />
+                    </StudentPublicRoute>
+                  }
+                />
+                <Route
+                  path="/student/dashboard"
+                  element={
+                    <StudentProtectedRoute>
+                      <StudentDashboard />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/profile"
+                  element={
+                    <StudentProtectedRoute>
+                      <StudentProfile />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/change-password"
+                  element={
+                    <StudentProtectedRoute>
+                      <StudentChangePassword />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/personal-info"
+                  element={
+                    <StudentProtectedRoute>
+                      <PersonalInfo />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/academic-info"
+                  element={
+                    <StudentProtectedRoute>
+                      <AcademicInfo />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/sem-info"
+                  element={
+                    <StudentProtectedRoute>
+                      <SemInfo />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/skills"
+                  element={
+                    <StudentProtectedRoute>
+                      <Skills />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/experience"
+                  element={
+                    <StudentProtectedRoute>
+                      <Experience />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/projects"
+                  element={
+                    <StudentProtectedRoute>
+                      <Projects />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/certificates"
+                  element={
+                    <StudentProtectedRoute>
+                      <Certificates />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/achievements"
+                  element={
+                    <StudentProtectedRoute>
+                      <Achievements />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/activities"
+                  element={
+                    <StudentProtectedRoute>
+                      <Activities />
+                    </StudentProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/profile-links"
+                  element={
+                    <StudentProtectedRoute>
+                      <ProfileLinks />
+                    </StudentProtectedRoute>
+                  }
+                />
 
-              {/* --- Common Routes --- */}
-              <Route path="/unauthorized" element={<div className="p-10 text-center text-xl">Unauthorized Access</div>} />
+                {/* --- Common Routes --- */}
+                <Route path="/unauthorized" element={<div className="p-10 text-center text-xl">Unauthorized Access</div>} />
 
-              <Route path="/" element={<Navigate to="/sysadmin/login" replace />} />
-              <Route path="*" element={<Navigate to="/sysadmin/login" replace />} />
-            </Routes>
+                <Route path="/" element={<Navigate to="/sysadmin/login" replace />} />
+                <Route path="*" element={<Navigate to="/sysadmin/login" replace />} />
+              </Routes>
+            </Suspense>
           </Router>
         </StudentAuthProvider>
       </CollegeAuthProvider>

@@ -1,16 +1,35 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { SysAdminService } from "@/services/sysadmin/sysadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 
+export interface CollegeData {
+  college_id: string;
+  college_name: string;
+  college_subdomain: string;
+  college_type: string;
+  college_address: string;
+  college_city: string;
+  college_taluka: string;
+  college_district: string;
+  college_state: string;
+  college_pincode: string;
+  college_status: string;
+  enabled_features: string[];
+  default_academic_year: number;
+  admin_name: string;
+  admin_email: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const useCollegeProfile = () => {
   const { collegeId } = useParams<{ collegeId: string }>();
-  const [college, setCollege] = useState<any>(null);
+  const [college, setCollege] = useState<CollegeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [error, setError] = useState<string | null>(null);
- 
+
   useEffect(() => {
     if (!collegeId) return;
 
@@ -19,16 +38,15 @@ export const useCollegeProfile = () => {
         setLoading(true);
         const data = await SysAdminService.getCollegeProfile(collegeId);
         setCollege(data);
-      } catch (error: any) {
-        const errorMessage = error.message || "Failed to fetch colleges";
-        setError(errorMessage);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to fetch college";
         showToast({
           type: "error",
           title: "Fetch Error",
           description: errorMessage,
         });
       } finally {
-        setLoading(false) ;
+        setLoading(false);
       }
     };
 
@@ -59,27 +77,85 @@ export const useCollegeProfile = () => {
       );
 
       if (res?.success) {
-        setCollege((prev: any) => ({
-          ...prev,
-          college_status: newStatus,
-        }));
+        setCollege((prev) =>
+          prev ? { ...prev, college_status: newStatus } : null
+        );
 
         showToast({
           type: "success",
           title: "Status Updated",
-          description: res.data?.message || `College is now ${newStatus}`,
+          description: res.message || `College is now ${newStatus}`,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong";
       showToast({
         type: "error",
         title: "Failed to update status",
-        description: err.message || "Something went wrong",
+        description: message,
       });
     } finally {
       setToggling(false);
     }
   };
+
+  const updateFeatures = useCallback(async (features: string[]) => {
+    if (!college?.college_id) return;
+
+    try {
+      const res = await SysAdminService.updateCollegeFeatures(
+        college.college_id,
+        features
+      );
+
+      if (res?.success) {
+        setCollege((prev) =>
+          prev ? { ...prev, enabled_features: features } : null
+        );
+        showToast({
+          type: "success",
+          title: "Features Updated",
+          description: res.message || "College features updated successfully",
+        });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to update features";
+      showToast({
+        type: "error",
+        title: "Update Failed",
+        description: message,
+      });
+    }
+  }, [college?.college_id]);
+
+  const updateAcademicYear = useCallback(async (year: number) => {
+    if (!college?.college_id) return;
+
+    try {
+      const res = await SysAdminService.updateAcademicYear(
+        college.college_id,
+        year
+      );
+
+      if (res?.success) {
+        setCollege((prev) =>
+          prev ? { ...prev, default_academic_year: year } : null
+        );
+        showToast({
+          type: "success",
+          title: "Academic Year Updated",
+          description: res.message || "Academic year updated successfully",
+        });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to update academic year";
+      showToast({
+        type: "error",
+        title: "Update Failed",
+        description: message,
+      });
+    }
+  }, [college?.college_id]);
 
   return {
     college,
@@ -89,5 +165,7 @@ export const useCollegeProfile = () => {
     requestStatusToggle,
     confirmStatusToggle,
     cancelStatusToggle,
+    updateFeatures,
+    updateAcademicYear,
   };
 };

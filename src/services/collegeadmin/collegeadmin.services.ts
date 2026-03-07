@@ -1,70 +1,93 @@
 import api from "@/lib/api";
 
+// ========================
+// TYPE DEFINITIONS
+// ========================
+
+interface GetUsersParams {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string;
+    status?: string;
+}
+
+interface CreateUserData {
+    user_name: string;
+    user_email: string;
+    user_password: string;
+    user_role: string;
+    dept_id?: string | null;
+}
+
+interface UpdateUserData {
+    user_name?: string;
+    user_email?: string;
+    user_role?: string;
+    dept_id?: string | null;
+}
+
+// ========================
+// COLLEGE ADMIN SERVICE
+// ========================
+
 export const CollegeAdminService = {
-    createUser: async (data: {
-        userName: string;
-        userEmail: string;
-        userPassword: string;
-        userRole: string;
+
+    // ========================
+    // AUTH APIs
+    // ========================
+
+    forgotPassword: async (email: string) => {
+        const response = await api.post("/college/forgot_password", { email });
+        return response.data;
+    },
+
+    changePassword: async (data: {
+        current_password: string;
+        new_password: string;
+        confirm_password: string;
     }) => {
-        const response = await api.post("/college/create_user", {
-            user_name: data.userName,
-            user_email: data.userEmail,
-            user_password: data.userPassword,
-            user_role: data.userRole,
-        });
+        const response = await api.post("/college/change_password", data);
+        return response.data;
+    },
+
+    // ========================
+    // USER MANAGEMENT
+    // ========================
+
+    createUser: async (data: CreateUserData) => {
+        const response = await api.post("/college/create_user", data);
+        return response.data;
+    },
+
+    getUsers: async (params: GetUsersParams = {}) => {
+        const query = new URLSearchParams();
+        if (params.page) query.append("page", String(params.page));
+        if (params.limit) query.append("limit", String(params.limit));
+        if (params.search) query.append("search", params.search);
+        if (params.role) query.append("role", params.role);
+        if (params.status) query.append("status", params.status);
+
+        const queryStr = query.toString();
+        const url = queryStr ? `/college/get_all_users?${queryStr}` : "/college/get_all_users";
+        const response = await api.get(url);
         return response.data;
     },
 
     getUser: async (id: string) => {
         const response = await api.get(`/college/get_user/${id}`);
-        return response.data.data;
+        return response.data;
     },
 
-    updateUser: async (id: string, data: {
-        userName: string;
-        userEmail: string;
-        userRole: string;
-        userStatus: string;
-    }) => {
-        const response = await api.put(`/college/update_user/${id}`, {
-            user_name: data.userName,
-            user_email: data.userEmail,
-            user_role: data.userRole,
-            user_status: data.userStatus,
+    updateUser: async (id: string, data: UpdateUserData) => {
+        const response = await api.put(`/college/update_user/${id}`, data);
+        return response.data;
+    },
+
+    toggleUserStatus: async (userId: string, userStatus: string) => {
+        const response = await api.patch(`/college/toggle_user_status/${userId}`, {
+            user_status: userStatus,
         });
-        return response.data;
-    },
-
-    getUsers: async () => {
-        const response = await api.get("/college/get_all_users");
-        return response.data.data;
-    },
-
-    bulkRegistration: async (students: any[]) => {
-        const response = await api.post("/college/bulk_register_students", { students });
-        return response.data;
-    },
-
-    getAllStudents: async (params: {
-        dept_id?: string;
-        student_passout_year?: number;
-        student_status?: string;
-        page?: number;
-        limit?: number;
-    }) => {
-        const query = new URLSearchParams();
-        if (params.dept_id) query.append("dept_id", params.dept_id);
-        if (params.student_passout_year) query.append("student_passout_year", String(params.student_passout_year));
-        if (params.student_status) query.append("student_status", params.student_status);
-        if (params.page) query.append("page", String(params.page));
-        if (params.limit) query.append("limit", String(params.limit));
-        const response = await api.get(`/college/get_all_students?${query.toString()}`);
-        return response.data;
-    },
-
-    createStudent: async (data: any) => {
-        const response = await api.post("/college/register_student", data);
         return response.data;
     },
 
@@ -73,46 +96,39 @@ export const CollegeAdminService = {
     // ========================
 
     createDepartment: async (data: {
-        deptName: string;
-        deptCode: string;
-        deptType: string;
-        programDurationYears: number;
-        totalSemesters: number;
+        dept_name: string;
+        dept_code: string;
+        dept_type: string;
+        program_duration_years: number;
+        total_semesters: number;
     }) => {
-        const response = await api.post("/college/create_department", {
-            dept_name: data.deptName,
-            dept_code: data.deptCode,
-            dept_type: data.deptType,
-            program_duration_years: data.programDurationYears,
-            total_semesters: data.totalSemesters,
-        });
+        const response = await api.post("/college/create_department", data);
         return response.data;
     },
 
-    getDepartments: async () => {
-        const response = await api.get("/college/get_all_departments");
-        return response.data.data;
+    getDepartments: async (params?: {
+        page?: number;
+        limit?: number;
+        is_active?: boolean;
+        search?: string;
+    }) => {
+        const response = await api.get("/college/get_all_departments", { params });
+        return response.data;
     },
 
     getDepartment: async (id: string) => {
         const response = await api.get(`/college/get_department/${id}`);
-        return response.data.data;
+        return response.data;
     },
 
     updateDepartment: async (id: string, data: {
-        deptName: string;
-        deptCode: string;
-        deptType: string;
-        programDurationYears: number;
-        totalSemesters: number;
+        dept_name?: string;
+        dept_code?: string;
+        dept_type?: string;
+        program_duration_years?: number;
+        total_semesters?: number;
     }) => {
-        const response = await api.put(`/college/update_department/${id}`, {
-            dept_name: data.deptName,
-            dept_code: data.deptCode,
-            dept_type: data.deptType,
-            program_duration_years: data.programDurationYears,
-            total_semesters: data.totalSemesters,
-        });
+        const response = await api.put(`/college/update_department/${id}`, data);
         return response.data;
     },
 
@@ -124,12 +140,64 @@ export const CollegeAdminService = {
     },
 
     // ========================
-    // STUDENT STATUS MANAGEMENT
+    // STUDENT MANAGEMENT
     // ========================
+
+    bulkRegistration: async (students: Record<string, unknown>[]) => {
+        const response = await api.post("/college/bulk_register_students", { students });
+        return response.data;
+    },
+
+    getAllStudents: async (params: {
+        dept_id?: string;
+        student_passout_year?: number;
+        student_status?: string;
+        search?: string;
+        profile_complete?: boolean;
+        profile_is_approved?: boolean;
+        page?: number;
+        limit?: number;
+    }) => {
+        const query = new URLSearchParams();
+        if (params.dept_id) query.append("dept_id", params.dept_id);
+        if (params.student_passout_year) query.append("student_passout_year", String(params.student_passout_year));
+        if (params.student_status) query.append("student_status", params.student_status);
+        if (params.search) query.append("search", params.search);
+        if (params.profile_complete !== undefined) query.append("profile_complete", String(params.profile_complete));
+        if (params.profile_is_approved !== undefined) query.append("profile_is_approved", String(params.profile_is_approved));
+        if (params.page) query.append("page", String(params.page));
+        if (params.limit) query.append("limit", String(params.limit));
+        const queryStr = query.toString();
+        const url = queryStr ? `/college/get_all_students?${queryStr}` : "/college/get_all_students";
+        const response = await api.get(url);
+        return response.data;
+    },
+
+    getStudent: async (studentId: string) => {
+        const response = await api.get(`/college/get_student/${studentId}`);
+        return response.data;
+    },
+
+    createStudent: async (data: Record<string, unknown>) => {
+        const response = await api.post("/college/register_student", data);
+        return response.data;
+    },
+
+    updateStudent: async (studentId: string, data: Record<string, unknown>) => {
+        const response = await api.put(`/college/update_student/${studentId}`, data);
+        return response.data;
+    },
 
     updateStudentStatus: async (studentId: string, status: string) => {
         const response = await api.patch(`/college/toggle_student_status/${studentId}`, {
             student_status: status,
+        });
+        return response.data;
+    },
+
+    approveStudentProfile: async (studentId: string, approved: boolean) => {
+        const response = await api.patch(`/college/approve_student_profile/${studentId}`, {
+            profile_is_approved: approved,
         });
         return response.data;
     },

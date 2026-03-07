@@ -1,16 +1,45 @@
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Users, ArrowLeft, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Plus, Users } from "lucide-react";
 import PageHeader from "@/components/collegeadmin/PageHeader";
 import { useStudentList } from "@/hooks/collegeadmin/student_management/useStudentList";
 
-const STUDENT_STATUSES = [
-    { value: "active", label: "Active", color: "bg-green-100 text-green-700 border-green-300" },
-    { value: "inactive", label: "Inactive", color: "bg-red-100 text-red-700 border-red-300" },
-    { value: "suspended", label: "Suspended", color: "bg-orange-100 text-orange-700 border-orange-300" },
-    { value: "graduated", label: "Graduated", color: "bg-blue-100 text-blue-700 border-blue-300" },
-    { value: "dropout", label: "Dropout", color: "bg-gray-100 text-gray-700 border-gray-300" },
-];
+// ========================
+// CONSTANTS
+// ========================
+
+const STATUS_BADGE_MAP: Record<string, { bg: string; text: string; dot: string }> = {
+    active: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
+    inactive: { bg: "bg-gray-50", text: "text-gray-700", dot: "bg-gray-500" },
+    suspended: { bg: "bg-orange-50", text: "text-orange-700", dot: "bg-orange-500" },
+    graduated: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
+    dropout: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
+};
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+function formatYearLabel(year: number): string {
+    const suffixes: Record<number, string> = { 1: "st", 2: "nd", 3: "rd" };
+    return `${year}${suffixes[year] || "th"} Year`;
+}
+
+// ========================
+// SKELETON
+// ========================
+
+const SkeletonRow = () => (
+    <tr className="border-b animate-pulse">
+        {Array.from({ length: 9 }).map((_, j) => (
+            <td key={j} className="px-4 py-3">
+                <div className="h-4 bg-gray-100 rounded w-3/4" />
+            </td>
+        ))}
+    </tr>
+);
+
+// ========================
+// COMPONENT
+// ========================
 
 interface StudentListViewProps {
     deptId?: string;
@@ -27,31 +56,25 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
         pagination,
         filters,
         updateFilters,
-        updateStudentStatus,
+        handleSearchChange,
+        handleLimitChange,
+        handlePageChange,
     } = useStudentList({
         initialDeptId: deptId,
         initialPassoutYear,
         initialStatus,
     });
 
-    // Modal state
-    const [selectedStudent, setSelectedStudent] = useState<any>(null);
-    const [newStatus, setNewStatus] = useState("");
-    const [updatingStatus, setUpdatingStatus] = useState(false);
-
     // Find current department name when filtered by deptId
     const currentDept = deptId
         ? departments.find((d: any) => d.dept_id === deptId)
         : null;
 
-    const breadcrumbs = [
-        { label: "College Admin" },
-        { label: "Students" },
-        ...(deptId
-            ? [{ label: "All Registration" }, { label: currentDept?.dept_name || "Department", active: true }]
-            : [{ label: "View List", active: true }]
-        ),
-    ];
+    const breadcrumbs = useMemo(() => [
+        { label: "Dashboard", path: "/college/dashboard" },
+        { label: "Students", active: !deptId },
+        ...(deptId ? [{ label: currentDept?.dept_name || "Department", active: true }] : []),
+    ], [deptId, currentDept]);
 
     // Generate passout year options (current year -2 to +4)
     const currentYear = new Date().getFullYear();
@@ -60,127 +83,135 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
     const startEntry = students.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
     const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
 
-    const handleRowClick = (student: any) => {
-        setSelectedStudent(student);
-        setNewStatus(student.student_status || "");
-    };
-
-    const handleSubmitStatus = async () => {
-        if (!selectedStudent || !newStatus || newStatus === selectedStudent.student_status) return;
-        setUpdatingStatus(true);
-        await updateStudentStatus(selectedStudent.student_id, newStatus);
-        setUpdatingStatus(false);
-        setSelectedStudent(null);
-    };
-
-    const closeModal = () => {
-        if (!updatingStatus) {
-            setSelectedStudent(null);
-            setNewStatus("");
-        }
-    };
+    const skeletonRows = useMemo(
+        () => Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={`skel-${i}`} />),
+        []
+    );
 
     return (
         <div className="space-y-8">
             <PageHeader
-                title={currentDept ? `${currentDept.dept_name} — Students` : "Students List"}
+                title={currentDept ? `${currentDept.dept_name} — Students` : "Students"}
                 breadcrumbs={breadcrumbs}
             />
 
             <div className="w-full">
                 <div className="p-8 bg-white rounded-xl border">
-                    {/* Header */}
+                    {/* Header with buttons */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-                        <div className="flex items-center gap-3">
-                            {deptId && (
-                                <button
-                                    onClick={() => navigate("/collegeadmin/students")}
-                                    className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 font-medium transition-colors"
-                                >
-                                    <ArrowLeft size={16} />
-                                    Back
-                                </button>
-                            )}
-                            <h1 className="text-xl font-semibold text-gray-800">
-                                {currentDept ? `${currentDept.dept_name} Students` : "Manage Students"}
-                            </h1>
-                            {!loading && (
-                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
-                                    Total Students : {pagination.total}
-                                </span>
-                            )}
-                        </div>
+                        <h1 className="text-xl font-semibold text-gray-800">
+                            {currentDept ? `${currentDept.dept_name} Students` : "Manage Students"}
+                        </h1>
 
-                        <button
-                            onClick={() => navigate("/collegeadmin/bulk-register")}
-                            className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold mt-3 sm:mt-0"
-                        >
-                            <Users size={16} />
-                            Bulk Register
-                        </button>
+                        <div className="flex items-center gap-3 mt-3 sm:mt-0">
+                            <button
+                                onClick={() => navigate("/college/create-student")}
+                                className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold transition"
+                            >
+                                <Plus size={16} />
+                                Register Student
+                            </button>
+                            <button
+                                onClick={() => navigate("/college/bulk-register")}
+                                className="flex items-center gap-2 px-4 py-2 text-sm bg-white text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 font-bold transition"
+                            >
+                                <Users size={16} />
+                                Bulk Register
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Filters Row */}
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                        <div className="flex flex-wrap items-center gap-3">
-                            {/* Entries per page */}
-                            <div className="text-sm text-gray-600 font-semibold">
-                                Show
-                                <select
-                                    value={filters.limit}
-                                    onChange={(e) => updateFilters({ limit: Number(e.target.value) })}
-                                    className="mx-2 border rounded px-2 py-1"
-                                >
-                                    <option value={10}>10</option>
-                                    <option value={20}>20</option>
-                                    <option value={50}>50</option>
-                                    <option value={100}>100</option>
-                                </select>
-                                entries
-                            </div>
+                    {/* Filters Row — Search left, Entries right */}
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                        {/* Search */}
+                        <div className="relative">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                value={filters.search}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                placeholder="Search by name or email..."
+                                className="pl-9 pr-4 py-2 border rounded-md text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
 
-                            {/* Department Filter — only show if not pre-filtered */}
-                            {!deptId && (
-                                <select
-                                    value={filters.deptId}
-                                    onChange={(e) => updateFilters({ deptId: e.target.value })}
-                                    className="border rounded-md px-3 py-2 text-sm text-gray-700"
-                                >
-                                    <option value="">All Departments</option>
-                                    {departments.map((dept: any) => (
-                                        <option key={dept.dept_id} value={dept.dept_id}>
-                                            {dept.dept_name}
-                                        </option>
-                                    ))}
-                                </select>
-                            )}
+                        {/* Status Filter */}
+                        <select
+                            value={filters.status}
+                            onChange={(e) => updateFilters({ status: e.target.value })}
+                            className="border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="suspended">Suspended</option>
+                            <option value="graduated">Graduated</option>
+                            <option value="dropout">Dropout</option>
+                        </select>
 
-                            {/* Passout Year Filter */}
+                        {/* Department Filter — only if not pre-filtered */}
+                        {!deptId && (
                             <select
-                                value={filters.passoutYear}
-                                onChange={(e) => updateFilters({ passoutYear: Number(e.target.value) })}
-                                className="border rounded-md px-3 py-2 text-sm text-gray-700"
+                                value={filters.deptId}
+                                onChange={(e) => updateFilters({ deptId: e.target.value })}
+                                className="border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                                {passoutYearOptions.map((year) => (
-                                    <option key={year} value={year}>
-                                        {year}
+                                <option value="">All Departments</option>
+                                {departments.map((dept: any) => (
+                                    <option key={dept.dept_id} value={dept.dept_id}>
+                                        {dept.dept_name}
                                     </option>
                                 ))}
                             </select>
+                        )}
 
-                            {/* Status Filter */}
+                        {/* Passout Year */}
+                        <select
+                            value={filters.passoutYear}
+                            onChange={(e) => updateFilters({ passoutYear: Number(e.target.value) })}
+                            className="border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value={0}>All Years</option>
+                            {passoutYearOptions.map((year) => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
+                        </select>
+
+                        {/* Profile Complete */}
+                        <select
+                            value={filters.profileComplete}
+                            onChange={(e) => updateFilters({ profileComplete: e.target.value })}
+                            className="border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">All Profiles</option>
+                            <option value="true">Profile Complete</option>
+                            <option value="false">Profile Incomplete</option>
+                        </select>
+
+                        {/* Profile Approved */}
+                        <select
+                            value={filters.profileApproved}
+                            onChange={(e) => updateFilters({ profileApproved: e.target.value })}
+                            className="border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">All Approval</option>
+                            <option value="true">Approved</option>
+                            <option value="false">Pending Approval</option>
+                        </select>
+
+                        {/* Show entries — right */}
+                        <div className="text-sm text-gray-600 font-semibold ml-auto flex items-center gap-2">
+                            Show
                             <select
-                                value={filters.status}
-                                onChange={(e) => updateFilters({ status: e.target.value })}
-                                className="border rounded-md px-3 py-2 text-sm text-gray-700"
+                                value={pagination.limit}
+                                onChange={(e) => handleLimitChange(Number(e.target.value))}
+                                className="border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500/20"
                             >
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                                <option value="suspended">Suspended</option>
-                                <option value="graduated">Graduated</option>
-                                <option value="dropout">Dropout</option>
-                                <option value="">All Status</option>
+                                {PAGE_SIZE_OPTIONS.map((size) => (
+                                    <option key={size} value={size}>{size}</option>
+                                ))}
                             </select>
+                            entries
                         </div>
                     </div>
 
@@ -190,77 +221,106 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
                             <thead>
                                 <tr className="bg-gray-50 text-left text-sm font-semibold text-gray-700">
                                     <th className="px-4 py-3">#</th>
-                                    <th className="px-4 py-3">STUDENT NAME</th>
+                                    <th className="px-4 py-3">NAME</th>
                                     <th className="px-4 py-3">EMAIL</th>
                                     {!deptId && <th className="px-4 py-3">DEPARTMENT</th>}
-                                    <th className="px-4 py-3">PASSOUT YEAR</th>
+                                    <th className="px-4 py-3">YEAR</th>
+                                    <th className="px-4 py-3">PASSOUT</th>
                                     <th className="px-4 py-3">STATUS</th>
+                                    <th className="px-4 py-3">PROFILE</th>
+                                    <th className="px-4 py-3">APPROVED</th>
                                 </tr>
                             </thead>
 
                             <tbody>
                                 {loading ? (
-                                    <tr>
-                                        <td colSpan={deptId ? 5 : 6} className="text-center py-10 italic text-gray-500">
-                                            Loading students...
-                                        </td>
-                                    </tr>
+                                    skeletonRows
                                 ) : students.length > 0 ? (
-                                    students.map((student: any, index: number) => (
-                                        <tr
-                                            key={student.student_id}
-                                            onClick={() => handleRowClick(student)}
-                                            className="border-b hover:bg-blue-50 text-sm cursor-pointer transition-colors"
-                                        >
-                                            <td className="px-4 py-3 text-gray-500">
-                                                {(pagination.page - 1) * pagination.limit + index + 1}
-                                            </td>
+                                    students.map((student: any, index: number) => {
+                                        const statusBadge = STATUS_BADGE_MAP[student.student_status] || STATUS_BADGE_MAP.active;
+                                        const fullName = [student.first_name, student.middle_name, student.last_name]
+                                            .filter(Boolean)
+                                            .join(" ");
 
-                                            <td className="px-4 py-3 font-medium">
-                                                {student.first_name} {student.last_name}
-                                            </td>
+                                        return (
+                                            <tr
+                                                key={student.student_id}
+                                                onClick={() => navigate(`/college/student/${student.student_id}`)}
+                                                className="border-b hover:bg-blue-50 text-sm cursor-pointer transition-colors"
+                                            >
+                                                <td className="px-4 py-3 text-gray-500">
+                                                    {(pagination.page - 1) * pagination.limit + index + 1}
+                                                </td>
 
-                                            <td className="px-4 py-3 text-gray-600">
-                                                {student.student_email}
-                                            </td>
-
-                                            {!deptId && (
-                                                <td className="px-4 py-3">
-                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                                        {student.dept_name || "—"}
+                                                <td className="px-4 py-3 font-medium">
+                                                    <span className="text-blue-600 hover:text-blue-800 hover:underline">
+                                                        {fullName}
                                                     </span>
                                                 </td>
-                                            )}
 
-                                            <td className="px-4 py-3 text-gray-600">
-                                                {student.student_passout_year}
-                                            </td>
+                                                <td className="px-4 py-3 text-gray-600">
+                                                    {student.student_email}
+                                                </td>
 
-                                            <td className="px-4 py-3">
-                                                <span
-                                                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${student.student_status === "active"
-                                                        ? "bg-green-100 text-green-700"
-                                                        : student.student_status === "graduated"
-                                                            ? "bg-blue-100 text-blue-700"
-                                                            : student.student_status === "suspended"
-                                                                ? "bg-orange-100 text-orange-700"
-                                                                : student.student_status === "dropout"
-                                                                    ? "bg-gray-100 text-gray-700"
-                                                                    : "bg-red-100 text-red-700"
-                                                        }`}
-                                                >
-                                                    {student.student_status
-                                                        ? student.student_status.charAt(0).toUpperCase() +
-                                                        student.student_status.slice(1)
-                                                        : "—"}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))
+                                                {!deptId && (
+                                                    <td className="px-4 py-3">
+                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                                            {student.dept_name || "—"}
+                                                        </span>
+                                                    </td>
+                                                )}
+
+                                                <td className="px-4 py-3 text-gray-600">
+                                                    {student.current_year ? formatYearLabel(student.current_year) : "—"}
+                                                </td>
+
+                                                <td className="px-4 py-3 text-gray-600">
+                                                    {student.student_passout_year}
+                                                </td>
+
+                                                <td className="px-4 py-3">
+                                                    <span
+                                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge.bg} ${statusBadge.text}`}
+                                                    >
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${statusBadge.dot}`} />
+                                                        {student.student_status
+                                                            ? student.student_status.charAt(0).toUpperCase() + student.student_status.slice(1)
+                                                            : "—"}
+                                                    </span>
+                                                </td>
+
+                                                <td className="px-4 py-3">
+                                                    {student.profile_complete ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                                            Complete
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+                                                            Incomplete
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                <td className="px-4 py-3">
+                                                    {student.profile_is_approved ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                                            Approved
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                                                            Pending
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 ) : (
                                     <tr>
-                                        <td colSpan={deptId ? 5 : 6} className="text-center py-6 text-gray-500">
-                                            No students found
+                                        <td colSpan={deptId ? 8 : 9} className="text-center py-10 text-gray-500">
+                                            {filters.search || filters.status || filters.deptId
+                                                ? "No students match your filters."
+                                                : "No students found. Click 'Register Student' to add one."}
                                         </td>
                                     </tr>
                                 )}
@@ -279,7 +339,7 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
                         {pagination.totalPages > 1 && (
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => updateFilters({ page: pagination.page - 1 })}
+                                    onClick={() => handlePageChange(pagination.page - 1)}
                                     disabled={pagination.page <= 1}
                                     className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
                                 >
@@ -288,11 +348,11 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
                                 </button>
 
                                 <span className="text-sm font-semibold text-gray-700 px-2">
-                                    Page {pagination.page} of {pagination.totalPages}
+                                    {pagination.page} of {pagination.totalPages}
                                 </span>
 
                                 <button
-                                    onClick={() => updateFilters({ page: pagination.page + 1 })}
+                                    onClick={() => handlePageChange(pagination.page + 1)}
                                     disabled={pagination.page >= pagination.totalPages}
                                     className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
                                 >
@@ -304,83 +364,6 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
                     </div>
                 </div>
             </div>
-
-            {/* ===== Status Change Modal ===== */}
-            {selectedStudent && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-                    onClick={closeModal}
-                >
-                    <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Modal Header */}
-                        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
-                            <div>
-                                <h2 className="text-lg font-bold text-gray-800">Change Student Status</h2>
-                                <p className="text-sm text-gray-500 mt-0.5">
-                                    {selectedStudent.first_name} {selectedStudent.last_name}
-                                </p>
-                            </div>
-                            <button
-                                onClick={closeModal}
-                                disabled={updatingStatus}
-                                className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        {/* Modal Body — Dropdown */}
-                        <div className="px-6 py-5">
-                            <p className="text-sm text-gray-600 mb-1">
-                                Current status:{" "}
-                                <span className="font-semibold capitalize">
-                                    {selectedStudent.student_status || "—"}
-                                </span>
-                            </p>
-
-                            <label className="block text-sm font-semibold text-gray-700 mt-4 mb-1.5">
-                                New Status
-                            </label>
-                            <select
-                                value={newStatus}
-                                onChange={(e) => setNewStatus(e.target.value)}
-                                disabled={updatingStatus}
-                                className="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors disabled:opacity-50"
-                            >
-                                {STUDENT_STATUSES.map((s) => (
-                                    <option key={s.value} value={s.value}>
-                                        {s.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Modal Footer */}
-                        <div className="px-6 py-3 border-t bg-gray-50 flex items-center justify-end gap-3">
-                            <button
-                                onClick={closeModal}
-                                disabled={updatingStatus}
-                                className="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-40"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSubmitStatus}
-                                disabled={updatingStatus || newStatus === selectedStudent.student_status}
-                                className="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                {updatingStatus && (
-                                    <div className="h-4 w-4 border-2 border-blue-200 border-t-white rounded-full animate-spin" />
-                                )}
-                                {updatingStatus ? "Updating..." : "Submit"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

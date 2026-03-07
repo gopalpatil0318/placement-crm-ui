@@ -1,18 +1,31 @@
 import { useCreateDepartment } from "@/hooks/collegeadmin/departmentManagement/useCreateDepartment";
+import { DEPT_TYPES } from "@/validators/DepartmentSchema";
+
+// ========================
+// CONSTANTS
+// ========================
 
 const DEPT_TYPE_OPTIONS = [
-  { value: "", label: "Select Department Type" },
-  { value: "engineering", label: "Engineering" },
-  { value: "science", label: "Science" },
-  { value: "", label: "Arts" },
-  { value: "commerce", label: "Commerce" },
-  { value: "management", label: "Management" },
-  { value: "other", label: "Other" },
+  { value: "", label: "Select Department Type (optional)" },
+  ...DEPT_TYPES.map((t) => ({
+    value: t,
+    label: t.charAt(0).toUpperCase() + t.slice(1),
+  })),
 ];
 
+// ========================
+// COMPONENT
+// ========================
+
 const CreateDepartmentForm = () => {
-  const { formData, errors, loading, handleChange, handleSubmit } =
+  const { formData, errors, loading, handleChange, handleSubmit, handleCancel } =
     useCreateDepartment();
+
+  // Dynamic semester/year hint
+  const semYearHint =
+    formData.programDurationYears && formData.totalSemesters
+      ? `${formData.totalSemesters} semesters = ${formData.programDurationYears} years × ${Math.round(formData.totalSemesters / formData.programDurationYears)} semesters/year`
+      : null;
 
   return (
     <div className="p-8 bg-white rounded-xl border">
@@ -21,7 +34,7 @@ const CreateDepartmentForm = () => {
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Row 1 - Name & Code */}
+        {/* Row 1 — Name & Code */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -32,35 +45,39 @@ const CreateDepartmentForm = () => {
               value={formData.deptName}
               onChange={handleChange}
               placeholder="e.g. Computer Engineering"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              maxLength={150}
+              className={`w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.deptName ? "border-red-400 bg-red-50" : "border-gray-300"}`}
             />
             {errors.deptName && (
-              <p className="text-xs text-gray-500 mt-1">{errors.deptName}</p>
+              <p className="text-xs text-red-500 mt-1">{errors.deptName}</p>
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Department Code <span className="text-red-500 ml-0.5">*</span>
+              Department Code
+              <span className="text-gray-400 text-xs ml-1">(optional)</span>
             </label>
             <input
               name="deptCode"
               value={formData.deptCode}
               onChange={handleChange}
               placeholder="e.g. CE"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              maxLength={20}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
             />
-            {errors.deptCode && (
-              <p className="text-xs text-gray-500 mt-1">{errors.deptCode}</p>
-            )}
+            <p className="text-xs text-gray-400 mt-1">
+              Short code like CE, IT, MECH — auto-uppercased
+            </p>
           </div>
         </div>
 
-        {/* Row 2 - Type */}
+        {/* Row 2 — Type */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Department Type <span className="text-red-500 ml-0.5">*</span>
+              Department Type
+              <span className="text-gray-400 text-xs ml-1">(optional)</span>
             </label>
             <select
               name="deptType"
@@ -68,24 +85,20 @@ const CreateDepartmentForm = () => {
               onChange={handleChange}
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
-              {DEPT_TYPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              {DEPT_TYPE_OPTIONS.map((opt) => (
+                <option key={opt.value || "placeholder"} value={opt.value}>
+                  {opt.label}
                 </option>
               ))}
             </select>
-            {errors.deptType && (
-              <p className="text-xs text-gray-500 mt-1">{errors.deptType}</p>
-            )}
           </div>
         </div>
 
-        {/* Row 3 - Duration & Semesters */}
+        {/* Row 3 — Duration & Semesters */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Program Duration (Years){" "}
-              <span className="text-red-500 ml-0.5">*</span>
+              Program Duration (Years)
             </label>
             <input
               type="number"
@@ -94,11 +107,10 @@ const CreateDepartmentForm = () => {
               onChange={handleChange}
               min={1}
               max={6}
-              placeholder="e.g. 4"
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {errors.programDurationYears && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-red-500 mt-1">
                 {errors.programDurationYears}
               </p>
             )}
@@ -106,7 +118,7 @@ const CreateDepartmentForm = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Total Semesters <span className="text-red-500 ml-0.5">*</span>
+              Total Semesters
             </label>
             <input
               type="number"
@@ -115,32 +127,49 @@ const CreateDepartmentForm = () => {
               onChange={handleChange}
               min={1}
               max={12}
-              placeholder="e.g. 8"
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {errors.totalSemesters && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-red-500 mt-1">
                 {errors.totalSemesters}
               </p>
             )}
           </div>
         </div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-medium transition"
-        >
-          {loading ? (
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-              Creating...
-            </div>
-          ) : (
-            <>Create Department</>
-          )}
-        </button>
+        {/* Semester/Year hint */}
+        {semYearHint && (
+          <p className="text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-lg font-medium">
+            💡 {semYearHint}
+          </p>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-lg font-medium transition disabled:opacity-60"
+          >
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Creating...
+              </div>
+            ) : (
+              "Create Department"
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={loading}
+            className="px-6 py-2.5 rounded-lg font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition disabled:opacity-40"
+          >
+            Cancel
+          </button>
+        </div>
       </form>
     </div>
   );

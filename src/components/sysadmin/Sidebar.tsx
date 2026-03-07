@@ -1,19 +1,13 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import {
+  Database,
   LayoutDashboard,
   ChevronDown,
-  BarChart3,
-  LayoutGrid,
-  Database,
-  LineChart,
-  GraduationCap,
-  LogOut, // Import LogOut icon
-  User as UserIcon, // Generic user icon
+  LogOut,
+  User as UserIcon,
 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/sysadmin/useAuth"; // Import your custom hook
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/sysadmin/useAuth";
 
 interface SubItem {
   label: string;
@@ -24,112 +18,54 @@ interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   path?: string;
-  badge?: string;
   subItems?: SubItem[];
 }
 
-// Your existing nav items
-const navItems: { section: string; items: NavItemProps[] }[] = [
+const navItems: NavItemProps[] = [
   {
-    section: "Super Admin",
-    items: [
-      {
-        icon: <Database size={18} />,
-        label: "Colleges",
-        subItems: [
-          { label: "View Colleges", path: "/sysadmin/view-colleges" },
-          { label: "Create College", path: "/sysadmin/create-college" },
-        ],
-      },
-    ],
+    icon: <LayoutDashboard size={18} />,
+    label: "Dashboard",
+    path: "/sysadmin/dashboard",
   },
   {
-    section: "Navigation",
-    items: [
-      {
-        icon: <LayoutDashboard size={18} />,
-        label: "Dashboard",
-        badge: "2",
-        subItems: [
-          { label: "Default", path: "/sysadmin/dashboard" },
-          { label: "Analytics", path: "/sysadmin/analytics" },
-          { label: "Finance", path: "/sysadmin/finance" },
-        ],
-      },
-      {
-        icon: <LayoutGrid size={18} />,
-        label: "Layouts",
-        path: "/sysadmin/layouts",
-      },
-    ],
-  },
-  {
-    section: "Widget",
-    items: [
-      {
-        icon: <BarChart3 size={18} />,
-        label: "Statistics",
-        path: "/sysadmin/statistics",
-      },
-      { icon: <Database size={18} />, label: "Data", path: "/sysadmin/data" },
-      {
-        icon: <LineChart size={18} />,
-        label: "Chart",
-        path: "/sysadmin/chart",
-      },
-    ],
-  },
-  {
-    section: "Admin Panel",
-    items: [
-      {
-        icon: <GraduationCap size={18} />,
-        label: "Online Courses",
-        path: "/sysadmin/courses",
-        subItems: [{ label: "All Courses", path: "/sysadmin/courses/all" }],
-      },
+    icon: <Database size={18} />,
+    label: "Colleges",
+    subItems: [
+      { label: "View Colleges", path: "/sysadmin/colleges" },
+      { label: "Create College", path: "/sysadmin/colleges/create" },
     ],
   },
 ];
 
 export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   const location = useLocation();
-  const { user, logout } = useAuth(); // Get user data and logout function
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
-  // Initialize expandedItems
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
-    const activeSection = navItems
-      .flatMap((section) => section.items)
-      .find((item) =>
-        item.subItems?.some((sub) => location.pathname.startsWith(sub.path)),
-      )?.label;
+    const activeItem = navItems.find((item) =>
+      item.subItems?.some((sub) => location.pathname.startsWith(sub.path))
+    )?.label;
 
-    const initial = ["Dashboard"];
-    if (activeSection && !initial.includes(activeSection)) {
-      initial.push(activeSection);
-    }
-    return initial;
+    return activeItem ? [activeItem] : ["Colleges"];
   });
 
   const toggleExpand = (label: string) => {
     setExpandedItems((prev) =>
       prev.includes(label)
         ? prev.filter((item) => item !== label)
-        : [...prev, label],
+        : [...prev, label]
     );
   };
 
-  // Auto-expand active section
   useEffect(() => {
-    const activeSection = navItems
-      .flatMap((section) => section.items)
-      .find((item) =>
-        item.subItems?.some((sub) => location.pathname.startsWith(sub.path)),
-      )?.label;
+    const activeItem = navItems.find((item) =>
+      item.subItems?.some((sub) => location.pathname.startsWith(sub.path))
+    )?.label;
 
-    if (activeSection) {
+    if (activeItem) {
       setExpandedItems((prev) =>
-        prev.includes(activeSection) ? prev : [...prev, activeSection],
+        prev.includes(activeItem) ? prev : [...prev, activeItem]
       );
     }
   }, [location.pathname]);
@@ -137,9 +73,8 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   const handleLogout = async () => {
     try {
       await logout();
-      // Navigation to login is handled inside useAuth or by the ProtectedRoute
-    } catch (error) {
-      console.error("Logout failed", error);
+    } finally {
+      navigate("/sysadmin/login");
     }
   };
 
@@ -148,15 +83,15 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
       className={`h-screen bg-white border-r flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "w-[280px]" : "w-0"}`}
     >
       <div className="flex flex-col h-full min-w-[280px]">
-        {/* Header: Logo */}
-        <div className="px-6 py-5 flex items-center gap-2">
+        {/* Logo */}
+        <div className="px-6 py-5 flex items-center gap-2 shrink-0">
           <span className="text-2xl font-bold text-blue-600 tracking-tight">
             PCRM
           </span>
         </div>
 
-        {/* Header: Profile Card (Now Dynamic) */}
-        <div className="px-4 mb-2">
+        {/* Profile Card */}
+        <div className="px-4 mb-2 shrink-0">
           <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-100 transition-colors group">
             <div className="flex items-center gap-3 overflow-hidden">
               <div className="h-10 w-10 shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
@@ -177,31 +112,28 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
           </div>
         </div>
 
-        {/* Scrollable Navigation */}
+        {/* Navigation */}
         <nav className="flex-1 mt-2 px-4 text-sm overflow-y-auto custom-scrollbar pb-4">
-          {navItems.map((section, idx) => (
-            <div key={section.section} className={idx !== 0 ? "mt-8" : ""}>
-              <p className="mb-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {section.section}
-              </p>
-              <div className="space-y-1">
-                {section.items.map((item) => (
-                  <NavItem
-                    key={item.label}
-                    {...item}
-                    isExpanded={expandedItems.includes(item.label)}
-                    onToggle={() => toggleExpand(item.label)}
-                    activePath={location.pathname}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+          <p className="mb-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Super Admin
+          </p>
+          <div className="space-y-1">
+            {navItems.map((item) => (
+              <NavItem
+                key={item.label}
+                {...item}
+                isExpanded={expandedItems.includes(item.label)}
+                onToggle={() => toggleExpand(item.label)}
+                activePath={location.pathname}
+              />
+            ))}
+          </div>
         </nav>
 
-        {/* Footer: Logout Button */}
-        <div className="p-4 border-t border-gray-100 bg-white">
+        {/* Logout */}
+        <div className="p-4 border-t border-gray-100 bg-white shrink-0">
           <button
+            type="button"
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200 group font-medium"
           >
@@ -217,12 +149,10 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   );
 }
 
-// Sub-component for individual items (Unchanged logic, just keeping it consistent)
-function NavItem({
+const NavItem = React.memo(function NavItem({
   icon,
   label,
   path,
-  badge,
   subItems,
   isExpanded,
   onToggle,
@@ -234,18 +164,18 @@ function NavItem({
 }) {
   const hasSubItems = subItems && subItems.length > 0;
   const isActive =
-    path === activePath || subItems?.some((sub) => sub.path === activePath);
+    path === activePath || subItems?.some((sub) => activePath.startsWith(sub.path));
 
   return (
     <div className="mb-1">
       {hasSubItems ? (
         <button
+          type="button"
           onClick={onToggle}
-          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 group ${
-            isActive
-              ? "bg-blue-50 text-blue-600 font-medium"
-              : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
-          }`}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 group ${isActive
+            ? "bg-blue-50 text-blue-600 font-medium"
+            : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+            }`}
         >
           <div className="flex items-center gap-3">
             <span
@@ -256,30 +186,21 @@ function NavItem({
             {label}
           </div>
 
-          <div className="flex items-center gap-2">
-            {badge && (
-              <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full font-bold">
-                {badge}
-              </span>
-            )}
-            <ChevronDown
-              size={16}
-              className={`transition-transform duration-300 ${isExpanded ? "rotate-180" : ""} ${
-                isActive
-                  ? "text-blue-600"
-                  : "text-gray-400 group-hover:text-blue-600"
+          <ChevronDown
+            size={16}
+            className={`transition-transform duration-300 ${isExpanded ? "rotate-180" : ""} ${isActive
+              ? "text-blue-600"
+              : "text-gray-400 group-hover:text-blue-600"
               }`}
-            />
-          </div>
+          />
         </button>
       ) : (
         <Link
           to={path || "#"}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
-            activePath === path
-              ? "bg-blue-50 text-blue-600 font-medium"
-              : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
-          }`}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${activePath === path
+            ? "bg-blue-50 text-blue-600 font-medium"
+            : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+            }`}
         >
           <span
             className={`${activePath === path ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"} transition-colors`}
@@ -296,18 +217,16 @@ function NavItem({
             <Link
               key={sub.path}
               to={sub.path}
-              className={`flex items-center gap-2 py-2 px-3 rounded-md transition-all duration-200 group ${
-                activePath === sub.path
-                  ? "text-blue-600 bg-blue-50/50 font-medium"
-                  : "text-gray-500 hover:text-blue-600"
-              }`}
+              className={`flex items-center gap-2 py-2 px-3 rounded-md transition-all duration-200 group ${activePath === sub.path || activePath.startsWith(sub.path + "/")
+                ? "text-blue-600 bg-blue-50/50 font-medium"
+                : "text-gray-500 hover:text-blue-600"
+                }`}
             >
               <span
-                className={`h-1.5 w-1.5 rounded-full transition-all ${
-                  activePath === sub.path
-                    ? "bg-blue-600 scale-125"
-                    : "bg-gray-300 group-hover:bg-blue-600"
-                }`}
+                className={`h-1.5 w-1.5 rounded-full transition-all ${activePath === sub.path || activePath.startsWith(sub.path + "/")
+                  ? "bg-blue-600 scale-125"
+                  : "bg-gray-300 group-hover:bg-blue-600"
+                  }`}
               />
               {sub.label}
             </Link>
@@ -316,4 +235,4 @@ function NavItem({
       )}
     </div>
   );
-}
+});

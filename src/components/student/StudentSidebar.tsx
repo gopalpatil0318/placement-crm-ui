@@ -1,19 +1,24 @@
-"use client";
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
     LayoutDashboard,
     ChevronDown,
-    BarChart3,
-    LayoutGrid,
-    Database,
-    LineChart,
-    GraduationCap,
-    LogOut,
     User as UserIcon,
+    Briefcase,
+    FileText,
+    Award,
+    Settings,
+    LogOut,
+    Lock,
+    ClipboardList,
 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useStudentAuth } from "@/hooks/student/useStudentAuth";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface SubItem {
     label: string;
@@ -24,89 +29,89 @@ interface NavItemProps {
     icon: React.ReactNode;
     label: string;
     path?: string;
-    badge?: string;
     subItems?: SubItem[];
+    disabled?: boolean;
+    disabledMessage?: string;
 }
-
-const navItems: { section: string; items: NavItemProps[] }[] = [
-    {
-        section: "Student Profile",
-        items: [
-            {
-                icon: <Database size={18} />,
-                label: "Students",
-                subItems: [
-                    { label: "Student Dashboard", path: "/student/dashboard" },
-                    { label: "Student Profile", path: "/student/profile" },
-                ],
-            },
-        ],
-    },
-    {
-        section: "Update Profile",
-        items: [
-            {
-                icon: <UserIcon size={18} />,
-                label: "Profile Forms",
-                subItems: [
-                    { label: "Personal Info", path: "/student/personal-info" },
-                    { label: "Academic Info", path: "/student/academic-info" },
-                    { label: "Semester Info", path: "/student/sem-info" },
-                    { label: "Skills", path: "/student/skills" },
-                    { label: "Experience", path: "/student/experience" },
-                    { label: "Projects", path: "/student/projects" },
-                    { label: "Certificates", path: "/student/certificates" },
-                    { label: "Achievements", path: "/student/achievements" },
-                    { label: "Activities", path: "/student/activities" },
-                    { label: "Profile Links", path: "/student/profile-links" },
-                ],
-            },
-        ],
-    },
-    {
-        section: "Navigation",
-        items: [
-            {
-                icon: <LayoutDashboard size={18} />,
-                label: "Dashboard",
-                badge: "2",
-                subItems: [
-                    { label: "Default", path: "/student/dashboard" },
-                    { label: "Analytics", path: "/student/analytics" },
-                    { label: "Finance", path: "/student/finance" },
-                ],
-            },
-            {
-                icon: <LayoutGrid size={18} />,
-                label: "Layouts",
-                path: "/student/layouts",
-            },
-        ],
-    },
-    {
-        section: "Widget",
-        items: [
-            { icon: <BarChart3 size={18} />, label: "Statistics", path: "/student/statistics" },
-            { icon: <Database size={18} />, label: "Data", path: "/student/data" },
-            { icon: <LineChart size={18} />, label: "Chart", path: "/student/chart" },
-        ],
-    },
-    {
-        section: "Student Panel",
-        items: [
-            {
-                icon: <GraduationCap size={18} />,
-                label: "Online Courses",
-                path: "/student/courses",
-                subItems: [{ label: "All Courses", path: "/student/courses/all" }],
-            },
-        ],
-    },
-];
 
 export default function Sidebar({ isOpen }: { isOpen: boolean }) {
     const location = useLocation();
+    const navigate = useNavigate();
     const { user, logout } = useStudentAuth();
+
+    const isProfileApproved = user?.profileIsApproved === true;
+
+    const navItems: { section: string; items: NavItemProps[] }[] = useMemo(() => [
+        {
+            section: "Main",
+            items: [
+                {
+                    icon: <LayoutDashboard size={18} />,
+                    label: "Dashboard",
+                    path: "/student/dashboard",
+                },
+                {
+                    icon: <ClipboardList size={18} />,
+                    label: "Student Profile",
+                    path: "/student/profile",
+                },
+                {
+                    icon: <UserIcon size={18} />,
+                    label: "My Profile",
+                    subItems: [
+                        { label: "Personal Info", path: "/student/personal-info" },
+                        { label: "Academic Info", path: "/student/academic-info" },
+                        { label: "Semester Info", path: "/student/sem-info" },
+                        { label: "Skills", path: "/student/skills" },
+                        { label: "Experience", path: "/student/experience" },
+                        { label: "Projects", path: "/student/projects" },
+                        { label: "Certificates", path: "/student/certificates" },
+                        { label: "Achievements", path: "/student/achievements" },
+                        { label: "Activities", path: "/student/activities" },
+                        { label: "Profile Links", path: "/student/profile-links" },
+                    ],
+                },
+            ],
+        },
+        {
+            section: "Placements",
+            items: [
+                {
+                    icon: <Briefcase size={18} />,
+                    label: "Job Listings",
+                    path: "/student/jobs",
+                    disabled: !isProfileApproved,
+                    disabledMessage: "Complete and get your profile approved to access this section",
+                },
+                {
+                    icon: <FileText size={18} />,
+                    label: "My Applications",
+                    path: "/student/applications",
+                    disabled: !isProfileApproved,
+                    disabledMessage: "Complete and get your profile approved to access this section",
+                },
+                {
+                    icon: <Award size={18} />,
+                    label: "Placement Status",
+                    path: "/student/placements",
+                    disabled: !isProfileApproved,
+                    disabledMessage: "Complete and get your profile approved to access this section",
+                },
+            ],
+        },
+        {
+            section: "Account",
+            items: [
+                {
+                    icon: <Settings size={18} />,
+                    label: "Settings",
+                    subItems: [
+                        { label: "Change Password", path: "/student/change-password" },
+                    ],
+                },
+            ],
+        },
+    ], [isProfileApproved]);
 
     const [expandedItems, setExpandedItems] = useState<string[]>(() => {
         const activeSection = navItems
@@ -117,10 +122,8 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                 )
             )?.label;
 
-        const initial = ["Dashboard"];
-        if (activeSection && !initial.includes(activeSection)) {
-            initial.push(activeSection);
-        }
+        const initial: string[] = [];
+        if (activeSection) initial.push(activeSection);
         return initial;
     });
 
@@ -146,15 +149,21 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                 prev.includes(activeSection) ? prev : [...prev, activeSection]
             );
         }
-    }, [location.pathname]);
+    }, [location.pathname, navItems]);
 
     const handleLogout = async () => {
         try {
             await logout();
-        } catch (error) {
-            console.error("Logout failed", error);
+            navigate("/student/login", { replace: true });
+        } catch {
+            navigate("/student/login", { replace: true });
         }
     };
+
+    const displayName = user?.firstName
+        ? `${user.firstName} ${user.lastName || ""}`.trim()
+        : user?.email || "Student";
+    const displayDept = user?.deptName || "Student";
 
     return (
         <aside
@@ -171,33 +180,30 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
 
                 {/* Header: Profile Card */}
                 <div className="px-4 mb-2">
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-100 transition-colors group">
+                    <Link
+                        to="/student/profile"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-100 transition-colors group"
+                    >
                         <div className="flex items-center gap-3 overflow-hidden">
                             <div className="h-10 w-10 shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
                                 <UserIcon size={20} />
                             </div>
                             <div className="truncate">
-                                <p
-                                    className="text-sm font-semibold text-gray-900 truncate"
-                                    title={user?.email}
-                                >
-                                    {user?.email || "Student"}
+                                <p className="text-sm font-semibold text-gray-900 truncate" title={displayName}>
+                                    {displayName}
                                 </p>
-                                <p className="text-xs text-gray-500 capitalize">
-                                    {user?.role?.replace("_", " ") || "Student"}
+                                <p className="text-xs text-gray-500 truncate" title={displayDept}>
+                                    {displayDept}
                                 </p>
                             </div>
                         </div>
-                    </div>
+                    </Link>
                 </div>
 
                 {/* Scrollable Navigation */}
                 <nav className="flex-1 mt-2 px-4 text-sm overflow-y-auto custom-scrollbar pb-4">
                     {navItems.map((section, idx) => (
-                        <div
-                            key={section.section}
-                            className={idx !== 0 ? "mt-8" : ""}
-                        >
+                        <div key={section.section} className={idx !== 0 ? "mt-8" : ""}>
                             <p className="mb-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                                 {section.section}
                             </p>
@@ -222,10 +228,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                         onClick={handleLogout}
                         className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200 group font-medium cursor-pointer"
                     >
-                        <LogOut
-                            size={18}
-                            className="group-hover:scale-110 transition-transform"
-                        />
+                        <LogOut size={18} className="group-hover:scale-110 transition-transform" />
                         <span>Log Out</span>
                     </button>
                 </div>
@@ -234,13 +237,13 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
     );
 }
 
-// Sub-component for individual nav items
 function NavItem({
     icon,
     label,
     path,
-    badge,
     subItems,
+    disabled,
+    disabledMessage,
     isExpanded,
     onToggle,
     activePath,
@@ -254,6 +257,25 @@ function NavItem({
         path === activePath ||
         subItems?.some((sub) => sub.path === activePath);
 
+    if (disabled) {
+        return (
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 cursor-not-allowed select-none">
+                            <span className="text-gray-300">{icon}</span>
+                            <span>{label}</span>
+                            <Lock size={14} className="ml-auto text-gray-300" />
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[200px]">
+                        <p className="text-xs">{disabledMessage}</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
+    }
+
     return (
         <div className="mb-1">
             {hasSubItems ? (
@@ -265,32 +287,15 @@ function NavItem({
                         }`}
                 >
                     <div className="flex items-center gap-3">
-                        <span
-                            className={`${isActive
-                                ? "text-blue-600"
-                                : "text-gray-400 group-hover:text-blue-600"
-                                } transition-colors`}
-                        >
+                        <span className={`${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"} transition-colors`}>
                             {icon}
                         </span>
                         {label}
                     </div>
-
-                    <div className="flex items-center gap-2">
-                        {badge && (
-                            <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full font-bold">
-                                {badge}
-                            </span>
-                        )}
-                        <ChevronDown
-                            size={16}
-                            className={`transition-transform duration-300 ${isExpanded ? "rotate-180" : ""
-                                } ${isActive
-                                    ? "text-blue-600"
-                                    : "text-gray-400 group-hover:text-blue-600"
-                                }`}
-                        />
-                    </div>
+                    <ChevronDown
+                        size={16}
+                        className={`transition-transform duration-300 ${isExpanded ? "rotate-180" : ""} ${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"}`}
+                    />
                 </button>
             ) : (
                 <Link
@@ -300,12 +305,7 @@ function NavItem({
                         : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
                         }`}
                 >
-                    <span
-                        className={`${activePath === path
-                            ? "text-blue-600"
-                            : "text-gray-400 group-hover:text-blue-600"
-                            } transition-colors`}
-                    >
+                    <span className={`${activePath === path ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"} transition-colors`}>
                         {icon}
                     </span>
                     {label}
@@ -323,12 +323,7 @@ function NavItem({
                                 : "text-gray-500 hover:text-blue-600"
                                 }`}
                         >
-                            <span
-                                className={`h-1.5 w-1.5 rounded-full transition-all ${activePath === sub.path
-                                    ? "bg-blue-600 scale-125"
-                                    : "bg-gray-300 group-hover:bg-blue-600"
-                                    }`}
-                            />
+                            <span className={`h-1.5 w-1.5 rounded-full transition-all ${activePath === sub.path ? "bg-blue-600 scale-125" : "bg-gray-300 group-hover:bg-blue-600"}`} />
                             {sub.label}
                         </Link>
                     ))}

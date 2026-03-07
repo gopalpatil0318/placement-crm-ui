@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 import { useNavigate } from "react-router-dom";
@@ -9,42 +9,78 @@ interface CreateUserForm {
     userEmail: string;
     userPassword: string;
     userRole: string;
+    deptId: string | null;
 }
 
-type FormErrors = Partial<CreateUserForm>;
+interface Department {
+    dept_id: string;
+    dept_name: string;
+}
+
+type FormErrors = Partial<Record<keyof CreateUserForm, string>>;
 
 export const useCreateUser = () => {
     const [formData, setFormData] = useState<CreateUserForm>({
         userName: "",
         userEmail: "",
         userPassword: "",
-        userRole: ""
+        userRole: "",
+        deptId: null,
     });
     const navigate = useNavigate();
     const [errors, setErrors] = useState<FormErrors>({});
     const [loading, setLoading] = useState(false);
+    const [departments, setDepartments] = useState<Department[]>([]);
+    const [fetchingDepts, setFetchingDepts] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Fetch departments for dropdown
+    useEffect(() => {
+        const fetchDepartments = async () => {
+            setFetchingDepts(true);
+            try {
+                const response = await CollegeAdminService.getDepartments();
+                const depts = response.data || response;
+                setDepartments(Array.isArray(depts) ? depts : []);
+            } catch {
+                // Silently handle — dropdown will be empty
+            } finally {
+                setFetchingDepts(false);
+            }
+        };
+        fetchDepartments();
+    }, []);
+
+    const handleChange = useCallback((
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    ) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-    };
+        setFormData((prev) => ({ ...prev, [name]: value === "" && name === "deptId" ? null : value }));
+        // Clear error for this field
+        setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }, []);
 
-    const handleSubmit = async (
+    const handleSubmit = useCallback(async (
         e: React.FormEvent<HTMLFormElement>
     ): Promise<void> => {
         e.preventDefault();
 
-        // 1. ZOD VALIDATION
+        // ZOD VALIDATION
         const result = userSchemaCreate.safeParse(formData);
-        console.log(result)
+
         if (!result.success) {
-            // Show the first validation error as a toast warning
-            const firstErrorMessage = result.error.issues[0].message;
+            const fieldErrors: FormErrors = {};
+            result.error.issues.forEach((issue) => {
+                const field = issue.path[0] as keyof CreateUserForm;
+                if (!fieldErrors[field]) {
+                    fieldErrors[field] = issue.message;
+                }
+            });
+            setErrors(fieldErrors);
 
             showToast({
-                type: 'warning',
-                title: 'Validation Failed',
-                description: firstErrorMessage,
+                type: "warning",
+                title: "Validation Failed",
+                description: result.error.issues[0].message,
             });
             return;
         }
@@ -53,49 +89,42 @@ export const useCreateUser = () => {
         setLoading(true);
 
         try {
-            // 2. API CALL
             const response = await CollegeAdminService.createUser({
-                userName: formData.userName,
-                userEmail: formData.userEmail,
-                userPassword: formData.userPassword,
-                userRole: formData.userRole
+                user_name: formData.userName,
+                user_email: formData.userEmail,
+                user_password: formData.userPassword,
+                user_role: formData.userRole,
+                dept_id: formData.deptId || null,
             });
-
-            // 3. SUCCESS TOAST
-            const successMessage = response?.message || "User created successfully";
 
             showToast({
-                type: 'success',
-                title: 'Success',
-                description: successMessage,
+                type: "success",
+                title: "Success",
+                description: response?.message || "User created successfully",
             });
 
-            // Reset Form
-            setFormData({
-                userName: "",
-                userEmail: "",
-                userPassword: "",
-                userRole: ""
-            });
+            navigate("/college/view-users");
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error
+                ? error.message
+                : "Something went wrong, please try again";
 
-            navigate("/collegeadmin/view-users")
-        } catch (error: any) {
-            // 4. ERROR TOAST
             showToast({
-                type: 'error',
-                title: 'Error Creating User',
-                description: error.message || "Something went wrong, please try again",
+                type: "error",
+                title: "Error Creating User",
+                description: errorMessage,
             });
-
         } finally {
             setLoading(false);
         }
-    };
+    }, [formData, navigate]);
 
     return {
         formData,
         errors,
         loading,
+        departments,
+        fetchingDepts,
         setErrors,
         handleChange,
         handleSubmit,

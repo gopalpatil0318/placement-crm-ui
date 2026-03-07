@@ -1,46 +1,49 @@
-"use client"
-
 import type React from "react"
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useCallback } from "react"
+import { useNavigate, Link } from "react-router-dom"
 import { useAuth } from "@/hooks/collegeadmin/useAuth"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Mail, Lock, ArrowRight, GraduationCap } from "lucide-react"
+import { AlertCircle, Mail, Lock, ArrowRight, GraduationCap, Eye, EyeOff } from "lucide-react"
 
 export default function CollegeAdminLogin() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [formError, setFormError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const navigate = useNavigate()
   const { login } = useAuth()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError("")
     setIsSubmitting(true)
 
     try {
       await login(email, password)
+      navigate("/college/dashboard")
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Invalid credentials"
 
-      navigate("/collegeadmin/dashboard")
-
-
-    } catch (err: any) {
-      setFormError(err.message || "Invalid institution credentials")
+      // Handle specific error scenarios
+      if (errorMessage.toLowerCase().includes("too many")) {
+        setFormError("Too many login attempts. Please try again in 15 minutes.")
+      } else {
+        setFormError(errorMessage)
+      }
     } finally {
       setIsSubmitting(false)
     }
-  }
+  }, [email, password, login, navigate])
 
   return (
     <div className="min-h-screen w-full flex bg-background font-['Public_Sans',_sans-serif]">
-      {/* Left Section - Design consistency */}
+      {/* Left Section */}
       <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -98,20 +101,32 @@ export default function CollegeAdminLogin() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" title="password" className="font-semibold text-slate-700">Password</Label>
-                <button type="button" className="text-xs text-blue-600 hover:underline font-bold">Forgot Password?</button>
+                <Label htmlFor="password" className="font-semibold text-slate-700">Password</Label>
+                <Link
+                  to="/college/forgot-password"
+                  className="text-xs text-blue-600 hover:underline font-bold"
+                >
+                  Forgot Password?
+                </Link>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 h-11 border-1 border-[#cccccc] focus:ring-2 focus:ring-blue-500/20"
+                  className="pl-10 pr-10 h-11 border-1 border-[#cccccc] focus:ring-2 focus:ring-blue-500/20"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 

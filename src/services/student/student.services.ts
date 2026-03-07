@@ -1,4 +1,4 @@
-import api from "../../lib/api";
+import api from "@/lib/api";
 
 export const StudentProfileService = {
     getProfileCompletion: async () => {
@@ -64,5 +64,20 @@ export const StudentProfileService = {
     getProfileLinks: async () => {
         const response = await api.get("/student/get_profile_links");
         return response.data.data;
+    },
+
+    // Auth-related service methods
+    forgotPassword: async (email: string) => {
+        const response = await api.post("/student/forgot_password", { email });
+        return response.data;
+    },
+
+    changePassword: async (data: {
+        current_password: string;
+        new_password: string;
+        confirm_password: string;
+    }) => {
+        const response = await api.post("/student/change_password", data);
+        return response.data;
     },
 };

@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import {
   LayoutDashboard,
@@ -13,7 +11,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/collegeadmin/useAuth"; // College admin specific hook
+import { useAuth } from "@/hooks/collegeadmin/useAuth";
 
 interface SubItem {
   label: string;
@@ -26,17 +24,32 @@ interface NavItemProps {
   path?: string;
   badge?: string;
   subItems?: SubItem[];
+  /** Roles allowed to see this item. If empty/undefined, all roles can see it. */
+  allowedRoles?: string[];
 }
 
-// Updated navigation items specifically for College Administrators
-const navItems: { section: string; items: NavItemProps[] }[] = [
+interface NavSection {
+  section: string;
+  items: NavItemProps[];
+}
+
+// ========================
+// ROLE-BASED NAVIGATION
+// ========================
+//
+// collegeadmin: Full access (all items)
+// tpo/tpc: Dashboard, Students, Placements, Settings
+// hod/teacher: Dashboard, Students, Settings
+//
+
+const navItems: NavSection[] = [
   {
     section: "Main Navigation",
     items: [
       {
         icon: <LayoutDashboard size={18} />,
         label: "Dashboard",
-        path: "/collegeadmin/dashboard",
+        path: "/college/dashboard",
       },
     ],
   },
@@ -46,30 +59,33 @@ const navItems: { section: string; items: NavItemProps[] }[] = [
       {
         icon: <GraduationCap size={18} />,
         label: "Users",
+        allowedRoles: ["collegeadmin"],
         subItems: [
-          { label: "All Users", path: "/collegeadmin/view-users" },
-          { label: "Create Users", path: "/collegeadmin/create-user" },
+          { label: "All Users", path: "/college/view-users" },
+          { label: "Create Users", path: "/college/create-user" },
         ],
       },
       {
         icon: <UserCheck size={18} />,
         label: "Students",
         subItems: [
+          { label: "All Students", path: "/college/students" },
           {
             label: "Student Registration",
-            path: "/collegeadmin/create-student",
+            path: "/college/create-student",
           },
-          { label: "Bulk Registration", path: "/collegeadmin/bulk-register" },
+          { label: "Bulk Registration", path: "/college/bulk-register" },
         ],
       },
       {
         icon: <BookOpen size={18} />,
         label: "Departments",
+        allowedRoles: ["collegeadmin"],
         subItems: [
-          { label: "All Departments", path: "/collegeadmin/departments" },
+          { label: "All Departments", path: "/college/departments" },
           {
             label: "Create Department",
-            path: "/collegeadmin/create-department",
+            path: "/college/create-department",
           },
         ],
       },
@@ -82,9 +98,10 @@ const navItems: { section: string; items: NavItemProps[] }[] = [
         icon: <BriefcaseBusiness size={18} />,
         label: "Placements",
         badge: "Active",
+        allowedRoles: ["collegeadmin", "tpo", "tpc"],
         subItems: [
-          { label: "Job Drives", path: "/collegeadmin/placements/drives" },
-          { label: "Placement Stats", path: "/collegeadmin/placements/stats" },
+          { label: "Job Drives", path: "/college/placements/drives" },
+          { label: "Placement Stats", path: "/college/placements/stats" },
         ],
       },
     ],
@@ -94,20 +111,45 @@ const navItems: { section: string; items: NavItemProps[] }[] = [
     items: [
       {
         icon: <Settings size={18} />,
-        label: "College Settings",
-        path: "/collegeadmin/settings",
+        label: "Settings",
+        subItems: [
+          { label: "Change Password", path: "/college/change-password" },
+        ],
       },
     ],
   },
 ];
 
+// ========================
+// FILTER NAV ITEMS BY ROLE
+// ========================
+
+function getFilteredNavItems(role: string | undefined): NavSection[] {
+  if (!role) return [];
+
+  return navItems
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.allowedRoles || item.allowedRoles.includes(role)
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
+// ========================
+// SIDEBAR COMPONENT
+// ========================
+
 export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   const location = useLocation();
   const { user, logout } = useAuth();
 
+  const filteredNav = getFilteredNavItems(user?.role);
+
   // Initialize expandedItems logic from sysadmin
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
-    const activeSection = navItems
+    const activeSection = filteredNav
       .flatMap((section) => section.items)
       .find((item) =>
         item.subItems?.some((sub) => location.pathname.startsWith(sub.path)),
@@ -130,7 +172,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
 
   // Auto-expand logic based on current URL
   useEffect(() => {
-    const activeSection = navItems
+    const activeSection = filteredNav
       .flatMap((section) => section.items)
       .find((item) =>
         item.subItems?.some((sub) => location.pathname.startsWith(sub.path)),
@@ -141,13 +183,13 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
         prev.includes(activeSection) ? prev : [...prev, activeSection],
       );
     }
-  }, [location.pathname]);
+  }, [location.pathname, filteredNav]);
 
   const handleLogout = async () => {
     try {
       await logout();
-    } catch (error) {
-      console.error("Logout failed", error);
+    } catch {
+      // Error toast already shown in context
     }
   };
 
@@ -173,9 +215,9 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
               <div className="truncate">
                 <p
                   className="text-sm font-semibold text-gray-900 truncate"
-                  title={user?.email}
+                  title={user?.name || user?.email}
                 >
-                  {user?.email || "College Admin"}
+                  {user?.name || user?.email || "College User"}
                 </p>
                 <p className="text-xs text-gray-500 capitalize">
                   {user?.role?.replace("_", " ") || "Institution User"}
@@ -187,7 +229,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
 
         {/* Scrollable Nav Sections */}
         <nav className="flex-1 mt-2 px-4 text-sm overflow-y-auto custom-scrollbar pb-4">
-          {navItems.map((section, idx) => (
+          {filteredNav.map((section, idx) => (
             <div key={section.section} className={idx !== 0 ? "mt-8" : ""}>
               <p className="mb-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 {section.section}
@@ -196,7 +238,11 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                 {section.items.map((item) => (
                   <NavItem
                     key={item.label}
-                    {...item}
+                    icon={item.icon}
+                    label={item.label}
+                    path={item.path}
+                    badge={item.badge}
+                    subItems={item.subItems}
                     isExpanded={expandedItems.includes(item.label)}
                     onToggle={() => toggleExpand(item.label)}
                     activePath={location.pathname}
@@ -210,6 +256,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
         {/* Footer Logout Button */}
         <div className="p-4 border-t border-gray-100 bg-white">
           <button
+            type="button"
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200 group font-medium cursor-pointer"
           >
@@ -225,7 +272,21 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
   );
 }
 
-// Sub-component for individual Nav Items
+// ========================
+// NavItem Sub-component
+// ========================
+
+interface NavItemComponentProps {
+  icon: React.ReactNode;
+  label: string;
+  path?: string;
+  badge?: string;
+  subItems?: SubItem[];
+  isExpanded: boolean;
+  onToggle: () => void;
+  activePath: string;
+}
+
 function NavItem({
   icon,
   label,
@@ -235,20 +296,21 @@ function NavItem({
   isExpanded,
   onToggle,
   activePath,
-}: any) {
+}: NavItemComponentProps) {
   const hasSubItems = subItems && subItems.length > 0;
   const isActive =
     path === activePath ||
-    subItems?.some((sub: any) => sub.path === activePath);
+    subItems?.some((sub) => sub.path === activePath);
 
   return (
     <div className="mb-1">
       {hasSubItems ? (
         <button
+          type="button"
           onClick={onToggle}
           className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer ${isActive
-              ? "bg-blue-50 text-blue-600 font-medium"
-              : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+            ? "bg-blue-50 text-blue-600 font-medium"
+            : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
             }`}
         >
           <div className="flex items-center gap-3">
@@ -287,7 +349,7 @@ function NavItem({
 
       {hasSubItems && isExpanded && (
         <div className="ml-9 mt-1.5 space-y-1 relative before:absolute before:top-0 before:bottom-2 before:bg-gray-100">
-          {subItems.map((sub: any) => (
+          {subItems.map((sub) => (
             <Link
               key={sub.path}
               to={sub.path}

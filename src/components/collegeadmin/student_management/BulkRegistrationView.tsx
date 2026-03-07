@@ -63,47 +63,62 @@ const BulkRegistrationView = () => {
   const handleDownloadSample = () => {
     const sampleStudents = [
       {
-        name: "Rohan Das",
+        first_name: "Rohan",
+        middle_name: "Suresh",
+        last_name: "Das",
         email: "rohan.das@example.com",
         pass: "Password@123",
-        dept: "Computer Science",
+        dept: "Computer Engineering",
+        passout: 2026,
         year: 3,
       },
       {
-        name: "Sarah Jenkins",
+        first_name: "Sarah",
+        middle_name: "",
+        last_name: "Jenkins",
         email: "sarah.j@example.com",
         pass: "SecurePass!456",
         dept: "Mechanical Engineering",
+        passout: 2027,
         year: 2,
       },
       {
-        name: "Amit Patel",
+        first_name: "Amit",
+        middle_name: "Rajesh",
+        last_name: "Patel",
         email: "amit.patel@example.com",
         pass: "AmitUser#789",
         dept: "Civil Engineering",
+        passout: 2025,
         year: 4,
       },
       {
-        name: "Emily Chen",
+        first_name: "Emily",
+        middle_name: "",
+        last_name: "Chen",
         email: "emily.chen@example.com",
-        pass: "MySecretPassword2024",
-        dept: "Electrical",
+        pass: "MySecretPass2024",
+        dept: "Electrical Engineering",
+        passout: 2028,
         year: 1,
       },
       {
-        name: "Michael Brown",
+        first_name: "Michael",
+        middle_name: "James",
+        last_name: "Brown",
         email: "michael.b@example.com",
         pass: "TemporaryPass1!",
         dept: "Information Technology",
+        passout: 2026,
         year: 3,
       },
     ];
 
     const headers =
-      "student_name,student_email,student_password,student_department,student_year\n";
+      "first_name,middle_name,last_name,student_email,student_password,dept_name,student_passout_year,current_year\n";
 
     const rows = sampleStudents
-      .map((s) => `${s.name},${s.email},${s.pass},${s.dept},${s.year}`)
+      .map((s) => `${s.first_name},${s.middle_name},${s.last_name},${s.email},${s.pass},${s.dept},${s.passout},${s.year}`)
       .join("\n");
 
     const csvContent = headers + rows;
@@ -122,8 +137,8 @@ const BulkRegistrationView = () => {
       <PageHeader
         title="Bulk Registration"
         breadcrumbs={[
-          { label: "College Admin" },
-          { label: "Students" },
+          { label: "Dashboard", path: "/college/dashboard" },
+          { label: "Students", path: "/college/students" },
           { label: "Bulk Registration", active: true },
         ]}
       />
