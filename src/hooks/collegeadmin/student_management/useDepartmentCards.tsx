@@ -16,9 +16,11 @@ export const useDepartmentCards = () => {
             ]);
             const deptList = Array.isArray(apiData)
                 ? apiData
-                : Array.isArray(apiData?.departments)
-                    ? apiData.departments
-                    : [];
+                : Array.isArray(apiData?.data)
+                    ? apiData.data
+                    : Array.isArray(apiData?.departments)
+                        ? apiData.departments
+                        : [];
             setDepartments(deptList);
             setTotalStudents(studentData?.pagination?.total || 0);
         } catch (err: any) {

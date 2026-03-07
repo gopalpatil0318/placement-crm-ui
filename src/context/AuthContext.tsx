@@ -26,18 +26,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       const response = await api.post<ApiLoginResponse>("/sysadmin/login", { email, password });
-      
-      // Destructure 'data' (the user object) and 'message' (success text) from the API body
-      const { data: userData, message } = response.data;
+
+      // Destructure 'data' and 'message' from the API body
+      const { data: responseData, message } = response.data;
+
+      // Handle both { user: {...} } and flat user object shapes
+      const userData: any = responseData?.user || responseData;
 
       if (!userData) {
         throw new Error("Invalid response: User data missing");
       }
 
       const newUser: User = {
-        id: userData?.id || email,
-        email: userData.email,
-        role: (userData.role || userData.type) as any,
+        id: userData?.user_id || userData?.id || email,
+        email: userData.user_email || userData.email,
+        name: userData.user_name || userData.name,
+        role: (userData.user_role || userData.role || userData.type) as any,
         type: userData.type,
         isActive: true,
       };
@@ -74,11 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       const response = await api.post("/sysadmin/logout");
-      
+
       // 1. Success Toast for Logout
       // Using optional chaining incase response structure differs slightly
       const logoutMessage = response.data?.message || "You have been logged out successfully";
-      
+
       showToast({
         type: "success",
         title: "Logged Out",
@@ -87,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     } catch (error: any) {
       console.error("Logout error", error);
-      
+
       const errorMessage = error.response?.data?.message || "Logout failed on server";
 
       // 2. Error Toast (Optional: You might not want to show an error if you clear the session anyway)
@@ -96,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Logout Issue",
         description: errorMessage,
       });
-      
+
     } finally {
       // 3. Always clear local state, even if the server API failed
       setUser(null);

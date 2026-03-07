@@ -37,7 +37,9 @@ export const BulkUploadSection = ({
           </h3>
         </div>
         <p className="text-sm text-slate-500 mb-4 font-medium">
-          Required: name, email, password, department, year.
+          Required CSV columns: <code className="bg-blue-100 px-1 rounded text-blue-800">first_name</code>, <code className="bg-blue-100 px-1 rounded text-blue-800">last_name</code>, <code className="bg-blue-100 px-1 rounded text-blue-800">student_email</code>,{" "}
+          <code className="bg-blue-100 px-1 rounded text-blue-800">student_password</code>, <code className="bg-blue-100 px-1 rounded text-blue-800">dept_name</code>, <code className="bg-blue-100 px-1 rounded text-blue-800">student_passout_year</code>, <code className="bg-blue-100 px-1 rounded text-blue-800">current_year</code>.
+          Optional: <code className="bg-blue-100 px-1 rounded text-blue-800">middle_name</code>.
         </p>
 
         <button

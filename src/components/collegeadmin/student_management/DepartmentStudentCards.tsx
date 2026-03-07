@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, BookOpen, ArrowRight } from "lucide-react";
+import { Users, BookOpen, ArrowRight, Plus } from "lucide-react";
 import PageHeader from "@/components/collegeadmin/PageHeader";
 import { useDepartmentCards } from "@/hooks/collegeadmin/student_management/useDepartmentCards";
 
@@ -12,13 +12,12 @@ const DepartmentStudentCards: React.FC = () => {
     const { departments, loading } = useDepartmentCards();
 
     const breadcrumbs = [
-        { label: "College Admin" },
-        { label: "Students" },
-        { label: "All Registration", active: true },
+        { label: "Dashboard", path: "/college/dashboard" },
+        { label: "Students", active: true },
     ];
 
     const handleCardClick = (deptId: string) => {
-        navigate(`/collegeadmin/students/${deptId}`);
+        navigate(`/college/students/${deptId}`);
     };
 
     return (
@@ -38,13 +37,22 @@ const DepartmentStudentCards: React.FC = () => {
                             </p>
                         </div>
 
-                        <button
-                            onClick={() => navigate("/collegeadmin/bulk-register")}
-                            className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold mt-3 sm:mt-0"
-                        >
-                            <Users size={16} />
-                            Bulk Register
-                        </button>
+                        <div className="flex items-center gap-3 mt-3 sm:mt-0">
+                            <button
+                                onClick={() => navigate("/college/create-student")}
+                                className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold transition"
+                            >
+                                <Plus size={16} />
+                                Register Student
+                            </button>
+                            <button
+                                onClick={() => navigate("/college/bulk-register")}
+                                className="flex items-center gap-2 px-4 py-2 text-sm bg-white text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 font-bold transition"
+                            >
+                                <Users size={16} />
+                                Bulk Register
+                            </button>
+                        </div>
                     </div>
 
 

@@ -1,8 +1,10 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 
 interface Breadcrumb {
   label: string;
+  path?: string;
   active?: boolean;
 }
 
@@ -15,19 +17,30 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, breadcrumbs }) => {
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        {/* Breadcrumbs Navigation */}
-        <div className="flex items-center gap-2 text-xs text-gray-400 mb-2 uppercase tracking-wider font-semibold">
+        <nav
+          aria-label="Breadcrumb"
+          className="flex items-center gap-2 text-xs text-gray-400 mb-2 uppercase tracking-wider font-semibold"
+        >
           {breadcrumbs.map((crumb, index) => (
-            <React.Fragment key={index}>
-              <span className={crumb.active ? "text-blue-600" : ""}>
-                {crumb.label}
-              </span>
-              {index < breadcrumbs.length - 1 && <ChevronRight size={14} />}
+            <React.Fragment key={crumb.label}>
+              {crumb.path && !crumb.active ? (
+                <Link
+                  to={crumb.path}
+                  className="hover:text-blue-600 transition-colors"
+                >
+                  {crumb.label}
+                </Link>
+              ) : (
+                <span className={crumb.active ? "text-blue-600" : ""}>
+                  {crumb.label}
+                </span>
+              )}
+              {index < breadcrumbs.length - 1 && (
+                <ChevronRight size={14} aria-hidden="true" />
+              )}
             </React.Fragment>
           ))}
-        </div>
-
-        {/* Page Title */}
+        </nav>
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight mt-6">
           {title}
         </h1>

@@ -9,7 +9,7 @@ import { Menu, Search, Sun, Sliders, Settings, Zap, Bell } from "lucide-react";
  */
 export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
   return (
-    <header className="w-full h-16 bg-white border-b flex items-center justify-between px-6">
+    <header className="sticky top-0 z-10 w-full h-16 bg-white border-b flex items-center justify-between px-6">
       {/* LEFT SECTION */}
       <div className="flex items-center gap-4">
         {/* Hamburger Menu Toggle */}

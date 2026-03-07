@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useCollegeProfile } from "./useCollegeProfile";
 import { showToast } from "@/utils/ToastUtils";
 import { SysAdminService } from "@/services/sysadmin/sysadmin.services";
 import { collegeSchemaUpdate } from "@/validators/CollegeSchemaUpdate";
 
 interface EditCollegeForm {
-  college_id: string;
   college_name: string;
   college_subdomain: string;
   college_type: string;
@@ -15,16 +15,15 @@ interface EditCollegeForm {
   college_district: string;
   college_state: string;
   college_pincode: string;
-  college_status: string;
 }
 
 type FormErrors = Partial<Record<keyof EditCollegeForm, string>>;
 
 export const useEditCollege = () => {
   const { college, loading } = useCollegeProfile();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState<EditCollegeForm>({
-    college_id: "",
     college_name: "",
     college_subdomain: "",
     college_type: "",
@@ -34,8 +33,10 @@ export const useEditCollege = () => {
     college_district: "",
     college_state: "",
     college_pincode: "",
-    college_status: "",
   });
+
+  // Store original values to compare for partial updates
+  const originalData = useRef<EditCollegeForm | null>(null);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [updating, setUpdating] = useState(false);
@@ -43,8 +44,7 @@ export const useEditCollege = () => {
 
   useEffect(() => {
     if (college) {
-      setFormData({
-        college_id: college.college_id || "",
+      const data: EditCollegeForm = {
         college_name: college.college_name || "",
         college_subdomain: college.college_subdomain || "",
         college_type: college.college_type || "",
@@ -54,8 +54,9 @@ export const useEditCollege = () => {
         college_district: college.college_district || "",
         college_state: college.college_state || "",
         college_pincode: college.college_pincode || "",
-        college_status: college.college_status || "active",
-      });
+      };
+      setFormData(data);
+      originalData.current = { ...data };
     }
   }, [college]);
 
@@ -65,7 +66,7 @@ export const useEditCollege = () => {
       ...prev,
       [name]: value,
     }));
-    // Clear the field-level error when user starts typing
+
     if (errors[name as keyof EditCollegeForm]) {
       setErrors((prev) => ({
         ...prev,
@@ -75,26 +76,12 @@ export const useEditCollege = () => {
   };
 
   const handleUpdate = async () => {
-    const id = formData.college_id;
-    if (!id) return;
+    const collegeId = college?.college_id;
+    if (!collegeId) return;
 
-    // Validate only the editable fields (exclude college_id and college_status)
-    const validationData = {
-      college_name: formData.college_name,
-      college_subdomain: formData.college_subdomain,
-      college_type: formData.college_type,
-      college_address: formData.college_address,
-      college_city: formData.college_city,
-      college_taluka: formData.college_taluka,
-      college_district: formData.college_district,
-      college_state: formData.college_state,
-      college_pincode: formData.college_pincode,
-    };
-
-    const result = collegeSchemaUpdate.safeParse(validationData);
+    const result = collegeSchemaUpdate.safeParse(formData);
 
     if (!result.success) {
-      // Build field-level errors
       const fieldErrors: FormErrors = {};
       for (const issue of result.error.issues) {
         const fieldName = issue.path[0] as keyof EditCollegeForm;
@@ -104,51 +91,70 @@ export const useEditCollege = () => {
       }
       setErrors(fieldErrors);
 
-      // Show toast for the first error
-      const firstErrorMessage = result.error.issues[0].message;
       showToast({
         type: "warning",
         title: "Validation Failed",
-        description: firstErrorMessage,
+        description: result.error.issues[0].message,
       });
       return;
     }
 
-    // Clear errors on successful validation
+    // Only send changed fields
+    const changedFields: Partial<EditCollegeForm> = {};
+    if (originalData.current) {
+      for (const key of Object.keys(formData) as (keyof EditCollegeForm)[]) {
+        if (formData[key] !== originalData.current[key]) {
+          changedFields[key] = formData[key];
+        }
+      }
+    }
+
+    if (Object.keys(changedFields).length === 0) {
+      showToast({
+        type: "info",
+        title: "No Changes",
+        description: "No fields have been modified.",
+      });
+      return;
+    }
+
     setErrors({});
 
     try {
       setUpdating(true);
       setError(null);
 
-      const payload = {
-        college_name: formData.college_name,
-        college_subdomain: formData.college_subdomain,
-        college_type: formData.college_type,
-        college_address: formData.college_address,
-        college_city: formData.college_city,
-        college_taluka: formData.college_taluka,
-        college_district: formData.college_district,
-        college_state: formData.college_state,
-        college_pincode: formData.college_pincode,
-        college_status: formData.college_status,
-      };
-
-      const res = await SysAdminService.updateCollege(id, payload);
+      const res = await SysAdminService.updateCollege(collegeId, changedFields);
 
       if (res?.success) {
         showToast({
           type: "success",
           title: "Updated College Successfully",
-          description: res.data.message,
+          description: res.message || "College updated.",
         });
+        navigate(`/sysadmin/colleges/${collegeId}`);
       }
 
       return res;
-    } catch (err) {
-      setError("Failed to update college");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to update college";
+      setError(message);
+      showToast({
+        type: "error",
+        title: "Update Failed",
+        description: message,
+      });
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleCancel = () => {
+    const collegeId = college?.college_id;
+    if (collegeId) {
+      navigate(`/sysadmin/colleges/${collegeId}`);
+    } else {
+      navigate("/sysadmin/colleges");
     }
   };
 
@@ -160,5 +166,6 @@ export const useEditCollege = () => {
     formData,
     handleChange,
     handleUpdate,
+    handleCancel,
   };
 };

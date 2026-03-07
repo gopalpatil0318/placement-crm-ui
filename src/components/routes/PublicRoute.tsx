@@ -27,7 +27,7 @@ export const PublicRoute = ({ children }: PublicRouteProps) => {
     collegeAuth?.user?.role &&
     COLLEGE_ROLES.includes(collegeAuth.user.role)
   ) {
-    return <Navigate to="/collegeadmin/dashboard" replace />;
+    return <Navigate to="/college/dashboard" replace />;
   }
 
   return <>{children}</>;

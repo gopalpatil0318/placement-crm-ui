@@ -5,8 +5,8 @@ import PageHeader from '@/components/collegeadmin/PageHeader';
 const UpdateUser = () => {
 
     const breadcrumbs = [
-        { label: "College Admin" },
-        { label: "Users" },
+        { label: "Dashboard", path: "/college/dashboard" },
+        { label: "Users", path: "/college/view-users" },
         { label: "Update User", active: true },
     ];
 

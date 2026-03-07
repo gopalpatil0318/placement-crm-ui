@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 
@@ -11,8 +11,11 @@ interface Pagination {
 
 interface StudentFilters {
     deptId: string;
-    passoutYear: number;
-    status: string;
+    passoutYear: number;       // 0 = all years
+    status: string;            // "" = all statuses
+    search: string;
+    profileComplete: string;   // "" | "true" | "false"
+    profileApproved: string;   // "" | "true" | "false"
     page: number;
     limit: number;
 }
@@ -36,23 +39,34 @@ export const useStudentList = (options?: UseStudentListOptions) => {
     });
     const [filters, setFilters] = useState<StudentFilters>({
         deptId: options?.initialDeptId || "",
-        passoutYear: options?.initialPassoutYear || new Date().getFullYear() + 1,
-        status: options?.initialStatus || "active",
+        passoutYear: options?.initialPassoutYear || 0,
+        status: options?.initialStatus || "",
+        search: "",
+        profileComplete: "",
+        profileApproved: "",
         page: 1,
         limit: 20,
     });
 
-    // Fetch departments for the filter dropdown
+    // Debounced search
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const handleSearchChange = useCallback((value: string) => {
+        setFilters((prev) => ({ ...prev, search: value, page: 1 }));
+
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        searchTimerRef.current = setTimeout(() => {
+            setDebouncedSearch(value);
+        }, 300);
+    }, []);
+
+    // Fetch departments for filter dropdown
     const fetchDepartments = useCallback(async () => {
         try {
-            const apiData = await CollegeAdminService.getDepartments();
-            setDepartments(
-                Array.isArray(apiData)
-                    ? apiData
-                    : Array.isArray(apiData?.departments)
-                        ? apiData.departments
-                        : []
-            );
+            const apiData = await CollegeAdminService.getDepartments({ is_active: true, limit: 100 });
+            const deptList = Array.isArray(apiData?.data) ? apiData.data : Array.isArray(apiData) ? apiData : [];
+            setDepartments(deptList);
         } catch {
             // Silently fail — departments dropdown will just be empty
         }
@@ -67,6 +81,9 @@ export const useStudentList = (options?: UseStudentListOptions) => {
                 dept_id: filters.deptId || undefined,
                 student_passout_year: filters.passoutYear || undefined,
                 student_status: filters.status || undefined,
+                search: debouncedSearch || undefined,
+                profile_complete: filters.profileComplete ? filters.profileComplete === "true" : undefined,
+                profile_is_approved: filters.profileApproved ? filters.profileApproved === "true" : undefined,
                 page: filters.page,
                 limit: filters.limit,
             });
@@ -97,7 +114,7 @@ export const useStudentList = (options?: UseStudentListOptions) => {
         } finally {
             setLoading(false);
         }
-    }, [filters]);
+    }, [filters.deptId, filters.passoutYear, filters.status, debouncedSearch, filters.profileComplete, filters.profileApproved, filters.page, filters.limit]);
 
     useEffect(() => {
         fetchDepartments();
@@ -107,14 +124,29 @@ export const useStudentList = (options?: UseStudentListOptions) => {
         fetchStudents();
     }, [fetchStudents]);
 
-    const updateFilters = (partial: Partial<StudentFilters>) => {
+    // Cleanup debounce timer
+    useEffect(() => {
+        return () => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        };
+    }, []);
+
+    const updateFilters = useCallback((partial: Partial<StudentFilters>) => {
         setFilters((prev) => ({
             ...prev,
             ...partial,
             // Reset to page 1 when filters change (unless page is being set)
             page: partial.page !== undefined ? partial.page : 1,
         }));
-    };
+    }, []);
+
+    const handleLimitChange = useCallback((limit: number) => {
+        updateFilters({ limit, page: 1 });
+    }, [updateFilters]);
+
+    const handlePageChange = useCallback((page: number) => {
+        updateFilters({ page });
+    }, [updateFilters]);
 
     const updateStudentStatus = async (studentId: string, status: string) => {
         try {
@@ -146,6 +178,9 @@ export const useStudentList = (options?: UseStudentListOptions) => {
         pagination,
         filters,
         updateFilters,
+        handleSearchChange,
+        handleLimitChange,
+        handlePageChange,
         updateStudentStatus,
         refresh: fetchStudents,
     };

@@ -15,7 +15,7 @@ export const ProtectedRoute = ({
   allowedRoles,
 }: ProtectedRouteProps) => {
   const location = useLocation();
-  const isCollegePath = location.pathname.startsWith("/collegeadmin");
+  const isCollegePath = location.pathname.startsWith("/college");
 
   // Pick the correct auth context based on the route
   const sysAdminAuth = useContext(SysAdminAuthContext);
@@ -30,16 +30,12 @@ export const ProtectedRoute = ({
 
   // 1. Not authenticated → redirect to the correct login page
   if (!isAuthenticated) {
-    const loginPath = isCollegePath ? "/collegeadmin/login" : "/sysadmin/login";
+    const loginPath = isCollegePath ? "/college/login" : "/sysadmin/login";
     return <Navigate to={loginPath} replace />;
   }
 
   // 2. Role check
   if (allowedRoles && user && !allowedRoles.includes(user.role as UserRole)) {
-    console.warn("Access Denied: Role mismatch", {
-      userRole: user.role,
-      allowed: allowedRoles,
-    });
     return <Navigate to="/unauthorized" replace />;
   }
 

@@ -4,8 +4,8 @@ import PageHeader from "@/components/collegeadmin/PageHeader";
 
 const CreateDepartment = () => {
     const breadcrumbs = [
-        { label: "College Admin" },
-        { label: "Departments" },
+        { label: "Dashboard", path: "/college/dashboard" },
+        { label: "Departments", path: "/college/departments" },
         { label: "Create New", active: true },
     ];
 

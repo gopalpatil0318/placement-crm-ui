@@ -4,8 +4,8 @@ import PageHeader from '@/components/collegeadmin/PageHeader';
 
 const CreateUser = () => {
     const breadcrumbs = [
-        { label: "College Admin" },
-        { label: "Users" },
+        { label: "Dashboard", path: "/college/dashboard" },
+        { label: "Users", path: "/college/view-users" },
         { label: "Create New", active: true },
     ];
 

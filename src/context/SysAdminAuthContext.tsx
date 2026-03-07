@@ -1,23 +1,24 @@
 import { createContext, useState, useEffect, type ReactNode } from "react";
 import api from "../lib/api";
 import { showToast } from "@/utils/ToastUtils";
-import type { User, SysAdminAuthContextType, ApiLoginResponse } from "../types/auth";
+import type { User, UserRole, SysAdminAuthContextType } from "../types/auth";
 
 export const SysAdminAuthContext = createContext<SysAdminAuthContextType | undefined>(undefined);
 
+const STORAGE_KEY = "sysadmin_user";
+
 export function SysAdminAuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Initialize from LocalStorage on mount
     useEffect(() => {
-        const storedUser = localStorage.getItem("sysadmin_user");
+        const storedUser = localStorage.getItem(STORAGE_KEY);
         if (storedUser) {
             try {
-                setUser(JSON.parse(storedUser));
-            } catch (e) {
-                console.error("Failed to parse sysadmin user", e);
-                localStorage.removeItem("sysadmin_user");
+                setUser(JSON.parse(storedUser) as User);
+            } catch {
+                localStorage.removeItem(STORAGE_KEY);
             }
         }
         setIsLoading(false);
@@ -25,37 +26,34 @@ export function SysAdminAuthProvider({ children }: { children: ReactNode }) {
 
     const login = async (email: string, password: string) => {
         try {
-            const response = await api.post<ApiLoginResponse>("/sysadmin/login", { email, password });
+            const response = await api.post("/sysadmin/login", { email, password });
 
-            const { data, message } = response.data as any;
-            // Backend may nest user data inside data.user
-            const userData = data?.user || data;
+            const responseData = response.data;
+            const userData = responseData.data?.user || responseData.data;
 
             if (!userData) {
                 throw new Error("Invalid response: User data missing");
             }
 
             const newUser: User = {
-                id: userData.user_id || userData.id || email,
-                email: userData.user_email || userData.email,
-                role: (userData.user_role || userData.role || userData.type || "sysadmin") as any,
-                type: userData.user_role || userData.type,
-                isActive: true,
+                id: userData.user_id || email,
+                email: userData.user_email || email,
+                role: (userData.user_role || "sysadmin") as UserRole,
             };
 
             setUser(newUser);
-            localStorage.setItem("sysadmin_user", JSON.stringify(newUser));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
 
             showToast({
                 type: "success",
                 title: "Success",
-                description: message || "Welcome back!",
+                description: responseData.message || "Welcome back!",
             });
 
-        } catch (error: any) {
-            console.error("SysAdmin login error", error);
-
-            const errorMessage = error.response?.data?.message || error.message || "An unexpected error occurred";
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error
+                ? error.message
+                : "An unexpected error occurred";
 
             showToast({
                 type: "error",
@@ -71,18 +69,16 @@ export function SysAdminAuthProvider({ children }: { children: ReactNode }) {
         try {
             const response = await api.post("/sysadmin/logout");
 
-            const logoutMessage = response.data?.message || "You have been logged out successfully";
-
             showToast({
                 type: "success",
                 title: "Logged Out",
-                description: logoutMessage,
+                description: response.data?.message || "You have been logged out successfully",
             });
 
-        } catch (error: any) {
-            console.error("SysAdmin logout error", error);
-
-            const errorMessage = error.response?.data?.message || "Logout failed on server";
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error
+                ? error.message
+                : "Logout failed on server";
 
             showToast({
                 type: "error",
@@ -92,7 +88,7 @@ export function SysAdminAuthProvider({ children }: { children: ReactNode }) {
 
         } finally {
             setUser(null);
-            localStorage.removeItem("sysadmin_user");
+            localStorage.removeItem(STORAGE_KEY);
         }
     };
 

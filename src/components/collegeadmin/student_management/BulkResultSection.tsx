@@ -1,4 +1,4 @@
-import { CheckCircle, CloudUpload, AlertTriangle, Download } from "lucide-react";
+import { CheckCircle, CloudUpload, AlertTriangle, Download, Key } from "lucide-react";
 
 interface BulkResultSectionProps {
   result: {
@@ -98,6 +98,32 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
     }
   };
 
+  // Download Credentials CSV — uses API response results
+  const credentialsList: any[] = result.data.results || result.data.credentials || [];
+  const hasCredentials = credentialsList.length > 0;
+
+  const downloadCredentialsCsv = () => {
+    if (!hasCredentials) return;
+
+    const credHeaders = "first_name,last_name,student_email,student_password";
+    const rows = credentialsList.map((r: any) => {
+      const firstName = r.first_name || r.name?.split(" ")[0] || "";
+      const lastName = r.last_name || r.name?.split(" ").slice(1).join(" ") || "";
+      const email = r.student_email || r.email || "";
+      const password = r.student_password || r.password || "";
+      return `"${firstName}","${lastName}","${email}","${password}"`;
+    }).join("\n");
+
+    const csvContent = credHeaders + "\n" + rows;
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "student_credentials.csv";
+    link.click();
+    setTimeout(() => window.URL.revokeObjectURL(url), 100);
+  };
+
   return (
     <div className="mt-8 space-y-6">
       <div
@@ -168,6 +194,23 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
               >
                 <Download size={18} />
                 Download Success CSV
+              </button>
+            )}
+
+            {hasCredentials && (
+              <button
+                onClick={downloadCredentialsCsv}
+                className="
+                                inline-flex items-center gap-2
+                                rounded-xl border border-blue-200 bg-blue-50
+                                px-5 py-2.5 text-sm font-bold text-blue-700
+                                shadow-sm transition-all
+                                hover:bg-blue-100 hover:shadow
+                                active:scale-[0.98]
+                                "
+              >
+                <Key size={18} />
+                Download Credentials CSV
               </button>
             )}
 

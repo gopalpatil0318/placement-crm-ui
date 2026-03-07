@@ -76,7 +76,7 @@ export const useCreateStudent = () => {
                 current_year: 1,
             });
 
-            navigate("/collegeadmin/students");
+            navigate("/college/students");
         } catch (error: any) {
             showToast({
                 type: "error",

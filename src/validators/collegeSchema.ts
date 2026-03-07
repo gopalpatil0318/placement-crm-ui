@@ -1,4 +1,3 @@
-// src/validators/collegeSchema.ts
 import { z } from "zod";
 
 export const collegeSchema = z.object({
@@ -22,34 +21,39 @@ export const collegeSchema = z.object({
 
   collegeAddress: z
     .string()
-    .min(2, { message: "College address must be at least 2 characters" })
-    .max(500, { message: "College address cannot exceed 500 characters" }),
+    .max(500, { message: "College address cannot exceed 500 characters" })
+    .optional()
+    .or(z.literal("")),
 
   collegeCity: z
     .string()
-    .min(2, { message: "City must be at least 2 characters" })
-    .max(100, { message: "City cannot exceed 100 characters" }),
+    .max(100, { message: "City cannot exceed 100 characters" })
+    .optional()
+    .or(z.literal("")),
 
   collegeTaluka: z
     .string()
-    .min(2, { message: "Taluka must be at least 2 characters" })
-    .max(100, { message: "Taluka cannot exceed 100 characters" }),
+    .max(100, { message: "Taluka cannot exceed 100 characters" })
+    .optional()
+    .or(z.literal("")),
 
   collegeDistrict: z
     .string()
-    .min(2, { message: "District must be at least 2 characters" })
-    .max(100, { message: "District cannot exceed 100 characters" }),
+    .max(100, { message: "District cannot exceed 100 characters" })
+    .optional()
+    .or(z.literal("")),
 
   collegeState: z
     .string()
-    .min(2, { message: "State must be at least 2 characters" })
-    .max(100, { message: "State cannot exceed 100 characters" }),
+    .max(100, { message: "State cannot exceed 100 characters" })
+    .optional()
+    .or(z.literal("")),
 
   collegePincode: z
     .string()
-    .min(6, { message: "Pincode must be at least 6 digits" })
-    .max(6, { message: "Pincode must be exactly 6 digits" })
-    .regex(/^\d{6}$/, { message: "Pincode must be a valid 6-digit number" }),
+    .regex(/^(\d{6})?$/, { message: "Pincode must be a valid 6-digit number" })
+    .optional()
+    .or(z.literal("")),
 
   defaultAcademicYear: z
     .string()
@@ -74,5 +78,3 @@ export const collegeSchema = z.object({
 });
 
 export type CollegeSchemaType = z.infer<typeof collegeSchema>;
-
-
