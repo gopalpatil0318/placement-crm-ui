@@ -4,15 +4,18 @@ import { useAuth } from "@/hooks/sysadmin/useAuth"
 import type { UserRole } from "../../types/auth"
 
 interface ProtectedRouteProps {
-  children: ReactNode
-  allowedRoles?: UserRole[]
+  children: ReactNode;
+  allowedRoles?: UserRole[];
 }
 
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { isAuthenticated, user, isLoading } = useAuth()
   const location = useLocation()
 
-  if (isLoading) return <div className="p-10 text-center">Loading...</div>
+  const auth = isCollegePath ? collegeAuth : sysAdminAuth;
+  const user = auth?.user ?? null;
+  const isAuthenticated = auth?.isAuthenticated ?? false;
+  const isLoading = auth?.isLoading ?? false;
 
   if (!isAuthenticated) {
     const loginPath = location.pathname.startsWith("/collegeadmin")
@@ -25,5 +28,5 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/unauthorized" replace />
   }
 
-  return <>{children}</>
-}
+  return <>{children}</>;
+};

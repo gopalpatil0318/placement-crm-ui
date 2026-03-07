@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { useAuth } from "@/hooks/collegeadmin/useAuth" 
+import { useAuth } from "@/hooks/collegeadmin/useAuth"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,7 +27,7 @@ export default function CollegeAdminLogin() {
 
     try {
       await login(email, password)
-      
+
       navigate("/collegeadmin/dashboard")
 
 

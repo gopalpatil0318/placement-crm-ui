@@ -9,8 +9,8 @@ interface Breadcrumb {
 }
 
 interface PageHeaderProps {
-    title: string;
-    breadcrumbs: Breadcrumb[];
+  title: string;
+  breadcrumbs: Breadcrumb[];
 }
 
 const PageHeader: FC<PageHeaderProps> = ({ title, breadcrumbs }) => (

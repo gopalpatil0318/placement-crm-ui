@@ -43,6 +43,27 @@ const navItems: { section: string; items: NavItemProps[] }[] = [
         ],
     },
     {
+        section: "Update Profile",
+        items: [
+            {
+                icon: <UserIcon size={18} />,
+                label: "Profile Forms",
+                subItems: [
+                    { label: "Personal Info", path: "/student/personal-info" },
+                    { label: "Academic Info", path: "/student/academic-info" },
+                    { label: "Semester Info", path: "/student/sem-info" },
+                    { label: "Skills", path: "/student/skills" },
+                    { label: "Experience", path: "/student/experience" },
+                    { label: "Projects", path: "/student/projects" },
+                    { label: "Certificates", path: "/student/certificates" },
+                    { label: "Achievements", path: "/student/achievements" },
+                    { label: "Activities", path: "/student/activities" },
+                    { label: "Profile Links", path: "/student/profile-links" },
+                ],
+            },
+        ],
+    },
+    {
         section: "Navigation",
         items: [
             {

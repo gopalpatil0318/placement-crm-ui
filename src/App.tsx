@@ -1,8 +1,12 @@
-
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
-import { AuthProvider } from "./context/AuthContext"
+import { SysAdminAuthProvider } from "./context/SysAdminAuthContext"
+import { CollegeAuthProvider } from "./context/CollegeAuthContext"
+import { StudentAuthProvider } from "./context/students/StudentAuthContext"
 import { ProtectedRoute } from "./components/routes/ProtectedRoute"
 import { PublicRoute } from "./components/routes/PublicRoute"
+import StudentPublicRoute from "./components/routes/StudentPublicRoute"
+import StudentProtectedRoute from "./components/routes/StudentProtectedRoute"
+import { COLLEGE_ROLES } from "./types/auth"
 
 import SuperAdminLogin from './pages/SuperAdmin/SuperAdminLogin'
 import Dashboard from './pages/SuperAdmin/Dashboard'

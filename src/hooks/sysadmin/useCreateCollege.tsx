@@ -97,7 +97,7 @@ export const useCreateCollege = () => {
         defaultAcademicYear: Number(formData.defaultAcademicYear),
       };
 
-      const response = await SysAdminService.createCollege(payload);
+      const response = await SysAdminService.createCollege(payload as any);
 
       if (response?.success === false) {
         showToast({

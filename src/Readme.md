@@ -102,7 +102,7 @@ Request → authMiddleware (verify JWT)
 ---
 
 ## 🔴 SECTION 1: SYSADMIN FLOW
- m,
+
 ### How Sysadmin Auth Works
 ```
 ┌──────────────────────────────────────────────────┐

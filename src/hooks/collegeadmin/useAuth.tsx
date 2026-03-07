@@ -1,29 +1,29 @@
 import { useContext } from "react"
-import { AuthContext } from "@/context/AuthContext"
+import { CollegeAuthContext } from "@/context/CollegeAuthContext"
 import type { UserRole } from "@/types/auth"
+import { COLLEGE_ROLES } from "@/types/auth"
 
 /**
  * Custom hook to access college admin authentication context.
  * Provides user data, authentication state, and role-specific helpers.
  */
 export const useAuth = () => {
-  const context = useContext(AuthContext)
+  const context = useContext(CollegeAuthContext)
 
   // Ensure hook is used within the proper Provider
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+    throw new Error("useAuth must be used within a CollegeAuthProvider")
   }
 
   const { user, isAuthenticated, isLoading, login, logout } = context
 
   /**
    * Helper function to verify specific roles.
-   * Based on the central AuthContext role mapping.
    */
   const hasRole = (role: UserRole) => user?.role === role
-  
-  // Specific role check for College Administrators
-  const isCollegeAdmin = () => user?.role === "collegeadmin"
+
+  // Check if user has any college portal role
+  const isCollegeUser = () => !!(user?.role && COLLEGE_ROLES.includes(user.role))
 
   return {
     user,
@@ -32,6 +32,6 @@ export const useAuth = () => {
     login,
     logout,
     hasRole,
-    isCollegeAdmin,
+    isCollegeUser,
   }
 }

@@ -99,11 +99,12 @@ const CollegeProfile = () => {
     </div>
   );
 
-  if (!college) return (
-    <div className="p-8 text-center text-red-500 font-bold">
-      College Not Found
-    </div>
-  );
+  if (!college)
+    return (
+      <div className="p-8 text-center text-red-500 font-bold">
+        College Not Found
+      </div>
+    );
 
   return (
     <div className="font-['Public_Sans',_sans-serif]">
@@ -128,12 +129,16 @@ const CollegeProfile = () => {
               </h1>
               <div className="flex flex-wrap items-center gap-4 mt-2">
                 <p className="flex items-center gap-2 text-slate-500 font-medium">
-                  <Globe className="h-4 w-4 text-blue-400" /> {college.college_subdomain}
+                  <Globe className="h-4 w-4 text-blue-400" />{" "}
+                  {college.college_subdomain}
                 </p>
-                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${college.college_status === 'active'
-                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                  : 'bg-red-50 text-red-600 border border-red-100'
-                  }`}>
+                <span
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    college.college_status === "active"
+                      ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                      : "bg-red-50 text-red-600 border border-red-100"
+                  }`}
+                >
                   {college.college_status}
                 </span>
                 <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
@@ -191,7 +196,9 @@ const CollegeProfile = () => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8">
         <div className="flex items-center gap-2 mb-8">
           <ShieldCheck className="h-5 w-5 text-blue-500" />
-          <h2 className="text-lg font-bold text-slate-800">System Configuration</h2>
+          <h2 className="text-lg font-bold text-slate-800">
+            System Configuration
+          </h2>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -220,7 +227,9 @@ const CollegeProfile = () => {
             <div className="space-y-6">
               {/* Status Toggle */}
               <div>
-                <p className="text-xs text-slate-500 font-semibold mb-2">College Status:</p>
+                <p className="text-xs text-slate-500 font-semibold mb-2">
+                  College Status:
+                </p>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -234,8 +243,13 @@ const CollegeProfile = () => {
                         }`}
                     />
                   </button>
-                  <span className={`text-sm font-semibold capitalize ${college.college_status === "active" ? "text-emerald-600" : "text-red-500"
-                    }`}>
+                  <span
+                    className={`text-sm font-semibold capitalize ${
+                      college.college_status === "active"
+                        ? "text-emerald-600"
+                        : "text-red-500"
+                    }`}
+                  >
                     {toggling ? "Updating..." : college.college_status}
                   </span>
                 </div>

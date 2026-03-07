@@ -1,22 +1,20 @@
 import { useContext } from "react"
-import { AuthContext } from "@/context/AuthContext"
+import { SysAdminAuthContext } from "@/context/SysAdminAuthContext"
 import type { UserRole } from "@/types/auth"
 
 export const useAuth = () => {
-  const context = useContext(AuthContext)
+  const context = useContext(SysAdminAuthContext)
 
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+    throw new Error("useAuth must be used within a SysAdminAuthProvider")
   }
 
   const { user, isAuthenticated, isLoading, login, logout } = context
 
   // Helper functions
   const hasRole = (role: UserRole) => user?.role === role
-  
+
   const isSuperAdmin = () => user?.role === "sysadmin"
-  const isCollegeAdmin = () => user?.role === "collegeadmin"
-  const isStudent = () => user?.role === "student"
 
   return {
     user,
@@ -26,7 +24,5 @@ export const useAuth = () => {
     logout,
     hasRole,
     isSuperAdmin,
-    isCollegeAdmin,
-    isStudent,
   }
 }
