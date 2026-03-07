@@ -3,6 +3,10 @@
         {
             "source": "/api/(.*)",
             "destination": "https://testpcrmapi.vercel.app/api/$1"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
         }
     ]
 }
