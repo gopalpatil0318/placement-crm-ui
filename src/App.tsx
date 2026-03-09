@@ -42,6 +42,12 @@ const CreateDepartment = lazy(() => import('./pages/collegeadmin/CreateDepartmen
 const UpdateDepartment = lazy(() => import('./pages/collegeadmin/UpdateDepartment'))
 const ViewDepartment = lazy(() => import('./pages/collegeadmin/departmentManagement/ViewDepartment'))
 
+// College Admin - Company Management
+const ViewCompanies = lazy(() => import('./pages/collegeadmin/company_management/ViewCompanies'))
+const CreateCompany = lazy(() => import('./pages/collegeadmin/company_management/CreateCompany'))
+const UpdateCompany = lazy(() => import('./pages/collegeadmin/company_management/UpdateCompany'))
+const CompanyDetail = lazy(() => import('./pages/collegeadmin/company_management/CompanyDetail'))
+
 // Students
 const StudentLogin = lazy(() => import('./pages/Students/StudentLogin'))
 const StudentDashboard = lazy(() => import('./pages/Students/StudentDashboard'))
@@ -229,6 +235,40 @@ function App() {
                   element={
                     <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
                       <UpdateDepartment />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Company Management Routes */}
+                <Route
+                  path="/college/companies"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <ViewCompanies />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/create-company"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <CreateCompany />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/update-company/:companyId"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <UpdateCompany />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/company/:companyId"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <CompanyDetail />
                     </ProtectedRoute>
                   }
                 />

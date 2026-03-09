@@ -9,6 +9,7 @@ import {
   User as UserIcon,
   BookOpen,
   UserCheck,
+  Building2,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/collegeadmin/useAuth";
@@ -87,6 +88,20 @@ const navItems: NavSection[] = [
             label: "Create Department",
             path: "/college/create-department",
           },
+        ],
+      },
+    ],
+  },
+  {
+    section: "Company Management",
+    items: [
+      {
+        icon: <Building2 size={18} />,
+        label: "Companies",
+        allowedRoles: ["collegeadmin", "tpo", "tpc"],
+        subItems: [
+          { label: "All Companies", path: "/college/companies" },
+          { label: "Add Company", path: "/college/create-company" },
         ],
       },
     ],

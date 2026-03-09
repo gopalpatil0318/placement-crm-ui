@@ -201,4 +201,66 @@ export const CollegeAdminService = {
         });
         return response.data;
     },
+
+    // ========================
+    // COMPANY MANAGEMENT
+    // ========================
+
+    createCompany: async (data: {
+        company_name: string;
+        company_description?: string;
+        company_website?: string;
+        industry?: string;
+        company_logo?: string;
+    }) => {
+        const response = await api.post("/college/create_company", data);
+        return response.data;
+    },
+
+    getAllCompanies: async (params: {
+        company_status?: string;
+        industry?: string;
+        search?: string;
+        sort_by?: string;
+        sort_order?: string;
+        page?: number;
+        limit?: number;
+    } = {}) => {
+        const query = new URLSearchParams();
+        if (params.company_status) query.append("company_status", params.company_status);
+        if (params.industry) query.append("industry", params.industry);
+        if (params.search) query.append("search", params.search);
+        if (params.sort_by) query.append("sort_by", params.sort_by);
+        if (params.sort_order) query.append("sort_order", params.sort_order);
+        if (params.page) query.append("page", String(params.page));
+        if (params.limit) query.append("limit", String(params.limit));
+
+        const queryStr = query.toString();
+        const url = queryStr ? `/college/get_all_companies?${queryStr}` : "/college/get_all_companies";
+        const response = await api.get(url);
+        return response.data;
+    },
+
+    getCompany: async (companyId: string) => {
+        const response = await api.get(`/college/get_company/${companyId}`);
+        return response.data;
+    },
+
+    updateCompany: async (companyId: string, data: {
+        company_name?: string;
+        company_description?: string;
+        company_website?: string;
+        industry?: string;
+        company_logo?: string;
+    }) => {
+        const response = await api.put(`/college/update_company/${companyId}`, data);
+        return response.data;
+    },
+
+    toggleCompanyStatus: async (companyId: string, companyStatus: string) => {
+        const response = await api.patch(`/college/toggle_company_status/${companyId}`, {
+            company_status: companyStatus,
+        });
+        return response.data;
+    },
 };
