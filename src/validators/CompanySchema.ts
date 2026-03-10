@@ -98,3 +98,79 @@ export const companyUpdateSchema = z.object({
 });
 
 export type CompanyUpdateInput = z.infer<typeof companyUpdateSchema>;
+
+// ========================
+// COMPANY CONTACT SCHEMA
+// ========================
+
+export const companyContactCreateSchema = z.object({
+    contactName: z
+        .string()
+        .min(2, { message: "Contact name must be at least 2 characters" })
+        .max(100, { message: "Contact name cannot exceed 100 characters" }),
+
+    contactDesignation: z
+        .string()
+        .max(100, { message: "Designation cannot exceed 100 characters" })
+        .optional()
+        .or(z.literal("")),
+
+    contactEmail: z
+        .string()
+        .email({ message: "Invalid email address" })
+        .optional()
+        .or(z.literal("")),
+
+    contactPhone: z
+        .string()
+        .max(20, { message: "Phone cannot exceed 20 characters" })
+        .optional()
+        .or(z.literal("")),
+
+    notes: z
+        .string()
+        .max(1000, { message: "Notes cannot exceed 1000 characters" })
+        .optional()
+        .or(z.literal("")),
+
+    isPrimary: z.boolean().optional(),
+});
+
+export type CompanyContactCreateInput = z.infer<typeof companyContactCreateSchema>;
+
+export const companyContactUpdateSchema = z.object({
+    contactName: z
+        .string()
+        .min(2, { message: "Contact name must be at least 2 characters" })
+        .max(100, { message: "Contact name cannot exceed 100 characters" })
+        .optional()
+        .or(z.literal("")),
+
+    contactDesignation: z
+        .string()
+        .max(100, { message: "Designation cannot exceed 100 characters" })
+        .optional()
+        .or(z.literal("")),
+
+    contactEmail: z
+        .string()
+        .email({ message: "Invalid email address" })
+        .optional()
+        .or(z.literal("")),
+
+    contactPhone: z
+        .string()
+        .max(20, { message: "Phone cannot exceed 20 characters" })
+        .optional()
+        .or(z.literal("")),
+
+    notes: z
+        .string()
+        .max(1000, { message: "Notes cannot exceed 1000 characters" })
+        .optional()
+        .or(z.literal("")),
+
+    isPrimary: z.boolean().optional(),
+});
+
+export type CompanyContactUpdateInput = z.infer<typeof companyContactUpdateSchema>;

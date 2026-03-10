@@ -13,9 +13,10 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/collegeadmin/DashboardLayout";
 import PageHeader from "@/components/collegeadmin/PageHeader";
-import { useViewCompany } from "@/hooks/collegeadmin/company_management/useViewCompany";
+import { useViewCompany } from "@/hooks/collegeadmin/company_management/Company/useViewCompany";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
+import EditCompanyContactModal from "@/components/collegeadmin/company_management/Company_Contact/EditCompanyContactModal";
 
 // ========================
 // COMPONENT
@@ -27,6 +28,8 @@ const CompanyDetail = () => {
     const { company, loading, error, refresh } = useViewCompany(companyId);
     const [toggling, setToggling] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+
+    const [contactToEdit, setContactToEdit] = useState<any>(null);
 
     const breadcrumbs = [
         { label: "Dashboard", path: "/college/dashboard" },
@@ -43,12 +46,8 @@ const CompanyDetail = () => {
         setToggling(true);
 
         try {
-            const newStatus =
-                company.company_status === "active" ? "inactive" : "active";
-            await CollegeAdminService.toggleCompanyStatus(
-                company.company_id,
-                newStatus
-            );
+            const newStatus = company.company_status === "active" ? "inactive" : "active";
+            await CollegeAdminService.toggleCompanyStatus(company.company_id, newStatus);
             showToast({
                 type: "success",
                 title: "Status Updated",
@@ -56,14 +55,26 @@ const CompanyDetail = () => {
             });
             refresh();
         } catch (err: unknown) {
-            const msg =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to toggle company status";
+            const msg = err instanceof Error ? err.message : "Failed to toggle company status";
             showToast({ type: "error", title: "Error", description: msg });
         } finally {
             setToggling(false);
             setShowConfirm(false);
+        }
+    };
+
+    const handleToggleContactStatus = async (contactId: string, currentStatus: boolean) => {
+        try {
+            await CollegeAdminService.toggleContactStatus(contactId, !currentStatus);
+            showToast({
+                type: "success",
+                title: "Status Updated",
+                description: `Contact ${!currentStatus ? "activated" : "deactivated"} successfully`,
+            });
+            refresh();
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Failed to toggle contact status";
+            showToast({ type: "error", title: "Error", description: msg });
         }
     };
 
@@ -287,11 +298,20 @@ const CompanyDetail = () => {
                         </div>
 
                         {/* Contacts Section */}
-                        {company.contacts && company.contacts.length > 0 && (
-                            <div className="mt-8">
-                                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                        <div className="mt-8">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-gray-800">
                                     Company Contacts
                                 </h3>
+                                <button
+                                    onClick={() => navigate(`/college/add-company-contact?companyId=${company.company_id}`)}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold"
+                                >
+                                    Add Contact
+                                </button>
+                            </div>
+
+                            {company.contacts && company.contacts.length > 0 ? (
                                 <div className="overflow-x-auto">
                                     <table className="w-full border-collapse">
                                         <thead>
@@ -306,74 +326,76 @@ const CompanyDetail = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {company.contacts.map((contact, idx) => (
-                                                <tr
-                                                    key={contact.contact_id}
-                                                    className="border-b text-sm"
-                                                >
-                                                    <td className="px-4 py-3 text-gray-500">
-                                                        {idx + 1}
-                                                    </td>
-                                                    <td className="px-4 py-3 font-medium text-gray-800">
-                                                        {contact.contact_name}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-gray-600">
-                                                        {contact.contact_designation || (
-                                                            <span className="text-gray-400">
-                                                                —
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-gray-600">
-                                                        {contact.contact_email || (
-                                                            <span className="text-gray-400">
-                                                                —
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-gray-600">
-                                                        {contact.contact_phone || (
-                                                            <span className="text-gray-400">
-                                                                —
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        {contact.is_primary ? (
-                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                                                Primary
-                                                            </span>
-                                                        ) : (
-                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
-                                                                Secondary
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <span
-                                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${contact.is_active
-                                                                ? "bg-green-100 text-green-700"
-                                                                : "bg-red-100 text-red-700"
-                                                                }`}
-                                                        >
-                                                            <span
-                                                                className={`h-1.5 w-1.5 rounded-full ${contact.is_active
-                                                                    ? "bg-green-500"
-                                                                    : "bg-red-500"
-                                                                    }`}
-                                                            />
-                                                            {contact.is_active
-                                                                ? "Active"
-                                                                : "Inactive"}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {company.contacts
+                                                // Sort primary first
+                                                .sort((a: any, b: any) => (b.is_primary === a.is_primary ? 0 : b.is_primary ? 1 : -1))
+                                                .map((contact: any, idx: number) => (
+                                                    <tr
+                                                        key={contact.contact_id}
+                                                        className={`border-b text-sm ${contact.is_primary ? "bg-amber-50/30" : ""}`}
+                                                    >
+                                                        <td className="px-4 py-3 text-gray-500">
+                                                            {idx + 1}
+                                                        </td>
+                                                        <td className="px-4 py-3 font-medium text-gray-800">
+                                                            {contact.contact_name}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-gray-600">
+                                                            {contact.contact_designation || (
+                                                                <span className="text-gray-400">—</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-gray-600">
+                                                            {contact.contact_email || (
+                                                                <span className="text-gray-400">—</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-gray-600">
+                                                            {contact.contact_phone || (
+                                                                <span className="text-gray-400">—</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            {contact.is_primary ? (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 shadow-sm">
+                                                                    ⭐ Primary
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                                                                    Secondary
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button
+                                                                    onClick={() => setContactToEdit(contact)}
+                                                                    title="Edit Contact"
+                                                                    className="p-1.5 rounded-md text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
+                                                                >
+                                                                    <Pencil size={14} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleToggleContactStatus(contact.contact_id, contact.is_active)}
+                                                                    title={contact.is_active ? "Deactivate Contact" : "Activate Contact"}
+                                                                    className={`p-1.5 rounded-md text-white transition-opacity hover:opacity-80 ${contact.is_active ? "bg-red-500" : "bg-green-500"}`}
+                                                                >
+                                                                    <Power size={14} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50">
+                                    <p className="text-gray-500 mb-2 font-medium">No contacts added yet.</p>
+                                    <p className="text-sm text-gray-400 mb-4">Add a contact to easily communicate with this company.</p>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Footer */}
                         <div className="mt-12 pt-6 border-t border-slate-100">
@@ -389,79 +411,92 @@ const CompanyDetail = () => {
             </div>
 
             {/* ===== Toggle Status Confirmation Modal ===== */}
-            {showConfirm && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-                    onClick={() => !toggling && setShowConfirm(false)}
-                >
+            {
+                showConfirm && (
                     <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
-                        onClick={(e) => e.stopPropagation()}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+                        onClick={() => !toggling && setShowConfirm(false)}
                     >
-                        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
-                            <h2 className="text-lg font-bold text-gray-800">
-                                {isActive
-                                    ? "Deactivate Company"
-                                    : "Activate Company"}
-                            </h2>
-                            <button
-                                type="button"
-                                onClick={() => setShowConfirm(false)}
-                                disabled={toggling}
-                                className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
+                        <div
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
+                                <h2 className="text-lg font-bold text-gray-800">
+                                    {isActive
+                                        ? "Deactivate Company"
+                                        : "Activate Company"}
+                                </h2>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirm(false)}
+                                    disabled={toggling}
+                                    className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
 
-                        <div className="px-6 py-5">
-                            <p className="text-sm text-gray-600">
-                                Are you sure you want to{" "}
-                                <span className="font-bold">
-                                    {isActive ? "deactivate" : "activate"}
-                                </span>{" "}
-                                <span className="font-bold">
-                                    "{company.company_name}"
-                                </span>
-                                ?
-                            </p>
-                            {isActive && (
-                                <p className="text-xs text-amber-600 mt-3 bg-amber-50 px-3 py-2 rounded-lg">
-                                    ⚠️ This company will be hidden from new job creation.
+                            <div className="px-6 py-5">
+                                <p className="text-sm text-gray-600">
+                                    Are you sure you want to{" "}
+                                    <span className="font-bold">
+                                        {isActive ? "deactivate" : "activate"}
+                                    </span>{" "}
+                                    <span className="font-bold">
+                                        "{company.company_name}"
+                                    </span>
+                                    ?
                                 </p>
-                            )}
-                        </div>
-
-                        <div className="px-6 py-3 border-t bg-gray-50 flex items-center justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setShowConfirm(false)}
-                                disabled={toggling}
-                                className="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-40"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleToggleStatus}
-                                disabled={toggling}
-                                className={`px-5 py-2 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 ${isActive
-                                    ? "bg-red-600 hover:bg-red-700"
-                                    : "bg-green-600 hover:bg-green-700"
-                                    }`}
-                            >
-                                {toggling && (
-                                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                {isActive && (
+                                    <p className="text-xs text-amber-600 mt-3 bg-amber-50 px-3 py-2 rounded-lg">
+                                        ⚠️ This company will be hidden from new job creation.
+                                    </p>
                                 )}
-                                {toggling
-                                    ? "Updating..."
-                                    : isActive
-                                        ? "Deactivate"
-                                        : "Activate"}
-                            </button>
+                            </div>
+
+                            <div className="px-6 py-3 border-t bg-gray-50 flex items-center justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirm(false)}
+                                    disabled={toggling}
+                                    className="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-40"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleToggleStatus}
+                                    disabled={toggling}
+                                    className={`px-5 py-2 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 ${isActive
+                                        ? "bg-red-600 hover:bg-red-700"
+                                        : "bg-green-600 hover:bg-green-700"
+                                        }`}
+                                >
+                                    {toggling && (
+                                        <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    )}
+                                    {toggling
+                                        ? "Updating..."
+                                        : isActive
+                                            ? "Deactivate"
+                                            : "Activate"}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )
+            }
+            {/* ===== Edit Contact Modal ===== */}
+            {contactToEdit && (
+                <EditCompanyContactModal
+                    contact={contactToEdit}
+                    onClose={() => setContactToEdit(null)}
+                    onSuccess={() => {
+                        setContactToEdit(null);
+                        refresh();
+                    }}
+                />
             )}
         </DashboardLayout>
     );

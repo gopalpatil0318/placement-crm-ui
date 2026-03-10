@@ -43,10 +43,12 @@ const UpdateDepartment = lazy(() => import('./pages/collegeadmin/UpdateDepartmen
 const ViewDepartment = lazy(() => import('./pages/collegeadmin/departmentManagement/ViewDepartment'))
 
 // College Admin - Company Management
-const ViewCompanies = lazy(() => import('./pages/collegeadmin/company_management/ViewCompanies'))
-const CreateCompany = lazy(() => import('./pages/collegeadmin/company_management/CreateCompany'))
-const UpdateCompany = lazy(() => import('./pages/collegeadmin/company_management/UpdateCompany'))
-const CompanyDetail = lazy(() => import('./pages/collegeadmin/company_management/CompanyDetail'))
+const ViewCompanies = lazy(() => import('./pages/collegeadmin/company_management/Company/ViewCompanies'))
+const CreateCompany = lazy(() => import('./pages/collegeadmin/company_management/Company/CreateCompany'))
+const UpdateCompany = lazy(() => import('./pages/collegeadmin/company_management/Company/UpdateCompany'))
+const CompanyDetail = lazy(() => import('./pages/collegeadmin/company_management/Company/CompanyDetail'))
+const CompanyContactsList = lazy(() => import('./pages/collegeadmin/company_management/Company_Contact/CompanyContactsList'))
+const AddCompanyContact = lazy(() => import('./pages/collegeadmin/company_management/Company_Contact/AddCompanyContact'))
 
 // Students
 const StudentLogin = lazy(() => import('./pages/Students/StudentLogin'))
@@ -261,6 +263,22 @@ function App() {
                   element={
                     <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
                       <UpdateCompany />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/company-contacts"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <CompanyContactsList />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/add-company-contact"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <AddCompanyContact />
                     </ProtectedRoute>
                   }
                 />

@@ -102,6 +102,7 @@ const navItems: NavSection[] = [
         subItems: [
           { label: "All Companies", path: "/college/companies" },
           { label: "Add Company", path: "/college/create-company" },
+          { label: "Company Contacts", path: "/college/company-contacts" },
         ],
       },
     ],

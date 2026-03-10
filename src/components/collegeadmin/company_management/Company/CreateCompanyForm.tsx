@@ -1,4 +1,4 @@
-import { useCreateCompany } from "@/hooks/collegeadmin/company_management/useCreateCompany";
+import { useCreateCompany } from "@/hooks/collegeadmin/company_management/Company/useCreateCompany";
 import { INDUSTRY_OPTIONS } from "@/validators/CompanySchema";
 
 // ========================

@@ -1,4 +1,4 @@
-import { useUpdateCompany } from "@/hooks/collegeadmin/company_management/useUpdateCompany";
+import { useUpdateCompany } from "@/hooks/collegeadmin/company_management/Company/useUpdateCompany";
 import { INDUSTRY_OPTIONS } from "@/validators/CompanySchema";
 
 // ========================

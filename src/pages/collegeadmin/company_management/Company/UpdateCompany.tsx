@@ -1,25 +1,28 @@
-import CreateCompanyForm from "@/components/collegeadmin/company_management/CreateCompanyForm";
+import { useParams } from "react-router-dom";
+import UpdateCompanyForm from "@/components/collegeadmin/company_management/Company/UpdateCompanyForm";
 import DashboardLayout from "@/components/collegeadmin/DashboardLayout";
 import PageHeader from "@/components/collegeadmin/PageHeader";
 
-const CreateCompany = () => {
+const UpdateCompany = () => {
+    const { companyId } = useParams<{ companyId: string }>();
+
     const breadcrumbs = [
         { label: "Dashboard", path: "/college/dashboard" },
         { label: "Companies", path: "/college/companies" },
-        { label: "Create New", active: true },
+        { label: "Update Company", active: true },
     ];
 
     return (
         <DashboardLayout>
             <div className="space-y-8">
                 {/* Page Header */}
-                <PageHeader title="Create New Company" breadcrumbs={breadcrumbs} />
+                <PageHeader title="Update Company" breadcrumbs={breadcrumbs} />
 
                 {/* Form Component with hook logic */}
-                <CreateCompanyForm />
+                <UpdateCompanyForm companyId={companyId} />
             </div>
         </DashboardLayout>
     );
 };
 
-export default CreateCompany;
+export default UpdateCompany;

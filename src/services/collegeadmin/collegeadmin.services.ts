@@ -263,4 +263,40 @@ export const CollegeAdminService = {
         });
         return response.data;
     },
+
+    addCompanyContact: async (companyId: string, data: {
+        contact_name: string;
+        contact_designation?: string;
+        contact_email?: string;
+        contact_phone?: string;
+        is_primary?: boolean;
+        notes?: string;
+    }) => {
+        const response = await api.post(`/college/add_company_contact/${companyId}`, data);
+        return response.data;
+    },
+
+    getCompanyContacts: async (companyId: string) => {
+        const response = await api.get(`/college/get_company_contacts/${companyId}`);
+        return response.data;
+    },
+
+    updateContact: async (contactId: string, data: {
+        contact_name?: string;
+        contact_designation?: string;
+        contact_email?: string;
+        contact_phone?: string;
+        is_primary?: boolean;
+        notes?: string;
+    }) => {
+        const response = await api.put(`/college/update_contact/${contactId}`, data);
+        return response.data;
+    },
+
+    toggleContactStatus: async (contactId: string, isActive: boolean) => {
+        const response = await api.patch(`/college/toggle_contact_status/${contactId}`, {
+            is_active: isActive,
+        });
+        return response.data;
+    },
 };

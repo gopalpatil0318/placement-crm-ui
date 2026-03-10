@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Plus, ChevronLeft, ChevronRight, Search, Building2 } from "lucide-react";
 import DashboardLayout from "@/components/collegeadmin/DashboardLayout";
 import PageHeader from "@/components/collegeadmin/PageHeader";
-import { useViewCompanies } from "@/hooks/collegeadmin/company_management/useViewCompanies";
+import { useViewCompanies } from "@/hooks/collegeadmin/company_management/Company/useViewCompanies";
 import { INDUSTRY_OPTIONS } from "@/validators/CompanySchema";
 
 // ========================
