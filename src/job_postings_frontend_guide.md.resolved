@@ -1,0 +1,408 @@
+# Job Postings — Frontend Reference & Postman Test Guide
+
+---
+
+## 🔗 API Endpoints
+
+| # | Method | Endpoint | Description |
+|---|--------|----------|-------------|
+| 1 | **POST** | `/api/college/create_job` | Create job (with positions, criteria, rounds, questions) |
+| 2 | **GET** | `/api/college/get_all_jobs` | List jobs (filter, sort, search, paginate) |
+| 3 | **GET** | `/api/college/get_job/:jobId` | Full details (positions + criteria + rounds + questions + stats) |
+| 4 | **PUT** | `/api/college/update_job/:jobId` | Update core fields |
+| 5 | **PATCH** | `/api/college/update_job_status/:jobId` | Change status (draft → published → closed → cancelled) |
+
+> **Auth**: JWT cookie from college admin / TPO login required.
+
+---
+
+## 📝 API 1: Create Job (Transaction — 4 tables)
+
+**`POST /api/college/create_job`** — Creates job + positions + criteria + rounds + questions in one transaction.
+
+### Full Request Body
+
+```json
+{
+  "company_id": "<companyId from get_all_companies>",
+  "job_title": "Software Developer — Campus 2026",
+  "job_description": "TCS is hiring fresh graduates for the Software Developer role...",
+  "job_location": "Mumbai, Pune, Bangalore",
+  "salary_package": "7 LPA",
+  "salary_min": 700000,
+  "salary_max": 700000,
+  "bond_duration": "2 years",
+  "bond_details": "If employee leaves before 2 years, Rs. 1,00,000 penalty applies",
+  "job_type": "full-time",
+  "internship_duration": null,
+  "internship_stipend": null,
+  "passout_year": 2026,
+  "application_deadline": "2026-03-15T23:59:59Z",
+
+  "positions": [
+    {
+      "position_name": "Software Developer",
+      "position_description": "Full-stack development using Java and React",
+      "vacancies": 25
+    },
+    {
+      "position_name": "System Engineer",
+      "position_description": "Infrastructure and cloud operations",
+      "vacancies": 15
+    }
+  ],
+
+  "eligibility_criteria": {
+    "min_overall_cgpa": 7.0,
+    "max_live_kts": 0,
+    "min_tenth_percentage": 60,
+    "min_twelfth_percentage": 55,
+    "min_diploma_percentage": 60,
+    "allowed_genders": ["male", "female", "other"],
+    "allowed_departments": ["Computer Engineering", "Information Technology", "Electronics"],
+    "exclude_already_placed": false
+  },
+
+  "rounds": [
+    {
+      "round_number": 1,
+      "round_name": "Aptitude Test",
+      "round_type": "written",
+      "round_venue": "College Exam Hall"
+    },
+    {
+      "round_number": 2,
+      "round_name": "Technical Interview",
+      "round_type": "interview"
+    },
+    {
+      "round_number": 3,
+      "round_name": "HR Interview",
+      "round_type": "interview"
+    }
+  ],
+
+  "questions": [
+    {
+      "question_text": "Why do you want to join TCS?",
+      "question_type": "essay",
+      "is_required": true,
+      "question_order": 1
+    },
+    {
+      "question_text": "Are you willing to relocate?",
+      "question_type": "yes_no",
+      "is_required": true,
+      "question_order": 2
+    },
+    {
+      "question_text": "Preferred work location?",
+      "question_type": "mcq_single",
+      "question_options": ["Mumbai", "Pune", "Bangalore", "Hyderabad", "Chennai"],
+      "is_required": false,
+      "question_order": 3
+    }
+  ]
+}
+```
+
+### Core Job Fields
+
+| Field | Type | Required | UI Element | Validation |
+|-------|------|----------|------------|------------|
+| `company_id` | UUID | ✅ | **Dropdown** (from `get_all_companies`) | Must be active company |
+| `job_title` | string | ✅ | **Single-line input** | 3-300 chars |
+| `job_description` | string | ❌ | **Rich Textarea** (6-8 rows) | Max 5000 chars |
+| `job_location` | string | ✅ | **Single-line input** | 2-300 chars |
+| `salary_package` | string | ❌ | **Single-line input** | e.g. "7 LPA" |
+| `salary_min` | number | ❌ | **Number input** | ≥ 0 |
+| `salary_max` | number | ❌ | **Number input** | ≥ salary_min |
+| `bond_duration` | string | ❌ | **Single-line input** | e.g. "2 years" |
+| `bond_details` | string | ❌ | **Textarea** (2-3 rows) | Max 1000 chars |
+| `job_type` | string | ✅ | **Dropdown** | `full-time`, `internship`, `both` |
+| `internship_duration` | string | ❌ | **Single-line input** | Show only if job_type = internship/both |
+| `internship_stipend` | string | ❌ | **Single-line input** | Show only if job_type = internship/both |
+| `passout_year` | integer | ✅ | **Dropdown** (2020–2040) | — |
+| `application_deadline` | datetime | ✅ | **DateTime picker** | Must be future |
+
+### Nested: Positions (required, min 1)
+
+| Field | Type | Required | UI Element |
+|-------|------|----------|------------|
+| `position_name` | string | ✅ | **Single-line input** |
+| `position_description` | string | ❌ | **Textarea** |
+| `vacancies` | integer | ❌ | **Number input** (min 1) |
+
+> Use an **"Add Position"** button to add multiple positions. Show as a repeatable card/row.
+
+### Nested: Eligibility Criteria (optional)
+
+| Field | Type | UI Element | Notes |
+|-------|------|------------|-------|
+| `min_overall_cgpa` | number | **Number input** (0–10, step 0.1) | e.g. 7.0 |
+| `max_live_kts` | integer | **Number input** (0–20) | Default 0 |
+| `min_tenth_percentage` | number | **Number input** (0–100) | |
+| `min_twelfth_percentage` | number | **Number input** (0–100) | |
+| `min_diploma_percentage` | number | **Number input** (0–100) | |
+| `allowed_genders` | string[] | **Multi-select checkboxes** | male, female, other |
+| `allowed_departments` | string[] | **Multi-select dropdown** | From `get_departments` API |
+| `exclude_already_placed` | boolean | **Toggle** | Default false |
+
+### Nested: Rounds (optional)
+
+| Field | Type | Required | UI Element |
+|-------|------|----------|------------|
+| `round_number` | integer | ✅ | **Auto-increment** (1, 2, 3...) |
+| `round_name` | string | ✅ | **Single-line input** |
+| `round_type` | string | ❌ | **Dropdown**: written, interview, GD, coding, HR |
+| `round_date` | datetime | ❌ | **DateTime picker** |
+| `round_venue` | string | ❌ | **Single-line input** |
+
+> Use a **sortable list** with "Add Round" button. Auto-number rounds.
+
+### Nested: Questions (optional)
+
+| Field | Type | Required | UI Element |
+|-------|------|----------|------------|
+| `question_text` | string | ✅ | **Textarea** |
+| `question_type` | string | ✅ | **Dropdown**: `text`, `essay`, `yes_no`, `mcq_single`, `mcq_multiple` |
+| `question_options` | string[] | ✅ (MCQ only) | **Repeatable input list** (min 2, max 10) |
+| `is_required` | boolean | ❌ | **Toggle** (default true) |
+| `question_order` | integer | ✅ | **Auto-increment** |
+
+---
+
+## 📝 API 2: List All Jobs
+
+**`GET /api/college/get_all_jobs`**
+
+### Query Parameters
+| Param | Type | Required | Default | Notes |
+|-------|------|----------|---------|-------|
+| `passout_year` | integer | ❌ | all | Filter by batch |
+| `job_status` | string | ❌ | all | draft / published / closed / cancelled |
+| `company_id` | UUID | ❌ | all | Filter by company |
+| `job_type` | string | ❌ | all | full-time / internship / both |
+| `search` | string | ❌ | — | Searches title, company, location |
+| `sort_by` | string | ❌ | `created_at` | job_title, created_at, application_deadline, passout_year |
+| `sort_order` | string | ❌ | `desc` | asc / desc |
+| `page` / `limit` | integer | ❌ | 1 / 20 | Pagination |
+
+### Response — Each item includes enriched data
+```json
+{
+  "data": [
+    {
+      "job_id": "...",
+      "company_name": "TCS",
+      "company_logo": "https://...",
+      "job_title": "Software Developer — Campus 2026",
+      "job_type": "full-time",
+      "job_location": "Mumbai, Pune",
+      "salary_package": "7 LPA",
+      "passout_year": 2026,
+      "application_deadline": "2026-03-15T23:59:59Z",
+      "job_status": "draft",
+      "positions_count": 2,
+      "applications_count": 0,
+      "created_by_name": "Prof. Sharma"
+    }
+  ]
+}
+```
+
+---
+
+## 📝 API 3: Get Job Detail
+
+**`GET /api/college/get_job/:jobId`** — Returns complete job with all nested data + application stats.
+
+Key additions vs. list: `positions[]`, `eligibility_criteria{}`, `rounds[]`, `questions[]`, `application_stats{ total, pending, shortlisted, selected, rejected }`
+
+---
+
+## 📝 API 4: Update Job
+
+**`PUT /api/college/update_job/:jobId`** — Core fields only, min 1 field required. Cannot edit cancelled jobs.
+
+---
+
+## 📝 API 5: Update Job Status
+
+**`PATCH /api/college/update_job_status/:jobId`**
+
+```json
+{ "job_status": "published" }
+```
+
+### Status Lifecycle
+
+```
+  ┌──────────┐     publish     ┌────────────┐     close    ┌──────────┐
+  │  DRAFT   │ ──────────────→ │ PUBLISHED  │ ───────────→ │  CLOSED  │
+  └──────────┘                 └────────────┘              └──────────┘
+       │                            │                           │
+       │  cancel                    │  cancel                   │ reopen
+       ▼                            ▼                           ▼
+  ┌────────────┐              ┌────────────┐              ┌────────────┐
+  │ CANCELLED  │              │ CANCELLED  │              │ PUBLISHED  │
+  │ (terminal) │              │ (terminal) │              │            │
+  └────────────┘              └────────────┘              └────────────┘
+```
+
+| From | To | Pre-condition |
+|------|----|---------------|
+| draft → published | ✅ | Must have ≥1 active position |
+| draft → cancelled | ✅ | — |
+| published → closed | ✅ | — |
+| published → cancelled | ✅ | — |
+| closed → published | ✅ | Reopen |
+| cancelled → anything | ❌ | Terminal state |
+
+---
+
+## 🔄 Integration Map
+
+```
+Companies (existing)          Job Postings (YOU ARE HERE)
+    │                              │
+    │ company_id ────────────→     │ job_id
+    │                              ├──→ Job Positions
+    │                              ├──→ Job Eligibility Criteria
+Company Contacts (existing)        ├──→ Job Rounds
+    │ (reference for HR)           ├──→ Application Questions
+    │                              │
+    └──────────────────────────    ▼
+                              Student Applications (future)
+                                   ├──→ Application Answers
+                                   ├──→ Round Results
+                                   └──→ Placement Results
+```
+
+### Frontend Navigation
+```
+Job List Page → Click job → Job Detail Page
+                            ├── Info Tab (editable)
+                            ├── Positions Tab
+                            ├── Eligibility Tab
+                            ├── Rounds Tab (with round status management)
+                            ├── Questions Tab
+                            └── Applications Tab (future)
+```
+
+---
+
+## 🧪 Postman Test Data
+
+### Test 1: Create Full Job (all nested data)
+Use the full request body from API 1 above.
+
+### Test 2: Create Minimal Job
+```json
+{
+  "company_id": "<companyId>",
+  "job_title": "Infosys Intern 2026",
+  "job_location": "Pune",
+  "job_type": "internship",
+  "internship_duration": "6 months",
+  "internship_stipend": "15000/month",
+  "passout_year": 2026,
+  "application_deadline": "2026-04-01T23:59:59Z",
+  "positions": [
+    { "position_name": "Intern — Development", "vacancies": 10 }
+  ]
+}
+```
+
+### Test 3: Inactive Company (expect 400)
+Use a deactivated company's ID → `"Cannot create a job for an inactive company"`
+
+### Test 4: Past Deadline (expect 400)
+```json
+{ "application_deadline": "2025-01-01T00:00:00Z", ... }
+```
+
+### Test 5: salary_min > salary_max (expect 400)
+```json
+{ "salary_min": 1000000, "salary_max": 500000, ... }
+```
+
+### Test 6: List All Jobs
+```
+GET /api/college/get_all_jobs?page=1&limit=20
+```
+
+### Test 7: Filter by Year + Status
+```
+GET /api/college/get_all_jobs?passout_year=2026&job_status=draft
+```
+
+### Test 8: Search Jobs
+```
+GET /api/college/get_all_jobs?search=tcs
+```
+
+### Test 9: Get Job Detail
+```
+GET /api/college/get_job/<jobId>
+```
+
+### Test 10: Update Job
+```
+PUT /api/college/update_job/<jobId>
+```
+```json
+{ "salary_package": "8 LPA", "salary_max": 800000 }
+```
+
+### Test 11: Publish Job (draft → published)
+```
+PATCH /api/college/update_job_status/<jobId>
+```
+```json
+{ "job_status": "published" }
+```
+
+### Test 12: Close Job (published → closed)
+```json
+{ "job_status": "closed" }
+```
+
+### Test 13: Reopen Job (closed → published)
+```json
+{ "job_status": "published" }
+```
+
+### Test 14: Cancel Job
+```json
+{ "job_status": "cancelled" }
+```
+
+### Test 15: Invalid Transition (cancelled → published, expect 400)
+```json
+{ "job_status": "published" }
+```
+
+---
+
+## 🎨 Frontend UI Recommendations
+
+### Create Job — Multi-Step Form
+| Step | Section | Content |
+|------|---------|---------|
+| 1 | **Basic Info** | Company (dropdown), Title, Location, Type, Year, Deadline |
+| 2 | **Salary & Bond** | Package, Min/Max, Bond Duration/Details |
+| 3 | **Positions** | Repeatable card: Name, Description, Vacancies |
+| 4 | **Eligibility** | CGPA, KTs, Percentages, Departments (multi-select), Genders |
+| 5 | **Rounds** | Sortable list: Name, Type, Date, Venue |
+| 6 | **Questions** | Repeatable: Text, Type, Options (conditional), Required toggle |
+| 7 | **Review** | Summary of all data → Submit |
+
+### Job List Page
+- **Filter bar**: Year dropdown + Status tabs (All/Draft/Published/Closed) + Company filter + Search
+- **Table**: Company (logo+name), Title, Type, Location, Deadline, Status (badge), Positions, Applications, Actions
+- **Status badges**: Draft (gray), Published (green), Closed (blue), Cancelled (red)
+
+### Job Detail Page
+- **Header**: Title + Company + Status badge + Action buttons (Edit, Publish/Close/Cancel)
+- **Tabs**: Info | Positions | Eligibility | Rounds | Questions | Applications

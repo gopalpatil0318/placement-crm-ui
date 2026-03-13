@@ -263,4 +263,140 @@ export const CollegeAdminService = {
         });
         return response.data;
     },
+
+    // ========================
+    // JOB POSTING MANAGEMENT
+    // ========================
+
+    createJob: async (data: Record<string, unknown>) => {
+        const response = await api.post("/college/create_job", data);
+        return response.data;
+    },
+
+    getAllJobs: async (params: {
+        passout_year?: number;
+        job_status?: string;
+        company_id?: string;
+        job_type?: string;
+        search?: string;
+        sort_by?: string;
+        sort_order?: string;
+        page?: number;
+        limit?: number;
+    } = {}) => {
+        const query = new URLSearchParams();
+        if (params.passout_year) query.append("passout_year", String(params.passout_year));
+        if (params.job_status) query.append("job_status", params.job_status);
+        if (params.company_id) query.append("company_id", params.company_id);
+        if (params.job_type) query.append("job_type", params.job_type);
+        if (params.search) query.append("search", params.search);
+        if (params.sort_by) query.append("sort_by", params.sort_by);
+        if (params.sort_order) query.append("sort_order", params.sort_order);
+        if (params.page) query.append("page", String(params.page));
+        if (params.limit) query.append("limit", String(params.limit));
+
+        const queryStr = query.toString();
+        const url = queryStr ? `/college/get_all_jobs?${queryStr}` : "/college/get_all_jobs";
+        const response = await api.get(url);
+        return response.data;
+    },
+
+    getJob: async (jobId: string) => {
+        const response = await api.get(`/college/get_job/${jobId}`);
+        return response.data;
+    },
+
+    updateJob: async (jobId: string, data: Record<string, unknown>) => {
+        const response = await api.put(`/college/update_job/${jobId}`, data);
+        return response.data;
+    },
+
+    updateJobStatus: async (jobId: string, jobStatus: string) => {
+        const response = await api.patch(`/college/update_job_status/${jobId}`, {
+            job_status: jobStatus,
+        });
+        return response.data;
+    },
+
+    // ========================
+    // JOB POSITION MANAGEMENT
+    // ========================
+
+    addJobPosition: async (jobId: string, data: { position_name: string; position_description?: string; vacancies?: number }) => {
+        const response = await api.post(`/college/add_job_position/${jobId}`, data);
+        return response.data;
+    },
+
+    updatePosition: async (positionId: string, data: Record<string, unknown>) => {
+        const response = await api.put(`/college/update_position/${positionId}`, data);
+        return response.data;
+    },
+
+    updatePositionStatus: async (positionId: string, positionStatus: string) => {
+        const response = await api.patch(`/college/update_position_status/${positionId}`, {
+            position_status: positionStatus,
+        });
+        return response.data;
+    },
+
+    // ========================
+    // JOB ELIGIBILITY CRITERIA
+    // ========================
+
+    setJobCriteria: async (jobId: string, data: Record<string, unknown>) => {
+        const response = await api.post(`/college/set_job_criteria/${jobId}`, data);
+        return response.data;
+    },
+
+    updateJobCriteria: async (jobId: string, data: Record<string, unknown>) => {
+        const response = await api.put(`/college/update_job_criteria/${jobId}`, data);
+        return response.data;
+    },
+
+    getEligibleStudents: async (jobId: string, params: {
+        search?: string;
+        dept_name?: string;
+        page?: number;
+        limit?: number;
+    } = {}) => {
+        const query = new URLSearchParams();
+        if (params.search) query.append("search", params.search);
+        if (params.dept_name) query.append("dept_name", params.dept_name);
+        if (params.page) query.append("page", String(params.page));
+        if (params.limit) query.append("limit", String(params.limit));
+
+        const queryStr = query.toString();
+        const url = queryStr
+            ? `/college/get_eligible_students/${jobId}?${queryStr}`
+            : `/college/get_eligible_students/${jobId}`;
+        const response = await api.get(url);
+        return response.data;
+    },
+
+    // ========================
+    // JOB ROUNDS MANAGEMENT
+    // ========================
+
+    addJobRound: async (jobId: string, data: {
+        round_name: string;
+        round_description?: string;
+        round_type?: string;
+        round_date?: string;
+        round_venue?: string;
+    }) => {
+        const response = await api.post(`/college/add_job_round/${jobId}`, data);
+        return response.data;
+    },
+
+    updateRound: async (roundId: string, data: Record<string, unknown>) => {
+        const response = await api.put(`/college/update_round/${roundId}`, data);
+        return response.data;
+    },
+
+    updateRoundStatus: async (roundId: string, roundStatus: string) => {
+        const response = await api.patch(`/college/update_round_status/${roundId}`, {
+            round_status: roundStatus,
+        });
+        return response.data;
+    },
 };

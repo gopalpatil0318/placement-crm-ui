@@ -1,0 +1,377 @@
+# Job Rounds API — Complete Documentation
+
+## Files Created
+
+| File | Path |
+|------|------|
+| Validator | [jobRound.validator.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/validators/college/jobRound.validator.js) |
+| Service | [jobRound.service.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/services/college/jobRound.service.js) |
+| Controller | [jobRound.controller.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/controllers/college/jobRound.controller.js) |
+| Routes | [jobRound.routes.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/routes/college/jobRound.routes.js) |
+| Route Index | [index.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/routes/index.js) (modified) |
+
+## Verification
+
+Server route loading verified — `ROUTE_LOAD_SUCCESS`, no import/syntax errors.
+
+---
+
+## 1. API Endpoint Reference
+
+### API #59 — Add Selection Round
+
+| Item | Value |
+|------|-------|
+| **Method** | `POST` |
+| **URL** | `/api/college/add_job_round/:jobId` |
+| **Auth** | Bearer Token (COLLEGEADMIN or TPO) |
+| **Rate Limit** | 50 req/min |
+
+#### Request Body
+
+```json
+{
+  "round_name": "Aptitude Test",
+  "round_description": "Online aptitude test covering quantitative, logical, and verbal",
+  "round_type": "aptitude",
+  "round_date": "2026-03-20T10:00:00",
+  "round_venue": "Computer Lab - Block A, Room 201"
+}
+```
+
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `round_name` | string | ✅ Yes | 2–200 chars |
+| `round_description` | string | ❌ Optional | max 1000 chars |
+| `round_type` | string | ❌ Optional | One of: `aptitude`, `technical`, `hr`, `group_discussion`, `coding`, `other` |
+| `round_date` | ISO date | ❌ Optional | Valid ISO 8601 |
+| `round_venue` | string | ❌ Optional | max 500 chars |
+
+> [!NOTE]
+> `round_number` is **auto-calculated** (MAX existing + 1). Do not send it in the request.
+
+#### Success Response (201)
+
+```json
+{
+  "success": true,
+  "message": "Selection round added",
+  "data": {
+    "round_id": "a1b2c3d4-...",
+    "job_id": "e5f6g7h8-...",
+    "round_number": 1,
+    "round_name": "Aptitude Test",
+    "round_description": "Online aptitude test covering quantitative, logical, and verbal",
+    "round_type": "aptitude",
+    "round_date": "2026-03-20T10:00:00.000Z",
+    "round_venue": "Computer Lab - Block A, Room 201",
+    "round_status": "pending",
+    "created_at": "2026-03-04T05:30:00.000Z",
+    "job_title": "Software Developer",
+    "company_name": "TCS"
+  }
+}
+```
+
+#### Error Responses
+
+| Status | Condition | Body |
+|--------|-----------|------|
+| 400 | Cancelled job | `{ "success": false, "error": "Cannot add rounds to a cancelled job" }` |
+| 404 | Invalid jobId | `{ "success": false, "error": "Job posting not found" }` |
+| 409 | Duplicate name | `{ "success": false, "error": "Round \"Aptitude Test\" already exists for this job" }` |
+| 422 | Validation | `{ "success": false, "error": "Please check your input...", "details": [...] }` |
+
+---
+
+### API #60 — Update Round
+
+| Item | Value |
+|------|-------|
+| **Method** | `PUT` |
+| **URL** | `/api/college/update_round/:roundId` |
+| **Auth** | Bearer Token (COLLEGEADMIN or TPO) |
+
+#### Request Body (at least 1 field required)
+
+```json
+{
+  "round_name": "Online Aptitude Test",
+  "round_date": "2026-03-22T14:00:00",
+  "round_venue": "Online - HackerRank Platform"
+}
+```
+
+All fields same as Add, but all optional. Must include at least one. Cannot edit `completed` or `cancelled` rounds.
+
+#### Success Response (200)
+
+```json
+{
+  "success": true,
+  "message": "Round details updated",
+  "data": { "...same shape as add response..." }
+}
+```
+
+#### Error Responses
+
+| Status | Condition |
+|--------|-----------|
+| 400 | Cancelled job, completed/cancelled round, no fields |
+| 404 | Invalid roundId |
+| 409 | Duplicate name |
+
+---
+
+### API #61 — Update Round Status
+
+| Item | Value |
+|------|-------|
+| **Method** | `PATCH` |
+| **URL** | `/api/college/update_round_status/:roundId` |
+| **Auth** | Bearer Token (COLLEGEADMIN or TPO) |
+
+#### Request Body
+
+```json
+{
+  "round_status": "in_progress"
+}
+```
+
+| Field | Type | Required | Valid Values |
+|-------|------|----------|-------------|
+| `round_status` | string | ✅ Yes | `pending`, `in_progress`, `completed`, `cancelled` |
+
+#### Status Transition Rules
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending
+    pending --> in_progress: Start round
+    pending --> cancelled: Cancel
+    in_progress --> completed: Finish round
+    in_progress --> cancelled: Cancel
+    
+    note right of completed: Terminal state
+    note right of cancelled: Terminal state
+```
+
+#### Success Response (200)
+
+```json
+{
+  "success": true,
+  "message": "Round is now in progress",
+  "data": { "...same shape as add response..." }
+}
+```
+
+#### Error Responses
+
+| Status | Condition | Example |
+|--------|-----------|---------|
+| 400 | Invalid transition | `"Cannot change round status from \"completed\" to \"pending\". Allowed transitions: none (terminal state)"` |
+| 400 | Same status | `"Round is already \"in_progress\""` |
+| 400 | Cancelled job | `"Cannot modify rounds in a cancelled job"` |
+| 404 | Invalid roundId | `"Selection round not found"` |
+
+---
+
+## 2. Frontend Implementation Guide
+
+### Add Round Form
+
+| Field | Input Type | Required | Validations |
+|-------|-----------|----------|-------------|
+| Round Name | **Single-line input** | ✅ | Required, 2–200 chars |
+| Round Description | **Textarea** | ❌ | Max 1000 chars |
+| Round Type | **Dropdown** | ❌ | Options: Aptitude, Technical, HR, Group Discussion, Coding, Other |
+| Round Date | **Date-time picker** | ❌ | Must be valid date, preferably future |
+| Round Venue | **Single-line input** | ❌ | Max 500 chars |
+
+> [!TIP]
+> Show the form as a **modal or slide-out panel** from the Job Detail page. After adding, refresh the rounds list on the parent page.
+
+### Round Type Dropdown Values
+
+```js
+const ROUND_TYPE_OPTIONS = [
+  { label: 'Aptitude', value: 'aptitude' },
+  { label: 'Technical', value: 'technical' },
+  { label: 'HR', value: 'hr' },
+  { label: 'Group Discussion', value: 'group_discussion' },
+  { label: 'Coding', value: 'coding' },
+  { label: 'Other', value: 'other' },
+];
+```
+
+### Round Status Badge Colors
+
+```js
+const STATUS_COLORS = {
+  pending: { bg: '#FFF3CD', text: '#856404', label: 'Pending' },
+  in_progress: { bg: '#CCE5FF', text: '#004085', label: 'In Progress' },
+  completed: { bg: '#D4EDDA', text: '#155724', label: 'Completed' },
+  cancelled: { bg: '#F8D7DA', text: '#721C24', label: 'Cancelled' },
+};
+```
+
+### Update Round Form
+
+Same fields as Add, but pre-filled with existing data. Show only for rounds that are `pending` or `in_progress`. Hide edit button for `completed`/`cancelled` rounds.
+
+### Status Change UI
+
+Use a **dropdown or button group** with only the allowed transitions for the current status:
+
+| Current Status | Show Buttons |
+|---------------|-------------|
+| `pending` | "Start Round" → `in_progress`, "Cancel" → `cancelled` |
+| `in_progress` | "Mark Complete" → `completed`, "Cancel" → `cancelled` |
+| `completed` | *(no buttons — terminal)* |
+| `cancelled` | *(no buttons — terminal)* |
+
+---
+
+## 3. Integration Guide
+
+### Relationship to Existing APIs
+
+```mermaid
+flowchart LR
+    A[Companies API] --> B[Job Postings API]
+    B --> C[Job Positions API]
+    B --> D[Job Eligibility Criteria API]
+    B --> E["Job Rounds API ✨ NEW"]
+    B --> F["Application Questions ❌ Future"]
+    E --> G["Round Results ❌ Future"]
+    G --> H["Placement Results ❌ Future"]
+```
+
+### Data Flow
+
+1. **Create Job** (status: `draft`) → jobId returned
+2. **Add Positions** to jobId
+3. **Set Eligibility Criteria** for jobId
+4. **Add Rounds** to jobId ← *this module*
+5. **Publish Job** (validates: ≥1 position + criteria + ≥1 round exist)
+6. Students apply...
+7. **Process Round Results** (future) — uses `round_id` from this module
+
+### Foreign Key Relationships
+
+| Column | References | Cascade |
+|--------|-----------|---------|
+| `job_rounds.job_id` | `job_postings.job_id` | ON DELETE CASCADE |
+| `student_round_results.round_id` | `job_rounds.round_id` | ON DELETE CASCADE |
+
+### Frontend Navigation Pattern
+
+```
+Job List Page → Click Job → Job Detail Page
+                              ├── Positions Tab
+                              ├── Eligibility Tab
+                              └── Rounds Tab  ← shows list + add/edit/status
+```
+
+### How This Supports Future APIs
+
+| Future Module | How it uses Job Rounds |
+|--------------|----------------------|
+| **Round Results** | `round_id` FK — admin adds per-student results (passed/failed/absent) |
+| **Student Applications** | Tracks `current_round_id` for each application |
+| **Job Publishing** | Validates at least 1 round exists before publishing |
+
+---
+
+## 4. Testing — Postman-Ready Payloads
+
+### Test Data — Add Rounds (POST)
+
+**Round 1: Aptitude**
+```json
+POST /api/college/add_job_round/{{jobId}}
+{
+  "round_name": "Aptitude Test",
+  "round_description": "60 minutes online test - quantitative, logical reasoning, verbal",
+  "round_type": "aptitude",
+  "round_date": "2026-03-20T10:00:00",
+  "round_venue": "Computer Lab - Block A"
+}
+```
+
+**Round 2: Technical**
+```json
+POST /api/college/add_job_round/{{jobId}}
+{
+  "round_name": "Technical Interview",
+  "round_description": "1-on-1 technical interview covering DSA, DBMS, OS",
+  "round_type": "technical",
+  "round_date": "2026-03-22T09:00:00",
+  "round_venue": "Seminar Hall - 2nd Floor"
+}
+```
+
+**Round 3: HR**
+```json
+POST /api/college/add_job_round/{{jobId}}
+{
+  "round_name": "HR Interview",
+  "round_type": "hr",
+  "round_date": "2026-03-25T11:00:00",
+  "round_venue": "Board Room - Admin Block"
+}
+```
+
+**Round 4: Minimal (name only)**
+```json
+POST /api/college/add_job_round/{{jobId}}
+{
+  "round_name": "Group Discussion"
+}
+```
+
+### Test Data — Update (PUT)
+
+```json
+PUT /api/college/update_round/{{roundId}}
+{
+  "round_date": "2026-03-21T14:00:00",
+  "round_venue": "Online - HackerRank"
+}
+```
+
+### Test Data — Status Change (PATCH)
+
+```json
+PATCH /api/college/update_round_status/{{roundId}}
+{ "round_status": "in_progress" }
+```
+
+---
+
+## 5. Edge Case Test Scenarios
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 1 | Add round to non-existent jobId | 404 |
+| 2 | Add round to another college's job | 404 |
+| 3 | Add round to cancelled job | 400 |
+| 4 | Add round with duplicate name (case-insensitive) | 409 |
+| 5 | Add round with only `round_name` (minimal) | 201 ✅ |
+| 6 | Add round with invalid `round_type` | 422 |
+| 7 | Update with empty body | 422 (min 1 field) |
+| 8 | Update completed round | 400 |
+| 9 | Update cancelled round | 400 |
+| 10 | Change status `completed` → `pending` | 400 (terminal) |
+| 11 | Change status `pending` → `completed` | 400 (must go through `in_progress`) |
+| 12 | Change status to same value | 400 |
+| 13 | Valid: `pending` → `in_progress` | 200 ✅ |
+| 14 | Valid: `in_progress` → `completed` | 200 ✅ |
+| 15 | Valid: `pending` → `cancelled` | 200 ✅ |
+| 16 | Update round name to existing name in same job | 409 |
+| 17 | Unauthorized role (TEACHER) | 403 |
+| 18 | No auth token | 401 |
+| 19 | Auto-incrementing `round_number` after adding 3 rounds | Expect 1, 2, 3 |

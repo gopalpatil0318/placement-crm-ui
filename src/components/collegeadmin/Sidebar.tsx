@@ -10,6 +10,8 @@ import {
   BookOpen,
   UserCheck,
   Building2,
+  Target,
+  ClipboardCheck,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/collegeadmin/useAuth";
@@ -102,6 +104,32 @@ const navItems: NavSection[] = [
         subItems: [
           { label: "All Companies", path: "/college/companies" },
           { label: "Add Company", path: "/college/create-company" },
+        ],
+      },
+      {
+        icon: <BriefcaseBusiness size={18} />,
+        label: "Job Postings",
+        allowedRoles: ["collegeadmin", "tpo", "tpc"],
+        subItems: [
+          { label: "All Jobs", path: "/college/jobs" },
+          { label: "Create Job", path: "/college/company/new/create-job" },
+        ],
+      },
+      {
+        icon: <Target size={18} />,
+        label: "Job Positions",
+        allowedRoles: ["collegeadmin", "tpo", "tpc"],
+        subItems: [
+          { label: "Manage Positions", path: "/college/job-positions" },
+          { label: "Add Job Position", path: "/college/add-job-position" },
+        ],
+      },
+      {
+        icon: <ClipboardCheck size={18} />,
+        label: "Eligibility Criteria",
+        allowedRoles: ["collegeadmin", "tpo", "tpc"],
+        subItems: [
+          { label: "Manage Criteria", path: "/college/job-criteria" },
         ],
       },
     ],

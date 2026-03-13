@@ -48,6 +48,22 @@ const CreateCompany = lazy(() => import('./pages/collegeadmin/company_management
 const UpdateCompany = lazy(() => import('./pages/collegeadmin/company_management/UpdateCompany'))
 const CompanyDetail = lazy(() => import('./pages/collegeadmin/company_management/CompanyDetail'))
 
+// College Admin - Job Postings
+const CreateJob = lazy(() => import('./pages/collegeadmin/company_management/job_postings/CreateJob'))
+const ViewJobs = lazy(() => import('./pages/collegeadmin/company_management/job_postings/ViewJobs'))
+const JobDetail = lazy(() => import('./pages/collegeadmin/company_management/job_postings/JobDetail'))
+const UpdateJob = lazy(() => import('./pages/collegeadmin/company_management/job_postings/UpdateJob'))
+
+// College Admin - Job Positions
+const ManagePositions = lazy(() => import('./pages/collegeadmin/company_management/job_positions/ManagePositions'))
+const ViewJobPositions = lazy(() => import('./pages/collegeadmin/company_management/job_positions/ViewJobPositions'))
+const AddJobPosition = lazy(() => import('./pages/collegeadmin/company_management/job_positions/AddJobPosition'))
+
+// College Admin - Job Eligibility Criteria
+const ViewJobCriteria = lazy(() => import('./pages/collegeadmin/company_management/job_eligibility_criteria/ViewJobCriteria'))
+const SetJobCriteria = lazy(() => import('./pages/collegeadmin/company_management/job_eligibility_criteria/SetJobCriteria'))
+const ViewEligibleStudents = lazy(() => import('./pages/collegeadmin/company_management/job_eligibility_criteria/ViewEligibleStudents'))
+
 // Students
 const StudentLogin = lazy(() => import('./pages/Students/StudentLogin'))
 const StudentDashboard = lazy(() => import('./pages/Students/StudentDashboard'))
@@ -269,6 +285,90 @@ function App() {
                   element={
                     <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
                       <CompanyDetail />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Job Posting Routes */}
+                <Route
+                  path="/college/jobs"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <ViewJobs />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/company/:companyId/create-job"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <CreateJob />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/job/:jobId"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <JobDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/job/:jobId/edit"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <UpdateJob />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/job/:jobId/positions"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <ManagePositions />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/job-positions"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <ViewJobPositions />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/add-job-position"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <AddJobPosition />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Job Eligibility Criteria Routes */}
+                <Route
+                  path="/college/job-criteria"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <ViewJobCriteria />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/job/:jobId/criteria"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <SetJobCriteria />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/college/job/:jobId/eligible-students"
+                  element={
+                    <ProtectedRoute allowedRoles={COLLEGE_ROLES}>
+                      <ViewEligibleStudents />
                     </ProtectedRoute>
                   }
                 />
