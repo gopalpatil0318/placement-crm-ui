@@ -1,17 +1,7 @@
+import { useEffect } from "react";
+import { AlertCircle } from "lucide-react";
 import { useUpdateCompany } from "@/hooks/collegeadmin/company_management/useUpdateCompany";
-import { INDUSTRY_OPTIONS } from "@/validators/CompanySchema";
-
-// ========================
-// CONSTANTS
-// ========================
-
-const INDUSTRY_DROPDOWN_OPTIONS = [
-    { value: "", label: "Select Industry (optional)" },
-    ...INDUSTRY_OPTIONS.map((t) => ({
-        value: t,
-        label: t,
-    })),
-];
+import CompanyForm from "./CompanyForm";
 
 // ========================
 // COMPONENT
@@ -19,55 +9,76 @@ const INDUSTRY_DROPDOWN_OPTIONS = [
 
 interface UpdateCompanyFormProps {
     companyId: string | undefined;
+    onCompanyLoaded?: (name: string) => void;
 }
 
-const UpdateCompanyForm = ({ companyId }: UpdateCompanyFormProps) => {
+const UpdateCompanyForm = ({ companyId, onCompanyLoaded }: UpdateCompanyFormProps) => {
     const {
         formData,
         errors,
         loading,
         fetching,
         fetchError,
+        fetchedCompanyName,
         handleChange,
         handleSubmit,
         handleCancel,
     } = useUpdateCompany(companyId);
 
-    const descriptionLength = formData.companyDescription?.length || 0;
+    // Notify parent page when company name is fetched (for breadcrumb)
+    useEffect(() => {
+        if (fetchedCompanyName && onCompanyLoaded) {
+            onCompanyLoaded(fetchedCompanyName);
+        }
+    }, [fetchedCompanyName, onCompanyLoaded]);
 
-    // ========================
-    // LOADING / ERROR STATES
-    // ========================
-
+    // ── Loading skeleton ──
     if (fetching) {
         return (
-            <div className="p-8 bg-white rounded-xl border animate-pulse">
-                <div className="h-6 bg-gray-100 rounded w-1/3 mb-6" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div className="h-10 bg-gray-100 rounded" />
-                    <div className="h-10 bg-gray-100 rounded" />
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 animate-pulse">
+                {/* Header skeleton */}
+                <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-gray-100 dark:bg-gray-800" />
+                    <div className="space-y-1.5">
+                        <div className="h-3 w-24 bg-gray-100 dark:bg-gray-800 rounded" />
+                        <div className="h-5 w-48 bg-gray-100 dark:bg-gray-800 rounded" />
+                    </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div className="h-10 bg-gray-100 rounded" />
-                    <div className="h-10 bg-gray-100 rounded" />
-                </div>
-                <div className="h-28 bg-gray-100 rounded mb-6" />
-                <div className="flex gap-3">
-                    <div className="h-10 w-32 bg-gray-100 rounded" />
-                    <div className="h-10 w-24 bg-gray-100 rounded" />
+                {/* Body skeleton */}
+                <div className="p-6 space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="h-14 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                        <div className="h-14 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="h-14 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                        <div className="h-14 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                    </div>
+                    <div className="h-28 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                    <div className="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                        <div className="h-10 w-32 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                        <div className="h-10 w-20 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                    </div>
                 </div>
             </div>
         );
     }
 
+    // ── Fetch error state ──
     if (fetchError) {
         return (
-            <div className="p-8 bg-white rounded-xl border text-center">
-                <p className="text-red-500 font-medium">{fetchError}</p>
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-10 flex flex-col items-center gap-4 text-center">
+                <div className="h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                    <AlertCircle className="h-6 w-6 text-red-500 dark:text-red-400" />
+                </div>
+                <div>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Failed to load company</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{fetchError}</p>
+                </div>
                 <button
                     type="button"
                     onClick={handleCancel}
-                    className="mt-4 text-blue-600 hover:underline font-medium"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
                 >
                     ← Back to Companies
                 </button>
@@ -75,167 +86,18 @@ const UpdateCompanyForm = ({ companyId }: UpdateCompanyFormProps) => {
         );
     }
 
-    // ========================
-    // FORM
-    // ========================
-
+    // ── Form ──
     return (
-        <div className="p-8 bg-white rounded-xl border">
-            <h1 className="text-xl font-semibold text-gray-800 mb-6">
-                Update Company Form
-            </h1>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Row 1 — Name & Industry */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Company Name <span className="text-red-500 ml-0.5">*</span>
-                        </label>
-                        <input
-                            name="companyName"
-                            value={formData.companyName}
-                            onChange={handleChange}
-                            placeholder="e.g. Tata Consultancy Services"
-                            maxLength={200}
-                            autoFocus
-                            className={`w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.companyName ? "border-red-400 bg-red-50" : "border-gray-300"}`}
-                        />
-                        {errors.companyName && (
-                            <p className="text-xs text-red-500 mt-1">{errors.companyName}</p>
-                        )}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Industry
-                            <span className="text-gray-400 text-xs ml-1">(optional)</span>
-                        </label>
-                        <select
-                            name="industry"
-                            value={formData.industry}
-                            onChange={handleChange}
-                            className={`w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${errors.industry ? "border-red-400 bg-red-50" : "border-gray-300"}`}
-                        >
-                            {INDUSTRY_DROPDOWN_OPTIONS.map((opt) => (
-                                <option key={opt.value || "placeholder"} value={opt.value}>
-                                    {opt.label}
-                                </option>
-                            ))}
-                        </select>
-                        {errors.industry && (
-                            <p className="text-xs text-red-500 mt-1">{errors.industry}</p>
-                        )}
-                    </div>
-                </div>
-
-                {/* Row 2 — Website & Logo URL */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Website
-                            <span className="text-gray-400 text-xs ml-1">(optional)</span>
-                        </label>
-                        <input
-                            name="companyWebsite"
-                            value={formData.companyWebsite}
-                            onChange={handleChange}
-                            placeholder="https://www.example.com"
-                            className={`w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.companyWebsite ? "border-red-400 bg-red-50" : "border-gray-300"}`}
-                        />
-                        {errors.companyWebsite && (
-                            <p className="text-xs text-red-500 mt-1">{errors.companyWebsite}</p>
-                        )}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Logo URL
-                            <span className="text-gray-400 text-xs ml-1">(optional)</span>
-                        </label>
-                        <input
-                            name="companyLogo"
-                            value={formData.companyLogo}
-                            onChange={handleChange}
-                            placeholder="https://example.com/logo.png"
-                            className={`w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.companyLogo ? "border-red-400 bg-red-50" : "border-gray-300"}`}
-                        />
-                        {errors.companyLogo && (
-                            <p className="text-xs text-red-500 mt-1">{errors.companyLogo}</p>
-                        )}
-                    </div>
-                </div>
-
-                {/* Row 3 — Description */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Description
-                        <span className="text-gray-400 text-xs ml-1">(optional)</span>
-                    </label>
-                    <textarea
-                        name="companyDescription"
-                        value={formData.companyDescription}
-                        onChange={handleChange}
-                        placeholder="Brief description about the company..."
-                        rows={5}
-                        maxLength={3000}
-                        className={`w-full rounded-lg border px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${errors.companyDescription ? "border-red-400 bg-red-50" : "border-gray-300"}`}
-                    />
-                    <div className="flex justify-between mt-1">
-                        {errors.companyDescription ? (
-                            <p className="text-xs text-red-500">{errors.companyDescription}</p>
-                        ) : (
-                            <span />
-                        )}
-                        <p className={`text-xs ${descriptionLength > 2800 ? "text-orange-500" : "text-gray-400"}`}>
-                            {descriptionLength} / 3000
-                        </p>
-                    </div>
-                </div>
-
-                {/* Logo Preview */}
-                {formData.companyLogo && (
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                        <p className="text-sm font-medium text-gray-600">Logo Preview:</p>
-                        <img
-                            src={formData.companyLogo}
-                            alt="Company logo preview"
-                            className="h-12 w-12 object-contain rounded-lg border bg-white"
-                            onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = "none";
-                            }}
-                        />
-                    </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-3 pt-2">
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-lg font-medium transition disabled:opacity-60"
-                    >
-                        {loading ? (
-                            <div className="flex items-center gap-2">
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                Updating...
-                            </div>
-                        ) : (
-                            "Update Company"
-                        )}
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={handleCancel}
-                        disabled={loading}
-                        className="px-6 py-2.5 rounded-lg font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition disabled:opacity-40"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            </form>
-        </div>
+        <CompanyForm
+            mode="edit"
+            formData={formData}
+            errors={errors}
+            loading={loading}
+            fetchedCompanyName={fetchedCompanyName}
+            handleChange={handleChange}
+            handleSubmit={handleSubmit}
+            handleCancel={handleCancel}
+        />
     );
 };
 

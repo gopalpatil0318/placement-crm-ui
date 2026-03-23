@@ -1,473 +1,615 @@
-import { useState } from "react";
+﻿import { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { motion, LayoutGroup, useReducedMotion } from "framer-motion";
 import {
     Building2,
     Globe,
-    ArrowLeft,
     ExternalLink,
     Users,
     Briefcase,
     Pencil,
     Power,
-    X,
+    AlertCircle,
+    AlertTriangle,
+    FileText,
+    Hash,
+    Calendar,
+    UserCheck,
+    Loader2,
 } from "lucide-react";
-import DashboardLayout from "@/components/collegeadmin/DashboardLayout";
 import PageHeader from "@/components/collegeadmin/PageHeader";
-import { useViewCompany } from "@/hooks/collegeadmin/company_management/useViewCompany";
+import AnimatedPage from "@/components/ui/AnimatedPage";
+import AnimatedTabContent from "@/components/ui/AnimatedTabContent";
+import ModalWrapper from "@/components/ui/ModalWrapper";
+import { useViewCompany, type CompanyDetail as CompanyDetailType } from "@/hooks/collegeadmin/company_management/useViewCompany";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
+import ContactsTab from "@/components/collegeadmin/company_management/ContactsTab";
+import CompanyJobsTab from "@/components/collegeadmin/company_management/CompanyJobsTab";
 
 // ========================
-// COMPONENT
+// CONSTANTS
+// ========================
+
+type TabKey = "overview" | "contacts" | "jobs";
+
+const TAB_ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
+    overview: FileText,
+    contacts: Users,
+    jobs: Briefcase,
+};
+
+const TABS: { key: TabKey; label: string }[] = [
+    { key: "overview", label: "Overview" },
+    { key: "jobs", label: "Jobs" },
+    { key: "contacts", label: "Contacts" },
+];
+
+// ========================
+// HELPERS
+// ========================
+
+const getInitials = (name: string) => {
+    const words = name.trim().split(/\s+/);
+    if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+};
+
+const AVATAR_COLORS = [
+    "from-blue-500 to-blue-600",
+    "from-emerald-500 to-emerald-600",
+    "from-purple-500 to-purple-600",
+    "from-orange-500 to-orange-600",
+    "from-cyan-500 to-cyan-600",
+    "from-pink-500 to-pink-600",
+] as const;
+
+const getAvatarGradient = (name: string) =>
+    AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+
+const formatDate = (dateStr: string | undefined | null) => {
+    if (!dateStr) return "â€”";
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+};
+
+// ========================
+// SUB-COMPONENTS
+// ========================
+
+/** Hero avatar â€” large logo or initials */
+const HeroAvatar = ({ company }: { company: CompanyDetailType }) => {
+    const [imgErr, setImgErr] = useState(false);
+
+    if (company.company_logo && !imgErr) {
+        return (
+            <img
+                src={company.company_logo}
+                alt={company.company_name}
+                className="h-16 w-16 rounded-xl object-contain border-2 border-white dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm flex-shrink-0"
+                onError={() => setImgErr(true)}
+            />
+        );
+    }
+
+    return (
+        <div
+            className={`h-16 w-16 rounded-xl bg-gradient-to-br ${getAvatarGradient(company.company_name)} flex items-center justify-center flex-shrink-0 shadow-sm text-white text-xl font-bold`}
+        >
+            {getInitials(company.company_name)}
+        </div>
+    );
+};
+
+/** Stat card */
+const StatCard = ({
+    icon,
+    value,
+    label,
+    color,
+}: {
+    icon: React.ReactNode;
+    value: number;
+    label: string;
+    color: "cyan" | "blue" | "orange";
+}) => {
+    const colors = {
+        cyan: "bg-cyan-50 dark:bg-cyan-900/20 border-cyan-100 dark:border-cyan-800 text-cyan-600 dark:text-cyan-400",
+        blue: "bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400",
+        orange: "bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800 text-orange-600 dark:text-orange-400",
+    };
+    const numColors = {
+        cyan: "text-cyan-700 dark:text-cyan-300",
+        blue: "text-blue-700 dark:text-blue-300",
+        orange: "text-orange-700 dark:text-orange-300",
+    };
+
+    return (
+        <div className={`flex items-center gap-4 p-5 rounded-xl border ${colors[color]}`}>
+            <div className="h-11 w-11 rounded-lg bg-white/80 dark:bg-gray-800/80 flex items-center justify-center flex-shrink-0 shadow-sm">
+                {icon}
+            </div>
+            <div>
+                <p className={`text-2xl font-bold ${numColors[color]}`}>{value}</p>
+                <p className="text-xs font-medium opacity-80">{label}</p>
+            </div>
+        </div>
+    );
+};
+
+/** Info row for Overview tab */
+const InfoRow = ({
+    icon,
+    label,
+    children,
+}: {
+    icon: React.ReactNode;
+    label: string;
+    children: React.ReactNode;
+}) => (
+    <div className="flex items-start gap-3 py-3.5">
+        <div className="h-8 w-8 rounded-md bg-gray-50 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 mt-0.5 text-gray-400 dark:text-gray-500">
+            {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+            <p className="text-xs text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide mb-0.5">{label}</p>
+            <div className="text-sm text-gray-700 dark:text-gray-300">{children}</div>
+        </div>
+    </div>
+);
+
+// ========================
+// TAB CONTENT COMPONENTS
+// ========================
+
+/** Overview tab */
+const OverviewTab = ({ company }: { company: CompanyDetailType }) => (
+    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+        {/* Description */}
+        {company.company_description && (
+            <div className="pb-5">
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">About</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
+                    {company.company_description}
+                </p>
+            </div>
+        )}
+
+        {/* Details grid */}
+        <div className="pt-5 grid grid-cols-1 md:grid-cols-2 gap-x-8">
+            {company.company_website && (
+                <InfoRow icon={<Globe className="h-4 w-4" />} label="Website">
+                    <a
+                        href={company.company_website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline inline-flex items-center gap-1 break-all"
+                    >
+                        {company.company_website}
+                        <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                    </a>
+                </InfoRow>
+            )}
+
+            {company.industry && (
+                <InfoRow icon={<Building2 className="h-4 w-4" />} label="Industry">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400">
+                        {company.industry}
+                    </span>
+                </InfoRow>
+            )}
+
+            <InfoRow icon={<Hash className="h-4 w-4" />} label="Company ID">
+                <code className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded">
+                    {company.company_id}
+                </code>
+            </InfoRow>
+
+            <InfoRow icon={<Calendar className="h-4 w-4" />} label="Registered">
+                {formatDate(company.created_at)}
+            </InfoRow>
+
+            {company.updated_at && (
+                <InfoRow icon={<Calendar className="h-4 w-4" />} label="Last Updated">
+                    {formatDate(company.updated_at)}
+                </InfoRow>
+            )}
+        </div>
+    </div>
+);
+
+/** Jobs tab â€” replaced by CompanyJobsTab component */
+
+// ========================
+// LOADING SKELETON
+// ========================
+
+const DetailSkeleton = () => (
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 animate-pulse">
+        {/* Hero skeleton */}
+        <div className="px-6 py-6 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-xl bg-gray-100 dark:bg-gray-800" />
+                <div className="space-y-2 flex-1">
+                    <div className="h-6 bg-gray-100 dark:bg-gray-800 rounded w-56" />
+                    <div className="flex gap-2">
+                        <div className="h-5 w-16 bg-gray-100 dark:bg-gray-800 rounded-full" />
+                        <div className="h-5 w-24 bg-gray-100 dark:bg-gray-800 rounded-full" />
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    <div className="h-10 w-28 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                    <div className="h-10 w-28 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                </div>
+            </div>
+        </div>
+        {/* Stats skeleton */}
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[0, 1, 2].map((i) => (
+                    <div key={i} className="h-20 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700" />
+                ))}
+            </div>
+        </div>
+        {/* Tabs skeleton */}
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex gap-6">
+            {[0, 1, 2].map((i) => (
+                <div key={i} className="h-5 w-20 bg-gray-100 dark:bg-gray-800 rounded" />
+            ))}
+        </div>
+        {/* Body skeleton */}
+        <div className="p-6 space-y-4">
+            <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-3/4" />
+            <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-1/2" />
+            <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-2/3" />
+        </div>
+    </div>
+);
+
+// ========================
+// MAIN COMPONENT
 // ========================
 
 const CompanyDetail = () => {
     const { companyId } = useParams<{ companyId: string }>();
     const navigate = useNavigate();
+    const shouldReduce = useReducedMotion();
     const { company, loading, error, refresh } = useViewCompany(companyId);
+    const [activeTab, setActiveTab] = useState<TabKey>("overview");
     const [toggling, setToggling] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
 
-    const breadcrumbs = [
-        { label: "Dashboard", path: "/college/dashboard" },
-        { label: "Companies", path: "/college/companies" },
-        { label: company?.company_name || "Company Detail", active: true },
-    ];
+    const breadcrumbs = useMemo(
+        () => [
+            { label: "Dashboard", path: "/college/dashboard" },
+            { label: "Companies", path: "/college/companies" },
+            { label: company?.company_name || "Details", active: true },
+        ],
+        [company?.company_name]
+    );
 
-    // ========================
-    // STATUS TOGGLE
-    // ========================
+    const handleCloseConfirm = useCallback(() => {
+        if (!toggling) setShowConfirm(false);
+    }, [toggling]);
 
-    const handleToggleStatus = async () => {
+    // â”€â”€ Status toggle â”€â”€
+    const handleToggleStatus = useCallback(async () => {
         if (!company) return;
-        setToggling(true);
 
+        const newStatus = company.company_status === "active" ? "inactive" : "active";
+
+        setToggling(true);
         try {
-            const newStatus =
-                company.company_status === "active" ? "inactive" : "active";
-            await CollegeAdminService.toggleCompanyStatus(
-                company.company_id,
-                newStatus
-            );
+            await CollegeAdminService.toggleCompanyStatus(company.company_id, newStatus);
             showToast({
                 type: "success",
                 title: "Status Updated",
-                description: `Company ${newStatus === "active" ? "activated" : "deactivated"} successfully`,
+                description: `${company.company_name} is now ${newStatus}.`,
             });
             refresh();
         } catch (err: unknown) {
-            const msg =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to toggle company status";
+            const msg = err instanceof ApiError ? err.message : "Failed to toggle status";
             showToast({ type: "error", title: "Error", description: msg });
         } finally {
             setToggling(false);
             setShowConfirm(false);
         }
-    };
+    }, [company, refresh]);
 
-    // ========================
-    // LOADING / ERROR
-    // ========================
-
+    // â”€â”€ Loading â”€â”€
     if (loading) {
         return (
-            <DashboardLayout>
-                <div className="space-y-8">
-                    <PageHeader title="Company Detail" breadcrumbs={breadcrumbs} />
-                    <div className="p-8 bg-white rounded-xl border animate-pulse">
-                        <div className="h-6 bg-gray-100 rounded w-1/3 mb-4" />
-                        <div className="h-4 bg-gray-100 rounded w-2/3 mb-3" />
-                        <div className="h-4 bg-gray-100 rounded w-1/2 mb-3" />
-                        <div className="h-4 bg-gray-100 rounded w-1/4" />
-                    </div>
+            <AnimatedPage>
+                <div className="space-y-6">
+                    <PageHeader title="Company Details" breadcrumbs={breadcrumbs} />
+                    <DetailSkeleton />
                 </div>
-            </DashboardLayout>
+            </AnimatedPage>
         );
     }
 
+    // â”€â”€ Error â”€â”€
     if (error || !company) {
         return (
-            <DashboardLayout>
-                <div className="space-y-8">
-                    <PageHeader title="Company Detail" breadcrumbs={breadcrumbs} />
-                    <div className="p-8 bg-white rounded-xl border text-center">
-                        <p className="text-red-500 font-medium">
-                            {error || "Company not found"}
-                        </p>
+            <AnimatedPage>
+                <div className="space-y-6">
+                    <PageHeader title="Company Details" breadcrumbs={breadcrumbs} />
+                    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-10 flex flex-col items-center gap-4 text-center">
+                        <div className="h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                            <AlertCircle className="h-6 w-6 text-red-500 dark:text-red-400" />
+                        </div>
+                        <div>
+                            <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Failed to load company</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{error || "Company not found"}</p>
+                        </div>
                         <button
                             type="button"
                             onClick={() => navigate("/college/companies")}
-                            className="mt-4 text-blue-600 hover:underline font-medium"
+                            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium"
                         >
-                            ← Back to Companies
+                            â† Back to Companies
                         </button>
                     </div>
                 </div>
-            </DashboardLayout>
+            </AnimatedPage>
         );
     }
 
     const isActive = company.company_status === "active";
 
+    // Contacts/jobs counts for tab badges
+    const tabBadge: Partial<Record<TabKey, number>> = {
+        contacts: company.contacts_count ?? 0,
+        jobs: company.jobs_count ?? 0,
+    };
+
+    const TAB_KEYS = TABS.map((t) => t.key) as TabKey[];
+
     return (
-        <DashboardLayout>
-            <div className="space-y-8">
-                <PageHeader
-                    title="Company Details"
-                    breadcrumbs={breadcrumbs}
-                />
+        <>
+            <AnimatedPage>
+            <div className="space-y-6">
+                <PageHeader title="Company Details" breadcrumbs={breadcrumbs} />
 
-                <div className="w-full">
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10">
-                        {/* Header */}
-                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-10">
-                            <div className="flex items-center gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => navigate("/college/companies")}
-                                    className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors"
-                                >
-                                    <ArrowLeft size={16} />
-                                    Back
-                                </button>
+                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                    {/* â”â” Hero Header â”â” */}
+                    <div className="px-6 py-6 border-b border-gray-100 dark:border-gray-800">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+                            {/* Left: Avatar + info */}
+                            <div className="flex items-center gap-4 min-w-0">
+                                <HeroAvatar company={company} />
 
-                                <div className="h-6 w-px bg-slate-200" />
-
-                                {company.company_logo ? (
-                                    <img
-                                        src={company.company_logo}
-                                        alt={company.company_name}
-                                        className="h-12 w-12 rounded-xl object-contain border bg-white flex-shrink-0"
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).style.display = "none";
-                                        }}
-                                    />
-                                ) : (
-                                    <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                        <Building2 size={22} className="text-blue-600" />
-                                    </div>
-                                )}
-
-                                <div>
-                                    <h2 className="text-2xl font-semibold text-slate-900">
+                                <div className="min-w-0">
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
                                         {company.company_name}
                                     </h2>
-                                    <p className="text-sm text-slate-500 mt-1">
-                                        Company Overview & Details
-                                    </p>
+                                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                        {/* Status badge */}
+                                        <span
+                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                                isActive
+                                                    ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                                                    : "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
+                                            }`}
+                                        >
+                                            <span
+                                                className={`h-1.5 w-1.5 rounded-full ${
+                                                    isActive ? "bg-emerald-500" : "bg-red-400"
+                                                }`}
+                                            />
+                                            {isActive ? "Active" : "Inactive"}
+                                        </span>
+
+                                        {/* Industry tag */}
+                                        {company.industry && (
+                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400">
+                                                {company.industry}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-
-                                <span
-                                    className={`ml-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${isActive
-                                        ? "bg-emerald-100 text-emerald-700"
-                                        : "bg-red-100 text-red-700"
-                                        }`}
-                                >
-                                    <span
-                                        className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-red-500"}`}
-                                    />
-                                    {isActive ? "Active" : "Inactive"}
-                                </span>
-
-                                {company.industry && (
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
-                                        {company.industry}
-                                    </span>
-                                )}
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex items-center gap-3">
+                            {/* Right: Action buttons */}
+                            <div className="flex items-center gap-2 flex-shrink-0">
                                 <button
                                     type="button"
                                     onClick={() => navigate(`/college/update-company/${company.company_id}`)}
-                                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl shadow-sm hover:bg-blue-700 transition-all active:scale-[0.98]"
+                                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm"
                                 >
-                                    <Pencil size={16} />
-                                    Edit Company
+                                    <Pencil className="h-4 w-4" />
+                                    Edit
                                 </button>
 
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirm(true)}
-                                    disabled={toggling}
-                                    className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl shadow-sm transition-all active:scale-[0.98] disabled:opacity-40 ${isActive
-                                        ? "bg-red-600 text-white hover:bg-red-700"
-                                        : "bg-green-600 text-white hover:bg-green-700"
-                                        }`}
+                                    className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition shadow-sm ${
+                                        isActive
+                                            ? "bg-red-600 hover:bg-red-700 text-white"
+                                            : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                    }`}
                                 >
-                                    <Power size={16} />
+                                    <Power className="h-4 w-4" />
                                     {isActive ? "Deactivate" : "Activate"}
                                 </button>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Info Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            {company.company_website && (
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                        <Globe size={18} className="text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-400 font-semibold uppercase">
-                                            Website
-                                        </p>
-                                        <a
-                                            href={company.company_website}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-sm text-blue-600 hover:underline flex items-center gap-1"
-                                        >
-                                            {company.company_website}
-                                            <ExternalLink size={12} />
-                                        </a>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Description */}
-                        {company.company_description && (
-                            <div className="mb-6">
-                                <p className="text-xs text-gray-400 font-semibold uppercase mb-2">
-                                    Description
-                                </p>
-                                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                                    {company.company_description}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Stats Cards */}
+                    {/* â”â” Stats Row â”â” */}
+                    <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/30">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="flex items-center gap-4 p-4 rounded-xl bg-cyan-50 border border-cyan-100">
-                                <div className="h-10 w-10 rounded-lg bg-cyan-100 flex items-center justify-center">
-                                    <Users size={18} className="text-cyan-600" />
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-cyan-700">
-                                        {company.contacts_count ?? 0}
-                                    </p>
-                                    <p className="text-xs text-cyan-600 font-medium">
-                                        Total Contacts
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 p-4 rounded-xl bg-blue-50 border border-blue-100">
-                                <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                                    <Users size={18} className="text-blue-600" />
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-blue-700">
-                                        {company.active_contacts_count ?? 0}
-                                    </p>
-                                    <p className="text-xs text-blue-600 font-medium">
-                                        Active Contacts
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 p-4 rounded-xl bg-orange-50 border border-orange-100">
-                                <div className="h-10 w-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                                    <Briefcase size={18} className="text-orange-600" />
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-orange-700">
-                                        {company.jobs_count ?? 0}
-                                    </p>
-                                    <p className="text-xs text-orange-600 font-medium">
-                                        Jobs Posted
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Contacts Section */}
-                        {company.contacts && company.contacts.length > 0 && (
-                            <div className="mt-8">
-                                <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                                    Company Contacts
-                                </h3>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse">
-                                        <thead>
-                                            <tr className="bg-gray-50 text-left text-sm font-semibold text-gray-700">
-                                                <th className="px-4 py-3">#</th>
-                                                <th className="px-4 py-3">NAME</th>
-                                                <th className="px-4 py-3">DESIGNATION</th>
-                                                <th className="px-4 py-3">EMAIL</th>
-                                                <th className="px-4 py-3">PHONE</th>
-                                                <th className="px-4 py-3">TYPE</th>
-                                                <th className="px-4 py-3">STATUS</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {company.contacts.map((contact, idx) => (
-                                                <tr
-                                                    key={contact.contact_id}
-                                                    className="border-b text-sm"
-                                                >
-                                                    <td className="px-4 py-3 text-gray-500">
-                                                        {idx + 1}
-                                                    </td>
-                                                    <td className="px-4 py-3 font-medium text-gray-800">
-                                                        {contact.contact_name}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-gray-600">
-                                                        {contact.contact_designation || (
-                                                            <span className="text-gray-400">
-                                                                —
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-gray-600">
-                                                        {contact.contact_email || (
-                                                            <span className="text-gray-400">
-                                                                —
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-gray-600">
-                                                        {contact.contact_phone || (
-                                                            <span className="text-gray-400">
-                                                                —
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        {contact.is_primary ? (
-                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                                                Primary
-                                                            </span>
-                                                        ) : (
-                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
-                                                                Secondary
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <span
-                                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${contact.is_active
-                                                                ? "bg-green-100 text-green-700"
-                                                                : "bg-red-100 text-red-700"
-                                                                }`}
-                                                        >
-                                                            <span
-                                                                className={`h-1.5 w-1.5 rounded-full ${contact.is_active
-                                                                    ? "bg-green-500"
-                                                                    : "bg-red-500"
-                                                                    }`}
-                                                            />
-                                                            {contact.is_active
-                                                                ? "Active"
-                                                                : "Inactive"}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Footer */}
-                        <div className="mt-12 pt-6 border-t border-slate-100">
-                            <p className="text-xs text-slate-400">
-                                Company ID:{" "}
-                                <span className="font-mono text-slate-500">
-                                    {company.company_id}
-                                </span>
-                            </p>
+                            <StatCard
+                                icon={<Users className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />}
+                                value={company.contacts_count ?? 0}
+                                label="Total Contacts"
+                                color="cyan"
+                            />
+                            <StatCard
+                                icon={<UserCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+                                value={company.active_contacts_count ?? 0}
+                                label="Active Contacts"
+                                color="blue"
+                            />
+                            <StatCard
+                                icon={<Briefcase className="h-5 w-5 text-orange-600 dark:text-orange-400" />}
+                                value={company.jobs_count ?? 0}
+                                label="Jobs Posted"
+                                color="orange"
+                            />
                         </div>
                     </div>
+
+                    {/* â”â” Tab Navigation â”â” */}
+                    <div className="px-6 border-b border-gray-100 dark:border-gray-800">
+                        <LayoutGroup>
+                            <nav className="flex gap-1 -mb-px" aria-label="Tabs">
+                                {TABS.map((tab) => {
+                                    const isSelected = activeTab === tab.key;
+                                    const badge = tabBadge[tab.key];
+                                    const Icon = TAB_ICONS[tab.key];
+                                    return (
+                                        <button
+                                            key={tab.key}
+                                            type="button"
+                                            onClick={() => setActiveTab(tab.key)}
+                                            className={`relative inline-flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                                                isSelected
+                                                    ? "text-blue-600 dark:text-blue-400"
+                                                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                                            }`}
+                                        >
+                                            <Icon className="h-4 w-4" />
+                                            {tab.label}
+                                            {badge !== undefined && badge > 0 && (
+                                                <span
+                                                    className={`ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-semibold ${
+                                                        isSelected
+                                                            ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                                                            : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                                                    }`}
+                                                >
+                                                    {badge}
+                                                </span>
+                                            )}
+                                            {isSelected && (
+                                                shouldReduce ? (
+                                                    <span className="absolute bottom-0 inset-x-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full" />
+                                                ) : (
+                                                    <motion.span
+                                                        layoutId="tab-indicator"
+                                                        className="absolute bottom-0 inset-x-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full"
+                                                        transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                                                    />
+                                                )
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </nav>
+                        </LayoutGroup>
+                    </div>
+
+                    {/* â”â” Tab Content â”â” */}
+                    <AnimatedTabContent activeTab={activeTab} tabKeys={TAB_KEYS} className="p-6">
+                        {activeTab === "overview" && <OverviewTab company={company} />}
+                        {activeTab === "jobs" && (
+                            <CompanyJobsTab companyId={company.company_id} companyName={company.company_name} />
+                        )}
+                        {activeTab === "contacts" && (
+                            <ContactsTab companyId={company.company_id} onContactsChanged={refresh} />
+                        )}
+                    </AnimatedTabContent>
                 </div>
             </div>
+            </AnimatedPage>
 
-            {/* ===== Toggle Status Confirmation Modal ===== */}
-            {showConfirm && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-                    onClick={() => !toggling && setShowConfirm(false)}
-                >
-                    <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
-                            <h2 className="text-lg font-bold text-gray-800">
-                                {isActive
-                                    ? "Deactivate Company"
-                                    : "Activate Company"}
-                            </h2>
-                            <button
-                                type="button"
-                                onClick={() => setShowConfirm(false)}
-                                disabled={toggling}
-                                className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <div className="px-6 py-5">
-                            <p className="text-sm text-gray-600">
-                                Are you sure you want to{" "}
-                                <span className="font-bold">
-                                    {isActive ? "deactivate" : "activate"}
-                                </span>{" "}
-                                <span className="font-bold">
-                                    "{company.company_name}"
-                                </span>
-                                ?
-                            </p>
-                            {isActive && (
-                                <p className="text-xs text-amber-600 mt-3 bg-amber-50 px-3 py-2 rounded-lg">
-                                    ⚠️ This company will be hidden from new job creation.
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="px-6 py-3 border-t bg-gray-50 flex items-center justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setShowConfirm(false)}
-                                disabled={toggling}
-                                className="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-40"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleToggleStatus}
-                                disabled={toggling}
-                                className={`px-5 py-2 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 ${isActive
-                                    ? "bg-red-600 hover:bg-red-700"
-                                    : "bg-green-600 hover:bg-green-700"
-                                    }`}
-                            >
-                                {toggling && (
-                                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                )}
-                                {toggling
-                                    ? "Updating..."
-                                    : isActive
-                                        ? "Deactivate"
-                                        : "Activate"}
-                            </button>
-                        </div>
+            {/* â”â”â”â”â” Toggle Confirmation Modal â”â”â”â”â” */}
+            <ModalWrapper
+                isOpen={showConfirm}
+                onClose={handleCloseConfirm}
+                disabled={toggling}
+                title={isActive ? "Deactivate Company" : "Activate Company"}
+                titleIcon={
+                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${
+                        isActive ? "bg-red-50 dark:bg-red-900/20" : "bg-emerald-50 dark:bg-emerald-900/20"
+                    }`}>
+                        <Power className={`h-4 w-4 ${
+                            isActive ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+                        }`} />
                     </div>
+                }
+                size="md"
+            >
+                {/* Modal body */}
+                <div className="px-6 py-5">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Are you sure you want to{" "}
+                        <span className="font-semibold">
+                            {isActive ? "deactivate" : "activate"}
+                        </span>{" "}
+                        <span className="font-semibold text-gray-800 dark:text-gray-100">
+                            {company.company_name}
+                        </span>
+                        ?
+                    </p>
+
+                    {isActive && (
+                        <div className="mt-4 flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+                            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                            <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                                <p className="font-medium">This action will:</p>
+                                <ul className="list-disc pl-4 space-y-0.5">
+                                    <li>Hide this company from new job postings</li>
+                                    <li>Existing job postings will not be affected</li>
+                                    <li>You can re-activate the company at any time</li>
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+
+                    {!isActive && (
+                        <div className="mt-4 flex items-start gap-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
+                            <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                                This company will be available for new job postings and visible across the platform.
+                            </p>
+                        </div>
+                    )}
                 </div>
-            )}
-        </DashboardLayout>
+
+                {/* Modal footer */}
+                <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-end gap-3">
+                    <button
+                        type="button"
+                        onClick={handleCloseConfirm}
+                        disabled={toggling}
+                        className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleToggleStatus}
+                        disabled={toggling}
+                        className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed ${
+                            isActive
+                                ? "bg-red-600 hover:bg-red-700"
+                                : "bg-emerald-600 hover:bg-emerald-700"
+                        }`}
+                    >
+                        {toggling && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {toggling ? "Updating..." : isActive ? "Deactivate" : "Activate"}
+                    </button>
+                </div>
+            </ModalWrapper>
+        </>
     );
 };
 
 export default CompanyDetail;
-
-
-

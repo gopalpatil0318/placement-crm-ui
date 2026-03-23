@@ -1,7 +1,10 @@
-import { useState, useCallback } from "react";
-import { AxiosError } from "axios";
+import { useState, useCallback, useRef } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
+import { updatePositionSchema } from "@/validators/JobPostingSchema";
 
 // ========================
 // TYPES
@@ -13,26 +16,50 @@ interface UpdatePositionFormData {
     vacancies: number | "";
 }
 
+type FormErrors = Partial<Record<keyof UpdatePositionFormData, string>>;
+
 // ========================
 // HOOK
 // ========================
 
-export const useUpdatePosition = (onSuccess?: () => void) => {
+export const useUpdatePosition = (jobId: string, onSuccess?: () => void) => {
+    const queryClient = useQueryClient();
     const [formData, setFormData] = useState<UpdatePositionFormData>({
         position_name: "",
         position_description: "",
         vacancies: "",
     });
-    const [errors, setErrors] = useState<Record<string, string>>({});
-    const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState<FormErrors>({});
+    const originalData = useRef<UpdatePositionFormData | null>(null);
+
+    const mutation = useMutation({
+        mutationFn: ({ positionId, payload }: { positionId: string; payload: Record<string, unknown> }) =>
+            CollegeAdminService.updatePosition(positionId, payload),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.positions(jobId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) });
+            showToast({ type: "success", title: "Success", description: response?.message || "Position updated successfully" });
+            onSuccess?.();
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong";
+            const status = error instanceof ApiError ? error.status : undefined;
+            if (status === 409) {
+                setErrors({ position_name: message });
+            }
+            showToast({ type: "error", title: "Error", description: message });
+        },
+    });
 
     const loadPosition = useCallback(
         (position: { position_name: string; position_description: string | null; vacancies: number }) => {
-            setFormData({
+            const loaded: UpdatePositionFormData = {
                 position_name: position.position_name || "",
                 position_description: position.position_description || "",
                 vacancies: position.vacancies || "",
-            });
+            };
+            setFormData(loaded);
+            originalData.current = { ...loaded };
             setErrors({});
         },
         []
@@ -45,68 +72,63 @@ export const useUpdatePosition = (onSuccess?: () => void) => {
                 ...prev,
                 [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,
             }));
-            if (errors[name]) {
-                setErrors((prev) => ({ ...prev, [name]: "" }));
-            }
+            setErrors((prev) => {
+                if (!prev[name as keyof UpdatePositionFormData]) return prev;
+                return { ...prev, [name]: undefined };
+            });
         },
-        [errors]
+        []
     );
 
     const handleSubmit = useCallback(
         async (positionId: string) => {
-            // Validation
-            const newErrors: Record<string, string> = {};
+            // Diff-based payload — only send changed fields
+            const orig = originalData.current;
+            const payload: Record<string, unknown> = {};
+
             const trimmedName = formData.position_name.trim();
-            if (trimmedName && trimmedName.length < 2) {
-                newErrors.position_name = "Position name must be at least 2 characters";
+            const trimmedDesc = formData.position_description.trim();
+
+            if (orig && trimmedName !== orig.position_name.trim()) {
+                payload.position_name = trimmedName;
             }
-            if (trimmedName && trimmedName.length > 200) {
-                newErrors.position_name = "Position name cannot exceed 200 characters";
+            if (orig && trimmedDesc !== (orig.position_description || "").trim()) {
+                payload.position_description = trimmedDesc;
             }
-            if (formData.position_description.length > 1000) {
-                newErrors.position_description = "Description cannot exceed 1000 characters";
-            }
-            if (formData.vacancies !== "" && (formData.vacancies < 1 || formData.vacancies > 9999)) {
-                newErrors.vacancies = "Vacancies must be between 1 and 9999";
+            if (orig && formData.vacancies !== orig.vacancies) {
+                if (formData.vacancies !== "" && formData.vacancies >= 1) {
+                    payload.vacancies = formData.vacancies;
+                }
             }
 
-            if (Object.keys(newErrors).length > 0) {
-                setErrors(newErrors);
-                showToast({ type: "warning", title: "Validation Failed", description: Object.values(newErrors)[0] });
+            if (Object.keys(payload).length === 0) {
+                showToast({ type: "warning", title: "No Changes", description: "Nothing has been changed." });
                 return;
             }
 
-            setErrors({});
-            setLoading(true);
+            // Build parse-ready object for Zod validation on changed fields only
+            const parseData: Record<string, unknown> = {};
+            if (payload.position_name !== undefined) parseData.position_name = payload.position_name;
+            if (payload.position_description !== undefined) parseData.position_description = payload.position_description;
+            if (payload.vacancies !== undefined) parseData.vacancies = payload.vacancies;
 
-            try {
-                const payload: Record<string, unknown> = {};
-                if (trimmedName) payload.position_name = trimmedName;
-                if (formData.position_description.trim()) payload.position_description = formData.position_description.trim();
-                if (formData.vacancies !== "" && formData.vacancies >= 1) payload.vacancies = formData.vacancies;
-
-                if (Object.keys(payload).length === 0) {
-                    showToast({ type: "warning", title: "No Changes", description: "At least one field must be updated" });
-                    setLoading(false);
-                    return;
+            const result = updatePositionSchema.safeParse(parseData);
+            if (!result.success) {
+                const fieldErrors: FormErrors = {};
+                for (const issue of result.error.issues) {
+                    const field = issue.path[0] as keyof UpdatePositionFormData;
+                    if (!fieldErrors[field]) fieldErrors[field] = issue.message;
                 }
-
-                const response = await CollegeAdminService.updatePosition(positionId, payload);
-                showToast({ type: "success", title: "Success", description: response?.message || "Position updated successfully" });
-                onSuccess?.();
-            } catch (error: unknown) {
-                const axiosErr = error as AxiosError<{ error?: string; message?: string }>;
-                const errorMsg =
-                    axiosErr?.response?.data?.error ||
-                    axiosErr?.response?.data?.message ||
-                    (error instanceof Error ? error.message : "Something went wrong");
-                showToast({ type: "error", title: "Error Updating Position", description: errorMsg });
-            } finally {
-                setLoading(false);
+                setErrors(fieldErrors);
+                showToast({ type: "warning", title: "Validation Failed", description: result.error.issues[0].message });
+                return;
             }
+            setErrors({});
+
+            mutation.mutate({ positionId, payload });
         },
-        [formData, onSuccess]
+        [formData, mutation]
     );
 
-    return { formData, errors, loading, handleChange, handleSubmit, loadPosition };
+    return { formData, errors, loading: mutation.isPending, handleChange, handleSubmit, loadPosition };
 };

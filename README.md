@@ -74,3 +74,19 @@ export default defineConfig([
 
 ```
 "# placement-crm-ui" 
+
+
+
+#	Document	What it covers
+1	Company Management	Companies CRUD + contacts (foundation for jobs)
+2	Company Contacts	Contact management within companies
+3	Job Postings	Job CRUD, status workflow
+4	Job Positions	Positions per job
+5	Job Criteria	Eligibility criteria
+6	Job Rounds	Interview rounds
+7	Application Questions	Questions for job applications
+8	Application Management	Student applications
+9	Eligible Not Applied & Denials	Students who haven't applied + denials
+10	College Job Override	College-level job overrides
+11	Placement Policies	Placement rules/policies
+12	Placement Results / Round Results	Final placement + round-level results

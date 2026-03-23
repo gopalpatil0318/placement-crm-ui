@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, type ReactNode } from "react";
 import api from "../lib/api";
 import { showToast } from "@/utils/ToastUtils";
+import { clearOtherSessions } from "@/lib/clearAllAuthSessions";
 import type { User, UserRole, SysAdminAuthContextType } from "../types/auth";
 
 export const SysAdminAuthContext = createContext<SysAdminAuthContextType | undefined>(undefined);
@@ -43,6 +44,7 @@ export function SysAdminAuthProvider({ children }: { children: ReactNode }) {
 
             setUser(newUser);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+            clearOtherSessions("sysadmin");
 
             showToast({
                 type: "success",

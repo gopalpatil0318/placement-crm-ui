@@ -1,5 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { ApiError } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { showToast } from "@/utils/ToastUtils";
 import { useNavigate } from "react-router-dom";
 
@@ -34,67 +37,103 @@ export const useUpdateUser = (userId: string) => {
         deptId: null,
     });
 
-    const [originalData, setOriginalData] = useState<OriginalData | null>(null);
+    const originalData = useRef<OriginalData | null>(null);
     const [errors, setErrors] = useState<FormErrors>({});
-    const [loading, setLoading] = useState(false);
-    const [fetching, setFetching] = useState(false);
-    const [departments, setDepartments] = useState<Department[]>([]);
     const [isCollegeAdmin, setIsCollegeAdmin] = useState(false);
+    const [fetchedUserName, setFetchedUserName] = useState<string | undefined>();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
-    // Fetch user data + departments
+    // ── Fetch user data via React Query ──
+    const { data: userData, isLoading: fetchingUser } = useQuery({
+        queryKey: queryKeys.users.detail(userId!),
+        queryFn: async () => {
+            const response = await CollegeAdminService.getUser(userId);
+            return response.data || response;
+        },
+        enabled: !!userId,
+    });
+
+    // ── Fetch departments via React Query ──
+    const { data: deptData, isLoading: fetchingDepts } = useQuery({
+        queryKey: queryKeys.departments.all({ status: "active" }),
+        queryFn: () => CollegeAdminService.getDepartments({ is_active: true }),
+    });
+
+    const depts = deptData?.data || deptData;
+    const departments: Department[] = Array.isArray(depts) ? depts : [];
+
+    const fetchError = fetchingUser ? null : (!userData && userId ? "User not found" : null);
+
+    // ── Sync fetched user data into form state ──
     useEffect(() => {
-        if (!userId) return;
+        if (!userData) return;
+        const user = userData;
 
-        const fetchData = async () => {
-            setFetching(true);
-            try {
-                const [userResponse, deptResponse] = await Promise.all([
-                    CollegeAdminService.getUser(userId),
-                    CollegeAdminService.getDepartments(),
-                ]);
+        setFetchedUserName(user.user_name || "User");
 
-                const user = userResponse.data;
+        if (user.user_role === "collegeadmin") {
+            setIsCollegeAdmin(true);
+        }
 
-                if (user.user_role === "collegeadmin") {
-                    setIsCollegeAdmin(true);
-                }
-
-                setOriginalData({
-                    user_name: user.user_name || "",
-                    user_email: user.user_email || "",
-                    user_role: user.user_role || "",
-                    user_status: user.user_status || "",
-                    dept_id: user.dept_id || null,
-                    dept_name: user.dept_name || null,
-                });
-
-                setFormData({
-                    userName: user.user_name || "",
-                    userEmail: user.user_email || "",
-                    userRole: user.user_role || "",
-                    deptId: user.dept_id || null,
-                });
-
-                const depts = deptResponse.data || deptResponse;
-                setDepartments(Array.isArray(depts) ? depts : []);
-            } catch (error: unknown) {
-                const msg = error instanceof Error ? error.message : "Failed to fetch user data";
-                showToast({ type: "error", title: "Error", description: msg });
-            } finally {
-                setFetching(false);
-            }
+        originalData.current = {
+            user_name: user.user_name || "",
+            user_email: user.user_email || "",
+            user_role: user.user_role || "",
+            user_status: user.user_status || "",
+            dept_id: user.dept_id || null,
+            dept_name: user.dept_name || null,
         };
 
-        fetchData();
-    }, [userId]);
+        setFormData({
+            userName: user.user_name || "",
+            userEmail: user.user_email || "",
+            userRole: user.user_role || "",
+            deptId: user.dept_id || null,
+        });
+    }, [userData]);
+
+    const fetching = fetchingUser || fetchingDepts;
+
+    // ── Update mutation ──
+    const mutation = useMutation({
+        mutationFn: (payload: Record<string, string | null>) =>
+            CollegeAdminService.updateUser(userId, payload),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.users.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(userId) });
+            showToast({
+                type: "success",
+                title: "Success",
+                description: response?.message || "User updated successfully",
+            });
+            navigate("/college/view-users");
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong";
+            const status = error instanceof ApiError ? error.status : undefined;
+
+            if (status === 409) {
+                setErrors({ userEmail: message });
+            }
+
+            showToast({
+                type: "error",
+                title: "Error Updating User",
+                description: message,
+            });
+        },
+    });
 
     const handleChange = useCallback((
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value === "" && name === "deptId" ? null : value }));
-        setErrors((prev) => ({ ...prev, [name]: undefined }));
+        setErrors((prev) => {
+            if (!prev[name as keyof UpdateUserForm]) return prev;
+            return { ...prev, [name]: undefined };
+        });
     }, []);
 
     const handleSubmit = useCallback(async (
@@ -112,59 +151,36 @@ export const useUpdateUser = (userId: string) => {
         }
 
         // Build partial update — only send changed fields
+        const orig = originalData.current;
         const changedFields: Record<string, string | null> = {};
 
-        if (originalData) {
-            if (formData.userName !== originalData.user_name) {
-                changedFields.user_name = formData.userName;
+        if (orig) {
+            if (formData.userName.trim() !== orig.user_name.trim()) {
+                changedFields.user_name = formData.userName.trim();
             }
-            if (formData.userEmail !== originalData.user_email) {
-                changedFields.user_email = formData.userEmail;
+            if (formData.userEmail.trim() !== orig.user_email.trim()) {
+                changedFields.user_email = formData.userEmail.trim();
             }
-            if (formData.userRole !== originalData.user_role) {
+            if (formData.userRole !== orig.user_role) {
                 changedFields.user_role = formData.userRole;
             }
-            if (formData.deptId !== originalData.dept_id) {
+            if (formData.deptId !== orig.dept_id) {
                 changedFields.dept_id = formData.deptId;
             }
         }
 
         if (Object.keys(changedFields).length === 0) {
             showToast({
-                type: "info",
+                type: "warning",
                 title: "No Changes",
-                description: "No fields were modified",
+                description: "Nothing has been changed.",
             });
             return;
         }
 
         setErrors({});
-        setLoading(true);
-
-        try {
-            const response = await CollegeAdminService.updateUser(userId, changedFields);
-
-            showToast({
-                type: "success",
-                title: "Success",
-                description: response?.message || "User updated successfully",
-            });
-
-            navigate(`/college/view-users`);
-        } catch (error: unknown) {
-            const errorMessage = error instanceof Error
-                ? error.message
-                : "Something went wrong";
-
-            showToast({
-                type: "error",
-                title: "Error Updating User",
-                description: errorMessage,
-            });
-        } finally {
-            setLoading(false);
-        }
-    }, [formData, originalData, userId, navigate, isCollegeAdmin]);
+        mutation.mutate(changedFields);
+    }, [formData, isCollegeAdmin, mutation]);
 
     const handleCancel = useCallback(() => {
         navigate("/college/view-users");
@@ -172,10 +188,12 @@ export const useUpdateUser = (userId: string) => {
 
     return {
         formData,
-        originalData,
+        originalData: originalData.current,
         errors,
-        loading,
+        loading: mutation.isPending,
         fetching,
+        fetchError,
+        fetchedUserName,
         departments,
         isCollegeAdmin,
         setErrors,

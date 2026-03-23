@@ -9,10 +9,10 @@ function Field({ label, value }: { label: string; value: string | number | undef
     const display = value !== null && value !== undefined ? String(value) : "—";
     return (
         <div>
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+            <label className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 {label}
             </label>
-            <p className="text-sm text-gray-800 mt-0.5">{display}</p>
+            <p className="text-sm text-gray-800 dark:text-gray-200 mt-0.5">{display}</p>
         </div>
     );
 }
@@ -22,12 +22,12 @@ export default function AcademicInfoForm({
 }: AcademicInfoFormProps) {
     if (!academicInfo) {
         return (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide flex items-center gap-2 mb-3">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide flex items-center gap-2 mb-3">
                     <GraduationCap className="h-4 w-4 text-violet-500" />
                     Academic Information
                 </h2>
-                <p className="text-sm text-gray-400 italic">
+                <p className="text-sm text-gray-400 dark:text-gray-500 italic">
                     No academic information available.
                 </p>
             </div>
@@ -35,15 +35,15 @@ export default function AcademicInfoForm({
     }
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide flex items-center gap-2 mb-5">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide flex items-center gap-2 mb-5">
                 <GraduationCap className="h-4 w-4 text-violet-500" />
                 Academic Information
             </h2>
 
             {/* College Details */}
             <div className="mb-6">
-                <h3 className="text-xs font-semibold text-violet-600 uppercase tracking-wider mb-3">
+                <h3 className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-3">
                     College Details
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -57,7 +57,7 @@ export default function AcademicInfoForm({
 
             {/* Previous Education */}
             <div className="mb-6">
-                <h3 className="text-xs font-semibold text-violet-600 uppercase tracking-wider mb-3">
+                <h3 className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-3">
                     Previous Education
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -82,7 +82,7 @@ export default function AcademicInfoForm({
 
             {/* Backlogs & Gap */}
             <div>
-                <h3 className="text-xs font-semibold text-violet-600 uppercase tracking-wider mb-3">
+                <h3 className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-3">
                     Backlogs &amp; Gap
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -94,10 +94,10 @@ export default function AcademicInfoForm({
                     />
                     {academicInfo.any_gap_during_education && (
                         <div className="sm:col-span-2">
-                            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <label className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                                 Gap Reason
                             </label>
-                            <p className="text-sm text-gray-800 mt-0.5">{academicInfo.gap_reason}</p>
+                            <p className="text-sm text-gray-800 dark:text-gray-200 mt-0.5">{academicInfo.gap_reason}</p>
                         </div>
                     )}
                 </div>

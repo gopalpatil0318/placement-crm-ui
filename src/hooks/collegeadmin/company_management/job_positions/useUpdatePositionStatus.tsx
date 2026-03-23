@@ -1,5 +1,7 @@
-import { useState, useCallback } from "react";
-import { AxiosError } from "axios";
+import { useCallback } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 
@@ -7,33 +9,34 @@ import { showToast } from "@/utils/ToastUtils";
 // HOOK
 // ========================
 
-export const useUpdatePositionStatus = (onSuccess?: () => void) => {
-    const [loading, setLoading] = useState(false);
+export const useUpdatePositionStatus = (jobId: string, onSuccess?: () => void) => {
+    const queryClient = useQueryClient();
+
+    const mutation = useMutation({
+        mutationFn: ({ positionId, newStatus }: { positionId: string; newStatus: string }) =>
+            CollegeAdminService.updatePositionStatus(positionId, newStatus),
+        onSuccess: (response, { newStatus }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.positions(jobId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) });
+            showToast({
+                type: "success",
+                title: "Status Updated",
+                description: response?.message || `Position status changed to ${newStatus}`,
+            });
+            onSuccess?.();
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Failed to update status";
+            showToast({ type: "error", title: "Status Change Failed", description: message });
+        },
+    });
 
     const updateStatus = useCallback(
-        async (positionId: string, newStatus: string) => {
-            setLoading(true);
-            try {
-                const response = await CollegeAdminService.updatePositionStatus(positionId, newStatus);
-                showToast({
-                    type: "success",
-                    title: "Status Updated",
-                    description: response?.message || `Position status changed to ${newStatus}`,
-                });
-                onSuccess?.();
-            } catch (error: unknown) {
-                const axiosErr = error as AxiosError<{ error?: string; message?: string }>;
-                const errorMsg =
-                    axiosErr?.response?.data?.error ||
-                    axiosErr?.response?.data?.message ||
-                    (error instanceof Error ? error.message : "Failed to update status");
-                showToast({ type: "error", title: "Status Change Failed", description: errorMsg });
-            } finally {
-                setLoading(false);
-            }
+        (positionId: string, newStatus: string) => {
+            mutation.mutate({ positionId, newStatus });
         },
-        [onSuccess]
+        [mutation]
     );
 
-    return { updateStatus, loading };
+    return { updateStatus, loading: mutation.isPending };
 };

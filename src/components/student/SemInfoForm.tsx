@@ -1,14 +1,11 @@
 import { useSemesterGrades } from "@/hooks/student/useSemesterGrades";
-import { Plus, Pencil, X, BookOpen, TrendingUp, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, X, BookOpen, AlertTriangle } from "lucide-react";
 import type { SemesterGradeData } from "@/services/student/semesterGrade.service";
+import ModalWrapper from "@/components/ui/ModalWrapper";
+import FloatingInput from "@/components/ui/FloatingInput";
+import FloatingSelect from "@/components/ui/FloatingSelect";
 
-interface Props {
-    profileData: any;
-    refreshProfile: () => Promise<void>;
-    nextStep: () => void;
-}
-
-const SemInfoForm = ({ }: Props) => {
+const SemInfoForm = () => {
     const {
         grades,
         totalSemesters,
@@ -32,15 +29,15 @@ const SemInfoForm = ({ }: Props) => {
     const getStatusColor = (status: string) => {
         switch (status) {
             case "completed":
-                return "bg-green-100 text-green-700 border-green-200";
+                return "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800";
             case "in_progress":
-                return "bg-blue-100 text-blue-700 border-blue-200";
+                return "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800";
             case "detained":
-                return "bg-orange-100 text-orange-700 border-orange-200";
+                return "bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800";
             case "failed":
-                return "bg-red-100 text-red-700 border-red-200";
+                return "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800";
             default:
-                return "bg-gray-100 text-gray-700 border-gray-200";
+                return "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700";
         }
     };
 
@@ -56,22 +53,43 @@ const SemInfoForm = ({ }: Props) => {
 
     if (loading) {
         return (
-            <div className="p-8 bg-white rounded-xl border">
-                <div className="flex items-center justify-center h-40">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-                    <span className="ml-3 text-gray-500">Loading semester grades...</span>
+            <div className="p-8 bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-800">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <div className="h-5 w-36 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
+                        <div className="h-3.5 w-28 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse mt-2" />
+                    </div>
+                    <div className="h-9 w-28 rounded-full bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="p-6 rounded-xl border border-gray-200 dark:border-gray-700 min-h-[180px] space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-lg bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
+                                <div>
+                                    <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
+                                    <div className="h-3 w-16 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse mt-1" />
+                                </div>
+                            </div>
+                            <div className="flex gap-5">
+                                <div className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
+                                <div className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
+                            </div>
+                            <div className="h-6 w-24 rounded-full bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
+                        </div>
+                    ))}
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="p-8 bg-white rounded-xl border">
+        <div className="p-8 bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-800">
             {/* ================= Header with Add Button ================= */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h2 className="text-xl font-semibold text-gray-800">Semester Grades</h2>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Semester Grades</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {grades.length} / {totalSemesters} semesters added
                     </p>
                 </div>
@@ -111,29 +129,30 @@ const SemInfoForm = ({ }: Props) => {
             )}
 
             {/* ================= Modal Form ================= */}
-            {isFormOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/50" onClick={closeForm} />
-                    <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b">
-                            <h3 className="text-lg font-semibold text-gray-800">
-                                {editingGradeId ? "Edit" : "Add"} Semester Grade
-                            </h3>
-                            <button
-                                type="button"
-                                onClick={closeForm}
-                                className="p-1 hover:bg-gray-100 rounded-full transition cursor-pointer"
-                            >
-                                <X className="h-5 w-5 text-gray-500" />
-                            </button>
-                        </div>
-
+            <ModalWrapper isOpen={isFormOpen} onClose={closeForm} title={`${editingGradeId ? "Edit" : "Add"} Semester Grade`} disabled={saving} size="lg" footer={
+                <div className="flex justify-end gap-3 p-6 border-t dark:border-gray-700">
+                    <button
+                        type="button"
+                        onClick={closeForm}
+                        className="px-6 py-2.5 border border-gray-300 dark:border-gray-600 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={saving}
+                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium transition cursor-pointer disabled:opacity-50"
+                    >
+                        {saving ? "Saving..." : editingGradeId ? "Update" : "Save"}
+                    </button>
+                </div>
+            }>
                         {/* Form Body */}
                         <div className="p-6 space-y-5">
-                            {/* Semester Number */}
+                            {/* Semester Number — keep raw due to complex filtering + disabled */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     Semester Number <span className="text-red-500">*</span>
                                 </label>
                                 <select
@@ -141,7 +160,7 @@ const SemInfoForm = ({ }: Props) => {
                                     value={formData.semester_number}
                                     onChange={handleChange}
                                     disabled={!!editingGradeId}
-                                    className={`w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 ${editingGradeId ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                                    className={`w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2.5 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 ${editingGradeId ? "bg-gray-100 dark:bg-gray-700 cursor-not-allowed" : ""}`}
                                 >
                                     <option value={0}>Select Semester</option>
                                     {Array.from({ length: totalSemesters }, (_, i) => i + 1)
@@ -161,112 +180,29 @@ const SemInfoForm = ({ }: Props) => {
                                 )}
                             </div>
 
-                            {/* Academic Year */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Academic Year <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    name="academic_year"
-                                    value={formData.academic_year}
-                                    onChange={handleChange}
-                                    placeholder="e.g. 2022-23"
-                                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                {errors.academic_year && (
-                                    <p className="text-xs text-red-500 mt-1">{errors.academic_year}</p>
-                                )}
-                            </div>
+                            <FloatingInput label="Academic Year" name="academic_year" value={formData.academic_year} onChange={handleChange} error={errors.academic_year} required placeholder="e.g. 2022-23" />
 
-                            {/* Status — shown first so conditional fields react */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Semester Status <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    name="semester_status"
-                                    value={formData.semester_status}
-                                    onChange={handleChange}
-                                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option value="">Select Status</option>
-                                    <option value="in_progress">In Progress</option>
-                                    <option value="completed">Completed</option>
-                                    <option value="detained">Detained</option>
-                                    <option value="failed">Failed</option>
-                                </select>
-                                {errors.semester_status && (
-                                    <p className="text-xs text-red-500 mt-1">{errors.semester_status}</p>
-                                )}
-                            </div>
+                            <FloatingSelect label="Semester Status" name="semester_status" value={formData.semester_status} onChange={handleChange} error={errors.semester_status} required options={[
+                                { value: "in_progress", label: "In Progress" },
+                                { value: "completed", label: "Completed" },
+                                { value: "detained", label: "Detained" },
+                                { value: "failed", label: "Failed" },
+                            ]} />
 
                             {/* SGPA, CGPA, Backlogs — only when NOT in_progress */}
                             {formData.semester_status !== "in_progress" && (
                                 <>
-                                    {/* SGPA & CGPA */}
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                SGPA <span className="text-red-500">*</span>
-                                            </label>
-                                            <input
-                                                name="sgpa"
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                max="10"
-                                                value={formData.sgpa}
-                                                onChange={handleChange}
-                                                placeholder="0.00 - 10.00"
-                                                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            />
-                                            {errors.sgpa && (
-                                                <p className="text-xs text-red-500 mt-1">{errors.sgpa}</p>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                CGPA <span className="text-red-500">*</span>
-                                            </label>
-                                            <input
-                                                name="cgpa"
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                max="10"
-                                                value={formData.cgpa}
-                                                onChange={handleChange}
-                                                placeholder="0.00 - 10.00"
-                                                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            />
-                                            {errors.cgpa && (
-                                                <p className="text-xs text-red-500 mt-1">{errors.cgpa}</p>
-                                            )}
-                                        </div>
+                                        <FloatingInput label="SGPA" name="sgpa" value={formData.sgpa} onChange={handleChange} error={errors.sgpa} required type="number" placeholder="0.00 - 10.00" />
+                                        <FloatingInput label="CGPA" name="cgpa" value={formData.cgpa} onChange={handleChange} error={errors.cgpa} required type="number" placeholder="0.00 - 10.00" />
                                     </div>
 
-                                    {/* Backlogs */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Backlogs in Semester
-                                        </label>
-                                        <input
-                                            name="backlogs_in_semester"
-                                            type="number"
-                                            min="0"
-                                            value={formData.backlogs_in_semester}
-                                            onChange={handleChange}
-                                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        {errors.backlogs_in_semester && (
-                                            <p className="text-xs text-red-500 mt-1">{errors.backlogs_in_semester}</p>
-                                        )}
-                                    </div>
+                                    <FloatingInput label="Backlogs in Semester" name="backlogs_in_semester" value={formData.backlogs_in_semester} onChange={handleChange} error={errors.backlogs_in_semester} type="number" />
 
                                     {/* Backlog Subjects — only show if backlogs > 0 */}
                                     {Number(formData.backlogs_in_semester) > 0 && (
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Backlog Subjects
                                             </label>
                                             <div className="flex gap-2">
@@ -280,12 +216,12 @@ const SemInfoForm = ({ }: Props) => {
                                                         }
                                                     }}
                                                     placeholder="Type subject name & press Enter"
-                                                    className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-4 py-2.5 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
                                                 />
                                                 <button
                                                     type="button"
                                                     onClick={addBacklogSubject}
-                                                    className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition cursor-pointer"
+                                                    className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition cursor-pointer"
                                                 >
                                                     Add
                                                 </button>
@@ -295,13 +231,13 @@ const SemInfoForm = ({ }: Props) => {
                                                     {formData.backlog_subjects.map((subject) => (
                                                         <span
                                                             key={subject}
-                                                            className="inline-flex items-center gap-1 px-3 py-1 bg-red-50 text-red-700 text-sm rounded-full border border-red-200"
+                                                            className="inline-flex items-center gap-1 px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm rounded-full border border-red-200 dark:border-red-800"
                                                         >
                                                             {subject}
                                                             <button
                                                                 type="button"
                                                                 onClick={() => removeBacklogSubject(subject)}
-                                                                className="hover:text-red-900 cursor-pointer"
+                                                                className="hover:text-red-900 dark:hover:text-red-100 cursor-pointer"
                                                             >
                                                                 <X className="h-3 w-3" />
                                                             </button>
@@ -314,28 +250,7 @@ const SemInfoForm = ({ }: Props) => {
                                 </>
                             )}
                         </div>
-
-                        {/* Footer */}
-                        <div className="flex justify-end gap-3 p-6 border-t">
-                            <button
-                                type="button"
-                                onClick={closeForm}
-                                className="px-6 py-2.5 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 font-medium transition cursor-pointer"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleSubmit}
-                                disabled={saving}
-                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium transition cursor-pointer disabled:opacity-50"
-                            >
-                                {saving ? "Saving..." : editingGradeId ? "Update" : "Save"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            </ModalWrapper>
         </div>
     );
 };
@@ -343,6 +258,16 @@ const SemInfoForm = ({ }: Props) => {
 export default SemInfoForm;
 
 /* ================= Grade Card ================= */
+
+const getAccentColor = (status: string) => {
+    switch (status) {
+        case "completed": return "border-l-green-500";
+        case "in_progress": return "border-l-blue-500";
+        case "detained": return "border-l-orange-500";
+        case "failed": return "border-l-red-500";
+        default: return "border-l-gray-400";
+    }
+};
 
 const GradeCard = ({
     grade,
@@ -355,60 +280,63 @@ const GradeCard = ({
     getStatusColor: (s: string) => string;
     getStatusLabel: (s: string) => string;
 }) => (
-    <div className="relative p-6 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition group min-h-[180px]">
+    <div className={`relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 border-l-4 ${getAccentColor(grade.semester_status)} hover:shadow-lg transition group min-h-[180px] overflow-hidden`}>
         {/* Edit button */}
         <button
             type="button"
             onClick={onEdit}
-            className="absolute top-4 right-4 p-2 rounded-full bg-gray-50 hover:bg-blue-50 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+            aria-label="Edit semester grade"
+            className="absolute top-3 right-3 p-2 rounded-full bg-gray-50 dark:bg-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition cursor-pointer"
         >
             <Pencil className="h-4 w-4" />
         </button>
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 bg-blue-50 rounded-lg">
-                <BookOpen className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-                <h3 className="text-base font-semibold text-gray-800">Semester {grade.semester_number}</h3>
-                <p className="text-xs text-gray-500">{grade.academic_year}</p>
-            </div>
-        </div>
-
-        {/* SGPA / CGPA */}
-        <div className="flex items-center gap-5 mb-4">
-            <div className="flex items-center gap-1.5">
-                <TrendingUp className="h-4 w-4 text-green-500" />
-                <span className="text-sm font-semibold text-gray-700">SGPA: {Number(grade.sgpa).toFixed(2)}</span>
-            </div>
-            <div className="text-sm font-medium text-gray-500">CGPA: {Number(grade.cgpa).toFixed(2)}</div>
-        </div>
-
-        {/* Backlogs */}
-        {Number(grade.backlogs_in_semester) > 0 && (
-            <div className="flex items-center gap-1.5 mb-3">
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
-                <span className="text-sm text-orange-700">
-                    {grade.backlogs_in_semester} backlog{Number(grade.backlogs_in_semester) > 1 ? "s" : ""}
+        <div className="p-5">
+            {/* Top row — Semester + Academic Year + Status */}
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                        <BookOpen className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Semester {grade.semester_number}</h3>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">{grade.academic_year}</p>
+                    </div>
+                </div>
+                <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${getStatusColor(grade.semester_status)}`}>
+                    {getStatusLabel(grade.semester_status)}
                 </span>
             </div>
-        )}
 
-        {/* Backlog Subjects */}
-        {grade.backlog_subjects && grade.backlog_subjects.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-4">
-                {grade.backlog_subjects.map((sub) => (
-                    <span key={sub} className="text-xs px-2.5 py-1 bg-red-50 text-red-600 rounded-full border border-red-100">
-                        {sub}
-                    </span>
-                ))}
+            {/* Hero SGPA + secondary CGPA */}
+            <div className="flex items-end gap-4 mb-4">
+                <div>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">SGPA</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-50 leading-none">{Number(grade.sgpa).toFixed(2)}</p>
+                </div>
+                <div className="pb-0.5">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">CGPA</p>
+                    <p className="text-base font-semibold text-gray-500 dark:text-gray-400 leading-none">{Number(grade.cgpa).toFixed(2)}</p>
+                </div>
             </div>
-        )}
 
-        {/* Status Badge */}
-        <span className={`inline-block text-xs px-3 py-1.5 rounded-full border font-medium ${getStatusColor(grade.semester_status)}`}>
-            {getStatusLabel(grade.semester_status)}
-        </span>
+            {/* Backlogs compact indicator */}
+            {Number(grade.backlogs_in_semester) > 0 && (
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100 dark:border-orange-800">
+                        <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
+                        <span className="text-xs font-medium text-orange-700 dark:text-orange-400">
+                            {grade.backlogs_in_semester} backlog{Number(grade.backlogs_in_semester) > 1 ? "s" : ""}
+                        </span>
+                    </div>
+                    {grade.backlog_subjects && grade.backlog_subjects.length > 0 && (
+                        <span className="text-xs text-gray-400 dark:text-gray-500 truncate" title={grade.backlog_subjects.join(", ")}>
+                            {grade.backlog_subjects.slice(0, 2).join(", ")}
+                            {grade.backlog_subjects.length > 2 && ` +${grade.backlog_subjects.length - 2}`}
+                        </span>
+                    )}
+                </div>
+            )}
+        </div>
     </div>
 );

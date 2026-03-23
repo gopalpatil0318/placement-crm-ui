@@ -1,7 +1,10 @@
 import { useState, useCallback } from "react";
-import { AxiosError } from "axios";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
+import { setCriteriaSchema } from "@/validators/JobPostingSchema";
 
 // ========================
 // TYPES
@@ -13,6 +16,8 @@ export interface CriteriaFormData {
     min_tenth_percentage: number | "";
     min_twelfth_percentage: number | "";
     min_diploma_percentage: number | "";
+    min_existing_package: number | "";
+    max_existing_package: number | "";
     allowed_genders: string[];
     allowed_departments: string[];
     allowed_gap_statuses: string[];
@@ -25,6 +30,8 @@ export interface CriteriaToggles {
     min_tenth_percentage: boolean;
     min_twelfth_percentage: boolean;
     min_diploma_percentage: boolean;
+    min_existing_package: boolean;
+    max_existing_package: boolean;
     allowed_genders: boolean;
     allowed_departments: boolean;
     allowed_gap_statuses: boolean;
@@ -37,6 +44,8 @@ const INITIAL_FORM: CriteriaFormData = {
     min_tenth_percentage: 60,
     min_twelfth_percentage: 55,
     min_diploma_percentage: 60,
+    min_existing_package: "",
+    max_existing_package: "",
     allowed_genders: [],
     allowed_departments: [],
     allowed_gap_statuses: [],
@@ -49,21 +58,39 @@ const INITIAL_TOGGLES: CriteriaToggles = {
     min_tenth_percentage: false,
     min_twelfth_percentage: false,
     min_diploma_percentage: false,
+    min_existing_package: false,
+    max_existing_package: false,
     allowed_genders: false,
     allowed_departments: false,
     allowed_gap_statuses: false,
     exclude_already_placed: false,
 };
 
+const NUMERIC_FIELDS = [
+    "min_overall_cgpa",
+    "max_live_kts",
+    "min_tenth_percentage",
+    "min_twelfth_percentage",
+    "min_diploma_percentage",
+    "min_existing_package",
+    "max_existing_package",
+] as const;
+
+const ARRAY_FIELDS = [
+    "allowed_genders",
+    "allowed_departments",
+    "allowed_gap_statuses",
+] as const;
+
 // ========================
 // HOOK
 // ========================
 
 export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
+    const queryClient = useQueryClient();
     const [formData, setFormData] = useState<CriteriaFormData>(INITIAL_FORM);
     const [toggles, setToggles] = useState<CriteriaToggles>(INITIAL_TOGGLES);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [loading, setLoading] = useState(false);
     const [isUpdate, setIsUpdate] = useState(false);
 
     const handleChange = useCallback(
@@ -80,11 +107,14 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
             } else {
                 setFormData((prev) => ({ ...prev, [name]: value }));
             }
-            if (errors[name]) {
-                setErrors((prev) => ({ ...prev, [name]: "" }));
-            }
+            setErrors((prev) => {
+                if (!prev[name]) return prev;
+                const next = { ...prev };
+                delete next[name];
+                return next;
+            });
         },
-        [errors]
+        []
     );
 
     const handleToggle = useCallback((field: keyof CriteriaToggles) => {
@@ -129,6 +159,14 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
                 newForm.min_diploma_percentage = Number(criteria.min_diploma_percentage);
                 newToggles.min_diploma_percentage = true;
             }
+            if (criteria.min_existing_package != null) {
+                newForm.min_existing_package = Number(criteria.min_existing_package);
+                newToggles.min_existing_package = true;
+            }
+            if (criteria.max_existing_package != null) {
+                newForm.max_existing_package = Number(criteria.max_existing_package);
+                newToggles.max_existing_package = true;
+            }
             if (Array.isArray(criteria.allowed_genders) && criteria.allowed_genders.length > 0) {
                 newForm.allowed_genders = criteria.allowed_genders as string[];
                 newToggles.allowed_genders = true;
@@ -160,72 +198,52 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
         setIsUpdate(false);
     }, []);
 
-    const handleSubmit = useCallback(async () => {
-        // Build payload — only include toggled-on fields
+    const mutation = useMutation({
+        mutationFn: ({ payload, isUpdate }: { payload: Record<string, unknown>; isUpdate: boolean }) =>
+            isUpdate
+                ? CollegeAdminService.updateJobCriteria(jobId, payload)
+                : CollegeAdminService.setJobCriteria(jobId, payload),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.criteria(jobId) });
+            showToast({
+                type: "success",
+                title: "Success",
+                description: response?.message || (isUpdate ? "Criteria updated successfully" : "Criteria set successfully"),
+            });
+            onSuccess?.();
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong";
+            const status = error instanceof ApiError ? error.status : undefined;
+
+            if (status === 409) {
+                showToast({ type: "error", title: "Conflict", description: message });
+            } else if (status === 404) {
+                showToast({ type: "error", title: "Not Found", description: message || "No eligibility criteria found. Please set criteria first." });
+            } else {
+                showToast({ type: "error", title: "Error", description: message });
+            }
+        },
+    });
+
+    const handleSubmit = useCallback(() => {
+        // Build payload from toggled-on fields only
         const payload: Record<string, unknown> = {};
-        const newErrors: Record<string, string> = {};
+        const emptyErrors: Record<string, string> = {};
 
-        if (toggles.min_overall_cgpa) {
-            if (formData.min_overall_cgpa === "" || formData.min_overall_cgpa < 0 || formData.min_overall_cgpa > 10) {
-                newErrors.min_overall_cgpa = "CGPA must be between 0 and 10";
-            } else {
-                payload.min_overall_cgpa = formData.min_overall_cgpa;
+        for (const field of NUMERIC_FIELDS) {
+            if (toggles[field]) {
+                if (formData[field] === "") {
+                    emptyErrors[field] = "This field is required when enabled";
+                } else {
+                    payload[field] = formData[field];
+                }
             }
         }
 
-        if (toggles.max_live_kts) {
-            if (formData.max_live_kts === "" || formData.max_live_kts < 0 || formData.max_live_kts > 20) {
-                newErrors.max_live_kts = "KTs must be between 0 and 20";
-            } else {
-                payload.max_live_kts = formData.max_live_kts;
-            }
-        }
-
-        if (toggles.min_tenth_percentage) {
-            if (formData.min_tenth_percentage === "" || formData.min_tenth_percentage < 0 || formData.min_tenth_percentage > 100) {
-                newErrors.min_tenth_percentage = "Percentage must be between 0 and 100";
-            } else {
-                payload.min_tenth_percentage = formData.min_tenth_percentage;
-            }
-        }
-
-        if (toggles.min_twelfth_percentage) {
-            if (formData.min_twelfth_percentage === "" || formData.min_twelfth_percentage < 0 || formData.min_twelfth_percentage > 100) {
-                newErrors.min_twelfth_percentage = "Percentage must be between 0 and 100";
-            } else {
-                payload.min_twelfth_percentage = formData.min_twelfth_percentage;
-            }
-        }
-
-        if (toggles.min_diploma_percentage) {
-            if (formData.min_diploma_percentage === "" || formData.min_diploma_percentage < 0 || formData.min_diploma_percentage > 100) {
-                newErrors.min_diploma_percentage = "Percentage must be between 0 and 100";
-            } else {
-                payload.min_diploma_percentage = formData.min_diploma_percentage;
-            }
-        }
-
-        if (toggles.allowed_genders) {
-            if (formData.allowed_genders.length === 0) {
-                newErrors.allowed_genders = "Select at least one gender";
-            } else {
-                payload.allowed_genders = formData.allowed_genders;
-            }
-        }
-
-        if (toggles.allowed_departments) {
-            if (formData.allowed_departments.length === 0) {
-                newErrors.allowed_departments = "Select at least one department";
-            } else {
-                payload.allowed_departments = formData.allowed_departments;
-            }
-        }
-
-        if (toggles.allowed_gap_statuses) {
-            if (formData.allowed_gap_statuses.length === 0) {
-                newErrors.allowed_gap_statuses = "Select at least one gap status";
-            } else {
-                payload.allowed_gap_statuses = formData.allowed_gap_statuses;
+        for (const field of ARRAY_FIELDS) {
+            if (toggles[field]) {
+                payload[field] = formData[field];
             }
         }
 
@@ -234,7 +252,7 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
         }
 
         // At least one criterion must be enabled
-        if (Object.keys(payload).length === 0) {
+        if (Object.keys(payload).length === 0 && Object.keys(emptyErrors).length === 0) {
             showToast({
                 type: "warning",
                 title: "No Criteria Selected",
@@ -243,47 +261,44 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
             return;
         }
 
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
+        // Empty numeric fields that are toggled on
+        if (Object.keys(emptyErrors).length > 0) {
+            setErrors(emptyErrors);
             showToast({
                 type: "warning",
                 title: "Validation Failed",
-                description: Object.values(newErrors)[0],
+                description: Object.values(emptyErrors)[0],
+            });
+            return;
+        }
+
+        // Validate assembled payload with Zod
+        const result = setCriteriaSchema.safeParse(payload);
+        if (!result.success) {
+            const fieldErrors: Record<string, string> = {};
+            for (const issue of result.error.issues) {
+                const field = String(issue.path[0]);
+                if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+            }
+            setErrors(fieldErrors);
+            showToast({
+                type: "warning",
+                title: "Validation Failed",
+                description: result.error.issues[0].message,
             });
             return;
         }
 
         setErrors({});
-        setLoading(true);
 
-        try {
-            const response = isUpdate
-                ? await CollegeAdminService.updateJobCriteria(jobId, payload)
-                : await CollegeAdminService.setJobCriteria(jobId, payload);
-
-            showToast({
-                type: "success",
-                title: "Success",
-                description: response?.message || (isUpdate ? "Criteria updated successfully" : "Criteria set successfully"),
-            });
-            onSuccess?.();
-        } catch (error: unknown) {
-            const axiosErr = error as AxiosError<{ error?: string; message?: string }>;
-            const errorMsg =
-                axiosErr?.response?.data?.error ||
-                axiosErr?.response?.data?.message ||
-                (error instanceof Error ? error.message : "Something went wrong");
-            showToast({ type: "error", title: "Error", description: errorMsg });
-        } finally {
-            setLoading(false);
-        }
-    }, [formData, toggles, jobId, isUpdate, onSuccess]);
+        mutation.mutate({ payload, isUpdate });
+    }, [formData, toggles, isUpdate, mutation]);
 
     return {
         formData,
         toggles,
         errors,
-        loading,
+        loading: mutation.isPending,
         isUpdate,
         handleChange,
         handleToggle,

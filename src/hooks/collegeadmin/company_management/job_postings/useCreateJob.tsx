@@ -1,7 +1,9 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { AxiosError } from "axios";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/api";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { queryKeys } from "@/lib/queryKeys";
 import { showToast } from "@/utils/ToastUtils";
 import {
     jobCreateSchema,
@@ -95,15 +97,40 @@ export const STEP_LABELS = [
 // HOOK
 // ========================
 
-export const useCreateJob = (companyId?: string) => {
+export const useCreateJob = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [currentStep, setCurrentStep] = useState(0);
-    const [formData, setFormData] = useState<CreateJobFormData>(() => ({
-        ...INITIAL_FORM_DATA,
-        company_id: companyId || "",
-    }));
+    const [formData, setFormData] = useState<CreateJobFormData>({ ...INITIAL_FORM_DATA });
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [loading, setLoading] = useState(false);
+
+    const mutation = useMutation({
+        mutationFn: (payload: Record<string, unknown>) =>
+            CollegeAdminService.createJob(payload),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all() });
+            showToast({
+                type: "success",
+                title: "Success",
+                description: response?.message || "Job posting created successfully",
+            });
+            navigate("/college/jobs");
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong";
+            const status = error instanceof ApiError ? error.status : undefined;
+
+            if (status === 409) {
+                setErrors({ job_title: message });
+            }
+
+            showToast({
+                type: "error",
+                title: "Error Creating Job",
+                description: message,
+            });
+        },
+    });
 
     // ========================
     // FIELD HANDLERS
@@ -116,22 +143,21 @@ export const useCreateJob = (companyId?: string) => {
                 ...prev,
                 [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,
             }));
-            if (errors[name]) {
-                setErrors((prev) => ({ ...prev, [name]: "" }));
-            }
+            setErrors((prev) => {
+                if (!prev[name]) return prev;
+                return { ...prev, [name]: "" };
+            });
         },
-        [errors]
+        []
     );
 
-    const updateField = useCallback(
-        (name: string, value: unknown) => {
-            setFormData((prev) => ({ ...prev, [name]: value }));
-            if (errors[name]) {
-                setErrors((prev) => ({ ...prev, [name]: "" }));
-            }
-        },
-        [errors]
-    );
+    const updateField = useCallback((name: string, value: unknown) => {
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        setErrors((prev) => {
+            if (!prev[name]) return prev;
+            return { ...prev, [name]: "" };
+        });
+    }, []);
 
     // ========================
     // POSITIONS
@@ -268,29 +294,29 @@ export const useCreateJob = (companyId?: string) => {
     // ========================
 
     const handleSubmit = useCallback(async () => {
-        // Build payload
+        // Build payload with .trim() on all text fields
         const payload = {
             company_id: formData.company_id,
-            job_title: formData.job_title,
-            job_description: formData.job_description || undefined,
-            job_location: formData.job_location,
-            salary_package: formData.salary_package || undefined,
+            job_title: formData.job_title.trim(),
+            job_description: formData.job_description.trim() || undefined,
+            job_location: formData.job_location.trim(),
+            salary_package: formData.salary_package.trim() || undefined,
             salary_min: formData.salary_min === "" ? undefined : formData.salary_min,
             salary_max: formData.salary_max === "" ? undefined : formData.salary_max,
-            bond_duration: formData.bond_duration || undefined,
-            bond_details: formData.bond_details || undefined,
+            bond_duration: formData.bond_duration.trim() || undefined,
+            bond_details: formData.bond_details.trim() || undefined,
             job_type: formData.job_type,
             internship_duration: (formData.job_type === "internship" || formData.job_type === "both")
-                ? (formData.internship_duration || undefined)
+                ? (formData.internship_duration.trim() || undefined)
                 : undefined,
             internship_stipend: (formData.job_type === "internship" || formData.job_type === "both")
-                ? (formData.internship_stipend || undefined)
+                ? (formData.internship_stipend.trim() || undefined)
                 : undefined,
             passout_years: formData.passout_years,
             application_deadline: formData.application_deadline,
             positions: formData.positions.map((p) => ({
-                position_name: p.position_name,
-                position_description: p.position_description || undefined,
+                position_name: p.position_name.trim(),
+                position_description: (p.position_description || "").trim() || undefined,
                 vacancies: p.vacancies || undefined,
             })),
             eligibility_criteria: Object.values(formData.eligibility_criteria).some(
@@ -301,15 +327,15 @@ export const useCreateJob = (companyId?: string) => {
             rounds: formData.rounds.length > 0
                 ? formData.rounds.map((r) => ({
                     round_number: r.round_number,
-                    round_name: r.round_name,
+                    round_name: r.round_name.trim(),
                     round_type: r.round_type || undefined,
                     round_date: r.round_date || undefined,
-                    round_venue: r.round_venue || undefined,
+                    round_venue: (r.round_venue || "").trim() || undefined,
                 }))
                 : undefined,
             questions: formData.questions.length > 0
                 ? formData.questions.map((q) => ({
-                    question_text: q.question_text,
+                    question_text: q.question_text.trim(),
                     question_type: q.question_type,
                     question_options: (q.question_type === "mcq_single" || q.question_type === "mcq_multiple")
                         ? q.question_options
@@ -340,42 +366,18 @@ export const useCreateJob = (companyId?: string) => {
         }
 
         setErrors({});
-        setLoading(true);
-
-        try {
-            const response = await CollegeAdminService.createJob(payload);
-            showToast({
-                type: "success",
-                title: "Success",
-                description: response?.message || "Job posting created successfully",
-            });
-            navigate("/college/jobs");
-        } catch (error: unknown) {
-            const axiosErr = error as AxiosError<{ error?: string; message?: string }>;
-            const errorMsg =
-                axiosErr?.response?.data?.error ||
-                axiosErr?.response?.data?.message ||
-                (error instanceof Error ? error.message : "Something went wrong");
-
-            showToast({
-                type: "error",
-                title: "Error Creating Job",
-                description: errorMsg,
-            });
-        } finally {
-            setLoading(false);
-        }
-    }, [formData, navigate]);
+        mutation.mutate(payload);
+    }, [formData, mutation]);
 
     const handleCancel = useCallback(() => {
-        navigate(-1);
+        navigate("/college/jobs");
     }, [navigate]);
 
     return {
         currentStep,
         formData,
         errors,
-        loading,
+        loading: mutation.isPending,
         handleChange,
         updateField,
         addPosition,

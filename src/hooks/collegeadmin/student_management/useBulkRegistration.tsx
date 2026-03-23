@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { ApiError } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { showToast } from "@/utils/ToastUtils";
 
 interface BulkRegisterResponse {
@@ -9,50 +12,52 @@ interface BulkRegisterResponse {
         total: number;
         successful: number;
         failed: number;
-        errors?: any[];
-        [key: string]: any;
+        errors?: unknown[];
+        [key: string]: unknown;
     };
 }
 
 export const useBulkRegistration = () => {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const queryClient = useQueryClient();
     const [result, setResult] = useState<BulkRegisterResponse | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
-    const registerDefault = async (students: any[]) => {
-        setLoading(true);
-        setError(null);
-        setResult(null);
-        try {
-            const response = await CollegeAdminService.bulkRegistration(students);
+    const mutation = useMutation({
+        mutationFn: (students: Record<string, unknown>[]) =>
+            CollegeAdminService.bulkRegistration(students),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.students.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.students.departments() });
             setResult({
                 success: response.success,
                 message: response.message,
                 data: response.data,
             });
-
             showToast({
-                type: 'success',
-                title: 'Process Completed',
-                description: response.message || 'Bulk registration process finished',
+                type: "success",
+                title: "Process Completed",
+                description: response.message || "Bulk registration process finished",
             });
-            return true;
-        } catch (err: any) {
-            const errorMessage = err.response?.data?.message || err.message || "Failed to upload file";
+        },
+        onError: (err: unknown) => {
+            const errorMessage = err instanceof ApiError ? err.message : "Failed to upload file";
             setError(errorMessage);
-
-            if (err.response?.data?.data && (err.response.data.data.success || err.response.data.data.failed)) {
-                setResult(err.response.data);
-            }
-
             showToast({
-                type: 'error',
-                title: 'Error / Warning',
+                type: "error",
+                title: "Error / Warning",
                 description: errorMessage,
             });
+        },
+    });
+
+    const registerDefault = async (students: Record<string, unknown>[]) => {
+        setError(null);
+        setResult(null);
+        try {
+            await mutation.mutateAsync(students);
+            return true;
+        } catch {
             return false;
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -63,7 +68,7 @@ export const useBulkRegistration = () => {
 
     return {
         registerDefault,
-        loading,
+        loading: mutation.isPending,
         error,
         result,
         reset,

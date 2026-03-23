@@ -1,69 +1,77 @@
 import { useAcademicInfo } from "@/hooks/student/useAcademicInfo";
+import FloatingInput from "@/components/ui/FloatingInput";
+import FloatingSelect from "@/components/ui/FloatingSelect";
+import FloatingTextarea from "@/components/ui/FloatingTextarea";
 
-interface Props {
-    profileData: any;
-    refreshProfile: () => Promise<void>;
-    nextStep: () => void;
-}
-
-const AcademicInfoForm = ({ profileData }: Props) => {
+const AcademicInfoForm = () => {
     const { formData, errors, loading, fetching, handleChange, handleCheckboxChange, handleSubmit } =
-        useAcademicInfo(profileData);
+        useAcademicInfo();
 
-    const admissionOptions = ["JEE", "MHT-CET", "GATE", "Direct", "Management", "CAT", "Other"];
+    const admissionOptions = [
+        { value: "JEE", label: "JEE" },
+        { value: "MHT-CET", label: "MHT-CET" },
+        { value: "GATE", label: "GATE" },
+        { value: "Direct", label: "Direct" },
+        { value: "Management", label: "Management" },
+        { value: "CAT", label: "CAT" },
+        { value: "Other", label: "Other" },
+    ];
 
     if (fetching) {
         return (
-            <div className="p-8 bg-white rounded-xl border">
-                <div className="flex items-center justify-center h-40">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-                    <span className="ml-3 text-gray-500">Loading academic info...</span>
+            <div className="p-8 bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-800">
+                <div className="h-5 w-44 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse mb-6" />
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="space-y-2">
+                                <div className="h-3 w-20 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
+                                <div className="h-10 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="space-y-2">
+                                <div className="h-3 w-24 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
+                                <div className="h-10 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex justify-end mt-6 pt-4 border-t dark:border-gray-700">
+                    <div className="h-10 w-28 rounded-xl bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="p-8 bg-white rounded-xl border">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6">Academic Information</h2>
+        <div className="p-8 bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-800">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-6">Academic Information</h2>
 
             <div className="space-y-6">
                 {/* ================= Basic Academic Details ================= */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <InputField label="Roll Number" name="roll_number" formData={formData} errors={errors} handleChange={handleChange} />
-                    <InputField label="Enrollment Number" name="enrollment_number" formData={formData} errors={errors} handleChange={handleChange} />
-                    <InputField
-                        label={<>Admission Year<span className="text-red-500 ml-1">*</span></>}
-                        name="admission_year" type="number" formData={formData} errors={errors} handleChange={handleChange}
-                    />
-                    <SelectField
-                        label={<>Admission Based On<span className="text-red-500 ml-1">*</span></>}
-                        name="admission_based_on" options={admissionOptions} formData={formData} errors={errors} handleChange={handleChange}
-                    />
+                    <FloatingInput label="Roll Number" name="roll_number" value={String(formData.roll_number ?? "")} onChange={handleChange} error={errors.roll_number} />
+                    <FloatingInput label="Enrollment Number" name="enrollment_number" value={String(formData.enrollment_number ?? "")} onChange={handleChange} error={errors.enrollment_number} />
+                    <FloatingInput label="Admission Year" name="admission_year" value={String(formData.admission_year ?? "")} onChange={handleChange} error={errors.admission_year} required type="number" />
+                    <FloatingSelect label="Admission Based On" name="admission_based_on" value={String(formData.admission_based_on ?? "")} onChange={handleChange} error={errors.admission_based_on} required options={admissionOptions} />
                 </div>
 
                 {/* ================= 10th Details ================= */}
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-4">10th Details</h3>
+                    <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">10th Details</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <InputField
-                            label={<>Percentage (%)<span className="text-red-500 ml-1">*</span></>}
-                            name="tenth_percentage" type="number" formData={formData} errors={errors} handleChange={handleChange}
-                        />
-                        <InputField
-                            label={<>Board<span className="text-red-500 ml-1">*</span></>}
-                            name="tenth_board" formData={formData} errors={errors} handleChange={handleChange}
-                        />
-                        <InputField
-                            label={<>Passing Year<span className="text-red-500 ml-1">*</span></>}
-                            name="tenth_passing_year" type="number" formData={formData} errors={errors} handleChange={handleChange}
-                        />
+                        <FloatingInput label="Percentage (%)" name="tenth_percentage" value={String(formData.tenth_percentage ?? "")} onChange={handleChange} error={errors.tenth_percentage} required type="number" />
+                        <FloatingInput label="Board" name="tenth_board" value={String(formData.tenth_board ?? "")} onChange={handleChange} error={errors.tenth_board} required />
+                        <FloatingInput label="Passing Year" name="tenth_passing_year" value={String(formData.tenth_passing_year ?? "")} onChange={handleChange} error={errors.tenth_passing_year} required type="number" />
                     </div>
                 </div>
 
                 {/* ================= 12th / Diploma Toggle ================= */}
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-4">Higher Secondary</h3>
+                    <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">Higher Secondary</h3>
 
                     {/* Radio Toggle */}
                     <div className="flex items-center gap-6 mb-4">
@@ -76,7 +84,7 @@ const AcademicInfoForm = ({ profileData }: Props) => {
                                 onChange={handleChange}
                                 className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                             />
-                            <span className="text-sm font-medium text-gray-700">12th</span>
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">12th</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -87,69 +95,45 @@ const AcademicInfoForm = ({ profileData }: Props) => {
                                 onChange={handleChange}
                                 className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                             />
-                            <span className="text-sm font-medium text-gray-700">Diploma</span>
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Diploma</span>
                         </label>
                     </div>
 
                     {/* Conditional 12th Fields */}
                     {formData.twelfth_or_diploma === "12th" && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <InputField
-                                label={<>12th Percentage (%)<span className="text-red-500 ml-1">*</span></>}
-                                name="twelfth_percentage" type="number" formData={formData} errors={errors} handleChange={handleChange}
-                            />
-                            <InputField
-                                label={<>12th Board<span className="text-red-500 ml-1">*</span></>}
-                                name="twelfth_board" formData={formData} errors={errors} handleChange={handleChange}
-                            />
+                            <FloatingInput label="12th Percentage (%)" name="twelfth_percentage" value={String(formData.twelfth_percentage ?? "")} onChange={handleChange} error={errors.twelfth_percentage} required type="number" />
+                            <FloatingInput label="12th Board" name="twelfth_board" value={String(formData.twelfth_board ?? "")} onChange={handleChange} error={errors.twelfth_board} required />
                         </div>
                     )}
 
                     {/* Conditional Diploma Fields */}
                     {formData.twelfth_or_diploma === "Diploma" && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <InputField
-                                label={<>Diploma Percentage (%)<span className="text-red-500 ml-1">*</span></>}
-                                name="diploma_percentage" type="number" formData={formData} errors={errors} handleChange={handleChange}
-                            />
-                            <InputField
-                                label={<>Diploma Branch<span className="text-red-500 ml-1">*</span></>}
-                                name="diploma_branch" formData={formData} errors={errors} handleChange={handleChange}
-                            />
+                            <FloatingInput label="Diploma Percentage (%)" name="diploma_percentage" value={String(formData.diploma_percentage ?? "")} onChange={handleChange} error={errors.diploma_percentage} required type="number" />
+                            <FloatingInput label="Diploma Branch" name="diploma_branch" value={String(formData.diploma_branch ?? "")} onChange={handleChange} error={errors.diploma_branch} required />
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mt-6">
-                        <InputField
-                            label={<>Passing Year<span className="text-red-500 ml-1">*</span></>}
-                            name="higher_education_passing_year" type="number" formData={formData} errors={errors} handleChange={handleChange}
-                        />
+                    <div className="mt-6">
+                        <FloatingInput label="Passing Year" name="higher_education_passing_year" value={String(formData.higher_education_passing_year ?? "")} onChange={handleChange} error={errors.higher_education_passing_year} required type="number" />
                     </div>
                 </div>
 
                 {/* ================= Current Performance ================= */}
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-4">Current Performance</h3>
+                    <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">Current Performance</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <InputField
-                            label={<>Overall CGPA (/10)<span className="text-red-500 ml-1">*</span></>}
-                            name="overall_cgpa" type="number" formData={formData} errors={errors} handleChange={handleChange}
-                        />
-                        <InputField
-                            label={<>Total Live KTs<span className="text-red-500 ml-1">*</span></>}
-                            name="total_live_kts" type="number" formData={formData} errors={errors} handleChange={handleChange}
-                        />
-                        <InputField
-                            label={<>Total Dead KTs<span className="text-red-500 ml-1">*</span></>}
-                            name="total_dead_kts" type="number" formData={formData} errors={errors} handleChange={handleChange}
-                        />
+                        <FloatingInput label="Overall CGPA (/10)" name="overall_cgpa" value={String(formData.overall_cgpa ?? "")} onChange={handleChange} error={errors.overall_cgpa} required type="number" />
+                        <FloatingInput label="Total Live KTs" name="total_live_kts" value={String(formData.total_live_kts ?? "")} onChange={handleChange} error={errors.total_live_kts} required type="number" />
+                        <FloatingInput label="Total Dead KTs" name="total_dead_kts" value={String(formData.total_dead_kts ?? "")} onChange={handleChange} error={errors.total_dead_kts} required type="number" />
                     </div>
                 </div>
 
                 {/* ================= Education Gap ================= */}
                 <div>
                     <div className="flex items-center gap-3 mb-4">
-                        <h3 className="text-lg font-semibold text-gray-700">Education Gap</h3>
+                        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Education Gap</h3>
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input
                                 type="checkbox"
@@ -157,36 +141,19 @@ const AcademicInfoForm = ({ profileData }: Props) => {
                                 onChange={(e) => handleCheckboxChange("any_gap_during_education", e.target.checked)}
                                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
-                            <span className="text-sm text-gray-600">Yes, I have a gap</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">Yes, I have a gap</span>
                         </label>
                     </div>
 
                     {formData.any_gap_during_education && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <InputField
-                                label={<>Gap Years<span className="text-red-500 ml-1">*</span></>}
-                                name="gap_years" type="number" formData={formData} errors={errors} handleChange={handleChange}
-                            />
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Gap Reason
-                                </label>
-                                <textarea
-                                    name="gap_reason"
-                                    value={formData.gap_reason || ""}
-                                    onChange={handleChange}
-                                    rows={3}
-                                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                                {errors.gap_reason && (
-                                    <p className="text-xs text-red-500 mt-1">{errors.gap_reason}</p>
-                                )}
-                            </div>
+                            <FloatingInput label="Gap Years" name="gap_years" value={String(formData.gap_years ?? "")} onChange={handleChange} error={errors.gap_years} required type="number" />
+                            <FloatingTextarea label="Gap Reason" name="gap_reason" value={formData.gap_reason || ""} onChange={handleChange} error={errors.gap_reason} rows={3} />
                         </div>
                     )}
 
                     {!formData.any_gap_during_education && (
-                        <p className="text-sm text-gray-500 italic">No education gap reported.</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">No education gap reported.</p>
                     )}
                 </div>
 
@@ -207,37 +174,3 @@ const AcademicInfoForm = ({ profileData }: Props) => {
 };
 
 export default AcademicInfoForm;
-
-/* ================= Reusable Components ================= */
-
-const InputField = ({ label, name, formData, errors, handleChange, type = "text" }: any) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-        <input
-            name={name}
-            type={type}
-            value={formData[name] || ""}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        {errors[name] && <p className="text-xs text-red-500 mt-1">{errors[name]}</p>}
-    </div>
-);
-
-const SelectField = ({ label, name, options, formData, errors, handleChange }: any) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-        <select
-            name={name}
-            value={formData[name] || ""}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-            <option value="">Select</option>
-            {options.map((option: string) => (
-                <option key={option} value={option}>{option}</option>
-            ))}
-        </select>
-        {errors[name] && <p className="text-xs text-red-500 mt-1">{errors[name]}</p>}
-    </div>
-);

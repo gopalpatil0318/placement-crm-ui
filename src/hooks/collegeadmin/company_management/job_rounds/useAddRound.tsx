@@ -1,7 +1,10 @@
 import { useState, useCallback } from "react";
-import { AxiosError } from "axios";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
+import { addRoundSchema } from "@/validators/JobPostingSchema";
 
 // ========================
 // TYPES
@@ -30,17 +33,20 @@ const INITIAL_FORM: AddRoundFormData = {
 export const useAddRound = (jobId: string, onSuccess?: () => void) => {
     const [formData, setFormData] = useState<AddRoundFormData>(INITIAL_FORM);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [loading, setLoading] = useState(false);
+    const queryClient = useQueryClient();
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
             const { name, value } = e.target;
             setFormData((prev) => ({ ...prev, [name]: value }));
-            if (errors[name]) {
-                setErrors((prev) => ({ ...prev, [name]: "" }));
-            }
+            setErrors((prev) => {
+                if (!prev[name]) return prev;
+                const next = { ...prev };
+                delete next[name];
+                return next;
+            });
         },
-        [errors]
+        []
     );
 
     const resetForm = useCallback(() => {
@@ -48,53 +54,11 @@ export const useAddRound = (jobId: string, onSuccess?: () => void) => {
         setErrors({});
     }, []);
 
-    const validate = useCallback((): boolean => {
-        const newErrors: Record<string, string> = {};
-
-        if (!formData.round_name.trim()) {
-            newErrors.round_name = "Round name is required";
-        } else if (formData.round_name.trim().length < 2) {
-            newErrors.round_name = "Round name must be at least 2 characters";
-        } else if (formData.round_name.trim().length > 200) {
-            newErrors.round_name = "Round name must be at most 200 characters";
-        }
-
-        if (formData.round_description && formData.round_description.length > 1000) {
-            newErrors.round_description = "Description must be at most 1000 characters";
-        }
-
-        if (formData.round_venue && formData.round_venue.length > 500) {
-            newErrors.round_venue = "Venue must be at most 500 characters";
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    }, [formData]);
-
-    const handleSubmit = useCallback(async () => {
-        if (!validate()) {
-            showToast({
-                type: "warning",
-                title: "Validation Failed",
-                description: "Please check the form fields",
-            });
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            // Build payload — only include non-empty fields
-            const payload: Record<string, string> = {
-                round_name: formData.round_name.trim(),
-            };
-            if (formData.round_description.trim()) payload.round_description = formData.round_description.trim();
-            if (formData.round_type) payload.round_type = formData.round_type;
-            if (formData.round_date) payload.round_date = formData.round_date;
-            if (formData.round_venue.trim()) payload.round_venue = formData.round_venue.trim();
-
-            const response = await CollegeAdminService.addJobRound(jobId, payload);
-
+    const mutation = useMutation({
+        mutationFn: (payload: Record<string, unknown>) =>
+            CollegeAdminService.addJobRound(jobId, payload),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.rounds(jobId) });
             showToast({
                 type: "success",
                 title: "Success",
@@ -102,22 +66,57 @@ export const useAddRound = (jobId: string, onSuccess?: () => void) => {
             });
             resetForm();
             onSuccess?.();
-        } catch (error: unknown) {
-            const axiosErr = error as AxiosError<{ error?: string; message?: string }>;
-            const errorMsg =
-                axiosErr?.response?.data?.error ||
-                axiosErr?.response?.data?.message ||
-                (error instanceof Error ? error.message : "Something went wrong");
-            showToast({ type: "error", title: "Error", description: errorMsg });
-        } finally {
-            setLoading(false);
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong";
+            const status = error instanceof ApiError ? error.status : undefined;
+
+            if (status === 409) {
+                setErrors({ round_name: message });
+            }
+
+            showToast({
+                type: "error",
+                title: status === 400 ? "Invalid Action" : status === 404 ? "Not Found" : "Error",
+                description: message,
+            });
+        },
+    });
+
+    const handleSubmit = useCallback(() => {
+        // Build validation data — only include non-empty optional fields
+        const validationData: Record<string, unknown> = {
+            round_name: formData.round_name.trim(),
+        };
+        if (formData.round_description.trim()) validationData.round_description = formData.round_description.trim();
+        if (formData.round_type) validationData.round_type = formData.round_type;
+        if (formData.round_date) validationData.round_date = formData.round_date;
+        if (formData.round_venue.trim()) validationData.round_venue = formData.round_venue.trim();
+
+        const result = addRoundSchema.safeParse(validationData);
+        if (!result.success) {
+            const fieldErrors: Record<string, string> = {};
+            for (const issue of result.error.issues) {
+                const field = String(issue.path[0]);
+                if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+            }
+            setErrors(fieldErrors);
+            showToast({
+                type: "warning",
+                title: "Validation Failed",
+                description: result.error.issues[0].message,
+            });
+            return;
         }
-    }, [formData, jobId, validate, resetForm, onSuccess]);
+
+        setErrors({});
+        mutation.mutate(validationData);
+    }, [formData, mutation]);
 
     return {
         formData,
         errors,
-        loading,
+        loading: mutation.isPending,
         handleChange,
         handleSubmit,
         resetForm,

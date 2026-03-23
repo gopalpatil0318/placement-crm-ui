@@ -29,7 +29,6 @@ export default function SuperAdminLogin() {
       navigate("/sysadmin/dashboard")
     } catch (err: unknown) {
       if (err instanceof Error) {
-        // Check for rate limit message
         const msg = err.message.toLowerCase()
         if (msg.includes("too many") || msg.includes("rate limit")) {
           setFormError("Too many login attempts. Please try again in 15 minutes.")
@@ -45,7 +44,7 @@ export default function SuperAdminLogin() {
   }
 
   return (
-    <div className="min-h-screen w-full flex bg-background">
+    <div className="min-h-screen w-full flex bg-gray-50 dark:bg-gray-950">
       {/* Left Section */}
       <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden">
         <div
@@ -75,47 +74,47 @@ export default function SuperAdminLogin() {
       </div>
 
       {/* Right Section */}
-      <div className="w-full lg:w-2/5 flex items-center justify-center p-6 md:p-12 bg-card">
+      <div className="w-full lg:w-2/5 flex items-center justify-center p-6 md:p-12 bg-white dark:bg-gray-900">
         <div className="w-full max-w-sm space-y-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Super Admin Login</h1>
-            <p className="text-muted-foreground text-sm">Enter your credentials to access secure dashboard</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Super Admin Login</h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">Enter your credentials to access secure dashboard</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">Email Address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="admin@pcrm.in"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-11 border-[#cccccc]"
+                  className="pl-10 h-11 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-gray-700 dark:text-gray-300">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 h-11 border-[#cccccc]"
+                  className="pl-10 pr-10 h-11 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -124,9 +123,9 @@ export default function SuperAdminLogin() {
             </div>
 
             {formError && (
-              <Alert className="bg-destructive/10 border-destructive/20 rounded-lg">
-                <AlertCircle className="h-4 w-4 text-destructive" />
-                <AlertDescription className="text-destructive text-sm ml-2">{formError}</AlertDescription>
+              <Alert className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-red-500" />
+                <AlertDescription className="text-red-700 dark:text-red-400 text-sm ml-2">{formError}</AlertDescription>
               </Alert>
             )}
 
@@ -149,7 +148,7 @@ export default function SuperAdminLogin() {
             </Button>
           </form>
 
-          <p className="text-center text-xs text-muted-foreground">
+          <p className="text-center text-xs text-gray-400 dark:text-gray-500">
             Protected by encryption • Super Admin Access Only
           </p>
         </div>

@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { AxiosError } from "axios";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/api";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { queryKeys } from "@/lib/queryKeys";
 import { showToast } from "@/utils/ToastUtils";
+import { jobUpdateSchema } from "@/validators/JobPostingSchema";
 
 // ========================
 // TYPES
@@ -18,14 +21,29 @@ interface UpdateJobFormData {
     bond_duration: string;
     bond_details: string;
     application_deadline: string;
+    passout_years: number[];
 }
+
+type FormErrors = Partial<Record<keyof UpdateJobFormData, string>>;
+
+// Convert UTC ISO string to local datetime-local input value
+const toLocalDatetimeValue = (iso: string): string => {
+    const d = new Date(iso);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+};
 
 // ========================
 // HOOK
 // ========================
 
-export const useUpdateJob = (jobId: string | undefined) => {
+export const useUpdateJob = (
+    jobId: string | undefined,
+    onItemLoaded?: (title: string) => void,
+) => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [formData, setFormData] = useState<UpdateJobFormData>({
         job_title: "",
         job_description: "",
@@ -36,45 +54,106 @@ export const useUpdateJob = (jobId: string | undefined) => {
         bond_duration: "",
         bond_details: "",
         application_deadline: "",
+        passout_years: [],
     });
-    const [errors, setErrors] = useState<Record<string, string>>({});
-    const [loading, setLoading] = useState(false);
-    const [fetching, setFetching] = useState(true);
+    const originalData = useRef<UpdateJobFormData | null>(null);
+    const [fetchedJobTitle, setFetchedJobTitle] = useState("");
+    const [errors, setErrors] = useState<FormErrors>({});
     const [fetchError, setFetchError] = useState<string | null>(null);
 
-    // Fetch current job data
+    // ========================
+    // FETCH EXISTING DATA (React Query)
+    // ========================
+
+    const { isLoading: fetching } = useQuery({
+        queryKey: queryKeys.jobs.detail(jobId!),
+        queryFn: async () => {
+            const response = await CollegeAdminService.getJob(jobId!);
+            return response.data || response;
+        },
+        enabled: !!jobId,
+        select: (data) => {
+            const loaded: UpdateJobFormData = {
+                job_title: data.job_title || "",
+                job_description: data.job_description || "",
+                job_location: data.job_location || "",
+                salary_package: data.salary_package || "",
+                salary_min: data.salary_min ? Number(data.salary_min) : "",
+                salary_max: data.salary_max ? Number(data.salary_max) : "",
+                bond_duration: data.bond_duration || "",
+                bond_details: data.bond_details || "",
+                application_deadline: data.application_deadline
+                    ? toLocalDatetimeValue(data.application_deadline)
+                    : "",
+                passout_years: Array.isArray(data.passout_years) ? data.passout_years : [],
+            };
+            return { loaded, title: data.job_title || "" };
+        },
+    });
+
+    // Populate form from query cache — runs once when data arrives
+    const populatedRef = useRef(false);
+    const queryData = queryClient.getQueryData(queryKeys.jobs.detail(jobId!)) as Record<string, unknown> | undefined;
+
     useEffect(() => {
-        if (!jobId) return;
-
-        const fetchJob = async () => {
-            setFetching(true);
-            try {
-                const response = await CollegeAdminService.getJob(jobId);
-                const data = response.data || response;
-                setFormData({
-                    job_title: data.job_title || "",
-                    job_description: data.job_description || "",
-                    job_location: data.job_location || "",
-                    salary_package: data.salary_package || "",
-                    salary_min: data.salary_min ? Number(data.salary_min) : "",
-                    salary_max: data.salary_max ? Number(data.salary_max) : "",
-                    bond_duration: data.bond_duration || "",
-                    bond_details: data.bond_details || "",
-                    application_deadline: data.application_deadline
-                        ? data.application_deadline.slice(0, 16)
-                        : "",
-                });
-            } catch (err: unknown) {
-                const msg = err instanceof Error ? err.message : "Failed to fetch job";
-                setFetchError(msg);
-                showToast({ type: "error", title: "Error", description: msg });
-            } finally {
-                setFetching(false);
-            }
+        if (!queryData || populatedRef.current) return;
+        populatedRef.current = true;
+        const loaded: UpdateJobFormData = {
+            job_title: (queryData.job_title as string) || "",
+            job_description: (queryData.job_description as string) || "",
+            job_location: (queryData.job_location as string) || "",
+            salary_package: (queryData.salary_package as string) || "",
+            salary_min: queryData.salary_min ? Number(queryData.salary_min) : "",
+            salary_max: queryData.salary_max ? Number(queryData.salary_max) : "",
+            bond_duration: (queryData.bond_duration as string) || "",
+            bond_details: (queryData.bond_details as string) || "",
+            application_deadline: queryData.application_deadline
+                ? toLocalDatetimeValue(queryData.application_deadline as string)
+                : "",
+            passout_years: Array.isArray(queryData.passout_years) ? queryData.passout_years as number[] : [],
         };
+        setFormData(loaded);
+        originalData.current = loaded;
+        setFetchedJobTitle((queryData.job_title as string) || "");
+        onItemLoaded?.((queryData.job_title as string) || "");
+    }, [queryData, onItemLoaded]);
 
-        fetchJob();
-    }, [jobId]);
+    // ========================
+    // UPDATE MUTATION
+    // ========================
+
+    const mutation = useMutation({
+        mutationFn: (payload: Record<string, unknown>) =>
+            CollegeAdminService.updateJob(jobId!, payload),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId!) });
+            showToast({
+                type: "success",
+                title: "Success",
+                description: response?.message || "Job updated successfully",
+            });
+            navigate(`/college/job/${jobId}`);
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong";
+            const status = error instanceof ApiError ? error.status : undefined;
+
+            if (status === 409) {
+                setErrors({ job_title: message });
+            }
+
+            showToast({
+                type: "error",
+                title: "Error Updating Job",
+                description: message,
+            });
+        },
+    });
+
+    // ========================
+    // HANDLERS
+    // ========================
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -83,84 +162,136 @@ export const useUpdateJob = (jobId: string | undefined) => {
                 ...prev,
                 [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,
             }));
-            if (errors[name]) {
-                setErrors((prev) => ({ ...prev, [name]: "" }));
-            }
+            setErrors((prev) => {
+                if (!prev[name as keyof UpdateJobFormData]) return prev;
+                return { ...prev, [name]: undefined };
+            });
         },
-        [errors]
+        []
     );
+
+    // ========================
+    // SUBMIT — DIFF-BASED
+    // ========================
 
     const handleSubmit = useCallback(
         async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
             e.preventDefault();
             if (!jobId) return;
 
-            // Basic validation
-            const newErrors: Record<string, string> = {};
-            if (!formData.job_title.trim()) newErrors.job_title = "Job title is required";
-            if (!formData.job_location.trim()) newErrors.job_location = "Location is required";
-            if (Object.keys(newErrors).length > 0) {
-                setErrors(newErrors);
+            const orig = originalData.current;
+
+            // Build validation object from current form
+            const validationData = {
+                job_title: formData.job_title.trim() || undefined,
+                job_description: formData.job_description.trim() || undefined,
+                job_location: formData.job_location.trim() || undefined,
+                salary_package: formData.salary_package.trim() || undefined,
+                salary_min: formData.salary_min === "" ? undefined : formData.salary_min,
+                salary_max: formData.salary_max === "" ? undefined : formData.salary_max,
+                bond_duration: formData.bond_duration.trim() || undefined,
+                bond_details: formData.bond_details.trim() || undefined,
+                application_deadline: formData.application_deadline || undefined,
+                passout_years: formData.passout_years.length > 0 ? formData.passout_years : undefined,
+            };
+
+            // Zod validation
+            const result = jobUpdateSchema.safeParse(validationData);
+            if (!result.success) {
+                const fieldErrors: FormErrors = {};
+                for (const issue of result.error.issues) {
+                    const field = issue.path[0] as keyof UpdateJobFormData;
+                    if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+                }
+                setErrors(fieldErrors);
                 showToast({
                     type: "warning",
                     title: "Validation Failed",
-                    description: Object.values(newErrors)[0],
+                    description: result.error.issues[0].message,
+                });
+                return;
+            }
+            setErrors({});
+
+            // Compute diff — only send changed fields
+            const payload: Record<string, unknown> = {};
+            if (!orig || formData.job_title.trim() !== orig.job_title.trim()) {
+                payload.job_title = formData.job_title.trim();
+            }
+            if (!orig || formData.job_description.trim() !== orig.job_description.trim()) {
+                payload.job_description = formData.job_description.trim();
+            }
+            if (!orig || formData.job_location.trim() !== orig.job_location.trim()) {
+                payload.job_location = formData.job_location.trim();
+            }
+            if (!orig || formData.salary_package.trim() !== orig.salary_package.trim()) {
+                payload.salary_package = formData.salary_package.trim();
+            }
+            if (!orig || formData.salary_min !== orig.salary_min) {
+                payload.salary_min = formData.salary_min === "" ? null : formData.salary_min;
+            }
+            if (!orig || formData.salary_max !== orig.salary_max) {
+                payload.salary_max = formData.salary_max === "" ? null : formData.salary_max;
+            }
+            if (!orig || formData.bond_duration.trim() !== orig.bond_duration.trim()) {
+                payload.bond_duration = formData.bond_duration.trim();
+            }
+            if (!orig || formData.bond_details.trim() !== orig.bond_details.trim()) {
+                payload.bond_details = formData.bond_details.trim();
+            }
+            if (!orig || formData.application_deadline !== orig.application_deadline) {
+                payload.application_deadline = formData.application_deadline;
+            }
+            // passout_years — compare as sorted JSON
+            const currentYears = [...formData.passout_years].sort().join(",");
+            const origYears = orig ? [...orig.passout_years].sort().join(",") : "";
+            if (!orig || currentYears !== origYears) {
+                payload.passout_years = formData.passout_years;
+            }
+
+            // No-changes guard
+            if (Object.keys(payload).length === 0) {
+                showToast({
+                    type: "warning",
+                    title: "No Changes",
+                    description: "Nothing has been changed.",
                 });
                 return;
             }
 
-            setErrors({});
-            setLoading(true);
-
-            try {
-                const payload: Record<string, unknown> = {};
-                if (formData.job_title) payload.job_title = formData.job_title;
-                if (formData.job_description) payload.job_description = formData.job_description;
-                if (formData.job_location) payload.job_location = formData.job_location;
-                if (formData.salary_package) payload.salary_package = formData.salary_package;
-                if (formData.salary_min !== "") payload.salary_min = formData.salary_min;
-                if (formData.salary_max !== "") payload.salary_max = formData.salary_max;
-                if (formData.bond_duration) payload.bond_duration = formData.bond_duration;
-                if (formData.bond_details) payload.bond_details = formData.bond_details;
-                if (formData.application_deadline) payload.application_deadline = formData.application_deadline;
-
-                const response = await CollegeAdminService.updateJob(jobId, payload);
-                showToast({
-                    type: "success",
-                    title: "Success",
-                    description: response?.message || "Job updated successfully",
-                });
-                navigate(`/college/job/${jobId}`);
-            } catch (error: unknown) {
-                const axiosErr = error as AxiosError<{ error?: string; message?: string }>;
-                const errorMsg =
-                    axiosErr?.response?.data?.error ||
-                    axiosErr?.response?.data?.message ||
-                    (error instanceof Error ? error.message : "Something went wrong");
-
-                showToast({
-                    type: "error",
-                    title: "Error Updating Job",
-                    description: errorMsg,
-                });
-            } finally {
-                setLoading(false);
-            }
+            mutation.mutate(payload);
         },
-        [formData, jobId, navigate]
+        [formData, jobId, mutation]
     );
 
     const handleCancel = useCallback(() => {
-        navigate(-1);
-    }, [navigate]);
+        if (jobId) {
+            navigate(`/college/job/${jobId}`);
+        } else {
+            navigate("/college/jobs");
+        }
+    }, [jobId, navigate]);
+
+    const updateField = useCallback(
+        (field: keyof UpdateJobFormData, value: UpdateJobFormData[keyof UpdateJobFormData]) => {
+            setFormData((prev) => ({ ...prev, [field]: value }));
+            setErrors((prev) => {
+                if (!prev[field]) return prev;
+                return { ...prev, [field]: undefined };
+            });
+        },
+        []
+    );
 
     return {
         formData,
+        fetchedJobTitle,
         errors,
-        loading,
+        loading: mutation.isPending,
         fetching,
         fetchError,
         handleChange,
+        updateField,
         handleSubmit,
         handleCancel,
     };

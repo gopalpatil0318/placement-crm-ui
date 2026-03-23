@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ========================
 // TYPES
@@ -52,104 +53,70 @@ interface Pagination {
 // ========================
 
 export const useEligibleStudents = (jobId: string | undefined) => {
-    const [students, setStudents] = useState<EligibleStudent[]>([]);
-    const [job, setJob] = useState<EligibilityJob | null>(null);
-    const [criteria, setCriteria] = useState<EligibilityCriteria | null>(null);
-    const [eligibleCount, setEligibleCount] = useState(0);
-    const [totalStudents, setTotalStudents] = useState(0);
-    const [eligibilityPercentage, setEligibilityPercentage] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [pagination, setPagination] = useState<Pagination>({
-        page: 1,
-        limit: 50,
-        total: 0,
-        totalPages: 0,
-    });
-
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(50);
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [deptFilter, setDeptFilter] = useState("");
 
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const fetchEligibleStudents = useCallback(
-        async (page: number, limit: number, searchTerm: string, dept: string) => {
-            if (!jobId) return;
-            setLoading(true);
-            setError(null);
+    const queryFilters = {
+        page,
+        limit,
+        search: debouncedSearch || undefined,
+        dept_name: deptFilter || undefined,
+    };
 
-            try {
-                const response = await CollegeAdminService.getEligibleStudents(jobId, {
-                    page,
-                    limit,
-                    search: searchTerm || undefined,
-                    dept_name: dept || undefined,
-                });
+    const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
+        queryKey: queryKeys.students.eligible(jobId!, queryFilters),
+        queryFn: () => CollegeAdminService.getEligibleStudents(jobId!, queryFilters),
+        placeholderData: keepPreviousData,
+        enabled: !!jobId,
+    });
 
-                const data = response.data || response;
+    const responseData = data?.data || data;
+    const students: EligibleStudent[] = Array.isArray(responseData?.students) ? responseData.students : [];
+    const job: EligibilityJob | null = responseData?.job ?? null;
+    const criteria: EligibilityCriteria | null = responseData?.criteria ?? null;
+    const eligibleCount: number = responseData?.eligible_count ?? 0;
+    const totalStudents: number = responseData?.total_students ?? 0;
+    const eligibilityPercentage: number = responseData?.eligibility_percentage ?? 0;
+    const pagination: Pagination = data?.pagination ?? {
+        page,
+        limit,
+        total: eligibleCount,
+        totalPages: Math.ceil(eligibleCount / limit),
+    };
+    const loading = isLoading || isFetching;
+    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch eligible students") : null;
 
-                setJob(data.job || null);
-                setCriteria(data.criteria || null);
-                setEligibleCount(data.eligible_count || 0);
-                setTotalStudents(data.total_students || 0);
-                setEligibilityPercentage(data.eligibility_percentage || 0);
-                setStudents(Array.isArray(data.students) ? data.students : []);
-
-                if (response.pagination) {
-                    setPagination(response.pagination);
-                } else {
-                    setPagination((prev) => ({
-                        ...prev,
-                        total: data.eligible_count || 0,
-                        totalPages: Math.ceil((data.eligible_count || 0) / limit),
-                    }));
-                }
-            } catch (err: unknown) {
-                const msg = err instanceof Error ? err.message : "Failed to fetch eligible students";
-                setError(msg);
-                showToast({ type: "error", title: "Error", description: msg });
-            } finally {
-                setLoading(false);
-            }
-        },
-        [jobId]
-    );
-
-    useEffect(() => {
-        fetchEligibleStudents(pagination.page, pagination.limit, search, deptFilter);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pagination.page, pagination.limit, deptFilter, fetchEligibleStudents]);
-
-    const handleSearchChange = useCallback(
-        (value: string) => {
-            setSearch(value);
-            if (searchTimerRef.current) {
-                clearTimeout(searchTimerRef.current);
-            }
-            searchTimerRef.current = setTimeout(() => {
-                setPagination((prev) => ({ ...prev, page: 1 }));
-                fetchEligibleStudents(1, pagination.limit, value, deptFilter);
-            }, 300);
-        },
-        [fetchEligibleStudents, pagination.limit, deptFilter]
-    );
+    const handleSearchChange = useCallback((value: string) => {
+        setSearch(value);
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        searchTimerRef.current = setTimeout(() => {
+            setDebouncedSearch(value);
+            setPage(1);
+        }, 300);
+    }, []);
 
     const handleDeptFilterChange = useCallback((value: string) => {
         setDeptFilter(value);
-        setPagination((prev) => ({ ...prev, page: 1 }));
+        setPage(1);
     }, []);
 
     const handlePageChange = useCallback((newPage: number) => {
-        setPagination((prev) => ({ ...prev, page: newPage }));
+        setPage(newPage);
     }, []);
 
     const handleLimitChange = useCallback((newLimit: number) => {
-        setPagination((prev) => ({ ...prev, page: 1, limit: newLimit }));
+        setLimit(newLimit);
+        setPage(1);
     }, []);
 
     const refresh = useCallback(() => {
-        fetchEligibleStudents(pagination.page, pagination.limit, search, deptFilter);
-    }, [fetchEligibleStudents, pagination.page, pagination.limit, search, deptFilter]);
+        refetch();
+    }, [refetch]);
 
     return {
         students,

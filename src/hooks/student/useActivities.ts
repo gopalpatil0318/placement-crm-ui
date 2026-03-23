@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { StudentActivityService } from "@/services/student/activity.service";
 import type { ActivityData } from "@/services/student/activity.service";
@@ -36,10 +39,15 @@ export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
 };
 
 export const useActivities = () => {
-    const [activities, setActivities] = useState<ActivityData[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [deleting, setDeleting] = useState<string | null>(null);
+    const queryClient = useQueryClient();
+
+    const { data: activities = [], isLoading: loading } = useQuery({
+        queryKey: queryKeys.studentPortal.activities(),
+        queryFn: async () => {
+            const response = await StudentActivityService.getAllActivities();
+            return (response.data?.activities || response.activities || []) as ActivityData[];
+        },
+    });
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -49,19 +57,6 @@ export const useActivities = () => {
     const [proofInput, setProofInput] = useState("");
 
     const maxActivities = 10;
-
-    const fetchData = useCallback(async () => {
-        try {
-            const response = await StudentActivityService.getAllActivities();
-            setActivities(response.data?.activities || response.activities || []);
-        } catch {
-            console.log("Error loading activities");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => { fetchData(); }, [fetchData]);
 
     const openAddForm = () => {
         setEditingId(null);
@@ -93,12 +88,15 @@ export const useActivities = () => {
 
     const closeForm = () => { setIsFormOpen(false); setEditingId(null); };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         const newValue = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
         setFormData((prev) => ({ ...prev, [name]: newValue }));
-        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
-    };
+        setErrors((prev) => {
+            if (!prev[name]) return prev;
+            return { ...prev, [name]: undefined };
+        });
+    }, []);
 
     const addProofUrl = () => {
         const u = proofInput.trim();
@@ -111,7 +109,21 @@ export const useActivities = () => {
         setFormData((prev) => ({ ...prev, proof_urls: prev.proof_urls.filter((u) => u !== url) }));
     };
 
-    const handleSubmit = async () => {
+    const saveMutation = useMutation({
+        mutationFn: (payload: Omit<ActivityData, "activity_id">) => {
+            if (editingId) return StudentActivityService.updateActivity(editingId, payload);
+            return StudentActivityService.addActivity(payload);
+        },
+        onError: (error) => {
+            showToast({
+                type: "error",
+                title: "Error",
+                description: error instanceof ApiError ? error.message : "Something went wrong",
+            });
+        },
+    });
+
+    const handleSubmit = () => {
         const result = activitySchema.safeParse(formData);
         if (!result.success) {
             const fieldErrors: FormErrors = {};
@@ -124,53 +136,58 @@ export const useActivities = () => {
             return;
         }
 
-        setSaving(true);
-        try {
-            const payload: any = {
-                activity_name: formData.activity_name,
-                activity_description: formData.activity_description || null,
-                activity_type: formData.activity_type || null,
-                organizing_body: formData.organizing_body || null,
-                role_position: formData.role_position || null,
-                start_date: formData.start_date || null,
-                end_date: formData.is_ongoing ? null : formData.end_date || null,
-                is_ongoing: formData.is_ongoing,
-                hours_contributed: formData.hours_contributed ? Number(formData.hours_contributed) : undefined,
-                certificate_url: formData.certificate_url || null,
-                proof_urls: formData.proof_urls,
-            };
+        const payload = {
+            activity_name: formData.activity_name,
+            activity_description: formData.activity_description || null,
+            activity_type: formData.activity_type || null,
+            organizing_body: formData.organizing_body || null,
+            role_position: formData.role_position || null,
+            start_date: formData.start_date || null,
+            end_date: formData.is_ongoing ? null : formData.end_date || null,
+            is_ongoing: formData.is_ongoing,
+            hours_contributed: formData.hours_contributed ? Number(formData.hours_contributed) : undefined,
+            certificate_url: formData.certificate_url || null,
+            proof_urls: formData.proof_urls,
+        };
 
-            if (editingId) {
-                await StudentActivityService.updateActivity(editingId, payload);
-                showToast({ type: "success", title: "Updated", description: "Activity updated successfully" });
-            } else {
-                await StudentActivityService.addActivity(payload);
-                showToast({ type: "success", title: "Added", description: "Activity added successfully" });
-            }
-            closeForm();
-            fetchData();
-        } catch (error: any) {
-            showToast({ type: "error", title: "Error", description: error.message || "Something went wrong" });
-        } finally {
-            setSaving(false);
-        }
+        const isEditing = !!editingId;
+        saveMutation.mutate(payload, {
+            onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.activities() });
+                queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
+                closeForm();
+                showToast({
+                    type: "success",
+                    title: isEditing ? "Updated" : "Added",
+                    description: isEditing ? "Activity updated successfully" : "Activity added successfully",
+                });
+            },
+        });
     };
 
-    const handleDelete = async (id: string) => {
-        setDeleting(id);
-        try {
-            await StudentActivityService.deleteActivity(id);
-            setActivities((prev) => prev.filter((a) => a.activity_id !== id));
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => StudentActivityService.deleteActivity(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.activities() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
             showToast({ type: "success", title: "Deleted", description: "Activity removed" });
-        } catch (error: any) {
-            showToast({ type: "error", title: "Error", description: error.message || "Failed to delete" });
-        } finally {
-            setDeleting(null);
-        }
+        },
+        onError: (error) => {
+            showToast({
+                type: "error",
+                title: "Error",
+                description: error instanceof ApiError ? error.message : "Failed to delete",
+            });
+        },
+    });
+
+    const handleDelete = (id: string) => {
+        deleteMutation.mutate(id);
     };
 
     return {
-        activities, loading, saving, deleting,
+        activities, loading, saving: saveMutation.isPending,
+        deleting: deleteMutation.isPending ? (deleteMutation.variables ?? null) : null,
         isFormOpen, editingId, formData, errors,
         proofInput, setProofInput,
         maxActivities, openAddForm, openEditForm, closeForm,

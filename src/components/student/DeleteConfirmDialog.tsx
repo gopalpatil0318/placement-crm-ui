@@ -45,7 +45,7 @@ export default function DeleteConfirmDialog({
                         type="button"
                         onClick={() => onOpenChange(false)}
                         disabled={isDeleting}
-                        className="px-5 py-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 font-medium transition cursor-pointer text-sm disabled:opacity-50"
+                        className="px-5 py-2 border border-gray-300 dark:border-gray-600 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition cursor-pointer text-sm disabled:opacity-50"
                     >
                         Cancel
                     </button>

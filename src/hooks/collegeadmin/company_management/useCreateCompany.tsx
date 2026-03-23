@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { AxiosError } from "axios";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { companyCreateSchema } from "@/validators/CompanySchema";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ========================
 // TYPES
@@ -25,6 +27,7 @@ type FormErrors = Partial<Record<keyof CreateCompanyForm, string>>;
 
 export const useCreateCompany = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [formData, setFormData] = useState<CreateCompanyForm>({
         companyName: "",
         companyDescription: "",
@@ -33,7 +36,35 @@ export const useCreateCompany = () => {
         companyLogo: "",
     });
     const [errors, setErrors] = useState<FormErrors>({});
-    const [loading, setLoading] = useState(false);
+
+    const mutation = useMutation({
+        mutationFn: (payload: {
+            company_name: string;
+            company_description?: string;
+            company_website?: string;
+            industry?: string;
+            company_logo?: string;
+        }) => CollegeAdminService.createCompany(payload),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.companies.all() });
+            showToast({
+                type: "success",
+                title: "Success",
+                description: response?.message || "Company created successfully",
+            });
+            navigate("/college/companies");
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong, please try again";
+            const status = error instanceof ApiError ? error.status : undefined;
+
+            if (status === 409) {
+                setErrors({ companyName: message });
+            }
+
+            showToast({ type: "error", title: "Error Creating Company", description: message });
+        },
+    });
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -44,19 +75,18 @@ export const useCreateCompany = () => {
                 [name]: value,
             }));
 
-            // Clear field-level error on change
-            if (errors[name as keyof CreateCompanyForm]) {
-                setErrors((prev) => ({ ...prev, [name]: undefined }));
-            }
+            setErrors((prev) => {
+                if (!prev[name as keyof CreateCompanyForm]) return prev;
+                return { ...prev, [name]: undefined };
+            });
         },
-        [errors]
+        []
     );
 
     const handleSubmit = useCallback(
         async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
             e.preventDefault();
 
-            // Zod validation
             const result = companyCreateSchema.safeParse(formData);
             if (!result.success) {
                 const fieldErrors: FormErrors = {};
@@ -76,52 +106,15 @@ export const useCreateCompany = () => {
             }
 
             setErrors({});
-            setLoading(true);
-
-            try {
-                // Convert camelCase → snake_case for API
-                const response = await CollegeAdminService.createCompany({
-                    company_name: formData.companyName,
-                    company_description: formData.companyDescription || undefined,
-                    company_website: formData.companyWebsite || undefined,
-                    industry: formData.industry || undefined,
-                    company_logo: formData.companyLogo || undefined,
-                });
-
-                showToast({
-                    type: "success",
-                    title: "Success",
-                    description:
-                        response?.message || "Company created successfully",
-                });
-
-                navigate("/college/companies");
-            } catch (error: unknown) {
-                const axiosErr = error as AxiosError<{
-                    error?: string;
-                    message?: string;
-                }>;
-                const status = axiosErr?.response?.status;
-                const errorMsg =
-                    axiosErr?.response?.data?.error ||
-                    axiosErr?.response?.data?.message ||
-                    (error instanceof Error ? error.message : "Something went wrong, please try again");
-
-                // 409 — duplicate name → highlight field
-                if (status === 409) {
-                    setErrors({ companyName: errorMsg });
-                }
-
-                showToast({
-                    type: "error",
-                    title: "Error Creating Company",
-                    description: errorMsg,
-                });
-            } finally {
-                setLoading(false);
-            }
+            mutation.mutate({
+                company_name: formData.companyName.trim(),
+                company_description: formData.companyDescription || undefined,
+                company_website: formData.companyWebsite || undefined,
+                industry: formData.industry || undefined,
+                company_logo: formData.companyLogo || undefined,
+            });
         },
-        [formData, navigate]
+        [formData, mutation]
     );
 
     const handleCancel = useCallback(() => {
@@ -131,7 +124,7 @@ export const useCreateCompany = () => {
     return {
         formData,
         errors,
-        loading,
+        loading: mutation.isPending,
         handleChange,
         handleSubmit,
         handleCancel,

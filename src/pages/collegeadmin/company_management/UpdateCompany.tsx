@@ -1,27 +1,33 @@
+﻿import { useState, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import UpdateCompanyForm from "@/components/collegeadmin/company_management/UpdateCompanyForm";
-import DashboardLayout from "@/components/collegeadmin/DashboardLayout";
 import PageHeader from "@/components/collegeadmin/PageHeader";
+import AnimatedPage from "@/components/ui/AnimatedPage";
 
 const UpdateCompany = () => {
     const { companyId } = useParams<{ companyId: string }>();
+    const [companyName, setCompanyName] = useState("");
 
-    const breadcrumbs = [
-        { label: "Dashboard", path: "/college/dashboard" },
-        { label: "Companies", path: "/college/companies" },
-        { label: "Update Company", active: true },
-    ];
+    const breadcrumbs = useMemo(
+        () => [
+            { label: "Dashboard", path: "/college/dashboard" },
+            { label: "Companies", path: "/college/companies" },
+            { label: companyName || "Edit Company", active: true },
+        ],
+        [companyName]
+    );
+
+    const handleCompanyLoaded = useCallback((name: string) => {
+        setCompanyName(name);
+    }, []);
 
     return (
-        <DashboardLayout>
-            <div className="space-y-8">
-                {/* Page Header */}
-                <PageHeader title="Update Company" breadcrumbs={breadcrumbs} />
-
-                {/* Form Component with hook logic */}
-                <UpdateCompanyForm companyId={companyId} />
-            </div>
-        </DashboardLayout>
+            <AnimatedPage>
+                <div className="space-y-6">
+                    <PageHeader title="Edit Company" breadcrumbs={breadcrumbs} />
+                    <UpdateCompanyForm companyId={companyId} onCompanyLoaded={handleCompanyLoaded} />
+                </div>
+            </AnimatedPage>
     );
 };
 

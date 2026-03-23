@@ -1,0 +1,331 @@
+# Placement Results API — Complete Documentation
+
+## Files Created
+
+| File | Path |
+|------|------|
+| Validator | [placement.validator.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/validators/college/placement.validator.js) |
+| Service | [placement.service.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/services/college/placement.service.js) |
+| Controller | [placement.controller.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/controllers/college/placement.controller.js) |
+| Routes | [placement.routes.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/routes/college/placement.routes.js) |
+
+Verification: ✅ `ROUTE_LOAD_SUCCESS`
+
+---
+
+## 1. API Endpoint Reference
+
+### API #74 — Create Placement Result
+
+| Item | Value |
+|------|-------|
+| **Method** | `POST` |
+| **URL** | `/api/college/create_placement` |
+| **Auth** | Bearer Token (COLLEGEADMIN or TPO) |
+
+#### Request Body
+
+```json
+{
+  "application_id": "a1b2c3d4-....",
+  "placement_type": "full-time",
+  "fulltime_package": 650000,
+  "fulltime_designation": "Software Engineer",
+  "fulltime_joining_date": "2026-07-01",
+  "offer_letter_url": "https://storage.example.com/offers/tcs_rahul.pdf"
+}
+```
+
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `application_id` | UUID | ✅ | Must be `selected` or `offered` status |
+| `placement_type` | string | ✅ | `full-time`, `internship`, `both` |
+| `fulltime_package` | number | ✅ when type=`full-time`/`both` | ≥ 0, 2 decimal places |
+| `fulltime_designation` | string | ❌ | max 200 chars |
+| `fulltime_joining_date` | ISO date | ❌ | Must be future date |
+| `internship_stipend` | number | ✅ when type=`internship`/`both` | ≥ 0 |
+| `internship_duration` | string | ❌ | max 100 chars |
+| `internship_start_date` | ISO date | ❌ | Must be future date |
+| `offer_letter_url` | string | ❌ | Valid URL, max 2000 chars |
+
+> [!IMPORTANT]
+> - Auto-resolves `student_id`, `company_id`, `job_id`, `position_id`, `passout_year` from the application
+> - Auto-sets `placement_status = 'offered'`, `acceptance_status = 'pending'`
+> - Auto-updates application status to `offered` if it was `selected`
+> - Duplicate check: only one placement per application
+
+#### Success Response (201)
+
+```json
+{
+  "success": true,
+  "message": "Placement record created successfully",
+  "data": {
+    "placement_id": "...",
+    "placement_type": "full-time",
+    "fulltime_package": 650000,
+    "placement_status": "offered",
+    "acceptance_status": "pending",
+    "student_name": "Rahul Sharma",
+    "company_name": "TCS",
+    "job_title": "Software Developer",
+    "dept_name": "Computer Science"
+  }
+}
+```
+
+---
+
+### API #75 — List All Placements
+
+| Item | Value |
+|------|-------|
+| **Method** | `GET` |
+| **URL** | `/api/college/get_all_placements` |
+
+#### Query Parameters
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `passout_year` | number | ❌ | Filter by year (also scopes stats) |
+| `company_id` | UUID | ❌ | Filter by company |
+| `job_id` | UUID | ❌ | Filter by job |
+| `placement_status` | string | ❌ | `offered`, `accepted`, `rejected`, `joined`, `cancelled` |
+| `placement_type` | string | ❌ | `full-time`, `internship`, `both` |
+| `acceptance_status` | string | ❌ | `accepted`, `rejected`, `pending` |
+| `offer_letter_verified` | string | ❌ | `true` or `false` |
+| `search` | string | ❌ | Search student name, email, company, job title |
+| `sort_by` | string | ❌ | `created_at` (default), `fulltime_package`, `student_name`, `placement_status`, `passout_year`, `company_name` |
+| `sort_order` | string | ❌ | `asc` or `desc` (default) |
+| `page` / `limit` | number | ❌ | Default: 1/10 |
+
+#### Response — Includes Placement Stats
+
+```json
+{
+  "data": {
+    "placements": [ "..." ],
+    "stats": {
+      "total_placements": 120,
+      "unique_students": 95,
+      "unique_companies": 18,
+      "avg_package": 525000,
+      "highest_package": 1800000,
+      "lowest_package": 350000,
+      "offered_count": 30,
+      "accepted_count": 45,
+      "joined_count": 40,
+      "rejected_count": 3,
+      "cancelled_count": 2,
+      "verified_offers": 85
+    }
+  },
+  "pagination": { "page": 1, "limit": 10, "total": 120, "totalPages": 12 }
+}
+```
+
+> [!TIP]
+> Stats are scoped by `passout_year` if provided, otherwise college-wide. Use this for placement dashboards.
+
+---
+
+### API #76 — Get Single Placement
+
+| Item | Value |
+|------|-------|
+| **Method** | `GET` |
+| **URL** | `/api/college/get_placement/:placementId` |
+
+Returns full detail with **academic info** and **round journey** (all rounds + results).
+
+---
+
+### API #77 — Update Placement
+
+| Item | Value |
+|------|-------|
+| **Method** | `PUT` |
+| **URL** | `/api/college/update_placement/:placementId` |
+
+```json
+{
+  "fulltime_package": 700000,
+  "fulltime_designation": "Senior Software Engineer",
+  "offer_letter_url": "https://storage.example.com/offers/updated.pdf"
+}
+```
+
+Min 1 field. Cannot update `cancelled` or `rejected` placements. Future-date validation on `joining_date` and `start_date`.
+
+---
+
+### API #78 — Verify Offer Letter
+
+| Item | Value |
+|------|-------|
+| **Method** | `PATCH` |
+| **URL** | `/api/college/verify_offer_letter/:placementId` |
+
+```json
+{ "offer_letter_verified": true, "remarks": "Verified with HR" }
+```
+
+- Requires offer letter URL to be uploaded before verification
+- Auto-records `verified_by` (current user) and `verified_at` timestamp
+- Can unverify by setting `offer_letter_verified: false`
+
+---
+
+### API #79 — Update Placement Status
+
+| Item | Value |
+|------|-------|
+| **Method** | `PATCH` |
+| **URL** | `/api/college/update_placement_status/:placementId` |
+
+```json
+{ "placement_status": "accepted", "remarks": "Student confirmed via email" }
+```
+
+#### Status Transition Rules
+
+```mermaid
+stateDiagram-v2
+    [*] --> offered: Placement created
+    offered --> accepted
+    offered --> rejected
+    offered --> cancelled
+    accepted --> joined
+    accepted --> cancelled
+    joined --> cancelled: Student leaves
+
+    note right of rejected: Terminal
+    note right of cancelled: Terminal
+```
+
+#### Auto acceptance_status Mapping
+
+| Placement Status | Auto acceptance_status |
+|-----------------|----------------------|
+| `accepted` | `accepted` |
+| `joined` | `accepted` |
+| `rejected` | `rejected` |
+| `offered` / `cancelled` | No auto-set |
+
+---
+
+## 2. Frontend Implementation Guide
+
+### Placement Dashboard
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 📊 Placement Dashboard — 2026                           │
+├─────────────────────────────────────────────────────────┤
+│ 95 Students Placed │ 18 Companies │ Avg ₹5.25 LPA      │
+│ Highest: ₹18 LPA   │ 85 Verified  │ 40 Joined          │
+├─────────────────────────────────────────────────────────┤
+│ [Year: 2026 ▼] [Company ▼] [Status ▼] [Type ▼]        │
+│ [Search 🔍_______] [Verified Only: ☐]                   │
+├─────────────────────────────────────────────────────────┤
+│ Rahul Sharma │ CS │ TCS    │ ₹6.5 LPA │ ✅ Joined     │
+│ Priya Patel  │ IT │ Wipro  │ ₹5.0 LPA │ 🟡 Accepted  │
+│ Amit Kumar   │ CS │ Google │ ₹18 LPA  │ 📄 Offered   │
+├─────────────────────────────────────────────────────────┤
+│ [← Prev] Page 1 of 12 [Next →]                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Status Badge Colors
+
+```js
+const PLACEMENT_STATUS_COLORS = {
+  offered:   { bg: '#D1ECF1', text: '#0C5460', icon: '📄', label: 'Offered' },
+  accepted:  { bg: '#FFF3CD', text: '#856404', icon: '🟡', label: 'Accepted' },
+  joined:    { bg: '#D4EDDA', text: '#155724', icon: '✅', label: 'Joined' },
+  rejected:  { bg: '#F8D7DA', text: '#721C24', icon: '❌', label: 'Rejected' },
+  cancelled: { bg: '#E2E3E5', text: '#383D41', icon: '🚫', label: 'Cancelled' },
+};
+```
+
+### Create Placement Form
+
+| Field | Input Type | Notes |
+|-------|-----------|-------|
+| Application | **Dropdown** | Pre-filtered to selected/offered applications |
+| Placement Type | **Dropdown** | full-time / internship / both |
+| Package | **Number input** | Show only for full-time/both |
+| Designation | **Text input** | Show only for full-time/both |
+| Joining Date | **Date picker** | Future dates only, full-time/both |
+| Stipend | **Number input** | Show only for internship/both |
+| Duration | **Text input** | Show only for internship/both |
+| Start Date | **Date picker** | Future dates only, internship/both |
+| Offer Letter | **URL input / File upload** | Upload then paste URL |
+
+---
+
+## 3. Integration Guide
+
+```mermaid
+flowchart LR
+    A[Job Postings] --> B[Applications]
+    B --> C[Round Results]
+    B --> D["Placement Results ✨ NEW"]
+    D --> E["Dashboard Stats"]
+    D --> F["Placement Policies"]
+    subgraph Verification
+        D --> G[Offer Letter Verify]
+    end
+```
+
+### Complete Lifecycle
+1. Job published → Students apply
+2. Applications screened → shortlisted
+3. Rounds conducted → results recorded (Round Results API)
+4. Final round passed → Application `selected`
+5. **Create Placement** → auto-sets application to `offered`
+6. Offer verification → admin verifies document
+7. Status: `offered → accepted → joined` (happy path)
+8. Stats aggregated for placement dashboard
+
+---
+
+## 4. Edge Case Test Scenarios
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 1 | Create placement for non-existent application | 404 |
+| 2 | Create placement for another college's application | 404 |
+| 3 | Create placement for `pending` application | 400 — must be selected/offered |
+| 4 | Create placement for `rejected` application | 400 |
+| 5 | Create placement for `withdrawn` application | 400 |
+| 6 | Create duplicate placement (same application) | 409 |
+| 7 | Create full-time without `fulltime_package` | 400 — conditional validation |
+| 8 | Create internship without `internship_stipend` | 400 |
+| 9 | Create both type without both fields | 400 |
+| 10 | Create with past `fulltime_joining_date` | 400 |
+| 11 | Create with past `internship_start_date` | 400 |
+| 12 | Create with `fulltime_package = 0` | 201 ✅ (allowed) |
+| 13 | List with `passout_year=2026` filter | 200 — filtered, stats scoped to year |
+| 14 | List with search=`TCS` | 200 — matches company name |
+| 15 | List with `sort_by=fulltime_package&sort_order=desc` | 200 — highest first |
+| 16 | List with `offer_letter_verified=true` | 200 — only verified |
+| 17 | List with combined filters | 200 — all applied |
+| 18 | Get placement detail | 200 — includes academic_info + round_results |
+| 19 | Get placement from another college | 404 |
+| 20 | Update cancelled placement | 400 |
+| 21 | Update rejected placement | 400 |
+| 22 | Update with empty body | 422 — min 1 field |
+| 23 | Update with past joining date | 400 |
+| 24 | Verify offer letter without URL uploaded | 400 |
+| 25 | Verify then un-verify (set false) | 200 — clears verified_by/at |
+| 26 | Verify cancelled placement | 400 |
+| 27 | Status: `offered → accepted` | 200 ✅ |
+| 28 | Status: `offered → joined` (skip accepted) | 400 — invalid transition |
+| 29 | Status: `accepted → joined` | 200 ✅, auto acceptance=accepted |
+| 30 | Status: `offered → rejected` | 200, auto acceptance=rejected |
+| 31 | Status: `rejected → accepted` | 400 — terminal |
+| 32 | Status: `cancelled → offered` | 400 — terminal |
+| 33 | Status: `joined → cancelled` | 200 ✅ (student leaves) |
+| 34 | Status same as current | 400 — already that status |
+| 35 | Unauthorized role (TEACHER) | 403 |

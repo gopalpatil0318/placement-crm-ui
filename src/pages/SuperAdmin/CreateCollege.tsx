@@ -1,22 +1,20 @@
-import DashboardLayout from '@/components/sysadmin/DashboardLayout';
-import CreateCollegeForm from "@/components/sysadmin/CreateCollegeForm";
-import PageHeader from '@/components/sysadmin/PageHeader';
+import CreateCollegeForm from "@/components/sysadmin/CreateCollegeForm"
+import PageHeader from "@/components/sysadmin/PageHeader"
+import AnimatedPage from "@/components/ui/AnimatedPage"
 
 const BREADCRUMBS = [
   { label: "Dashboard", path: "/sysadmin/dashboard" },
   { label: "Colleges", path: "/sysadmin/colleges" },
-  { label: "Create New", active: true },
-];
+  { label: "Register New College", active: true },
+]
 
-const CreateCollege = () => {
+export default function CreateCollege() {
   return (
-    <DashboardLayout>
+    <AnimatedPage>
       <div className="space-y-8">
-        <PageHeader title="Create New College" breadcrumbs={BREADCRUMBS} />
+        <PageHeader title="Register New College" breadcrumbs={BREADCRUMBS} />
         <CreateCollegeForm />
       </div>
-    </DashboardLayout>
-  );
-};
-
-export default CreateCollege;
+    </AnimatedPage>
+  )
+}

@@ -1,5 +1,7 @@
-import { useState, useCallback } from "react";
-import { AxiosError } from "axios";
+import { useCallback } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 
@@ -31,38 +33,43 @@ export const TRANSITION_LABELS: Record<string, string> = {
 // HOOK
 // ========================
 
-export const useUpdateRoundStatus = (onSuccess?: () => void) => {
-    const [loading, setLoading] = useState(false);
+export const useUpdateRoundStatus = (jobId: string, onSuccess?: () => void) => {
+    const queryClient = useQueryClient();
+
+    const mutation = useMutation({
+        mutationFn: (args: { roundId: string; newStatus: string }) =>
+            CollegeAdminService.updateRoundStatus(args.roundId, args.newStatus),
+        onSuccess: (response, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.rounds(jobId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) });
+            showToast({
+                type: "success",
+                title: "Success",
+                description: response?.message || `Round is now ${STATUS_LABELS[variables.newStatus] || variables.newStatus}`,
+            });
+            onSuccess?.();
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong";
+            const status = error instanceof ApiError ? error.status : undefined;
+
+            showToast({
+                type: "error",
+                title: status === 400 ? "Invalid Action" : status === 404 ? "Not Found" : "Error",
+                description: message,
+            });
+        },
+    });
 
     const updateStatus = useCallback(
-        async (roundId: string, newStatus: string) => {
-            setLoading(true);
-
-            try {
-                const response = await CollegeAdminService.updateRoundStatus(roundId, newStatus);
-
-                showToast({
-                    type: "success",
-                    title: "Success",
-                    description: response?.message || `Round is now ${STATUS_LABELS[newStatus] || newStatus}`,
-                });
-                onSuccess?.();
-            } catch (error: unknown) {
-                const axiosErr = error as AxiosError<{ error?: string; message?: string }>;
-                const errorMsg =
-                    axiosErr?.response?.data?.error ||
-                    axiosErr?.response?.data?.message ||
-                    (error instanceof Error ? error.message : "Something went wrong");
-                showToast({ type: "error", title: "Error", description: errorMsg });
-            } finally {
-                setLoading(false);
-            }
+        (roundId: string, newStatus: string) => {
+            mutation.mutate({ roundId, newStatus });
         },
-        [onSuccess]
+        [mutation]
     );
 
     return {
-        loading,
+        loading: mutation.isPending,
         updateStatus,
         ALLOWED_TRANSITIONS,
         STATUS_LABELS,

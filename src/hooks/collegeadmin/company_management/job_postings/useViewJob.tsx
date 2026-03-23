@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ========================
 // TYPES
@@ -99,30 +99,18 @@ export interface JobDetail {
 // ========================
 
 export const useViewJob = (jobId: string | undefined) => {
-    const [job, setJob] = useState<JobDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const { data, isLoading, error: queryError, refetch } = useQuery({
+        queryKey: queryKeys.jobs.detail(jobId!),
+        queryFn: async () => {
+            const response = await CollegeAdminService.getJob(jobId!);
+            return response.data || response;
+        },
+        enabled: !!jobId,
+    });
 
-    const fetchJob = useCallback(async () => {
-        if (!jobId) return;
-        setLoading(true);
-        setError(null);
+    const job: JobDetail | null = data ?? null;
+    const loading = isLoading;
+    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch job") : null;
 
-        try {
-            const response = await CollegeAdminService.getJob(jobId);
-            setJob(response.data || response);
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Failed to fetch job";
-            setError(msg);
-            showToast({ type: "error", title: "Error", description: msg });
-        } finally {
-            setLoading(false);
-        }
-    }, [jobId]);
-
-    useEffect(() => {
-        fetchJob();
-    }, [fetchJob]);
-
-    return { job, loading, error, refresh: fetchJob };
+    return { job, loading, error, refresh: refetch };
 };

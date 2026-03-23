@@ -1,0 +1,502 @@
+# Student Restrictions — Frontend Developer Reference & Postman Test Guide
+
+---
+
+## 🔗 API Endpoints
+
+| # | Method | Endpoint | Description |
+|---|--------|----------|-------------|
+| 1 | **POST** | `/api/college/add_student_restriction/:studentId` | Add restriction to a student |
+| 2 | **GET** | `/api/college/get_all_restrictions?passout_year=2026` | List all restrictions (passout_year **required**) |
+| 3 | **GET** | `/api/college/get_student_restrictions/:studentId` | Get restrictions for a specific student |
+| 4 | **PATCH** | `/api/college/update_restriction/:restrictionId` | Resolve / update a restriction |
+
+> **Auth**: All endpoints require JWT cookie from college admin/TPO login.
+
+---
+
+## 📝 API 1: Add Restriction
+
+**`POST /api/college/add_student_restriction/:studentId`**
+
+### Request Body
+
+```json
+{
+  "restriction_type": "bar_from_placements",
+  "reason": "Backed out after accepting offer from TCS without valid reason",
+  "details": "Student accepted TCS offer on 15th Jan and then backed out on 20th Jan. This caused embarrassment to the college. Warning was given verbally first.",
+  "valid_until": "2026-06-30"
+}
+```
+
+### Fields
+
+| Field | Type | Required | UI Element | Validation | Notes |
+|-------|------|----------|------------|------------|-------|
+| `restriction_type` | string | ✅ Yes | **Select Dropdown** | Must be one of the 5 types below | First field — determines severity |
+| `reason` | string | ✅ Yes | **Textarea** (3-4 rows) | Min 5, Max 1000 chars | Why the restriction is being applied |
+| `details` | string | ❌ No | **Textarea** (4-6 rows) | Max 2000 chars | Additional context, timeline, evidence |
+| `valid_until` | date | ❌ No | **Date Picker** | Must be today or future | Leave empty for "until manually resolved" |
+
+### Restriction Type Dropdown Options
+
+| Value | Display Label | Description |
+|-------|---------------|-------------|
+| `bar_from_placements` | 🚫 Bar from All Placements | Student cannot apply to any company |
+| `bar_from_company` | 🏢 Bar from Specific Company | Student barred from one company |
+| `probation` | ⚠️ Probation | Under observation, can still apply |
+| `warning` | 📋 Warning | Official warning on record |
+| `temporary_suspension` | ⏸️ Temporary Suspension | Suspended from placement activities |
+
+### Success Response (201)
+
+```json
+{
+  "success": true,
+  "message": "Student restriction applied",
+  "data": {
+    "restriction_id": "a1b2c3d4-...",
+    "student_id": "s1t2u3d4-...",
+    "student_name": "Rahul Patil",
+    "student_email": "rahul@college.edu",
+    "dept_name": "Computer Engineering",
+    "student_passout_year": 2026,
+    "restriction_type": "bar_from_placements",
+    "reason": "Backed out after accepting offer from TCS without valid reason",
+    "details": "Student accepted TCS offer on 15th Jan...",
+    "restricted_by": "u1s2e3r4-...",
+    "restricted_by_name": "Prof. Sharma",
+    "applied_on": "2026-03-01",
+    "valid_until": "2026-06-30",
+    "is_active": true,
+    "appeal_submitted": false,
+    "appeal_notes": null,
+    "resolved_by": null,
+    "resolved_by_name": null,
+    "created_at": "2026-03-01T18:00:00.000Z",
+    "updated_at": "2026-03-01T18:00:00.000Z"
+  }
+}
+```
+
+### Error Cases
+
+| Status | When | Message |
+|--------|------|---------|
+| 404 | Student not found | "Student not found" |
+| 409 | Duplicate active restriction of same type | "Student already has an active \"bar_from_placements\" restriction" |
+| 400 | `valid_until` is in the past | "Valid until date must be today or in the future" |
+| 422 | Validation failure | Field-level error details |
+
+---
+
+## 📝 API 2: List All Restrictions
+
+**`GET /api/college/get_all_restrictions`**
+
+### Query Parameters
+
+| Param | Type | Required | Default | Notes |
+|-------|------|----------|---------|-------|
+| `passout_year` | integer | ✅ Yes | — | **Must be passed** — filters by student's passout year |
+| `restriction_type` | string | ❌ No | all | Filter by type dropdown |
+| `is_active` | boolean | ❌ No | all | `true` = active only, `false` = resolved only |
+| `search` | string | ❌ No | — | Search by student name or email |
+| `page` | integer | ❌ No | 1 | Pagination |
+| `limit` | integer | ❌ No | 20 | Max 100 |
+
+### Example Request
+
+```
+GET /api/college/get_all_restrictions?passout_year=2026&is_active=true&page=1&limit=20
+```
+
+### Success Response (200)
+
+```json
+{
+  "success": true,
+  "message": "Restrictions retrieved successfully",
+  "data": [
+    {
+      "restriction_id": "a1b2c3d4-...",
+      "student_id": "s1t2u3d4-...",
+      "student_name": "Rahul Patil",
+      "student_email": "rahul@college.edu",
+      "dept_name": "Computer Engineering",
+      "student_passout_year": 2026,
+      "restriction_type": "bar_from_placements",
+      "reason": "Backed out after accepting TCS offer",
+      "details": "...",
+      "restricted_by_name": "Prof. Sharma",
+      "applied_on": "2026-03-01",
+      "valid_until": "2026-06-30",
+      "is_active": true,
+      "appeal_submitted": false,
+      "resolved_by_name": null,
+      "created_at": "2026-03-01T18:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 3,
+    "totalPages": 1
+  }
+}
+```
+
+### Frontend UI Notes
+
+- **Year selector dropdown** at the top of the page (like student list) — this is the `passout_year` param
+- Default to `college.default_academic_year`
+- **Filter bar**: restriction_type dropdown + is_active toggle + search input
+- **Table columns**: Student Name, Email, Dept, Type (badge), Reason (truncated), Applied On, Valid Until, Status (Active/Resolved badge), Actions
+
+---
+
+## 📝 API 3: Get Student Restrictions
+
+**`GET /api/college/get_student_restrictions/:studentId`**
+
+### Query Parameters
+
+| Param | Type | Required | Notes |
+|-------|------|----------|-------|
+| `is_active` | boolean | ❌ No | Filter active/resolved restrictions |
+
+### Example Request
+
+```
+GET /api/college/get_student_restrictions/s1t2u3d4-...?is_active=true
+```
+
+### Success Response (200)
+
+```json
+{
+  "success": true,
+  "message": "Student restrictions retrieved successfully",
+  "data": {
+    "student": {
+      "student_id": "s1t2u3d4-...",
+      "student_name": "Rahul Patil",
+      "student_email": "rahul@college.edu",
+      "student_passout_year": 2026,
+      "dept_name": "Computer Engineering"
+    },
+    "total_restrictions": 2,
+    "active_restrictions": 1,
+    "restrictions": [
+      {
+        "restriction_id": "a1b2c3d4-...",
+        "restriction_type": "bar_from_placements",
+        "reason": "Backed out after accepting TCS offer",
+        "is_active": true,
+        "restricted_by_name": "Prof. Sharma",
+        "applied_on": "2026-03-01",
+        "valid_until": "2026-06-30"
+      },
+      {
+        "restriction_id": "e5f6g7h8-...",
+        "restriction_type": "warning",
+        "reason": "Missed aptitude test without informing",
+        "is_active": false,
+        "restricted_by_name": "Dr. Kulkarni",
+        "resolved_by_name": "Prof. Sharma",
+        "applied_on": "2025-12-15",
+        "valid_until": null
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 📝 API 4: Update / Resolve Restriction
+
+**`PATCH /api/college/update_restriction/:restrictionId`**
+
+### Request Body (at least 1 field required)
+
+**To resolve a restriction:**
+```json
+{
+  "is_active": false
+}
+```
+
+**To extend validity:**
+```json
+{
+  "valid_until": "2026-12-31"
+}
+```
+
+**To update reason/details:**
+```json
+{
+  "reason": "Updated: Student provided explanation, reducing to warning",
+  "details": "After meeting with student on March 5th..."
+}
+```
+
+### Fields
+
+| Field | Type | Required | UI Element | Notes |
+|-------|------|----------|------------|-------|
+| `is_active` | boolean | ❌ | **Toggle Switch** or "Resolve" button | Setting `false` marks it resolved |
+| `valid_until` | date | ❌ | **Date Picker** | Must be today or future |
+| `reason` | string | ❌ | **Textarea** | Min 5, Max 1000 chars |
+| `details` | string | ❌ | **Textarea** | Max 2000 chars |
+
+> When `is_active` is set to `false`, the API auto-records `resolved_by` as the logged-in user.
+
+---
+
+## 🔄 How Restrictions Affect Job Applications
+
+```
+Student clicks "Apply for Job"
+        │
+        ▼
+Backend checks student_restrictions:
+  SELECT * FROM student_restrictions
+  WHERE student_id = $1
+    AND is_active = true
+    AND restriction_type IN ('bar_from_placements', 'temporary_suspension')
+        │
+        ├── Found? → ❌ BLOCKED
+        │           → Error: "You are currently restricted from applying to placements"
+        │           → Show restriction reason to student
+        │
+        └── Not found? → ✅ PROCEED to eligibility check
+                        → Then deadline check
+                        → Then duplicate check
+                        → Then submit application
+```
+
+### Which restriction types block applications?
+
+| Type | Blocks Job Applications? | Scope |
+|------|-------------------------|-------|
+| `bar_from_placements` | ✅ Yes — ALL companies | Global block |
+| `temporary_suspension` | ✅ Yes — ALL companies | Global block |
+| `bar_from_company` | ⚠️ Only specific company | Per-company block (future enhancement) |
+| `probation` | ❌ No — can still apply | Informational |
+| `warning` | ❌ No — can still apply | Informational |
+
+### student appeals (future scope)
+Students will see their restrictions via `GET /api/student/get_my_restrictions` and can submit an appeal via `POST /api/student/appeal_restriction/:restrictionId`. These are student-side APIs to be built later.
+
+---
+
+## 🧪 Postman Test Data
+
+### Setup
+- Login as college admin first: `POST /api/college/login`
+- Cookie `token` will be set automatically
+- You need a valid `studentId` from your college
+
+---
+
+### Test 1: Add Restriction (Bar from Placements)
+
+```
+POST /api/college/add_student_restriction/<studentId>
+Content-Type: application/json
+```
+
+```json
+{
+  "restriction_type": "bar_from_placements",
+  "reason": "Backed out after accepting TCS offer without informing the placement cell",
+  "details": "The student accepted the offer letter on January 15th and then refused to join on January 28th. This caused loss of the placement slot for the college.",
+  "valid_until": "2026-06-30"
+}
+```
+
+### Test 2: Add Restriction (Warning)
+
+```
+POST /api/college/add_student_restriction/<studentId>
+Content-Type: application/json
+```
+
+```json
+{
+  "restriction_type": "warning",
+  "reason": "Missed the scheduled aptitude test conducted by Infosys without prior notification",
+  "details": null,
+  "valid_until": null
+}
+```
+
+### Test 3: Add Restriction (Probation)
+
+```
+POST /api/college/add_student_restriction/<studentId>
+Content-Type: application/json
+```
+
+```json
+{
+  "restriction_type": "probation",
+  "reason": "Repeated dress code violations during company visits to campus",
+  "details": "Three instances of dress code violations: Feb 5 (TCS), Feb 12 (Wipro), Feb 20 (Infosys). Verbal warnings given each time.",
+  "valid_until": "2026-04-30"
+}
+```
+
+### Test 4: Add Restriction (Temporary Suspension)
+
+```
+POST /api/college/add_student_restriction/<studentId>
+Content-Type: application/json
+```
+
+```json
+{
+  "restriction_type": "temporary_suspension",
+  "reason": "Inappropriate behavior during HR interview round with Wipro",
+  "details": "Multiple complaints received from HR panel. Student used unprofessional language.",
+  "valid_until": "2026-05-31"
+}
+```
+
+### Test 5: List All Restrictions (2026 batch)
+
+```
+GET /api/college/get_all_restrictions?passout_year=2026&page=1&limit=20
+```
+
+### Test 6: List Active Only
+
+```
+GET /api/college/get_all_restrictions?passout_year=2026&is_active=true
+```
+
+### Test 7: Filter by Type
+
+```
+GET /api/college/get_all_restrictions?passout_year=2026&restriction_type=bar_from_placements
+```
+
+### Test 8: Search by Student Name
+
+```
+GET /api/college/get_all_restrictions?passout_year=2026&search=rahul
+```
+
+### Test 9: Get Student Restrictions
+
+```
+GET /api/college/get_student_restrictions/<studentId>
+```
+
+### Test 10: Get Active Restrictions Only for Student
+
+```
+GET /api/college/get_student_restrictions/<studentId>?is_active=true
+```
+
+### Test 11: Resolve Restriction
+
+```
+PATCH /api/college/update_restriction/<restrictionId>
+Content-Type: application/json
+```
+
+```json
+{
+  "is_active": false
+}
+```
+
+### Test 12: Extend Restriction
+
+```
+PATCH /api/college/update_restriction/<restrictionId>
+Content-Type: application/json
+```
+
+```json
+{
+  "valid_until": "2026-12-31"
+}
+```
+
+### Test 13: Update Reason
+
+```
+PATCH /api/college/update_restriction/<restrictionId>
+Content-Type: application/json
+```
+
+```json
+{
+  "reason": "Reduced severity: Student apologized and submitted written explanation",
+  "details": "After review meeting on March 5th, the committee decided to reduce the restriction severity. Student submitted a written apology letter."
+}
+```
+
+### Test 14: Validation Error — Missing Required Field
+
+```
+POST /api/college/add_student_restriction/<studentId>
+Content-Type: application/json
+```
+
+```json
+{
+  "restriction_type": "bar_from_placements"
+}
+```
+
+Expected: `422` with `"Reason for restriction is required"`
+
+### Test 15: Duplicate Restriction Error
+
+Send the same Test 1 request again with the same studentId.
+
+Expected: `409` with `"Student already has an active \"bar_from_placements\" restriction"`
+
+---
+
+## 🎨 Frontend UI Recommendations
+
+### Add Restriction Form
+- Open as a **modal/drawer** from the student profile or student list page
+- Student info (name, dept, year) shown as **read-only header** in the modal
+- Form layout:
+  1. **Restriction Type** — Select dropdown (required, show icon + label)
+  2. **Reason** — Textarea, 3-4 rows (required, show char counter: 5-1000)
+  3. **Details** — Textarea, 4-6 rows (optional, show char counter: max 2000)
+  4. **Valid Until** — Date picker (optional, hint: "Leave empty for indefinite")
+  5. **Submit button** — "Apply Restriction" (red/danger color)
+  6. **Cancel button** — standard secondary
+
+### All Restrictions List Page
+- **Year selector** at top (default: college's current academic year)
+- **Filter row**: Type dropdown + Active/Resolved toggle + Search input
+- **Table** with columns: Student, Dept, Type (colored badge), Reason (truncated), Applied By, Date, Status, Actions
+- **Actions column**: View Details button, Resolve button (if active)
+- Active restrictions → red/orange row highlight; Resolved → gray/muted
+
+### Student Restriction Detail View
+- Show student info card at top
+- Summary: "2 total restrictions, 1 active"
+- Restriction cards/timeline showing each restriction chronologically
+- Each card shows: type badge, reason, details, applied by, dates, status
+- "Resolve" button on active restrictions
+
+### Frontend Validation Rules
+
+| Field | Rule |
+|-------|------|
+| `restriction_type` | Required, must select from dropdown |
+| `reason` | Required, min 5 chars, max 1000 chars, show remaining char count |
+| `details` | Optional, max 2000 chars, show remaining char count |
+| `valid_until` | Optional, if provided must be ≥ today, use date picker (no past dates) |

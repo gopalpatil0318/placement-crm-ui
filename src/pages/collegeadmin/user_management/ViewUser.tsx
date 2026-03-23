@@ -1,268 +1,457 @@
-import React from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import DashboardLayout from "@/components/collegeadmin/DashboardLayout";
+import {
+    Plus, ChevronLeft, ChevronRight, Search, Users, UserPlus, Filter,
+    AlertCircle, RefreshCw,
+} from "lucide-react";
 import PageHeader from "@/components/collegeadmin/PageHeader";
-import { useViewUsers } from "@/hooks/collegeadmin/user_management/useViewUsers";
+import AnimatedPage from "@/components/ui/AnimatedPage";
+import { AnimatedTableBody, AnimatedRow } from "@/components/ui/AnimatedList";
+import { useViewUsers, type User } from "@/hooks/collegeadmin/user_management/useViewUsers";
 
 // ========================
-// CONSTANTS (module-level)
+// CONSTANTS
 // ========================
-
-const ROLE_BADGE_MAP: Record<string, { label: string; bg: string; text: string }> = {
-  collegeadmin: { label: "College Admin", bg: "bg-purple-100", text: "text-purple-700" },
-  tpo: { label: "TPO", bg: "bg-blue-100", text: "text-blue-700" },
-  tpc: { label: "TPC", bg: "bg-indigo-100", text: "text-indigo-700" },
-  hod: { label: "HOD", bg: "bg-teal-100", text: "text-teal-700" },
-  teacher: { label: "Teacher", bg: "bg-gray-100", text: "text-gray-700" },
-};
-
-const STATUS_BADGE_MAP: Record<string, { bg: string; text: string; dot: string }> = {
-  active: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
-  inactive: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
-};
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-const ROLE_FILTER_OPTIONS = [
-  { value: "", label: "All Roles" },
-  { value: "collegeadmin", label: "College Admin" },
-  { value: "tpo", label: "TPO" },
-  { value: "tpc", label: "TPC" },
-  { value: "hod", label: "HOD" },
-  { value: "teacher", label: "Teacher" },
-];
-
-const STATUS_FILTER_OPTIONS = [
-  { value: "", label: "All Status" },
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
-];
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 const BREADCRUMBS = [
-  { label: "Dashboard", path: "/college/dashboard" },
-  { label: "Users", active: true },
+    { label: "Dashboard", path: "/college/dashboard" },
+    { label: "Users", active: true },
 ];
 
+const ROLE_FILTER_OPTIONS = [
+    { value: "", label: "All Roles" },
+    { value: "collegeadmin", label: "College Admin" },
+    { value: "tpo", label: "TPO" },
+    { value: "tpc", label: "TPC" },
+    { value: "hod", label: "HOD" },
+    { value: "teacher", label: "Teacher" },
+];
+
+const STATUS_FILTER_OPTIONS = [
+    { value: "", label: "All Status" },
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" },
+];
+
+const ROLE_BADGE_MAP: Record<string, { label: string; color: string }> = {
+    collegeadmin: { label: "College Admin", color: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" },
+    tpo: { label: "TPO", color: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" },
+    tpc: { label: "TPC", color: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300" },
+    hod: { label: "HOD", color: "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300" },
+    teacher: { label: "Teacher", color: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300" },
+};
+
 // ========================
-// SKELETON TABLE ROWS
+// HELPERS
 // ========================
 
-const SkeletonRow = () => (
-  <tr className="border-b">
-    {Array.from({ length: 6 }).map((_, i) => (
-      <td key={i} className="px-4 py-3">
-        <div className={`h-4 bg-gray-200 rounded animate-pulse ${i === 0 ? "w-32" : i === 5 ? "w-20" : "w-24"}`} />
-      </td>
-    ))}
-  </tr>
+const formatDate = (dateStr: string) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+};
+
+// ========================
+// SUB-COMPONENTS
+// ========================
+
+/** User avatar with deterministic color */
+const UserAvatar = ({ user }: { user: User }) => {
+    const initials = user.user_name
+        ? user.user_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+        : "?";
+    const COLORS = [
+        "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+        "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
+        "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300",
+        "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300",
+        "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300",
+        "bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300",
+        "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
+        "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300",
+    ] as const;
+    const color = COLORS[user.user_name.charCodeAt(0) % COLORS.length];
+    return (
+        <div className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${color}`}>
+            {initials}
+        </div>
+    );
+};
+
+/** Numbered pagination with ellipsis */
+const PaginationNav = ({
+    page, totalPages, loading, onPageChange,
+}: {
+    page: number; totalPages: number; loading: boolean; onPageChange: (p: number) => void;
+}) => {
+    if (totalPages <= 1) return null;
+
+    const pages: (number | "ellipsis")[] = [];
+    const add = (p: number) => { if (!pages.includes(p)) pages.push(p); };
+
+    add(1);
+    if (page > 3) pages.push("ellipsis");
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) add(i);
+    if (page < totalPages - 2) pages.push("ellipsis");
+    if (totalPages > 1) add(totalPages);
+
+    return (
+        <div className="flex items-center gap-1">
+            <button
+                type="button"
+                onClick={() => onPageChange(page - 1)}
+                disabled={page <= 1 || loading}
+                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                aria-label="Previous page"
+            >
+                <ChevronLeft className="h-4 w-4" />
+            </button>
+            {pages.map((p, idx) =>
+                p === "ellipsis" ? (
+                    <span key={`e-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
+                ) : (
+                    <button
+                        key={p}
+                        type="button"
+                        onClick={() => onPageChange(p)}
+                        disabled={loading}
+                        className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition ${
+                            p === page
+                                ? "bg-blue-600 text-white shadow-sm"
+                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        } disabled:cursor-not-allowed`}
+                    >
+                        {p}
+                    </button>
+                )
+            )}
+            <button
+                type="button"
+                onClick={() => onPageChange(page + 1)}
+                disabled={page >= totalPages || loading}
+                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                aria-label="Next page"
+            >
+                <ChevronRight className="h-4 w-4" />
+            </button>
+        </div>
+    );
+};
+
+/** Empty state */
+const EmptyState = ({ hasFilters, onReset, onAdd }: { hasFilters: boolean; onReset?: () => void; onAdd: () => void }) => (
+    <div className="py-16 text-center">
+        <div className="mx-auto h-14 w-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+            {hasFilters ? (
+                <Filter className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+            ) : (
+                <Users className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+            )}
+        </div>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+            {hasFilters ? "No users match your filters" : "No users yet"}
+        </h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 max-w-xs mx-auto">
+            {hasFilters
+                ? "Try adjusting your search or filter criteria."
+                : "Create your first user to get started with the platform."}
+        </p>
+        {hasFilters ? (
+            <button
+                type="button"
+                onClick={onReset}
+                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+            >
+                Clear all filters
+            </button>
+        ) : (
+            <button
+                type="button"
+                onClick={onAdd}
+                className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
+            >
+                <UserPlus className="h-4 w-4" />
+                Add New User
+            </button>
+        )}
+    </div>
+);
+
+/** Skeleton table rows */
+const SkeletonRows = () => (
+    <>
+        {Array.from({ length: 6 }).map((_, i) => (
+            <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
+                {/* Name + Avatar */}
+                <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                        <div className="space-y-1.5">
+                            <div className="h-3.5 w-28 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                            <div className="h-3 w-40 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                        </div>
+                    </div>
+                </td>
+                {/* Role */}
+                <td className="px-4 py-3.5"><div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" /></td>
+                {/* Department */}
+                <td className="px-4 py-3.5"><div className="h-3.5 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" /></td>
+                {/* Status */}
+                <td className="px-4 py-3.5"><div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" /></td>
+                {/* Created */}
+                <td className="px-4 py-3.5"><div className="h-3.5 w-20 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" /></td>
+            </tr>
+        ))}
+    </>
 );
 
 // ========================
 // MAIN COMPONENT
 // ========================
 
-const ViewUsers: React.FC = () => {
-  const navigate = useNavigate();
-  const {
-    users, loading, pagination, search, roleFilter, statusFilter,
-    handleSearchChange, handlePageChange, handleLimitChange,
-    handleRoleFilterChange, handleStatusFilterChange,
-  } = useViewUsers();
+const ViewUsers = () => {
+    const navigate = useNavigate();
+    const {
+        users, loading, isFetching, error, pagination, search, roleFilter, statusFilter,
+        handleSearchChange, handlePageChange, handleLimitChange,
+        handleRoleFilterChange, handleStatusFilterChange, refresh,
+    } = useViewUsers();
 
-  const startEntry = users.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
-  const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
+    const hasActiveFilters = !!(search || roleFilter || statusFilter);
 
-  return (
-    <DashboardLayout>
-      <div className="space-y-8">
-        <PageHeader title="Users List" breadcrumbs={BREADCRUMBS} />
+    const startEntry = users.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
+    const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
 
-        <div className="w-full">
-          <div className="p-8 bg-white rounded-xl border">
-            {/* Header with Create button */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-              <h1 className="text-xl font-semibold text-gray-800">
-                Manage Users
-              </h1>
-              <button
-                type="button"
-                onClick={() => navigate("/college/create-user")}
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold transition mt-3 sm:mt-0"
-              >
-                <Plus size={16} />
-                Add New User
-              </button>
-            </div>
+    const clearFilters = useMemo(() => () => {
+        handleSearchChange("");
+        handleRoleFilterChange("");
+        handleStatusFilterChange("");
+    }, [handleSearchChange, handleRoleFilterChange, handleStatusFilterChange]);
 
-            {/* Filters Row — Search left, filters middle, Show entries right */}
-            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
-              {/* Left: Search */}
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search by name or email..."
-                  value={search}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="w-full md:w-64 border rounded-md pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+    return (
+        <AnimatedPage>
+            <div className="space-y-8">
+                <PageHeader title="Users List" breadcrumbs={BREADCRUMBS} />
 
-              {/* Middle: Filters */}
-              <select
-                value={roleFilter}
-                onChange={(e) => handleRoleFilterChange(e.target.value)}
-                className="border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {ROLE_FILTER_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-
-              <select
-                value={statusFilter}
-                onChange={(e) => handleStatusFilterChange(e.target.value)}
-                className="border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {STATUS_FILTER_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-
-              {/* Right: Show entries */}
-              <div className="text-sm text-gray-600 font-semibold ml-auto flex items-center gap-2">
-                Show
-                <select
-                  value={pagination.limit}
-                  onChange={(e) => handleLimitChange(Number(e.target.value))}
-                  className="border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500/20"
-                >
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <option key={size} value={size}>{size}</option>
-                  ))}
-                </select>
-                entries
-              </div>
-            </div>
-
-            {/* Table — No ACTION column */}
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 text-left text-sm font-semibold text-gray-700">
-                    <th className="px-4 py-3">NAME</th>
-                    <th className="px-4 py-3">EMAIL</th>
-                    <th className="px-4 py-3">ROLE</th>
-                    <th className="px-4 py-3">DEPARTMENT</th>
-                    <th className="px-4 py-3">STATUS</th>
-                    <th className="px-4 py-3">CREATED</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {loading ? (
-                    Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
-                  ) : users.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center py-10 text-gray-500">
-                        {search || roleFilter || statusFilter
-                          ? "No users match your filters."
-                          : "No users found. Click 'Add New User' to create one."}
-                      </td>
-                    </tr>
-                  ) : (
-                    users.map((user) => {
-                      const roleBadge = ROLE_BADGE_MAP[user.user_role] || ROLE_BADGE_MAP.teacher;
-                      const statusBadge = STATUS_BADGE_MAP[user.user_status] || STATUS_BADGE_MAP.active;
-
-                      return (
-                        <tr
-                          key={user.user_id}
-                          onClick={() => navigate(`/college/user/${user.user_id}`)}
-                          className="border-b hover:bg-blue-50 text-sm cursor-pointer transition-colors"
+                {/* ── Error State ── */}
+                {error && !loading && (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-red-200 dark:border-red-800/50 p-10 flex flex-col items-center gap-4 text-center">
+                        <div className="h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                            <AlertCircle className="h-6 w-6 text-red-500 dark:text-red-400" />
+                        </div>
+                        <div>
+                            <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Failed to load users</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{error}</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => refresh()}
+                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition"
                         >
-                          <td className="px-4 py-3 font-medium">
-                            <span className="text-blue-600 hover:text-blue-800 hover:underline">
-                              {user.user_name}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600">{user.user_email}</td>
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${roleBadge.bg} ${roleBadge.text}`}>
-                              {roleBadge.label}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600">
-                            {user.dept_name || "—"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge.bg} ${statusBadge.text}`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${statusBadge.dot}`} />
-                              {user.user_status === "active" ? "Active" : "Inactive"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 text-xs">
-                            {formatDate(user.created_at)}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                            <RefreshCw className="h-4 w-4" />
+                            Try Again
+                        </button>
+                    </div>
+                )}
+
+                {!error && (
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                    {/* Toolbar */}
+                    <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+                            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                Manage Users
+                                {pagination.total > 0 && (
+                                    <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
+                                        ({pagination.total})
+                                    </span>
+                                )}
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/college/create-user")}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition shadow-sm"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add New User
+                            </button>
+                        </div>
+
+                        {/* Filters */}
+                        <div className="flex flex-col md:flex-row md:items-center gap-3">
+                            {/* Search */}
+                            <div className="relative flex-1 max-w-xs">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name or email..."
+                                    value={search}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
+                                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition"
+                                />
+                            </div>
+
+                            {/* Role filter */}
+                            <select
+                                value={roleFilter}
+                                onChange={(e) => handleRoleFilterChange(e.target.value)}
+                                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition"
+                            >
+                                {ROLE_FILTER_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+
+                            {/* Status filter */}
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => handleStatusFilterChange(e.target.value)}
+                                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition"
+                            >
+                                {STATUS_FILTER_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+
+                            {/* Page size */}
+                            <div className="text-sm text-gray-600 dark:text-gray-400 font-medium ml-auto flex items-center gap-2">
+                                Show
+                                <select
+                                    value={pagination.limit}
+                                    onChange={(e) => handleLimitChange(Number(e.target.value))}
+                                    className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                >
+                                    {PAGE_SIZE_OPTIONS.map((s) => (
+                                        <option key={s} value={s}>{s}</option>
+                                    ))}
+                                </select>
+                                entries
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50 dark:bg-gray-800/60 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    <th className="px-4 py-3">User</th>
+                                    <th className="px-4 py-3">Role</th>
+                                    <th className="px-4 py-3">Department</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3">Created</th>
+                                </tr>
+                            </thead>
+
+                            {loading ? (
+                                <tbody><SkeletonRows /></tbody>
+                            ) : users.length === 0 ? (
+                                <tbody>
+                                    <tr>
+                                        <td colSpan={5}>
+                                            <EmptyState
+                                                hasFilters={hasActiveFilters}
+                                                onReset={clearFilters}
+                                                onAdd={() => navigate("/college/create-user")}
+                                            />
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            ) : (
+                                <AnimatedTableBody>
+                                    {users.map((user) => {
+                                        const roleBadge = ROLE_BADGE_MAP[user.user_role] || ROLE_BADGE_MAP.teacher;
+                                        const isActive = user.user_status === "active";
+
+                                        return (
+                                            <AnimatedRow
+                                                key={user.user_id}
+                                                onClick={() => navigate(`/college/user/${user.user_id}`)}
+                                                className={`border-b border-gray-100 dark:border-gray-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 text-sm cursor-pointer transition-colors ${
+                                                    isFetching ? "opacity-60" : ""
+                                                }`}
+                                            >
+                                                {/* User (avatar + name + email) */}
+                                                <td className="px-4 py-3.5">
+                                                    <div className="flex items-center gap-3">
+                                                        <UserAvatar user={user} />
+                                                        <div className="min-w-0">
+                                                            <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                                                {user.user_name}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                                {user.user_email}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                {/* Role */}
+                                                <td className="px-4 py-3.5">
+                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${roleBadge.color}`}>
+                                                        {roleBadge.label}
+                                                    </span>
+                                                </td>
+
+                                                {/* Department */}
+                                                <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400">
+                                                    {user.dept_name || (
+                                                        <span className="text-gray-400 dark:text-gray-600 italic">—</span>
+                                                    )}
+                                                </td>
+
+                                                {/* Status */}
+                                                <td className="px-4 py-3.5">
+                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                                        isActive
+                                                            ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
+                                                            : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
+                                                    }`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-red-500"}`} />
+                                                        {isActive ? "Active" : "Inactive"}
+                                                    </span>
+                                                </td>
+
+                                                {/* Created */}
+                                                <td className="px-4 py-3.5 text-xs text-gray-500 dark:text-gray-400">
+                                                    {formatDate(user.created_at)}
+                                                </td>
+                                            </AnimatedRow>
+                                        );
+                                    })}
+                                </AnimatedTableBody>
+                            )}
+                        </table>
+                    </div>
+
+                    {/* Pagination Footer */}
+                    {pagination.total > 0 && (
+                        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                                Showing <span className="font-semibold text-gray-700 dark:text-gray-300">{startEntry}</span>
+                                {" "}to{" "}
+                                <span className="font-semibold text-gray-700 dark:text-gray-300">{endEntry}</span>
+                                {" "}of{" "}
+                                <span className="font-semibold text-gray-700 dark:text-gray-300">{pagination.total}</span>
+                                {" "}entries
+                            </p>
+                            <PaginationNav
+                                page={pagination.page}
+                                totalPages={pagination.totalPages}
+                                loading={loading}
+                                onPageChange={handlePageChange}
+                            />
+                        </div>
+                    )}
+                </div>)}
             </div>
-
-            {/* Pagination Footer */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 mt-4 border-t text-sm text-gray-600 font-semibold">
-              <div>
-                Showing {startEntry} to {endEntry} of {pagination.total} entries
-              </div>
-
-              {pagination.totalPages > 1 && (
-                <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(pagination.page - 1)}
-                    disabled={pagination.page <= 1 || loading}
-                    className="flex items-center gap-1 px-3 py-1.5 border rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium"
-                  >
-                    <ChevronLeft size={14} />
-                    Previous
-                  </button>
-
-                  <span className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md font-semibold">
-                    {pagination.page}
-                  </span>
-                  <span className="text-gray-400">of {pagination.totalPages}</span>
-
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(pagination.page + 1)}
-                    disabled={pagination.page >= pagination.totalPages || loading}
-                    className="flex items-center gap-1 px-3 py-1.5 border rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium"
-                  >
-                    Next
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </DashboardLayout>
-  );
+        </AnimatedPage>
+    );
 };
 
 export default ViewUsers;

@@ -1,4 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { personalInfoSchema } from "@/validators/student/personalInfoSchema";
 import { StudentPersonalInfoService } from "@/services/student/personalInfo.service";
@@ -39,40 +42,46 @@ const initialFormData: PersonalInfoData = {
 
 type FormErrors = Partial<Record<string, string>>;
 
-export const usePersonalInfo = (
-    profileData: any,
-    _refreshProfile: () => Promise<void>,
-    _nextStep: () => void
-) => {
+export const usePersonalInfo = () => {
+    const queryClient = useQueryClient();
     const [formData, setFormData] = useState<PersonalInfoData>(initialFormData);
     const [errors, setErrors] = useState<FormErrors>({});
-    const [loading, setLoading] = useState(false);
 
-    // Prefill from profileData when available
+    // Fetch existing personal info from API
+    const { data: fetchedData, isLoading: fetching } = useQuery({
+        queryKey: queryKeys.studentPortal.personalInfo(),
+        queryFn: async () => {
+            const response = await StudentPersonalInfoService.getPersonalInfo();
+            return response.data ?? null;
+        },
+    });
+
+    // Prefill from fetched data
     useEffect(() => {
-        if (profileData) {
-            const prefillData = { ...profileData };
-            // Convert ISO date to YYYY-MM-DD for date input
-            if (prefillData.birth_date) {
-                prefillData.birth_date = prefillData.birth_date.split("T")[0];
+        if (fetchedData) {
+            const prefill = { ...fetchedData };
+            if (typeof prefill.birth_date === "string") {
+                prefill.birth_date = prefill.birth_date.split("T")[0];
             }
             setFormData((prev) => ({
                 ...prev,
-                ...prefillData,
+                ...prefill,
+                father_annual_income: fetchedData.father_annual_income ?? "",
+                mother_annual_income: fetchedData.mother_annual_income ?? "",
             }));
         }
-    }, [profileData]);
+    }, [fetchedData]);
 
-    const handleChange = (
+    const handleChange = useCallback((
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
-        // Clear error for this field on change
-        if (errors[name]) {
-            setErrors((prev) => ({ ...prev, [name]: undefined }));
-        }
-    };
+        setErrors((prev) => {
+            if (!prev[name]) return prev;
+            return { ...prev, [name]: undefined };
+        });
+    }, []);
 
     const handleCheckboxChange = (checked: boolean) => {
         setFormData((prev) => {
@@ -94,8 +103,28 @@ export const usePersonalInfo = (
         });
     };
 
-    const handleSubmit = async (): Promise<void> => {
+    const saveMutation = useMutation({
+        mutationFn: (payload: PersonalInfoData) =>
+            StudentPersonalInfoService.savePersonalInfo(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.personalInfo() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
+            showToast({
+                type: "success",
+                title: "Success",
+                description: "Personal info saved successfully",
+            });
+        },
+        onError: (error) => {
+            showToast({
+                type: "error",
+                title: "Error Saving Personal Info",
+                description: error instanceof ApiError ? error.message : "Something went wrong, please try again",
+            });
+        },
+    });
 
+    const handleSubmit = () => {
         const result = personalInfoSchema.safeParse(formData);
 
         if (!result.success) {
@@ -117,37 +146,37 @@ export const usePersonalInfo = (
         }
 
         setErrors({});
-        setLoading(true);
 
-        try {
-            const payload = {
-                ...formData,
-                father_annual_income: Number(formData.father_annual_income),
-                mother_annual_income: Number(formData.mother_annual_income),
-            };
+        const payload = {
+            ...formData,
+            father_name: formData.father_name.trim(),
+            mother_name: formData.mother_name.trim(),
+            guardian_name: formData.guardian_name.trim(),
+            father_occupation: formData.father_occupation.trim(),
+            mother_occupation: formData.mother_occupation.trim(),
+            caste: formData.caste.trim(),
+            category: formData.category.trim(),
+            nationality: formData.nationality.trim(),
+            permanent_address: formData.permanent_address.trim(),
+            permanent_city: formData.permanent_city.trim(),
+            permanent_district: formData.permanent_district.trim(),
+            permanent_state: formData.permanent_state.trim(),
+            current_address: formData.current_address.trim(),
+            current_city: formData.current_city.trim(),
+            current_district: formData.current_district.trim(),
+            current_state: formData.current_state.trim(),
+            father_annual_income: Number(formData.father_annual_income),
+            mother_annual_income: Number(formData.mother_annual_income),
+        };
 
-            const response = await StudentPersonalInfoService.savePersonalInfo(payload);
-
-            showToast({
-                type: "success",
-                title: "Success",
-                description: response?.message || "Personal info saved successfully",
-            });
-        } catch (error: any) {
-            showToast({
-                type: "error",
-                title: "Error Saving Personal Info",
-                description: error.message || "Something went wrong, please try again",
-            });
-        } finally {
-            setLoading(false);
-        }
+        saveMutation.mutate(payload);
     };
 
     return {
         formData,
         errors,
-        loading,
+        loading: saveMutation.isPending,
+        fetching,
         handleChange,
         handleCheckboxChange,
         handleSubmit,

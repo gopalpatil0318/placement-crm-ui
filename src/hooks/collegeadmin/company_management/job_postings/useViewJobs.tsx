@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ========================
 // TYPES
@@ -35,77 +36,43 @@ interface Pagination {
 // ========================
 
 export const useViewJobs = () => {
-    const [jobs, setJobs] = useState<JobListItem[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [pagination, setPagination] = useState<Pagination>({
-        page: 1,
-        limit: 20,
-        total: 0,
-        totalPages: 0,
-    });
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(20);
 
     // Filters
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [jobTypeFilter, setJobTypeFilter] = useState("");
+    const [passoutYearFilter, setPassoutYearFilter] = useState("");
+    const [companyFilter, setCompanyFilter] = useState("");
     const [sortBy, setSortBy] = useState("created_at");
     const [sortOrder, setSortOrder] = useState("desc");
 
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const fetchJobs = useCallback(
-        async (
-            page: number,
-            limit: number,
-            searchTerm: string,
-            status: string,
-            jobType: string,
-            sort_by: string,
-            sort_order: string
-        ) => {
-            setLoading(true);
-            setError(null);
+    const queryFilters = useMemo(() => ({
+        page,
+        limit,
+        search: debouncedSearch || undefined,
+        job_status: statusFilter || undefined,
+        job_type: jobTypeFilter || undefined,
+        passout_year: passoutYearFilter ? Number(passoutYearFilter) : undefined,
+        company_id: companyFilter || undefined,
+        sort_by: sortBy || undefined,
+        sort_order: sortOrder || undefined,
+    }), [page, limit, debouncedSearch, statusFilter, jobTypeFilter, passoutYearFilter, companyFilter, sortBy, sortOrder]);
 
-            try {
-                const response = await CollegeAdminService.getAllJobs({
-                    page,
-                    limit,
-                    search: searchTerm || undefined,
-                    job_status: status || undefined,
-                    job_type: jobType || undefined,
-                    sort_by: sort_by || undefined,
-                    sort_order: sort_order || undefined,
-                });
+    const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
+        queryKey: queryKeys.jobs.all(queryFilters),
+        queryFn: () => CollegeAdminService.getAllJobs(queryFilters),
+        placeholderData: keepPreviousData,
+    });
 
-                setJobs(Array.isArray(response.data) ? response.data : []);
-
-                if (response.pagination) {
-                    setPagination(response.pagination);
-                }
-            } catch (err: unknown) {
-                const msg = err instanceof Error ? err.message : "Failed to fetch jobs";
-                setError(msg);
-                showToast({ type: "error", title: "Fetch Error", description: msg });
-            } finally {
-                setLoading(false);
-            }
-        },
-        []
-    );
-
-    useEffect(() => {
-        fetchJobs(
-            pagination.page,
-            pagination.limit,
-            search,
-            statusFilter,
-            jobTypeFilter,
-            sortBy,
-            sortOrder
-        );
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pagination.page, pagination.limit, statusFilter, jobTypeFilter, sortBy, sortOrder, fetchJobs]);
+    const jobs: JobListItem[] = Array.isArray(data?.data) ? data.data : [];
+    const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
+    const loading = isLoading || isFetching;
+    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch jobs") : null;
 
     const handleSearchChange = useCallback(
         (value: string) => {
@@ -114,40 +81,53 @@ export const useViewJobs = () => {
                 clearTimeout(searchTimerRef.current);
             }
             searchTimerRef.current = setTimeout(() => {
-                setPagination((prev) => ({ ...prev, page: 1 }));
-                fetchJobs(1, pagination.limit, value, statusFilter, jobTypeFilter, sortBy, sortOrder);
+                setPage(1);
+                setDebouncedSearch(value);
             }, 300);
         },
-        [fetchJobs, pagination.limit, statusFilter, jobTypeFilter, sortBy, sortOrder]
+        []
     );
 
     const handlePageChange = useCallback((newPage: number) => {
-        setPagination((prev) => ({ ...prev, page: newPage }));
+        setPage(newPage);
     }, []);
 
     const handleLimitChange = useCallback((newLimit: number) => {
-        setPagination((prev) => ({ ...prev, page: 1, limit: newLimit }));
+        setPage(1);
+        setLimit(newLimit);
     }, []);
 
     const handleStatusFilterChange = useCallback((value: string) => {
         setStatusFilter(value);
-        setPagination((prev) => ({ ...prev, page: 1 }));
+        setPage(1);
     }, []);
 
     const handleJobTypeFilterChange = useCallback((value: string) => {
         setJobTypeFilter(value);
-        setPagination((prev) => ({ ...prev, page: 1 }));
+        setPage(1);
+    }, []);
+
+    const handlePassoutYearFilterChange = useCallback((value: string) => {
+        setPassoutYearFilter(value);
+        setPage(1);
+    }, []);
+
+    const handleCompanyFilterChange = useCallback((value: string) => {
+        setCompanyFilter(value);
+        setPage(1);
     }, []);
 
     const handleSortChange = useCallback((field: string) => {
-        setSortBy(field);
-        setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-        setPagination((prev) => ({ ...prev, page: 1 }));
+        setSortBy((prev) => {
+            if (prev === field) {
+                setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+                return prev;
+            }
+            setSortOrder("asc");
+            return field;
+        });
+        setPage(1);
     }, []);
-
-    const refresh = useCallback(() => {
-        fetchJobs(pagination.page, pagination.limit, search, statusFilter, jobTypeFilter, sortBy, sortOrder);
-    }, [fetchJobs, pagination.page, pagination.limit, search, statusFilter, jobTypeFilter, sortBy, sortOrder]);
 
     return {
         jobs,
@@ -157,6 +137,8 @@ export const useViewJobs = () => {
         search,
         statusFilter,
         jobTypeFilter,
+        passoutYearFilter,
+        companyFilter,
         sortBy,
         sortOrder,
         handleSearchChange,
@@ -164,7 +146,9 @@ export const useViewJobs = () => {
         handleLimitChange,
         handleStatusFilterChange,
         handleJobTypeFilterChange,
+        handlePassoutYearFilterChange,
+        handleCompanyFilterChange,
         handleSortChange,
-        refresh,
+        refresh: refetch,
     };
 };

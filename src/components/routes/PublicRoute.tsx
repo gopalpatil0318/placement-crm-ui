@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useContext } from "react";
 import { SysAdminAuthContext } from "@/context/SysAdminAuthContext";
 import { CollegeAuthContext } from "@/context/CollegeAuthContext";
+import { StudentAuthContext } from "@/context/students/StudentAuthContext";
 import { COLLEGE_ROLES } from "@/types/auth";
 
 interface PublicRouteProps {
@@ -12,6 +13,7 @@ interface PublicRouteProps {
 export const PublicRoute = ({ children }: PublicRouteProps) => {
   const sysAdminAuth = useContext(SysAdminAuthContext);
   const collegeAuth = useContext(CollegeAuthContext);
+  const studentAuth = useContext(StudentAuthContext);
 
   // Check SysAdmin auth
   if (
@@ -28,6 +30,14 @@ export const PublicRoute = ({ children }: PublicRouteProps) => {
     COLLEGE_ROLES.includes(collegeAuth.user.role)
   ) {
     return <Navigate to="/college/dashboard" replace />;
+  }
+
+  // Check Student auth
+  if (studentAuth?.isAuthenticated && studentAuth?.user?.role === "student") {
+    if (!studentAuth.user?.profileComplete || !studentAuth.user?.profileIsApproved) {
+      return <Navigate to="/student/profile" replace />;
+    }
+    return <Navigate to="/student/dashboard" replace />;
   }
 
   return <>{children}</>;

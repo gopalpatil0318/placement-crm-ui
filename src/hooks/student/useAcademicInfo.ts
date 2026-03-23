@@ -1,4 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { academicInfoSchema } from "@/validators/student/academicInfoSchema";
 import { StudentAcademicInfoService } from "@/services/student/academicInfo.service";
@@ -27,65 +30,76 @@ const initialFormData = {
 
 type FormErrors = Partial<Record<string, string>>;
 
-export const useAcademicInfo = (profileData: any) => {
+export const useAcademicInfo = () => {
+    const queryClient = useQueryClient();
     const [formData, setFormData] = useState(initialFormData);
     const [errors, setErrors] = useState<FormErrors>({});
-    const [loading, setLoading] = useState(false);
-    const [fetching, setFetching] = useState(true);
 
-    // Fetch existing data
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await StudentAcademicInfoService.getAcademicInfo();
-                if (response.data) {
-                    const data = response.data;
-                    setFormData((prev) => ({
-                        ...prev,
-                        ...data,
-                        // Convert nulls to empty strings for form inputs
-                        twelfth_percentage: data.twelfth_percentage ?? "",
-                        twelfth_board: data.twelfth_board ?? "",
-                        diploma_percentage: data.diploma_percentage ?? "",
-                        diploma_branch: data.diploma_branch ?? "",
-                        gap_years: data.gap_years ?? "",
-                        gap_reason: data.gap_reason ?? "",
-                        total_live_kts: String(data.total_live_kts ?? "0"),
-                        total_dead_kts: String(data.total_dead_kts ?? "0"),
-                    }));
-                }
-            } catch {
-                console.log("No existing academic info found");
-            } finally {
-                setFetching(false);
-            }
-        };
-        fetchData();
-    }, []);
+    // Fetch existing academic data
+    const { data: fetchedData, isLoading: fetching } = useQuery({
+        queryKey: queryKeys.studentPortal.academicInfo(),
+        queryFn: async () => {
+            const response = await StudentAcademicInfoService.getAcademicInfo();
+            return response.data ?? null;
+        },
+    });
 
-    // Prefill from profileData
+    // Prefill from fetched academic data
     useEffect(() => {
-        if (profileData) {
-            setFormData((prev) => ({ ...prev, ...profileData }));
+        if (fetchedData) {
+            setFormData((prev) => ({
+                ...prev,
+                ...fetchedData,
+                twelfth_percentage: fetchedData.twelfth_percentage ?? "",
+                twelfth_board: fetchedData.twelfth_board ?? "",
+                diploma_percentage: fetchedData.diploma_percentage ?? "",
+                diploma_branch: fetchedData.diploma_branch ?? "",
+                gap_years: fetchedData.gap_years ?? "",
+                gap_reason: fetchedData.gap_reason ?? "",
+                total_live_kts: String(fetchedData.total_live_kts ?? "0"),
+                total_dead_kts: String(fetchedData.total_dead_kts ?? "0"),
+            }));
         }
-    }, [profileData]);
+    }, [fetchedData]);
 
-    const handleChange = (
+    const handleChange = useCallback((
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
         const { name, value, type } = e.target;
         const newValue = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
         setFormData((prev) => ({ ...prev, [name]: newValue }));
-        if (errors[name]) {
-            setErrors((prev) => ({ ...prev, [name]: undefined }));
-        }
-    };
+        setErrors((prev) => {
+            if (!prev[name]) return prev;
+            return { ...prev, [name]: undefined };
+        });
+    }, []);
 
-    const handleCheckboxChange = (name: string, checked: boolean) => {
+    const handleCheckboxChange = useCallback((name: string, checked: boolean) => {
         setFormData((prev) => ({ ...prev, [name]: checked }));
-    };
+    }, []);
 
-    const handleSubmit = async (): Promise<void> => {
+    const saveMutation = useMutation({
+        mutationFn: (payload: Record<string, unknown>) =>
+            StudentAcademicInfoService.saveAcademicInfo(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.academicInfo() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
+            showToast({
+                type: "success",
+                title: "Success",
+                description: "Academic info saved successfully",
+            });
+        },
+        onError: (error) => {
+            showToast({
+                type: "error",
+                title: "Error Saving Academic Info",
+                description: error instanceof ApiError ? error.message : "Something went wrong, please try again",
+            });
+        },
+    });
+
+    const handleSubmit = () => {
         const result = academicInfoSchema.safeParse(formData);
 
         if (!result.success) {
@@ -106,55 +120,39 @@ export const useAcademicInfo = (profileData: any) => {
         }
 
         setErrors({});
-        setLoading(true);
 
-        try {
-            const is12th = formData.twelfth_or_diploma === "12th";
-            const hasGap = formData.any_gap_during_education;
+        const is12th = formData.twelfth_or_diploma === "12th";
+        const hasGap = formData.any_gap_during_education;
 
-            const payload = {
-                roll_number: formData.roll_number || undefined,
-                enrollment_number: formData.enrollment_number || undefined,
-                admission_year: Number(formData.admission_year),
-                admission_based_on: formData.admission_based_on,
-                tenth_percentage: Number(formData.tenth_percentage),
-                tenth_board: formData.tenth_board,
-                tenth_passing_year: Number(formData.tenth_passing_year),
-                twelfth_or_diploma: formData.twelfth_or_diploma,
-                twelfth_percentage: is12th ? Number(formData.twelfth_percentage) : null,
-                twelfth_board: is12th ? formData.twelfth_board : null,
-                diploma_percentage: !is12th ? Number(formData.diploma_percentage) : null,
-                diploma_branch: !is12th ? formData.diploma_branch : null,
-                higher_education_passing_year: Number(formData.higher_education_passing_year),
-                overall_cgpa: Number(formData.overall_cgpa),
-                total_live_kts: Number(formData.total_live_kts),
-                total_dead_kts: Number(formData.total_dead_kts),
-                any_gap_during_education: hasGap,
-                gap_years: hasGap ? Number(formData.gap_years) : null,
-                gap_reason: hasGap ? formData.gap_reason : null,
-            };
+        const payload = {
+            roll_number: formData.roll_number.trim() || undefined,
+            enrollment_number: formData.enrollment_number.trim() || undefined,
+            admission_year: Number(formData.admission_year),
+            admission_based_on: formData.admission_based_on.trim(),
+            tenth_percentage: Number(formData.tenth_percentage),
+            tenth_board: formData.tenth_board.trim(),
+            tenth_passing_year: Number(formData.tenth_passing_year),
+            twelfth_or_diploma: formData.twelfth_or_diploma,
+            twelfth_percentage: is12th ? Number(formData.twelfth_percentage) : null,
+            twelfth_board: is12th ? formData.twelfth_board.trim() : null,
+            diploma_percentage: !is12th ? Number(formData.diploma_percentage) : null,
+            diploma_branch: !is12th ? formData.diploma_branch.trim() : null,
+            higher_education_passing_year: Number(formData.higher_education_passing_year),
+            overall_cgpa: Number(formData.overall_cgpa),
+            total_live_kts: Number(formData.total_live_kts),
+            total_dead_kts: Number(formData.total_dead_kts),
+            any_gap_during_education: hasGap,
+            gap_years: hasGap ? Number(formData.gap_years) : null,
+            gap_reason: hasGap ? formData.gap_reason.trim() : null,
+        };
 
-            const response = await StudentAcademicInfoService.saveAcademicInfo(payload);
-            showToast({
-                type: "success",
-                title: "Success",
-                description: response?.message || "Academic info saved successfully",
-            });
-        } catch (error: any) {
-            showToast({
-                type: "error",
-                title: "Error Saving Academic Info",
-                description: error.message || "Something went wrong, please try again",
-            });
-        } finally {
-            setLoading(false);
-        }
+        saveMutation.mutate(payload as Record<string, unknown>);
     };
 
     return {
         formData,
         errors,
-        loading,
+        loading: saveMutation.isPending,
         fetching,
         handleChange,
         handleCheckboxChange,

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { queryKeys } from "@/lib/queryKeys";
 
 export interface User {
     user_id: string;
@@ -14,117 +15,74 @@ export interface User {
     updated_at: string;
 }
 
-interface Pagination {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-}
-
 export const useViewUsers = () => {
-    const [users, setUsers] = useState<User[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
-    const [pagination, setPagination] = useState<Pagination>({
-        page: 1,
-        limit: 20,
-        total: 0,
-        totalPages: 0,
-    });
-
-    // Filters
+    // ── Local filter / pagination state ──
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(20);
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [roleFilter, setRoleFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
 
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const fetchUsers = useCallback(async (
-        page: number,
-        limit: number,
-        searchTerm: string,
-        role: string,
-        status: string
-    ) => {
-        setLoading(true);
-        setError(null);
+    // ── React Query ──
+    const queryFilters = {
+        page,
+        limit,
+        search: debouncedSearch || undefined,
+        role: roleFilter || undefined,
+        status: statusFilter || undefined,
+    };
 
-        try {
-            const response = await CollegeAdminService.getUsers({
-                page,
-                limit,
-                search: searchTerm || undefined,
-                role: role || undefined,
-                status: status || undefined,
-            });
+    const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
+        queryKey: queryKeys.users.all(queryFilters),
+        queryFn: () => CollegeAdminService.getUsers(queryFilters),
+        placeholderData: keepPreviousData,
+    });
 
-            setUsers(Array.isArray(response.data) ? response.data : []);
+    // ── Derive data from response ──
+    const users: User[] = Array.isArray(data?.data) ? data.data : [];
+    const pagination = data?.pagination || { page, limit, total: 0, totalPages: 0 };
+    const loading = isLoading;
+    const error = queryError
+        ? (queryError instanceof Error ? queryError.message : "Failed to fetch users")
+        : null;
 
-            if (response.pagination) {
-                setPagination(response.pagination);
-            }
-        } catch (err: unknown) {
-            const errorMessage = err instanceof Error
-                ? err.message
-                : "Failed to fetch users";
+    // ── Handlers ──
 
-            setError(errorMessage);
-
-            showToast({
-                type: "error",
-                title: "Fetch Error",
-                description: errorMessage,
-            });
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    // Initial fetch + refetch when filters change (except search which is debounced)
-    useEffect(() => {
-        fetchUsers(pagination.page, pagination.limit, search, roleFilter, statusFilter);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pagination.page, pagination.limit, roleFilter, statusFilter, fetchUsers]);
-
-    // Debounced search - 300ms
     const handleSearchChange = useCallback((value: string) => {
         setSearch(value);
-
-        if (searchTimerRef.current) {
-            clearTimeout(searchTimerRef.current);
-        }
-
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
         searchTimerRef.current = setTimeout(() => {
-            setPagination((prev) => ({ ...prev, page: 1 }));
-            fetchUsers(1, pagination.limit, value, roleFilter, statusFilter);
+            setDebouncedSearch(value);
+            setPage(1);
         }, 300);
-    }, [fetchUsers, pagination.limit, roleFilter, statusFilter]);
+    }, []);
 
     const handlePageChange = useCallback((newPage: number) => {
-        setPagination((prev) => ({ ...prev, page: newPage }));
+        setPage(newPage);
     }, []);
 
     const handleLimitChange = useCallback((newLimit: number) => {
-        setPagination((prev) => ({ ...prev, page: 1, limit: newLimit }));
+        setPage(1);
+        setLimit(newLimit);
     }, []);
 
     const handleRoleFilterChange = useCallback((role: string) => {
         setRoleFilter(role);
-        setPagination((prev) => ({ ...prev, page: 1 }));
+        setPage(1);
     }, []);
 
     const handleStatusFilterChange = useCallback((status: string) => {
         setStatusFilter(status);
-        setPagination((prev) => ({ ...prev, page: 1 }));
+        setPage(1);
     }, []);
-
-    const refresh = useCallback(() => {
-        fetchUsers(pagination.page, pagination.limit, search, roleFilter, statusFilter);
-    }, [fetchUsers, pagination.page, pagination.limit, search, roleFilter, statusFilter]);
 
     return {
         users,
         loading,
+        isFetching,
         error,
         pagination,
         search,
@@ -135,6 +93,6 @@ export const useViewUsers = () => {
         handleLimitChange,
         handleRoleFilterChange,
         handleStatusFilterChange,
-        refresh,
+        refresh: refetch,
     };
 };

@@ -1,0 +1,448 @@
+# Application Questions API — Complete Documentation
+
+## Files Created
+
+| File | Path |
+|------|------|
+| Validator | [appQuestion.validator.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/validators/college/appQuestion.validator.js) |
+| Service | [appQuestion.service.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/services/college/appQuestion.service.js) |
+| Controller | [appQuestion.controller.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/controllers/college/appQuestion.controller.js) |
+| Routes | [appQuestion.routes.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/routes/college/appQuestion.routes.js) |
+| Route Index | [index.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/routes/index.js) (modified) |
+
+## Verification
+
+Server routes load: ✅ `ROUTE_LOAD_SUCCESS`
+
+---
+
+## 1. API Endpoint Reference
+
+### API #62 — Add Application Question
+
+| Item | Value |
+|------|-------|
+| **Method** | `POST` |
+| **URL** | `/api/college/add_job_question/:jobId` |
+| **Auth** | Bearer Token (COLLEGEADMIN or TPO) |
+| **Rate Limit** | 50 req/min |
+
+#### Request Body
+
+````carousel
+**MCQ Single (radio buttons)**
+```json
+{
+  "question_text": "What is your preferred work location?",
+  "question_type": "mcq_single",
+  "question_options": ["Mumbai", "Pune", "Bangalore", "Hyderabad", "Remote"],
+  "is_required": true
+}
+```
+<!-- slide -->
+**MCQ Multiple (checkboxes)**
+```json
+{
+  "question_text": "Which programming languages are you proficient in?",
+  "question_type": "mcq_multiple",
+  "question_options": ["Java", "Python", "JavaScript", "C++", "Go", "Rust"],
+  "is_required": true
+}
+```
+<!-- slide -->
+**Text (short answer)**
+```json
+{
+  "question_text": "What is your expected CTC?",
+  "question_type": "text",
+  "is_required": false
+}
+```
+<!-- slide -->
+**Essay (long answer)**
+```json
+{
+  "question_text": "Why do you want to work at our company? Describe your motivation.",
+  "question_type": "essay",
+  "is_required": true
+}
+```
+<!-- slide -->
+**Yes/No**
+```json
+{
+  "question_text": "Are you willing to relocate?",
+  "question_type": "yes_no",
+  "is_required": true
+}
+```
+````
+
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `question_text` | string | ✅ Yes | 5–2000 chars |
+| `question_type` | string | ✅ Yes | `mcq_single`, `mcq_multiple`, `text`, `essay`, `yes_no` |
+| `question_options` | string[] | ✅ If MCQ | 2–20 items, no duplicates, each 1–500 chars. **Must be null/absent** for non-MCQ. |
+| `is_required` | boolean | ❌ Optional | Defaults to `true` |
+
+> [!IMPORTANT]
+> `question_order` is **auto-calculated** (MAX + 1). Do not send it.
+> For MCQ types, `question_options` is **required**. For text/essay/yes_no, it must be **null or omitted**.
+
+#### Success Response (201)
+
+```json
+{
+  "success": true,
+  "message": "Application question added successfully",
+  "data": {
+    "question_id": "a1b2c3d4-...",
+    "job_id": "e5f6g7h8-...",
+    "question_text": "What is your preferred work location?",
+    "question_type": "mcq_single",
+    "question_options": ["Mumbai", "Pune", "Bangalore", "Hyderabad", "Remote"],
+    "is_required": true,
+    "question_order": 1,
+    "created_at": "2026-03-04T05:30:00.000Z",
+    "job_title": "Software Developer",
+    "company_name": "TCS"
+  }
+}
+```
+
+---
+
+### API #63 — Get Job Questions
+
+| Item | Value |
+|------|-------|
+| **Method** | `GET` |
+| **URL** | `/api/college/get_job_questions/:jobId` |
+| **Auth** | Bearer Token (COLLEGEADMIN or TPO) |
+| **Rate Limit** | None (GET) |
+
+#### Success Response (200)
+
+```json
+{
+  "success": true,
+  "message": "Job questions retrieved successfully",
+  "data": {
+    "questions": [
+      {
+        "question_id": "...",
+        "job_id": "...",
+        "question_text": "Are you willing to relocate?",
+        "question_type": "yes_no",
+        "question_options": null,
+        "is_required": true,
+        "question_order": 1,
+        "created_at": "...",
+        "job_title": "Software Developer",
+        "company_name": "TCS"
+      },
+      { "...more questions ordered by question_order..." }
+    ],
+    "total": 5,
+    "job_title": "Software Developer",
+    "company_name": "TCS"
+  }
+}
+```
+
+---
+
+### API #64 — Update Question
+
+| Item | Value |
+|------|-------|
+| **Method** | `PUT` |
+| **URL** | `/api/college/update_question/:questionId` |
+| **Auth** | Bearer Token (COLLEGEADMIN or TPO) |
+
+#### Request Body (at least 1 field required)
+
+```json
+{
+  "question_text": "Which city do you prefer for posting?",
+  "question_options": ["Mumbai", "Delhi", "Pune", "Bangalore"],
+  "question_order": 2
+}
+```
+
+All fields optional but min 1 required. Additional field `question_order` (1–100) can be used for reordering.
+
+> [!WARNING]
+> **Cannot edit questions if the published job already has student applications.** The API blocks this to prevent data inconsistency.
+> If you need to modify questions after applications exist, close the job first.
+
+#### Special Type-Change Rules
+- Changing **non-MCQ → MCQ**: `question_options` is **required** in the same request
+- Changing **MCQ → non-MCQ**: `question_options` is **auto-cleared** (set to null)
+- Changing MCQ options: provide the full new options array
+
+---
+
+### API #65 — Delete Question
+
+| Item | Value |
+|------|-------|
+| **Method** | `DELETE` |
+| **URL** | `/api/college/delete_question/:questionId` |
+| **Auth** | Bearer Token (COLLEGEADMIN or TPO) |
+
+No request body needed. This is a **hard delete** — the question is permanently removed. Remaining questions are **auto-reordered** to maintain sequential `question_order`.
+
+#### Success Response (200)
+
+```json
+{
+  "success": true,
+  "message": "Record deleted successfully",
+  "data": {
+    "question_id": "...",
+    "question_text": "Are you willing to relocate?",
+    "job_id": "...",
+    "job_title": "Software Developer",
+    "company_name": "TCS",
+    "deleted": true
+  }
+}
+```
+
+---
+
+## 2. Frontend Implementation Guide
+
+### Add Question Form — Dynamic UI
+
+The form must **dynamically show/hide the options section** based on `question_type`:
+
+```
+┌─────────────────────────────────────────────────┐
+│  Add Application Question                       │
+│                                                 │
+│  Question Text *        [textarea               │
+│                          _______________]        │
+│                                                 │
+│  Question Type *        [Dropdown ▼]            │
+│                         ┌─────────────────┐     │
+│                         │ MCQ (Single)    │     │
+│                         │ MCQ (Multiple)  │     │
+│                         │ Short Answer    │     │
+│                         │ Essay           │     │
+│                         │ Yes / No        │     │
+│                         └─────────────────┘     │
+│                                                 │
+│  ┌─── SHOWS ONLY IF MCQ ────────────────┐      │
+│  │ Options (min 2, press + to add more) │      │
+│  │ [Option 1 ___________] ✕             │      │
+│  │ [Option 2 ___________] ✕             │      │
+│  │ [+ Add Option]                       │      │
+│  └──────────────────────────────────────┘      │
+│                                                 │
+│  Required?              [✓] Yes                 │
+│                                                 │
+│  [Cancel]                        [Add Question] │
+└─────────────────────────────────────────────────┘
+```
+
+| Field | Input Type | Required | Frontend Validations |
+|-------|-----------|----------|---------------------|
+| Question Text | **Textarea** | ✅ | Required, 5–2000 chars |
+| Question Type | **Dropdown** | ✅ | Required, from fixed list |
+| Options | **Dynamic input list** | ✅ If MCQ | Show only when type = `mcq_single` or `mcq_multiple`. Min 2 items, max 20, no duplicates, each 1–500 chars |
+| Required | **Toggle / Checkbox** | ❌ | Defaults to true |
+
+### Question Type Dropdown Values
+
+```js
+const QUESTION_TYPE_OPTIONS = [
+  { label: 'MCQ (Single Answer)',   value: 'mcq_single' },
+  { label: 'MCQ (Multiple Answers)', value: 'mcq_multiple' },
+  { label: 'Short Answer',          value: 'text' },
+  { label: 'Essay / Long Answer',   value: 'essay' },
+  { label: 'Yes / No',              value: 'yes_no' },
+];
+```
+
+### Questions List UI Pattern
+
+Display questions as an **ordered, drag-reorderable list** or a **simple numbered list** on the Job Detail page:
+
+```
+┌───────────────────────────────────────────────────┐
+│ Application Questions (3)                   [+ Add]│
+├───────────────────────────────────────────────────┤
+│ 1. Are you willing to relocate?                    │
+│    Type: Yes/No | Required: ✓         [Edit] [Del] │
+├───────────────────────────────────────────────────┤
+│ 2. Preferred work location?                        │
+│    Type: MCQ (Single) | Options: 5    [Edit] [Del] │
+│    Mumbai, Pune, Bangalore, Hyderabad, Remote      │
+├───────────────────────────────────────────────────┤
+│ 3. Why do you want to join us?                     │
+│    Type: Essay | Required: ✓          [Edit] [Del] │
+└───────────────────────────────────────────────────┘
+```
+
+### Type-Change UI Behavior
+
+When editing a question and the user changes `question_type`:
+- **To MCQ** → Immediately show the options input section
+- **From MCQ** → Clear the options and hide the section (API auto-clears)
+
+---
+
+## 3. Integration Guide
+
+### Relationship to Existing & Future APIs
+
+```mermaid
+flowchart LR
+    A[Job Postings API] --> B[Job Positions]
+    A --> C[Job Eligibility Criteria]
+    A --> D[Job Rounds]
+    A --> E["App Questions ✨ NEW"]
+    E --> F["Application Answers ❌ Future"]
+    F --> G["Student Applications ❌ Future"]
+```
+
+### Data Lifecycle
+
+1. **Create Job** (draft) → jobId
+2. Add Positions, Criteria, Rounds
+3. **Add Application Questions** ← *this module*
+4. **Publish Job** (students can now see the questions)
+5. **Students apply** → submit answers to these questions (future: `application_answers`)
+6. Questions are **locked once applications exist** — cannot edit/delete
+
+### FK Relationships
+
+| Column | References | ON DELETE |
+|--------|-----------|-----------|
+| `application_questions.job_id` | `job_postings.job_id` | CASCADE |
+| `application_answers.question_id` | `application_questions.question_id` | CASCADE |
+
+### Frontend Navigation
+
+```
+Job List → Job Detail Page
+             ├── Positions Tab
+             ├── Eligibility Tab
+             ├── Rounds Tab
+             └── Questions Tab  ← shows list + add/edit/delete
+```
+
+---
+
+## 4. Postman Test Payloads
+
+### Add MCQ Single
+```json
+POST /api/college/add_job_question/{{jobId}}
+{
+  "question_text": "What is your preferred work location?",
+  "question_type": "mcq_single",
+  "question_options": ["Mumbai", "Pune", "Bangalore", "Hyderabad", "Remote"],
+  "is_required": true
+}
+```
+
+### Add MCQ Multiple
+```json
+POST /api/college/add_job_question/{{jobId}}
+{
+  "question_text": "Select your proficient programming languages",
+  "question_type": "mcq_multiple",
+  "question_options": ["Java", "Python", "JavaScript", "C++", "Go"],
+  "is_required": true
+}
+```
+
+### Add Text
+```json
+POST /api/college/add_job_question/{{jobId}}
+{
+  "question_text": "What is your expected CTC (in LPA)?",
+  "question_type": "text",
+  "is_required": false
+}
+```
+
+### Add Essay
+```json
+POST /api/college/add_job_question/{{jobId}}
+{
+  "question_text": "Describe a challenging project you worked on and your role in it",
+  "question_type": "essay",
+  "is_required": true
+}
+```
+
+### Add Yes/No
+```json
+POST /api/college/add_job_question/{{jobId}}
+{
+  "question_text": "Are you willing to work in shifts?",
+  "question_type": "yes_no",
+  "is_required": true
+}
+```
+
+### Update — Change type from text to MCQ
+```json
+PUT /api/college/update_question/{{questionId}}
+{
+  "question_type": "mcq_single",
+  "question_options": ["Yes, anywhere", "Preferred city only", "Remote only"]
+}
+```
+
+### Update — Reorder
+```json
+PUT /api/college/update_question/{{questionId}}
+{
+  "question_order": 1
+}
+```
+
+### Delete
+```
+DELETE /api/college/delete_question/{{questionId}}
+```
+
+---
+
+## 5. Edge Case Test Scenarios
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 1 | Add MCQ with no options | 422 — "MCQ questions must have at least 2 options" |
+| 2 | Add MCQ with 1 option | 422 — min 2 |
+| 3 | Add MCQ with 21 options | 422 — max 20 |
+| 4 | Add MCQ with duplicate options | 422 — "Duplicate options not allowed" |
+| 5 | Add text question with options array | 422 — "Options should not be provided for non-MCQ" |
+| 6 | Add yes_no with options | 422 |
+| 7 | Add to cancelled job | 400 |
+| 8 | Add to closed job | 400 |
+| 9 | Add duplicate question text (case-insensitive) | 409 |
+| 10 | Add with `question_text` < 5 chars | 422 |
+| 11 | Add with minimal: text + type only | 201 ✅ |
+| 12 | Get questions for job with 0 questions | 200 — empty array, total: 0 |
+| 13 | Get questions — wrong college | 404 |
+| 14 | Update question in published job WITH applications | 400 — locked |
+| 15 | Update question in published job WITHOUT applications | 200 ✅ |
+| 16 | Update — change type MCQ → text | 200 — options auto-cleared |
+| 17 | Update — change type text → MCQ without options | 400 — options required |
+| 18 | Update — change type text → MCQ WITH options | 200 ✅ |
+| 19 | Update — empty body | 422 — min 1 field |
+| 20 | Update — duplicate question text | 409 |
+| 21 | Delete from cancelled job | 400 |
+| 22 | Delete from published job WITH applications | 400 |
+| 23 | Delete from draft job | 200 ✅ |
+| 24 | Delete — verify remaining questions reordered | Orders: 1,2,3 → delete #2 → orders become 1,2 |
+| 25 | Unauthorized role (TEACHER) | 403 |
+| 26 | No auth token | 401 |
+| 27 | Add MCQ with empty-string option `["Good", "", "Bad"]` | 422 — option invalid |
+| 28 | Add 20 questions to same job sequentially | 201 each, orders 1–20 |

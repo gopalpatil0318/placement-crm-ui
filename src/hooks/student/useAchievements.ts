@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { StudentAchievementService } from "@/services/student/achievement.service";
 import type { AchievementData } from "@/services/student/achievement.service";
@@ -51,10 +54,15 @@ export const ACHIEVEMENT_LEVEL_LABELS: Record<string, string> = {
 };
 
 export const useAchievements = () => {
-    const [achievements, setAchievements] = useState<AchievementData[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [deleting, setDeleting] = useState<string | null>(null);
+    const queryClient = useQueryClient();
+
+    const { data: achievements = [], isLoading: loading } = useQuery({
+        queryKey: queryKeys.studentPortal.achievements(),
+        queryFn: async () => {
+            const response = await StudentAchievementService.getAllAchievements();
+            return (response.data?.achievements || response.achievements || []) as AchievementData[];
+        },
+    });
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -62,19 +70,6 @@ export const useAchievements = () => {
     const [errors, setErrors] = useState<FormErrors>({});
 
     const maxAchievements = 10;
-
-    const fetchData = useCallback(async () => {
-        try {
-            const response = await StudentAchievementService.getAllAchievements();
-            setAchievements(response.data?.achievements || response.achievements || []);
-        } catch {
-            console.log("Error loading achievements");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => { fetchData(); }, [fetchData]);
 
     const openAddForm = () => {
         setEditingId(null);
@@ -106,14 +101,31 @@ export const useAchievements = () => {
 
     const closeForm = () => { setIsFormOpen(false); setEditingId(null); };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         const newValue = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
         setFormData((prev) => ({ ...prev, [name]: newValue }));
-        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
-    };
+        setErrors((prev) => {
+            if (!prev[name]) return prev;
+            return { ...prev, [name]: undefined };
+        });
+    }, []);
 
-    const handleSubmit = async () => {
+    const saveMutation = useMutation({
+        mutationFn: (payload: Omit<AchievementData, "achievement_id">) => {
+            if (editingId) return StudentAchievementService.updateAchievement(editingId, payload);
+            return StudentAchievementService.addAchievement(payload);
+        },
+        onError: (error) => {
+            showToast({
+                type: "error",
+                title: "Error",
+                description: error instanceof ApiError ? error.message : "Something went wrong",
+            });
+        },
+    });
+
+    const handleSubmit = () => {
         const result = achievementSchema.safeParse(formData);
         if (!result.success) {
             const fieldErrors: FormErrors = {};
@@ -126,55 +138,60 @@ export const useAchievements = () => {
             return;
         }
 
-        setSaving(true);
-        try {
-            const payload: any = {
-                achievement_title: formData.achievement_title,
-                achievement_description: formData.achievement_description || null,
-                achievement_type: formData.achievement_type || null,
-                issuing_organization: formData.issuing_organization || null,
-                event_name: formData.event_name || null,
-                achievement_level: formData.achievement_level || null,
-                position_rank: formData.position_rank || null,
-                participants_count: formData.participants_count ? Number(formData.participants_count) : undefined,
-                achievement_date: formData.achievement_date || null,
-                certificate_url: formData.certificate_url || null,
-                proof_url: formData.proof_url || null,
-                is_featured: formData.is_featured,
-                display_order: formData.display_order ? Number(formData.display_order) : undefined,
-            };
+        const payload = {
+            achievement_title: formData.achievement_title.trim(),
+            achievement_description: formData.achievement_description.trim() || null,
+            achievement_type: formData.achievement_type || null,
+            issuing_organization: formData.issuing_organization.trim() || null,
+            event_name: formData.event_name || null,
+            achievement_level: formData.achievement_level || null,
+            position_rank: formData.position_rank || null,
+            participants_count: formData.participants_count ? Number(formData.participants_count) : undefined,
+            achievement_date: formData.achievement_date || null,
+            certificate_url: formData.certificate_url || null,
+            proof_url: formData.proof_url || null,
+            is_featured: formData.is_featured,
+            display_order: formData.display_order ? Number(formData.display_order) : undefined,
+        };
 
-            if (editingId) {
-                await StudentAchievementService.updateAchievement(editingId, payload);
-                showToast({ type: "success", title: "Updated", description: "Achievement updated successfully" });
-            } else {
-                await StudentAchievementService.addAchievement(payload);
-                showToast({ type: "success", title: "Added", description: "Achievement added successfully" });
-            }
-            closeForm();
-            fetchData();
-        } catch (error: any) {
-            showToast({ type: "error", title: "Error", description: error.message || "Something went wrong" });
-        } finally {
-            setSaving(false);
-        }
+        const isEditing = !!editingId;
+        saveMutation.mutate(payload, {
+            onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.achievements() });
+                queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
+                closeForm();
+                showToast({
+                    type: "success",
+                    title: isEditing ? "Updated" : "Added",
+                    description: isEditing ? "Achievement updated successfully" : "Achievement added successfully",
+                });
+            },
+        });
     };
 
-    const handleDelete = async (id: string) => {
-        setDeleting(id);
-        try {
-            await StudentAchievementService.deleteAchievement(id);
-            setAchievements((prev) => prev.filter((a) => a.achievement_id !== id));
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => StudentAchievementService.deleteAchievement(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.achievements() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
             showToast({ type: "success", title: "Deleted", description: "Achievement removed" });
-        } catch (error: any) {
-            showToast({ type: "error", title: "Error", description: error.message || "Failed to delete" });
-        } finally {
-            setDeleting(null);
-        }
+        },
+        onError: (error) => {
+            showToast({
+                type: "error",
+                title: "Error",
+                description: error instanceof ApiError ? error.message : "Failed to delete",
+            });
+        },
+    });
+
+    const handleDelete = (id: string) => {
+        deleteMutation.mutate(id);
     };
 
     return {
-        achievements, loading, saving, deleting,
+        achievements, loading, saving: saveMutation.isPending,
+        deleting: deleteMutation.isPending ? (deleteMutation.variables ?? null) : null,
         isFormOpen, editingId, formData, errors,
         maxAchievements, openAddForm, openEditForm, closeForm,
         handleChange, handleSubmit, handleDelete,

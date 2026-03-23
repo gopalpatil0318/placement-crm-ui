@@ -1,11 +1,8 @@
-import DepartmentStudentCards from '@/components/collegeadmin/student_management/DepartmentStudentCards'
-import DashboardLayout from '@/components/collegeadmin/DashboardLayout'
+﻿import DepartmentStudentCards from '@/components/collegeadmin/student_management/DepartmentStudentCards'
 
 const DepartmentCards = () => {
     return (
-        <DashboardLayout>
             <DepartmentStudentCards />
-        </DashboardLayout>
     )
 }
 

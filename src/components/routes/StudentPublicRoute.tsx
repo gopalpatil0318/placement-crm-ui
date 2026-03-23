@@ -1,6 +1,9 @@
 import { useStudentAuth } from "@/hooks/student/useStudentAuth"
 import { Navigate } from "react-router-dom";
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
+import { SysAdminAuthContext } from "@/context/SysAdminAuthContext";
+import { CollegeAuthContext } from "@/context/CollegeAuthContext";
+import { COLLEGE_ROLES } from "@/types/auth";
 
 interface StudentPublicRouteProps {
     children: ReactNode;
@@ -8,6 +11,8 @@ interface StudentPublicRouteProps {
 
 const StudentPublicRoute = ({ children }: StudentPublicRouteProps) => {
     const { isAuthenticated, isLoading, user } = useStudentAuth();
+    const sysAdminAuth = useContext(SysAdminAuthContext);
+    const collegeAuth = useContext(CollegeAuthContext);
 
     if (isLoading) {
         return (
@@ -15,6 +20,16 @@ const StudentPublicRoute = ({ children }: StudentPublicRouteProps) => {
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
             </div>
         );
+    }
+
+    // Redirect sysadmin users away from student login
+    if (sysAdminAuth?.isAuthenticated && sysAdminAuth?.user?.role === "sysadmin") {
+        return <Navigate to="/sysadmin/dashboard" replace />;
+    }
+
+    // Redirect college users away from student login
+    if (collegeAuth?.isAuthenticated && collegeAuth?.user?.role && COLLEGE_ROLES.includes(collegeAuth.user.role)) {
+        return <Navigate to="/college/dashboard" replace />;
     }
 
     if (isAuthenticated) {

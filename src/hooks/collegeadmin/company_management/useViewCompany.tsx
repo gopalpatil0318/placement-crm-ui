@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ========================
 // TYPES
@@ -29,6 +29,8 @@ export interface CompanyDetail {
     contacts_count: number;
     active_contacts_count: number;
     contacts: CompanyContact[];
+    created_at?: string;
+    updated_at?: string;
 }
 
 // ========================
@@ -36,31 +38,17 @@ export interface CompanyDetail {
 // ========================
 
 export const useViewCompany = (companyId: string | undefined) => {
-    const [company, setCompany] = useState<CompanyDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const { data, isLoading, error: queryError, refetch } = useQuery({
+        queryKey: queryKeys.companies.detail(companyId!),
+        queryFn: () => CollegeAdminService.getCompany(companyId!),
+        enabled: !!companyId,
+    });
 
-    const fetchCompany = useCallback(async () => {
-        if (!companyId) return;
-        setLoading(true);
-        setError(null);
+    const company: CompanyDetail | null = data?.data ?? data ?? null;
+    const loading = isLoading;
+    const error = queryError
+        ? (queryError instanceof Error ? queryError.message : "Failed to fetch company")
+        : null;
 
-        try {
-            const response = await CollegeAdminService.getCompany(companyId);
-            setCompany(response.data || response);
-        } catch (err: unknown) {
-            const msg =
-                err instanceof Error ? err.message : "Failed to fetch company";
-            setError(msg);
-            showToast({ type: "error", title: "Error", description: msg });
-        } finally {
-            setLoading(false);
-        }
-    }, [companyId]);
-
-    useEffect(() => {
-        fetchCompany();
-    }, [fetchCompany]);
-
-    return { company, loading, error, refresh: fetchCompany };
+    return { company, loading, error, refresh: refetch };
 };

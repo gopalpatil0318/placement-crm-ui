@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ========================
 // TYPES
@@ -29,125 +30,87 @@ interface Pagination {
 // HOOK
 // ========================
 
-export const useViewCompanies = () => {
-    const [companies, setCompanies] = useState<Company[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [pagination, setPagination] = useState<Pagination>({
-        page: 1,
-        limit: 20,
-        total: 0,
-        totalPages: 0,
-    });
-
-    // Filters
+export const useViewCompanies = (config?: { limit?: number; status?: "" | "active" | "inactive" }) => {
+    // ── Local filter / pagination state ──
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(config?.limit ?? 20);
     const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">(config?.status ?? "");
     const [industryFilter, setIndustryFilter] = useState("");
     const [sortBy, setSortBy] = useState<string>("created_at");
     const [sortOrder, setSortOrder] = useState<string>("desc");
 
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const fetchCompanies = useCallback(
-        async (
-            page: number,
-            limit: number,
-            searchTerm: string,
-            status: "" | "active" | "inactive",
-            industry: string,
-            sort_by: string,
-            sort_order: string
-        ) => {
-            setLoading(true);
-            setError(null);
+    // ── React Query ──
+    const queryFilters = {
+        page,
+        limit,
+        search: debouncedSearch || undefined,
+        company_status: statusFilter || undefined,
+        industry: industryFilter || undefined,
+        sort_by: sortBy || undefined,
+        sort_order: sortOrder || undefined,
+    };
 
-            try {
-                const response = await CollegeAdminService.getAllCompanies({
-                    page,
-                    limit,
-                    search: searchTerm || undefined,
-                    company_status: status || undefined,
-                    industry: industry || undefined,
-                    sort_by: sort_by || undefined,
-                    sort_order: sort_order || undefined,
-                });
+    const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
+        queryKey: queryKeys.companies.all(queryFilters),
+        queryFn: () => CollegeAdminService.getAllCompanies(queryFilters),
+        placeholderData: keepPreviousData,
+    });
 
-                setCompanies(Array.isArray(response.data) ? response.data : []);
+    const companies: Company[] = Array.isArray(data?.data) ? data.data : [];
+    const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
+    const loading = isLoading || isFetching;
+    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch companies") : null;
 
-                if (response.pagination) {
-                    setPagination(response.pagination);
-                }
-            } catch (err: unknown) {
-                const msg =
-                    err instanceof Error ? err.message : "Failed to fetch companies";
-                setError(msg);
-                showToast({ type: "error", title: "Fetch Error", description: msg });
-            } finally {
-                setLoading(false);
-            }
-        },
-        []
-    );
+    // ── Handlers (same API surface as before) ──
 
-    // Refetch when pagination or filters change
-    useEffect(() => {
-        fetchCompanies(
-            pagination.page,
-            pagination.limit,
-            search,
-            statusFilter,
-            industryFilter,
-            sortBy,
-            sortOrder
-        );
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pagination.page, pagination.limit, statusFilter, industryFilter, sortBy, sortOrder, fetchCompanies]);
-
-    // Debounced search — 300ms
-    const handleSearchChange = useCallback(
-        (value: string) => {
-            setSearch(value);
-
-            if (searchTimerRef.current) {
-                clearTimeout(searchTimerRef.current);
-            }
-
-            searchTimerRef.current = setTimeout(() => {
-                setPagination((prev) => ({ ...prev, page: 1 }));
-                fetchCompanies(1, pagination.limit, value, statusFilter, industryFilter, sortBy, sortOrder);
-            }, 300);
-        },
-        [fetchCompanies, pagination.limit, statusFilter, industryFilter, sortBy, sortOrder]
-    );
+    const handleSearchChange = useCallback((value: string) => {
+        setSearch(value);
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        searchTimerRef.current = setTimeout(() => {
+            setDebouncedSearch(value);
+            setPage(1);
+        }, 300);
+    }, []);
 
     const handlePageChange = useCallback((newPage: number) => {
-        setPagination((prev) => ({ ...prev, page: newPage }));
+        setPage(newPage);
     }, []);
 
     const handleLimitChange = useCallback((newLimit: number) => {
-        setPagination((prev) => ({ ...prev, page: 1, limit: newLimit }));
+        setLimit(newLimit);
+        setPage(1);
     }, []);
 
     const handleStatusFilterChange = useCallback((value: "" | "active" | "inactive") => {
         setStatusFilter(value);
-        setPagination((prev) => ({ ...prev, page: 1 }));
+        setPage(1);
     }, []);
 
     const handleIndustryFilterChange = useCallback((value: string) => {
         setIndustryFilter(value);
-        setPagination((prev) => ({ ...prev, page: 1 }));
+        setPage(1);
     }, []);
 
     const handleSortChange = useCallback((field: string) => {
-        setSortBy(field);
-        setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-        setPagination((prev) => ({ ...prev, page: 1 }));
+        setSortBy((prev) => {
+            if (prev === field) {
+                setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+            } else {
+                setSortOrder("asc");
+            }
+            return field;
+        });
+        setPage(1);
     }, []);
 
-    const refresh = useCallback(() => {
-        fetchCompanies(pagination.page, pagination.limit, search, statusFilter, industryFilter, sortBy, sortOrder);
-    }, [fetchCompanies, pagination.page, pagination.limit, search, statusFilter, industryFilter, sortBy, sortOrder]);
+    const handleSortOrderToggle = useCallback(() => {
+        setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+        setPage(1);
+    }, []);
 
     return {
         companies,
@@ -165,6 +128,7 @@ export const useViewCompanies = () => {
         handleStatusFilterChange,
         handleIndustryFilterChange,
         handleSortChange,
-        refresh,
+        handleSortOrderToggle,
+        refresh: refetch,
     };
 };

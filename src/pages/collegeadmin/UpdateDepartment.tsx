@@ -1,24 +1,31 @@
-import DashboardLayout from "@/components/collegeadmin/DashboardLayout";
+﻿import { useState, useMemo, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import UpdateDepartmentForm from "@/components/collegeadmin/departmentManagement/UpdateDepartmentForm";
 import PageHeader from "@/components/collegeadmin/PageHeader";
+import AnimatedPage from "@/components/ui/AnimatedPage";
 
 const UpdateDepartment = () => {
-    const breadcrumbs = [
-        { label: "Dashboard", path: "/college/dashboard" },
-        { label: "Departments", path: "/college/departments" },
-        { label: "Update Department", active: true },
-    ];
+    const { deptId } = useParams<{ deptId: string }>();
+    const [deptName, setDeptName] = useState("");
+
+    const breadcrumbs = useMemo(
+        () => [
+            { label: "Dashboard", path: "/college/dashboard" },
+            { label: "Departments", path: "/college/departments" },
+            { label: deptName || "Edit Department", active: true },
+        ],
+        [deptName]
+    );
+
+    const handleDeptLoaded = useCallback((name: string) => setDeptName(name), []);
 
     return (
-        <DashboardLayout>
-            <div className="space-y-8">
-                {/* Page Header */}
-                <PageHeader title="Update Department Details" breadcrumbs={breadcrumbs} />
-
-                {/* Form Component with hook logic */}
-                <UpdateDepartmentForm />
+        <AnimatedPage>
+            <div className="space-y-6">
+                <PageHeader title="Edit Department" breadcrumbs={breadcrumbs} />
+                <UpdateDepartmentForm deptId={deptId} onDeptLoaded={handleDeptLoaded} />
             </div>
-        </DashboardLayout>
+        </AnimatedPage>
     );
 };
 

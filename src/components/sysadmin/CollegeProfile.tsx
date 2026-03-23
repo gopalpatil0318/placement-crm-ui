@@ -1,40 +1,76 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { School, Globe, ShieldCheck, UserCog, MapPin, Calendar, ArrowLeft } from "lucide-react";
-import { useCollegeProfile } from "@/hooks/sysadmin/useCollegeProfile";
+import { useState, useMemo } from "react"
+import { useNavigate } from "react-router-dom"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+  Globe,
+  ShieldCheck,
+  UserCog,
+  MapPin,
+  Calendar,
+  Pencil,
+  Power,
+  Settings,
+  Loader2,
+  AlertCircle,
+} from "lucide-react"
+import { motion, LayoutGroup } from "framer-motion"
+import { useCollegeProfile } from "@/hooks/sysadmin/useCollegeProfile"
+import ModalWrapper from "@/components/ui/ModalWrapper"
+import AnimatedTabContent from "@/components/ui/AnimatedTabContent"
+
+// ─── Constants ──────────────────────────────────────────────────────────────────
 
 const ALL_FEATURES = [
   { key: "core", label: "Core Modules", description: "Essential placement management features", locked: true },
   { key: "training", label: "Training Programs", description: "Manage training sessions and enrollments" },
   { key: "feedback", label: "Placement Feedback", description: "Collect post-placement feedback from students" },
   { key: "interview_questions", label: "Interview Questions", description: "Share interview questions across batches" },
-];
+]
 
-const formatDateTime = (dateStr: string) => {
-  if (!dateStr) return "—";
+const TAB_KEYS = ["overview", "features", "admin"] as const
+
+const AVATAR_COLORS = [
+  "bg-blue-600", "bg-emerald-600", "bg-violet-600", "bg-amber-600",
+  "bg-rose-600", "bg-cyan-600", "bg-indigo-600", "bg-teal-600",
+]
+
+const ACADEMIC_YEARS = Array.from({ length: 21 }, (_, i) => 2020 + i)
+
+// ─── Helpers ────────────────────────────────────────────────────────────────────
+
+function formatDateTime(dateStr: string) {
+  if (!dateStr) return "—"
   return new Date(dateStr).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  });
-};
+  })
+}
 
-const CollegeProfile = () => {
-  const navigate = useNavigate();
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+}
+
+function getAvatarColor(name: string) {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}
+
+// ─── Component ──────────────────────────────────────────────────────────────────
+
+export default function CollegeProfile() {
+  const navigate = useNavigate()
   const {
     college,
     loading,
+    error,
     toggling,
     showConfirmDialog,
     requestStatusToggle,
@@ -42,427 +78,557 @@ const CollegeProfile = () => {
     cancelStatusToggle,
     updateFeatures,
     updateAcademicYear,
-  } = useCollegeProfile();
+  } = useCollegeProfile()
 
-  // Features modal state
-  const [showFeaturesModal, setShowFeaturesModal] = useState(false);
-  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
-  const [savingFeatures, setSavingFeatures] = useState(false);
+  const [activeTab, setActiveTab] = useState<typeof TAB_KEYS[number]>("overview")
 
-  // Academic year modal state
-  const [showYearModal, setShowYearModal] = useState(false);
-  const [selectedYear, setSelectedYear] = useState<number>(2025);
-  const [savingYear, setSavingYear] = useState(false);
+  // Features modal
+  const [showFeaturesModal, setShowFeaturesModal] = useState(false)
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
+  const [savingFeatures, setSavingFeatures] = useState(false)
 
-  const academicYears = Array.from({ length: 21 }, (_, i) => 2020 + i);
+  // Academic year modal
+  const [showYearModal, setShowYearModal] = useState(false)
+  const [selectedYear, setSelectedYear] = useState(2025)
+  const [savingYear, setSavingYear] = useState(false)
 
   const openFeaturesModal = () => {
-    setSelectedFeatures(college?.enabled_features || ["core"]);
-    setShowFeaturesModal(true);
-  };
+    setSelectedFeatures(college?.enabled_features || ["core"])
+    setShowFeaturesModal(true)
+  }
 
   const toggleFeature = (key: string) => {
-    if (key === "core") return; // Can't toggle core
+    if (key === "core") return
     setSelectedFeatures((prev) =>
       prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key]
-    );
-  };
+    )
+  }
 
   const handleSaveFeatures = async () => {
-    setSavingFeatures(true);
+    setSavingFeatures(true)
     try {
-      await updateFeatures(selectedFeatures);
-      setShowFeaturesModal(false);
+      await updateFeatures(selectedFeatures)
+      setShowFeaturesModal(false)
+    } catch {
+      // Error toast shown by mutation onError
     } finally {
-      setSavingFeatures(false);
+      setSavingFeatures(false)
     }
-  };
+  }
 
   const openYearModal = () => {
-    setSelectedYear(college?.default_academic_year || 2025);
-    setShowYearModal(true);
-  };
+    setSelectedYear(college?.default_academic_year || 2025)
+    setShowYearModal(true)
+  }
 
   const handleSaveYear = async () => {
-    setSavingYear(true);
+    setSavingYear(true)
     try {
-      await updateAcademicYear(selectedYear);
-      setShowYearModal(false);
+      await updateAcademicYear(selectedYear)
+      setShowYearModal(false)
+    } catch {
+      // Error toast shown by mutation onError
     } finally {
-      setSavingYear(false);
+      setSavingYear(false)
     }
-  };
+  }
 
-  if (loading) return (
-    <div className="font-['Public_Sans',_sans-serif] animate-pulse">
-      {/* Back button skeleton */}
-      <div className="h-4 w-32 bg-gray-200 rounded mb-4" />
+  const avatarColor = useMemo(() => college ? getAvatarColor(college.college_name) : "", [college])
+  const initials = useMemo(() => college ? getInitials(college.college_name) : "", [college])
 
-      {/* Top section skeleton */}
-      <div className="bg-white rounded-2xl p-8 md:p-10 border border-slate-100 shadow-sm mb-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <div className="h-20 w-20 bg-gray-200 rounded-xl" />
-            <div className="space-y-3">
-              <div className="h-8 w-64 bg-gray-200 rounded" />
+  // ─── Loading skeleton ───────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-6">
+        {/* Hero skeleton */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
+          <div className="flex flex-col sm:flex-row items-start gap-6">
+            <div className="h-18 w-18 rounded-xl bg-gray-200 dark:bg-gray-700" />
+            <div className="flex-1 space-y-3">
+              <div className="h-7 w-64 bg-gray-200 dark:bg-gray-700 rounded" />
               <div className="flex gap-3">
-                <div className="h-5 w-28 bg-gray-200 rounded" />
-                <div className="h-5 w-16 bg-gray-200 rounded-full" />
-                <div className="h-5 w-20 bg-gray-200 rounded-full" />
+                <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded-full" />
               </div>
             </div>
-          </div>
-          <div className="h-12 w-36 bg-gray-200 rounded-xl" />
-        </div>
-      </div>
-
-      {/* Info grid skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {[0, 1].map((i) => (
-          <div key={i} className="bg-white rounded-xl shadow-sm border border-slate-100 p-8">
-            <div className="h-5 w-40 bg-gray-200 rounded mb-6" />
-            <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, j) => (
-                <div key={j} className="flex gap-4">
-                  <div className="h-4 w-24 bg-gray-200 rounded" />
-                  <div className="h-4 w-40 bg-gray-200 rounded" />
-                </div>
-              ))}
+            <div className="flex gap-3">
+              <div className="h-10 w-28 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+              <div className="h-10 w-28 bg-gray-200 dark:bg-gray-700 rounded-lg" />
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Config skeleton */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8">
-        <div className="h-5 w-48 bg-gray-200 rounded mb-8" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          <div className="flex flex-wrap gap-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-10 w-28 bg-gray-200 rounded-lg" />
+        </div>
+        {/* Stats row skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+              <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+            </div>
+          ))}
+        </div>
+        {/* Tab area skeleton */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-8">
+          <div className="flex gap-6 mb-8">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
             ))}
           </div>
-          <div className="h-40 bg-gray-100 rounded-xl" />
+          <div className="space-y-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex gap-4">
+                <div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    )
+  }
 
-  if (!college)
+  if (!college) {
     return (
-      <div className="p-8 text-center text-red-500 font-bold">
-        College Not Found
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-12 text-center">
+        <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 mb-4">
+          <AlertCircle className="h-6 w-6 text-red-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          {error ? "Failed to Load College" : "College Not Found"}
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {error || "The requested college could not be loaded."}
+        </p>
       </div>
-    );
+    )
+  }
+
+  const isActive = college.college_status === "active"
 
   return (
-    <div className="font-['Public_Sans',_sans-serif]">
-      {/* Back button */}
-      <button
-        type="button"
-        onClick={() => navigate("/sysadmin/colleges")}
-        className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 mb-4 transition-colors"
-      >
-        <ArrowLeft size={16} /> Back to Colleges
-      </button>
-
-      {/* 1. Top Section */}
-      <div className="bg-white rounded-2xl p-8 md:p-10 border border-slate-100 shadow-sm mb-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <div className="h-20 w-20 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100 shadow-sm">
-              <School className="h-10 w-10" />
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-800">
-                {college.college_name}
-              </h1>
-              <div className="flex flex-wrap items-center gap-4 mt-2">
-                <p className="flex items-center gap-2 text-slate-500 font-medium">
-                  <Globe className="h-4 w-4 text-blue-400" />{" "}
-                  {college.college_subdomain}
-                </p>
-                <span
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${college.college_status === "active"
-                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                    : "bg-red-50 text-red-600 border border-red-100"
-                    }`}
-                >
-                  {college.college_status}
-                </span>
-                <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
-                  {college.college_type}
-                </span>
-              </div>
-            </div>
+    <div className="space-y-6">
+      {/* ─── Hero Section ──────────────────────────────────────────────────── */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row items-start gap-6">
+          {/* Avatar */}
+          <div className={`h-18 w-18 ${avatarColor} rounded-xl flex items-center justify-center shadow-sm shrink-0`}>
+            <span className="text-2xl font-bold text-white">{initials}</span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate(`/sysadmin/colleges/${college.college_id}/edit`)}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95"
-          >
-            <UserCog size={18} />
-            Edit College
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Info Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Address Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8">
-          <div className="flex items-center gap-2 mb-6">
-            <MapPin className="h-5 w-5 text-blue-500" />
-            <h2 className="text-lg font-bold text-slate-800">Address Information</h2>
-          </div>
-          <div className="space-y-4">
-            <InfoRow label="Address" value={college.college_address} />
-            <InfoRow label="City" value={college.college_city} />
-            <InfoRow label="Taluka" value={college.college_taluka} />
-            <InfoRow label="District" value={college.college_district} />
-            <InfoRow label="State" value={college.college_state} />
-            <InfoRow label="Pincode" value={college.college_pincode} />
-          </div>
-        </div>
-
-        {/* Admin & Meta Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8">
-          <div className="flex items-center gap-2 mb-6">
-            <UserCog className="h-5 w-5 text-blue-500" />
-            <h2 className="text-lg font-bold text-slate-800">Admin & Details</h2>
-          </div>
-          <div className="space-y-4">
-            <InfoRow label="Admin Name" value={college.admin_name} />
-            <InfoRow label="Admin Email" value={college.admin_email} />
-            <InfoRow label="Academic Year" value={college.default_academic_year} />
-            <InfoRow label="Created At" value={formatDateTime(college.created_at)} />
-            <InfoRow label="Last Updated" value={formatDateTime(college.updated_at)} />
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Configuration & Actions */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8">
-        <div className="flex items-center gap-2 mb-8">
-          <ShieldCheck className="h-5 w-5 text-blue-500" />
-          <h2 className="text-lg font-bold text-slate-800">
-            System Configuration
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          {/* Features */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Enabled Features</p>
-              <button
-                type="button"
-                onClick={openFeaturesModal}
-                className="text-xs text-blue-600 font-semibold hover:underline"
-              >
-                Update Features
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {college.enabled_features?.map((feature: string) => (
-                <span key={feature} className="px-5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 text-sm font-semibold capitalize cursor-default">
-                  {feature.replace(/_/g, " ")}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Status Toggle + Academic Year */}
-          <div className="p-6 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-            <div className="space-y-6">
-              {/* Status Toggle */}
-              <div>
-                <p className="text-xs text-slate-500 font-semibold mb-2">
-                  College Status:
-                </p>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={requestStatusToggle}
-                    disabled={toggling}
-                    className={`relative inline-flex h-[18px] w-[30px] items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${college.college_status === "active" ? "bg-blue-500" : "bg-slate-300"
-                      }`}
-                  >
-                    <span
-                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform duration-200 ${college.college_status === "active" ? "translate-x-4" : "translate-x-[3px]"
-                        }`}
-                    />
-                  </button>
-                  <span
-                    className={`text-sm font-semibold capitalize ${college.college_status === "active"
-                      ? "text-emerald-600"
-                      : "text-red-500"
-                      }`}
-                  >
-                    {toggling ? "Updating..." : college.college_status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Academic Year */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-slate-500 font-semibold">Academic Year:</p>
-                  <button
-                    type="button"
-                    onClick={openYearModal}
-                    className="text-xs text-blue-600 font-semibold hover:underline"
-                  >
-                    Update
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm font-bold text-slate-800">{college.default_academic_year}</span>
-                </div>
-              </div>
-
-              {/* College ID */}
-              <div>
-                <p className="text-xs text-slate-500 font-semibold">College ID:</p>
-                <p className="text-slate-800 font-mono text-[13px] font-bold break-all leading-relaxed">
-                  {college.college_id}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Status Toggle Confirmation Dialog */}
-      <Dialog open={showConfirmDialog} onOpenChange={cancelStatusToggle}>
-        <DialogContent showCloseButton={false} className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirm Status Change</DialogTitle>
-            <DialogDescription>
-              {college.college_status === "active" ? (
-                <>
-                  Are you sure you want to deactivate <span className="font-semibold">{college.college_name}</span>?
-                  All users of this college will be unable to log in.
-                </>
-              ) : (
-                <>
-                  Are you sure you want to activate <span className="font-semibold">{college.college_name}</span>?
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={cancelStatusToggle} className="cursor-pointer">
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmStatusToggle}
-              className={`text-white cursor-pointer ${college.college_status === "active"
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-emerald-600 hover:bg-emerald-700"
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 tracking-tight truncate">
+              {college.college_name}
+            </h1>
+            <div className="flex flex-wrap items-center gap-3 mt-2">
+              <span className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 font-medium">
+                <Globe className="h-3.5 w-3.5 text-blue-500" />
+                {college.college_subdomain}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                  isActive
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"
+                    : "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
                 }`}
-            >
-              Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Features Modal */}
-      <Dialog open={showFeaturesModal} onOpenChange={setShowFeaturesModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Update Features</DialogTitle>
-            <DialogDescription>
-              Toggle features for this college. Core Modules cannot be disabled.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {ALL_FEATURES.map((feature) => (
-              <div key={feature.key} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-blue-200 transition-colors">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">{feature.label}</p>
-                  <p className="text-xs text-slate-500">{feature.description}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => toggleFeature(feature.key)}
-                  disabled={feature.locked}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${selectedFeatures.includes(feature.key) ? "bg-blue-500" : "bg-slate-300"
-                    } ${feature.locked ? "opacity-60 cursor-not-allowed" : ""}`}
-                >
-                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200 ${selectedFeatures.includes(feature.key) ? "translate-x-[18px]" : "translate-x-[3px]"
-                    }`} />
-                </button>
-              </div>
-            ))}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-red-500"}`} />
+                {college.college_status}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 capitalize">
+                {college.college_type}
+              </span>
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowFeaturesModal(false)}>Cancel</Button>
-            <Button
+
+          {/* Actions */}
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => navigate(`/sysadmin/colleges/${college.college_id}/edit`)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={requestStatusToggle}
+              disabled={toggling}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+                isActive
+                  ? "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+                  : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+              }`}
+            >
+              {toggling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
+              {isActive ? "Deactivate" : "Activate"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Stats Row ─────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard icon={Settings} label="Features Enabled" value={`${college.enabled_features?.length ?? 0} of ${ALL_FEATURES.length}`} />
+        <StatCard icon={Calendar} label="Academic Year" value={String(college.default_academic_year)} />
+        <StatCard icon={UserCog} label="Admin" value={college.admin_name || "—"} />
+      </div>
+
+      {/* ─── Tabbed Content ────────────────────────────────────────────────── */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+        {/* Tab Bar */}
+        <div className="border-b border-gray-200 dark:border-gray-800 px-6">
+          <LayoutGroup id="profile-tabs">
+            <nav className="flex gap-6" aria-label="Profile sections">
+              {(["overview", "features", "admin"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`relative py-3.5 text-sm font-medium capitalize transition-colors ${
+                    activeTab === tab
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  }`}
+                >
+                  {tab}
+                  {activeTab === tab && (
+                    <motion.span
+                      layoutId="profile-tab-indicator"
+                      className="absolute inset-x-0 -bottom-px h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full"
+                    />
+                  )}
+                </button>
+              ))}
+            </nav>
+          </LayoutGroup>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6 sm:p-8">
+          <AnimatedTabContent activeTab={activeTab} tabKeys={TAB_KEYS}>
+            {activeTab === "overview" && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Address */}
+                <div>
+                  <div className="flex items-center gap-2 mb-5">
+                    <MapPin className="h-4.5 w-4.5 text-blue-500" />
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">Address</h3>
+                  </div>
+                  <div className="space-y-3.5">
+                    <InfoRow label="Address" value={college.college_address} />
+                    <InfoRow label="City" value={college.college_city} />
+                    <InfoRow label="Taluka" value={college.college_taluka} />
+                    <InfoRow label="District" value={college.college_district} />
+                    <InfoRow label="State" value={college.college_state} />
+                    <InfoRow label="Pincode" value={college.college_pincode} />
+                  </div>
+                </div>
+
+                {/* Meta */}
+                <div>
+                  <div className="flex items-center gap-2 mb-5">
+                    <Calendar className="h-4.5 w-4.5 text-blue-500" />
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">Timeline</h3>
+                  </div>
+                  <div className="space-y-3.5">
+                    <InfoRow label="Academic Year" value={college.default_academic_year} />
+                    <InfoRow label="Created" value={formatDateTime(college.created_at)} />
+                    <InfoRow label="Last Updated" value={formatDateTime(college.updated_at)} />
+                    <InfoRow label="College ID" value={college.college_id} mono />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "features" && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4.5 w-4.5 text-blue-500" />
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">Module Features</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openFeaturesModal}
+                    className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                  >
+                    Update Features
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {ALL_FEATURES.map((f) => {
+                    const enabled = college.enabled_features?.includes(f.key)
+                    return (
+                      <div
+                        key={f.key}
+                        className={`p-4 rounded-xl border transition-colors ${
+                          enabled
+                            ? "border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-900/10"
+                            : "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{f.label}</p>
+                          <span
+                            className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                              enabled
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                : "bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                            }`}
+                          >
+                            {enabled ? "Enabled" : "Disabled"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{f.description}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Academic Year card */}
+                <div className="mt-6 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-5 w-5 text-blue-500" />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Default Academic Year</p>
+                        <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{college.default_academic_year}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={openYearModal}
+                      className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "admin" && (
+              <div>
+                <div className="flex items-center gap-2 mb-6">
+                  <UserCog className="h-4.5 w-4.5 text-blue-500" />
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">Admin Account</h3>
+                </div>
+                <div className="max-w-lg space-y-4">
+                  <InfoRow label="Name" value={college.admin_name} />
+                  <InfoRow label="Email" value={college.admin_email} />
+                  <InfoRow label="Status" value={college.college_status} badge={isActive ? "active" : "inactive"} />
+                </div>
+              </div>
+            )}
+          </AnimatedTabContent>
+        </div>
+      </div>
+
+      {/* ─── Status Toggle Modal ───────────────────────────────────────────── */}
+      <ModalWrapper
+        isOpen={showConfirmDialog}
+        onClose={cancelStatusToggle}
+        disabled={toggling}
+        size="sm"
+        title={isActive ? "Deactivate College" : "Activate College"}
+        titleIcon={<Power className={`h-5 w-5 ${isActive ? "text-red-500" : "text-emerald-500"}`} />}
+      >
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            {isActive ? (
+              <>
+                Deactivating <span className="font-semibold text-gray-900 dark:text-gray-100">{college.college_name}</span> will
+                prevent all college users from logging in. This can be reversed later.
+              </>
+            ) : (
+              <>
+                Activate <span className="font-semibold text-gray-900 dark:text-gray-100">{college.college_name}</span> to
+                restore access for all college users.
+              </>
+            )}
+          </p>
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={cancelStatusToggle}
+              disabled={toggling}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmStatusToggle}
+              disabled={toggling}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50 ${
+                isActive
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-emerald-600 hover:bg-emerald-700"
+              }`}
+            >
+              {toggling && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isActive ? "Deactivate" : "Activate"}
+            </button>
+          </div>
+        </div>
+      </ModalWrapper>
+
+      {/* ─── Features Modal ────────────────────────────────────────────────── */}
+      <ModalWrapper
+        isOpen={showFeaturesModal}
+        onClose={() => setShowFeaturesModal(false)}
+        disabled={savingFeatures}
+        size="md"
+        title="Update Features"
+        titleIcon={<Settings className="h-5 w-5 text-blue-500" />}
+      >
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">Toggle features for this college. Core Modules cannot be disabled.</p>
+          <div className="space-y-3">
+            {ALL_FEATURES.map((feature) => {
+              const checked = selectedFeatures.includes(feature.key)
+              return (
+                <div
+                  key={feature.key}
+                  className="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 transition-colors"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{feature.label}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{feature.description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleFeature(feature.key)}
+                    disabled={feature.locked}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+                      checked ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+                    } ${feature.locked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                    role="switch"
+                    aria-checked={checked}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                      checked ? "translate-x-[22px]" : "translate-x-[3px]"
+                    }`} />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowFeaturesModal(false)}
+              disabled={savingFeatures}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
               onClick={handleSaveFeatures}
               disabled={savingFeatures}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
+              {savingFeatures && <Loader2 className="h-4 w-4 animate-spin" />}
               {savingFeatures ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Academic Year Modal */}
-      <Dialog open={showYearModal} onOpenChange={setShowYearModal}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Update Academic Year</DialogTitle>
-            <DialogDescription>
-              Current Academic Year: <span className="font-semibold">{college.default_academic_year}</span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="w-full h-11 rounded-md border border-slate-300 bg-white px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            >
-              {academicYears.map((year) => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
+            </button>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowYearModal(false)}>Cancel</Button>
-            <Button
+        </div>
+      </ModalWrapper>
+
+      {/* ─── Academic Year Modal ───────────────────────────────────────────── */}
+      <ModalWrapper
+        isOpen={showYearModal}
+        onClose={() => setShowYearModal(false)}
+        disabled={savingYear}
+        size="sm"
+        title="Update Academic Year"
+        titleIcon={<Calendar className="h-5 w-5 text-blue-500" />}
+      >
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Current: <span className="font-semibold text-gray-900 dark:text-gray-100">{college.default_academic_year}</span>
+          </p>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="w-full h-11 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 text-sm text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+          >
+            {ACADEMIC_YEARS.map((year) => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowYearModal(false)}
+              disabled={savingYear}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
               onClick={handleSaveYear}
               disabled={savingYear || selectedYear === college.default_academic_year}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
+              {savingYear && <Loader2 className="h-4 w-4 animate-spin" />}
               {savingYear ? "Updating..." : "Update"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </button>
+          </div>
+        </div>
+      </ModalWrapper>
     </div>
-  );
-};
+  )
+}
 
-const InfoRow = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number | undefined;
-}) => (
-  <div className="flex flex-col sm:flex-row sm:items-center gap-1">
-    <span className="text-xs font-semibold text-slate-500 sm:w-32 shrink-0">
-      {label}:
-    </span>
-    <span className="text-sm text-slate-800 font-medium">
-      {value ?? "—"}
-    </span>
-  </div>
-);
+// ─── Sub-components ─────────────────────────────────────────────────────────────
 
-export default CollegeProfile;
+function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+          <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{value}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InfoRow({ label, value, mono, badge }: {
+  label: string
+  value: string | number | undefined
+  mono?: boolean
+  badge?: "active" | "inactive"
+}) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 sm:w-28 shrink-0">
+        {label}
+      </span>
+      {badge ? (
+        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${
+          badge === "active"
+            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"
+            : "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+        }`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${badge === "active" ? "bg-emerald-500" : "bg-red-500"}`} />
+          {value ?? "—"}
+        </span>
+      ) : (
+        <span className={`text-sm text-gray-900 dark:text-gray-100 font-medium ${mono ? "font-mono text-xs break-all" : ""}`}>
+          {value ?? "—"}
+        </span>
+      )}
+    </div>
+  )
+}

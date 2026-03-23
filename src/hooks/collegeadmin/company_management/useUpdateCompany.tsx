@@ -1,9 +1,11 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { AxiosError } from "axios";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { companyUpdateSchema } from "@/validators/CompanySchema";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ========================
 // TYPES
@@ -25,6 +27,7 @@ type FormErrors = Partial<Record<keyof UpdateCompanyForm, string>>;
 
 export const useUpdateCompany = (companyId: string | undefined) => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [formData, setFormData] = useState<UpdateCompanyForm>({
         companyName: "",
         companyDescription: "",
@@ -32,59 +35,63 @@ export const useUpdateCompany = (companyId: string | undefined) => {
         industry: "",
         companyLogo: "",
     });
+    const originalData = useRef<UpdateCompanyForm | null>(null);
+    const [fetchedCompanyName, setFetchedCompanyName] = useState<string>("");
     const [errors, setErrors] = useState<FormErrors>({});
-    const [loading, setLoading] = useState(false);
-    const [fetching, setFetching] = useState(true);
-    const [fetchError, setFetchError] = useState<string | null>(null);
 
-    // ========================
-    // FETCH EXISTING DATA
-    // ========================
+    // ── Fetch existing data via React Query ──
+    const { data: queryData, isLoading: fetching, error: queryFetchError } = useQuery({
+        queryKey: queryKeys.companies.detail(companyId!),
+        queryFn: () => CollegeAdminService.getCompany(companyId!),
+        enabled: !!companyId,
+    });
 
+    // Sync fetched data into form state (runs once when query resolves)
     useEffect(() => {
-        if (!companyId) {
-            setFetching(false);
-            setFetchError("Company ID not found");
-            return;
+        const company = queryData?.data ?? queryData;
+        if (company && !originalData.current) {
+            const loaded: UpdateCompanyForm = {
+                companyName: company.company_name || "",
+                companyDescription: company.company_description || "",
+                companyWebsite: company.company_website || "",
+                industry: company.industry || "",
+                companyLogo: company.company_logo || "",
+            };
+            setFormData(loaded);
+            originalData.current = loaded;
+            setFetchedCompanyName(company.company_name || "");
         }
+    }, [queryData]);
 
-        const fetchCompany = async () => {
-            setFetching(true);
-            setFetchError(null);
-            try {
-                const response = await CollegeAdminService.getCompany(companyId);
-                const company = response?.data;
-                if (company) {
-                    setFormData({
-                        companyName: company.company_name || "",
-                        companyDescription: company.company_description || "",
-                        companyWebsite: company.company_website || "",
-                        industry: company.industry || "",
-                        companyLogo: company.company_logo || "",
-                    });
-                }
-            } catch (err: unknown) {
-                const msg =
-                    err instanceof Error
-                        ? err.message
-                        : "Failed to fetch company details";
-                setFetchError(msg);
-                showToast({
-                    type: "error",
-                    title: "Error",
-                    description: msg,
-                });
-            } finally {
-                setFetching(false);
+    const fetchError = !companyId
+        ? "Company ID not found"
+        : queryFetchError
+            ? (queryFetchError instanceof Error ? queryFetchError.message : "Failed to fetch company details")
+            : null;
+
+    // ── Update mutation ──
+    const mutation = useMutation({
+        mutationFn: (payload: Record<string, string | undefined>) =>
+            CollegeAdminService.updateCompany(companyId!, payload),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.companies.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.companies.detail(companyId!) });
+            showToast({ type: "success", title: "Success", description: response?.message || "Company updated successfully" });
+            navigate(`/college/company/${companyId}`);
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong, please try again";
+            const status = error instanceof ApiError ? error.status : undefined;
+
+            if (status === 409) {
+                setErrors({ companyName: message });
             }
-        };
 
-        fetchCompany();
-    }, [companyId]);
+            showToast({ type: "error", title: "Error Updating Company", description: message });
+        },
+    });
 
-    // ========================
-    // HANDLERS
-    // ========================
+    // ── Handlers ──
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -95,12 +102,12 @@ export const useUpdateCompany = (companyId: string | undefined) => {
                 [name]: value,
             }));
 
-            // Clear field-level error on change
-            if (errors[name as keyof UpdateCompanyForm]) {
-                setErrors((prev) => ({ ...prev, [name]: undefined }));
-            }
+            setErrors((prev) => {
+                if (!prev[name as keyof UpdateCompanyForm]) return prev;
+                return { ...prev, [name]: undefined };
+            });
         },
-        [errors]
+        []
     );
 
     const handleSubmit = useCallback(
@@ -109,7 +116,6 @@ export const useUpdateCompany = (companyId: string | undefined) => {
 
             if (!companyId) return;
 
-            // Zod validation
             const result = companyUpdateSchema.safeParse(formData);
             if (!result.success) {
                 const fieldErrors: FormErrors = {};
@@ -128,53 +134,30 @@ export const useUpdateCompany = (companyId: string | undefined) => {
                 return;
             }
 
-            setErrors({});
-            setLoading(true);
+            // Build diff — only changed fields
+            const orig = originalData.current;
+            const payload: Record<string, string | undefined> = {};
 
-            try {
-                // Convert camelCase → snake_case for API
-                const response = await CollegeAdminService.updateCompany(companyId, {
-                    company_name: formData.companyName,
-                    company_description: formData.companyDescription || undefined,
-                    company_website: formData.companyWebsite || undefined,
-                    industry: formData.industry || undefined,
-                    company_logo: formData.companyLogo || undefined,
-                });
+            if (!orig || formData.companyName.trim() !== orig.companyName.trim())
+                payload.company_name = formData.companyName.trim();
+            if (!orig || formData.companyDescription !== orig.companyDescription)
+                payload.company_description = formData.companyDescription || undefined;
+            if (!orig || formData.companyWebsite !== orig.companyWebsite)
+                payload.company_website = formData.companyWebsite || undefined;
+            if (!orig || formData.industry !== orig.industry)
+                payload.industry = formData.industry || undefined;
+            if (!orig || formData.companyLogo !== orig.companyLogo)
+                payload.company_logo = formData.companyLogo || undefined;
 
-                showToast({
-                    type: "success",
-                    title: "Success",
-                    description:
-                        response?.message || "Company updated successfully",
-                });
-
-                navigate(`/college/company/${companyId}`);
-            } catch (error: unknown) {
-                const axiosErr = error as AxiosError<{
-                    error?: string;
-                    message?: string;
-                }>;
-                const status = axiosErr?.response?.status;
-                const errorMsg =
-                    axiosErr?.response?.data?.error ||
-                    axiosErr?.response?.data?.message ||
-                    (error instanceof Error ? error.message : "Something went wrong, please try again");
-
-                // 409 — duplicate name → highlight field
-                if (status === 409) {
-                    setErrors({ companyName: errorMsg });
-                }
-
-                showToast({
-                    type: "error",
-                    title: "Error Updating Company",
-                    description: errorMsg,
-                });
-            } finally {
-                setLoading(false);
+            if (Object.keys(payload).length === 0) {
+                showToast({ type: "warning", title: "No Changes", description: "Nothing has been changed." });
+                return;
             }
+
+            setErrors({});
+            mutation.mutate(payload);
         },
-        [formData, companyId, navigate]
+        [formData, companyId, mutation]
     );
 
     const handleCancel = useCallback(() => {
@@ -187,8 +170,9 @@ export const useUpdateCompany = (companyId: string | undefined) => {
 
     return {
         formData,
+        fetchedCompanyName,
         errors,
-        loading,
+        loading: mutation.isPending,
         fetching,
         fetchError,
         handleChange,

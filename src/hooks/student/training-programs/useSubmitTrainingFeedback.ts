@@ -1,0 +1,87 @@
+import { useState, useCallback } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { ApiError } from "@/lib/api"
+import { showToast } from "@/utils/ToastUtils"
+import { TrainingProgramsService } from "@/services/student/trainingPrograms.service"
+import { submitFeedbackSchema } from "@/validators/TrainingProgramSchema"
+
+// ─── Hook ───────────────────────────────────────────────────────────────────────
+
+export function useSubmitTrainingFeedback() {
+  const queryClient = useQueryClient()
+  const [rating, setRating] = useState(0)
+  const [feedback, setFeedback] = useState("")
+  const [errors, setErrors] = useState<{ student_rating?: string; student_feedback?: string }>({})
+
+  const resetForm = useCallback(() => {
+    setRating(0)
+    setFeedback("")
+    setErrors({})
+  }, [])
+
+  const validate = useCallback((): { student_rating: number; student_feedback: string } | null => {
+    const result = submitFeedbackSchema.safeParse({
+      student_rating: rating,
+      student_feedback: feedback.trim(),
+    })
+    if (!result.success) {
+      const fieldErrors: { student_rating?: string; student_feedback?: string } = {}
+      for (const issue of result.error.issues) {
+        const field = issue.path[0] as "student_rating" | "student_feedback"
+        if (!fieldErrors[field]) fieldErrors[field] = issue.message
+      }
+      setErrors(fieldErrors)
+      showToast({
+        type: "warning",
+        title: "Validation Failed",
+        description: result.error.issues[0].message,
+      })
+      return null
+    }
+    setErrors({})
+    return result.data
+  }, [rating, feedback])
+
+  const mutation = useMutation({
+    mutationFn: ({ enrollmentId, data }: { enrollmentId: string; data: { student_rating: number; student_feedback: string } }) =>
+      TrainingProgramsService.submitTrainingFeedback(enrollmentId, data),
+    onSuccess: () => {
+      showToast({
+        type: "success",
+        title: "Feedback Submitted",
+        description: "Thank you for your feedback!",
+      })
+      resetForm()
+      queryClient.invalidateQueries({ queryKey: ["studentPortal", "myEnrollments"] })
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof ApiError ? error.message : "Failed to submit feedback"
+      const status = error instanceof ApiError ? error.status : undefined
+      const title =
+        status === 409 ? "Already Submitted"
+        : status === 404 ? "Not Found"
+        : status === 422 ? "Validation Error"
+        : status === 429 ? "Too Many Requests"
+        : "Error"
+      showToast({ type: "error", title, description: message })
+    },
+  })
+
+  return {
+    rating,
+    feedback,
+    errors,
+    setRating,
+    setFeedback: useCallback((value: string) => {
+      setFeedback(value)
+      setErrors((prev) => {
+        if (!prev.student_feedback) return prev
+        return { ...prev, student_feedback: undefined }
+      })
+    }, []),
+    validate,
+    submitFeedback: mutation.mutate,
+    isSubmitting: mutation.isPending,
+    resetForm,
+  }
+}
