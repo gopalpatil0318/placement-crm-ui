@@ -16,7 +16,7 @@ export default function CreateCollegeForm() {
   return (
     <CollegeForm
       mode="create"
-      formData={formData}
+      formData={formData as unknown as Record<string, string>}
       errors={errors}
       loading={loading}
       handleChange={handleChange}

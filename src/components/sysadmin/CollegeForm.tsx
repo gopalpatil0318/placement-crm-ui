@@ -336,11 +336,10 @@ export default function CollegeForm({
                         style={{ width: passwordStrength.width }}
                       />
                     </div>
-                    <p className={`text-xs mt-1 font-medium ${
-                      passwordStrength.label === "Weak" ? "text-red-500 dark:text-red-400"
+                    <p className={`text-xs mt-1 font-medium ${passwordStrength.label === "Weak" ? "text-red-500 dark:text-red-400"
                       : passwordStrength.label === "Medium" ? "text-yellow-600 dark:text-yellow-400"
-                      : "text-emerald-600 dark:text-emerald-400"
-                    }`}>
+                        : "text-emerald-600 dark:text-emerald-400"
+                      }`}>
                       {passwordStrength.label}
                     </p>
                   </div>

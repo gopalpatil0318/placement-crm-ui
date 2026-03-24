@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "@/lib/queryKeys"
 import { ApiError } from "@/lib/api"
 import { showToast } from "@/utils/ToastUtils"
 import { PlacementService } from "@/services/student/placement.service"
@@ -48,10 +47,10 @@ export function useAcceptPlacement() {
       const status = error instanceof ApiError ? error.status : undefined
       const title =
         status === 409 ? "Already Processed"
-        : status === 404 ? "Not Found"
-        : status === 400 ? "Invalid Request"
-        : status === 429 ? "Too Many Requests"
-        : "Error"
+          : status === 404 ? "Not Found"
+            : status === 400 ? "Invalid Request"
+              : status === 429 ? "Too Many Requests"
+                : "Error"
       const description = status === 429 ? "You're acting too quickly. Please wait a moment." : message
       showToast({ type: "error", title, description })
     },

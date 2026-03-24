@@ -22,7 +22,7 @@ import {
   Star,
   ClipboardList,
 } from "lucide-react"
-import { staggerContainer, staggerItem, fadeInUp } from "@/lib/animations"
+import { staggerContainer, staggerItem } from "@/lib/animations"
 import AnimatedPage from "@/components/ui/AnimatedPage"
 import { useMyApplications } from "@/hooks/student/applications/useMyApplications"
 import type { ApplicationsListFilters, StatusSummary } from "@/services/student/jobBrowsing.service"
@@ -257,20 +257,18 @@ export default function MyApplications() {
               <button
                 key={key}
                 onClick={() => handleTabChange(key)}
-                className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                  isActive
+                className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${isActive
                     ? "bg-indigo-600 text-white shadow-sm"
                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
+                  }`}
               >
                 {TAB_LABELS[key]}
                 {count > 0 && (
                   <span
-                    className={`inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-xs font-semibold ${
-                      isActive
+                    className={`inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-xs font-semibold ${isActive
                         ? "bg-white/20 text-white"
                         : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
-                    }`}
+                      }`}
                   >
                     {count}
                   </span>
