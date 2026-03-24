@@ -19,7 +19,6 @@ import {
     PROGRAM_STATUS_LABELS,
     PROGRAM_TYPE_OPTIONS,
     PROGRAM_TYPE_LABELS,
-    type ProgramStatus,
     type ProgramType,
 } from "@/validators/TrainingProgramSchema";
 
@@ -62,7 +61,6 @@ const TrainingProgramGrid = () => {
         handleStatusFilterChange,
         handleTypeFilterChange,
         handlePassoutYearFilterChange,
-        handleSortChange,
         handleSortFieldChange,
         handleSortOrderToggle,
         handleLimitChange,
@@ -113,11 +111,10 @@ const TrainingProgramGrid = () => {
                         type="button"
                         key={tab.value}
                         onClick={() => handleStatusFilterChange(tab.value)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                            statusFilter === tab.value
-                                ? "bg-blue-600 text-white"
-                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        }`}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${statusFilter === tab.value
+                            ? "bg-blue-600 text-white"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                            }`}
                     >
                         {tab.label}
                     </button>
@@ -142,11 +139,10 @@ const TrainingProgramGrid = () => {
                 <button
                     type="button"
                     onClick={() => setShowFilters(!showFilters)}
-                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition ${
-                        showFilters || hasActiveFilters
-                            ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400"
-                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    }`}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition ${showFilters || hasActiveFilters
+                        ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400"
+                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        }`}
                 >
                     <SlidersHorizontal className="h-4 w-4" />
                     Filters
@@ -369,11 +365,10 @@ const Pagination = ({
                         type="button"
                         onClick={() => onPageChange(p)}
                         disabled={loading}
-                        className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition ${
-                            p === page
-                                ? "bg-blue-600 text-white shadow-sm"
-                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        } disabled:cursor-not-allowed`}
+                        className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition ${p === page
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                            } disabled:cursor-not-allowed`}
                     >
                         {p}
                     </button>

@@ -5,7 +5,7 @@ import type { ApplicationsListFilters, ApplicationsListResponse } from "@/servic
 
 export function useMyApplications(filters: ApplicationsListFilters = {}) {
   const query = useQuery<ApplicationsListResponse>({
-    queryKey: queryKeys.studentPortal.myApplications(filters),
+    queryKey: queryKeys.studentPortal.myApplications(filters as Record<string, unknown>),
     queryFn: () => JobBrowsingService.getMyApplications(filters),
     staleTime: 2 * 60 * 1000,
     placeholderData: keepPreviousData,

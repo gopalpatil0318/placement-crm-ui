@@ -46,7 +46,6 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Enrol
         handleSearchChange,
         handlePageChange,
         handleStatusFilterChange,
-        handleSortChange,
         handleSortFieldChange,
         handleSortOrderToggle,
         handleLimitChange,
@@ -103,11 +102,10 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Enrol
                         type="button"
                         key={tab.value}
                         onClick={() => handleStatusFilterChange(tab.value)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${
-                            statusFilter === tab.value
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${statusFilter === tab.value
                                 ? "bg-blue-600 text-white"
                                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        }`}
+                            }`}
                     >
                         {tab.label}
                         <span className={`text-[10px] ${statusFilter === tab.value ? "text-blue-200" : "text-gray-400 dark:text-gray-500"}`}>
@@ -389,11 +387,10 @@ const Pagination = ({
                         type="button"
                         onClick={() => onPageChange(p)}
                         disabled={loading}
-                        className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition ${
-                            p === page
+                        className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition ${p === page
                                 ? "bg-blue-600 text-white shadow-sm"
                                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        } disabled:cursor-not-allowed`}
+                            } disabled:cursor-not-allowed`}
                     >
                         {p}
                     </button>

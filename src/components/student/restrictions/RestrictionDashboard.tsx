@@ -26,7 +26,6 @@ import {
   RESTRICTION_SORT_OPTIONS,
   type StudentRestriction,
   type RestrictionType,
-  type RestrictionStatusFilter,
   type RestrictionSortField,
 } from "@/validators/RestrictionSchema"
 
@@ -74,11 +73,10 @@ function Pagination({ pagination, onPageChange }: PaginationProps) {
                 key={item}
                 type="button"
                 onClick={() => onPageChange(item)}
-                className={`min-w-[28px] h-7 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
-                  page === item
+                className={`min-w-[28px] h-7 text-xs font-medium rounded-lg transition-colors cursor-pointer ${page === item
                     ? "bg-indigo-600 text-white"
                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
+                  }`}
               >
                 {item}
               </button>
@@ -208,34 +206,32 @@ export default function RestrictionDashboard() {
             }
           }}
         >          {RESTRICTION_STATUS_TABS.map((tab) => {
-            const count = getTabCount(tab)
-            return (
-              <button
-                key={tab}
-                id={`restriction-tab-${tab}`}
-                role="tab"
-                aria-selected={activeFilter === tab}
-                tabIndex={activeFilter === tab ? 0 : -1}
-                onClick={() => handleActiveFilterChange(tab)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors cursor-pointer ${
-                  activeFilter === tab
-                    ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
-                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+          const count = getTabCount(tab)
+          return (
+            <button
+              key={tab}
+              id={`restriction-tab-${tab}`}
+              role="tab"
+              aria-selected={activeFilter === tab}
+              tabIndex={activeFilter === tab ? 0 : -1}
+              onClick={() => handleActiveFilterChange(tab)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors cursor-pointer ${activeFilter === tab
+                  ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
+                  : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
-              >
-                {RESTRICTION_STATUS_LABELS[tab]}
-                <span
-                  className={`text-[10px] min-w-[18px] text-center px-1 py-0.5 rounded-full ${
-                    activeFilter === tab
-                      ? "bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200"
-                      : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+            >
+              {RESTRICTION_STATUS_LABELS[tab]}
+              <span
+                className={`text-[10px] min-w-[18px] text-center px-1 py-0.5 rounded-full ${activeFilter === tab
+                    ? "bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
                   }`}
-                >
-                  {count}
-                </span>
-              </button>
-            )
-          })}
+              >
+                {count}
+              </span>
+            </button>
+          )
+        })}
         </div>
 
         {/* Type Filter + Sort Controls */}

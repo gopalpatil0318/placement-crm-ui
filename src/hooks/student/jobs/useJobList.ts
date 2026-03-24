@@ -5,7 +5,7 @@ import type { JobListFilters, JobListResponse } from "@/services/student/jobBrow
 
 export function useJobList(filters: JobListFilters = {}) {
   const query = useQuery<JobListResponse>({
-    queryKey: queryKeys.studentPortal.availableJobs(filters),
+    queryKey: queryKeys.studentPortal.availableJobs(filters as Record<string, unknown>),
     queryFn: () => JobBrowsingService.getAvailableJobs(filters),
     staleTime: 2 * 60 * 1000,
     placeholderData: keepPreviousData,

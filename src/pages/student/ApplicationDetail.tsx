@@ -208,24 +208,24 @@ export default function ApplicationDetail() {
   if (isError || !data) {
     return (
       <AnimatedPage>
-      <div className="max-w-4xl mx-auto flex flex-col items-center justify-center py-20 text-center">
-        <div className="h-16 w-16 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-          <AlertCircle className="h-8 w-8 text-red-500" />
+        <div className="max-w-4xl mx-auto flex flex-col items-center justify-center py-20 text-center">
+          <div className="h-16 w-16 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+            <AlertCircle className="h-8 w-8 text-red-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Application not found
+          </h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            This application may have been removed or is no longer available.
+          </p>
+          <Link
+            to="/student/applications"
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Applications
+          </Link>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Application not found
-        </h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          This application may have been removed or is no longer available.
-        </p>
-        <Link
-          to="/student/applications"
-          className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Applications
-        </Link>
-      </div>
       </AnimatedPage>
     )
   }
@@ -334,24 +334,22 @@ export default function ApplicationDetail() {
                     {/* Step dot */}
                     <div className="flex flex-col items-center gap-1.5">
                       <div
-                        className={`flex items-center justify-center h-10 w-10 rounded-full transition-all ${
-                          isCurrent
+                        className={`flex items-center justify-center h-10 w-10 rounded-full transition-all ${isCurrent
                             ? "bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-900/30"
                             : isReached
                               ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
                               : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
-                        }`}
+                          }`}
                       >
                         <Icon className="h-4.5 w-4.5" />
                       </div>
                       <span
-                        className={`text-xs font-medium ${
-                          isCurrent
+                        className={`text-xs font-medium ${isCurrent
                             ? "text-indigo-600 dark:text-indigo-400"
                             : isReached
                               ? "text-gray-700 dark:text-gray-300"
                               : "text-gray-400 dark:text-gray-500"
-                        }`}
+                          }`}
                       >
                         {step.label}
                       </span>
@@ -361,11 +359,10 @@ export default function ApplicationDetail() {
                     {i < JOURNEY_STEPS.length - 1 && (
                       <div className="flex-1 h-0.5 mx-2 mt-[-1.25rem]">
                         <div
-                          className={`h-full rounded-full transition-all ${
-                            !isTerminal && i < journeyIdx
+                          className={`h-full rounded-full transition-all ${!isTerminal && i < journeyIdx
                               ? "bg-indigo-500"
                               : "bg-gray-200 dark:bg-gray-700"
-                          }`}
+                            }`}
                         />
                       </div>
                     )}
@@ -493,7 +490,7 @@ export default function ApplicationDetail() {
             >
               {all_rounds
                 .sort((a, b) => a.round_number - b.round_number)
-                .map((round, idx) => {
+                .map((round) => {
                   const roundInfo = getRoundStatus(round, round_results, app.current_round_id)
                   const styles = roundStatusStyles[roundInfo.status]
                   const result = roundInfo.result

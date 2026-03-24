@@ -59,7 +59,7 @@ export const useUpdateJob = (
     const originalData = useRef<UpdateJobFormData | null>(null);
     const [fetchedJobTitle, setFetchedJobTitle] = useState("");
     const [errors, setErrors] = useState<FormErrors>({});
-    const [fetchError, setFetchError] = useState<string | null>(null);
+    const [fetchError, _setFetchError] = useState<string | null>(null);
 
     // ========================
     // FETCH EXISTING DATA (React Query)

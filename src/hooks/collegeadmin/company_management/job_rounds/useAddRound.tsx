@@ -55,7 +55,13 @@ export const useAddRound = (jobId: string, onSuccess?: () => void) => {
     }, []);
 
     const mutation = useMutation({
-        mutationFn: (payload: Record<string, unknown>) =>
+        mutationFn: (payload: {
+            round_name: string;
+            round_description?: string;
+            round_type?: string;
+            round_date?: string;
+            round_venue?: string;
+        }) =>
             CollegeAdminService.addJobRound(jobId, payload),
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.jobs.rounds(jobId) });
@@ -110,7 +116,7 @@ export const useAddRound = (jobId: string, onSuccess?: () => void) => {
         }
 
         setErrors({});
-        mutation.mutate(validationData);
+        mutation.mutate(validationData as { round_name: string; round_description?: string; round_type?: string; round_date?: string; round_venue?: string });
     }, [formData, mutation]);
 
     return {

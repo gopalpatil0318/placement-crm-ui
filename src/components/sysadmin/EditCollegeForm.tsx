@@ -86,7 +86,7 @@ export default function EditCollegeForm({ onItemLoaded }: EditCollegeFormProps) 
   return (
     <CollegeForm
       mode="edit"
-      formData={formData}
+      formData={formData as unknown as Record<string, string>}
       errors={errors}
       loading={updating}
       handleChange={handleChange}
