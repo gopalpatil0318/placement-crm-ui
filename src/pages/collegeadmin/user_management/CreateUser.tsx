@@ -1,25 +1,20 @@
-import UserForm from '@/components/collegeadmin/user_management/CreateUserForm';
-import DashboardLayout from '@/components/collegeadmin/DashboardLayout';
+﻿import CreateUserForm from '@/components/collegeadmin/user_management/CreateUserForm';
 import PageHeader from '@/components/collegeadmin/PageHeader';
+import AnimatedPage from '@/components/ui/AnimatedPage';
 
-const CreateUser = () => {
-    const breadcrumbs = [
-        { label: "Dashboard", path: "/college/dashboard" },
-        { label: "Users", path: "/college/view-users" },
-        { label: "Create New", active: true },
-    ];
+const BREADCRUMBS = [
+    { label: "Dashboard", path: "/college/dashboard" },
+    { label: "Users", path: "/college/view-users" },
+    { label: "Create New", active: true },
+];
 
-    return (
-        <DashboardLayout>
-            <div className="space-y-8">
-                {/* Page Header */}
-                <PageHeader title="Create New User" breadcrumbs={breadcrumbs} />
-
-                {/* Form Component with hook logic */}
-                <UserForm />
-            </div>
-        </DashboardLayout>
-    );
-};
+const CreateUser = () => (
+    <AnimatedPage>
+        <div className="space-y-8">
+            <PageHeader title="Register New User" breadcrumbs={BREADCRUMBS} />
+            <CreateUserForm />
+        </div>
+    </AnimatedPage>
+);
 
 export default CreateUser;

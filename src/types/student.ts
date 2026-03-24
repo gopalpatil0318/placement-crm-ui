@@ -229,7 +229,7 @@ export interface FullProfileResponse {
     personal_information: PersonalInfo | null;
     academic_information: AcademicInfo | null;
     semester_grades: SemesterGrade[];
-    skills: any[];
+    skills: Skill[];
     projects: Project[];
     experience: Experience[];
     achievements: Achievement[];

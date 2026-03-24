@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { AxiosError } from "axios";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { departmentCreateSchema } from "@/validators/DepartmentSchema";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ========================
 // TYPES
@@ -25,6 +27,7 @@ type FormErrors = Partial<Record<keyof CreateDepartmentForm, string>>;
 
 export const useCreateDepartment = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [formData, setFormData] = useState<CreateDepartmentForm>({
         deptName: "",
         deptCode: "",
@@ -33,10 +36,38 @@ export const useCreateDepartment = () => {
         totalSemesters: 8,
     });
     const [errors, setErrors] = useState<FormErrors>({});
-    const [loading, setLoading] = useState(false);
+
+    const mutation = useMutation({
+        mutationFn: (payload: {
+            dept_name: string;
+            dept_code: string;
+            dept_type: string;
+            program_duration_years: number;
+            total_semesters: number;
+        }) => CollegeAdminService.createDepartment(payload),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.departments.all() });
+            showToast({
+                type: "success",
+                title: "Success",
+                description: response?.message || "Department created successfully",
+            });
+            navigate("/college/departments");
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong, please try again";
+            const status = error instanceof ApiError ? error.status : undefined;
+
+            if (status === 409) {
+                setErrors({ deptName: message });
+            }
+
+            showToast({ type: "error", title: "Error Creating Department", description: message });
+        },
+    });
 
     const handleChange = useCallback(
-        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
             const { name, value } = e.target;
 
             setFormData((prev) => ({
@@ -45,16 +76,16 @@ export const useCreateDepartment = () => {
                     name === "programDurationYears" || name === "totalSemesters"
                         ? Number(value)
                         : name === "deptCode"
-                            ? value.toUpperCase() // Auto-uppercase dept code
+                            ? value.toUpperCase()
                             : value,
             }));
 
-            // Clear field-level error on change
-            if (errors[name as keyof CreateDepartmentForm]) {
-                setErrors((prev) => ({ ...prev, [name]: undefined }));
-            }
+            setErrors((prev) => {
+                if (!prev[name as keyof CreateDepartmentForm]) return prev;
+                return { ...prev, [name]: undefined };
+            });
         },
-        [errors]
+        []
     );
 
     const handleSubmit = useCallback(
@@ -81,52 +112,15 @@ export const useCreateDepartment = () => {
             }
 
             setErrors({});
-            setLoading(true);
-
-            try {
-                // Convert camelCase → snake_case for API
-                const response = await CollegeAdminService.createDepartment({
-                    dept_name: formData.deptName,
-                    dept_code: formData.deptCode || undefined!,
-                    dept_type: formData.deptType || undefined!,
-                    program_duration_years: formData.programDurationYears,
-                    total_semesters: formData.totalSemesters,
-                });
-
-                showToast({
-                    type: "success",
-                    title: "Success",
-                    description:
-                        response?.message || "Department created successfully",
-                });
-
-                navigate("/college/departments");
-            } catch (error: unknown) {
-                const axiosErr = error as AxiosError<{
-                    error?: string;
-                    message?: string;
-                }>;
-                const status = axiosErr?.response?.status;
-                const errorMsg =
-                    axiosErr?.response?.data?.error ||
-                    axiosErr?.response?.data?.message ||
-                    "Something went wrong, please try again";
-
-                // 409 — duplicate name → highlight field
-                if (status === 409) {
-                    setErrors({ deptName: errorMsg });
-                }
-
-                showToast({
-                    type: "error",
-                    title: "Error Creating Department",
-                    description: errorMsg,
-                });
-            } finally {
-                setLoading(false);
-            }
+            mutation.mutate({
+                dept_name: formData.deptName.trim(),
+                dept_code: formData.deptCode.trim(),
+                dept_type: formData.deptType,
+                program_duration_years: formData.programDurationYears,
+                total_semesters: formData.totalSemesters,
+            });
         },
-        [formData, navigate]
+        [formData, mutation]
     );
 
     const handleCancel = useCallback(() => {
@@ -136,7 +130,7 @@ export const useCreateDepartment = () => {
     return {
         formData,
         errors,
-        loading,
+        loading: mutation.isPending,
         handleChange,
         handleSubmit,
         handleCancel,

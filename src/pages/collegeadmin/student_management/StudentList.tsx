@@ -1,6 +1,5 @@
-import { useParams, useSearchParams } from 'react-router-dom'
+﻿import { useParams, useSearchParams } from 'react-router-dom'
 import StudentListView from '@/components/collegeadmin/student_management/StudentListView'
-import DashboardLayout from '@/components/collegeadmin/DashboardLayout'
 
 const StudentList = () => {
     const { deptId } = useParams<{ deptId?: string }>();
@@ -12,13 +11,11 @@ const StudentList = () => {
     const initialStatus = searchParams.get("status") || undefined;
 
     return (
-        <DashboardLayout>
             <StudentListView
                 deptId={deptId}
                 initialPassoutYear={initialPassoutYear}
                 initialStatus={initialStatus}
             />
-        </DashboardLayout>
     )
 }
 

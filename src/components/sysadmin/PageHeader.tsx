@@ -19,19 +19,19 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, breadcrumbs }) => {
       <div>
         <nav
           aria-label="Breadcrumb"
-          className="flex items-center gap-2 text-xs text-gray-400 mb-2 uppercase tracking-wider font-semibold"
+          className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 mb-2 uppercase tracking-wider font-semibold"
         >
           {breadcrumbs.map((crumb, index) => (
             <React.Fragment key={crumb.label}>
               {crumb.path && !crumb.active ? (
                 <Link
                   to={crumb.path}
-                  className="hover:text-blue-600 transition-colors"
+                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
                   {crumb.label}
                 </Link>
               ) : (
-                <span className={crumb.active ? "text-blue-600" : ""}>
+                <span className={crumb.active ? "text-blue-600 dark:text-blue-400" : ""}>
                   {crumb.label}
                 </span>
               )}
@@ -41,7 +41,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, breadcrumbs }) => {
             </React.Fragment>
           ))}
         </nav>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight mt-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight mt-1">
           {title}
         </h1>
       </div>

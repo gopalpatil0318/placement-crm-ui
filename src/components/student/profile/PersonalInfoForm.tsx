@@ -16,10 +16,10 @@ function formatDate(dateStr: string) {
 function Field({ label, value }: { label: string; value: string | undefined | null }) {
     return (
         <div>
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+            <label className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 {label}
             </label>
-            <p className="text-sm text-gray-800 mt-0.5">{value || "—"}</p>
+            <p className="text-sm text-gray-800 dark:text-gray-200 mt-0.5">{value || "—"}</p>
         </div>
     );
 }
@@ -29,12 +29,12 @@ export default function PersonalInfoForm({
 }: PersonalInfoFormProps) {
     if (!personalInfo) {
         return (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide flex items-center gap-2 mb-3">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide flex items-center gap-2 mb-3">
                     <User className="h-4 w-4 text-violet-500" />
                     Personal Information
                 </h2>
-                <p className="text-sm text-gray-400 italic">
+                <p className="text-sm text-gray-400 dark:text-gray-500 italic">
                     No personal information available.
                 </p>
             </div>
@@ -42,15 +42,15 @@ export default function PersonalInfoForm({
     }
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide flex items-center gap-2 mb-5">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide flex items-center gap-2 mb-5">
                 <User className="h-4 w-4 text-violet-500" />
                 Personal Information
             </h2>
 
             {/* Basic Info */}
             <div className="mb-6">
-                <h3 className="text-xs font-semibold text-violet-600 uppercase tracking-wider mb-3">
+                <h3 className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-3">
                     Basic Details
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -67,7 +67,7 @@ export default function PersonalInfoForm({
 
             {/* Family Info */}
             <div className="mb-6">
-                <h3 className="text-xs font-semibold text-violet-600 uppercase tracking-wider mb-3">
+                <h3 className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-3">
                     Family Details
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -92,31 +92,31 @@ export default function PersonalInfoForm({
 
             {/* Address */}
             <div>
-                <h3 className="text-xs font-semibold text-violet-600 uppercase tracking-wider mb-3">
+                <h3 className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-3">
                     Address
                 </h3>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Permanent */}
-                    <div className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-xs font-medium text-gray-500 mb-2">Permanent Address</p>
-                        <p className="text-sm text-gray-800">{personalInfo.permanent_address}</p>
-                        <p className="text-xs text-gray-500 mt-1">
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Permanent Address</p>
+                        <p className="text-sm text-gray-800 dark:text-gray-200">{personalInfo.permanent_address}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {personalInfo.permanent_city}, {personalInfo.permanent_district},{" "}
                             {personalInfo.permanent_state} – {personalInfo.permanent_pincode}
                         </p>
                     </div>
                     {/* Current */}
-                    <div className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-xs font-medium text-gray-500 mb-2">
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
                             Current Address
                             {personalInfo.same_as_permanent && (
-                                <span className="ml-2 text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                                <span className="ml-2 text-[10px] text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
                                     Same as permanent
                                 </span>
                             )}
                         </p>
-                        <p className="text-sm text-gray-800">{personalInfo.current_address}</p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-sm text-gray-800 dark:text-gray-200">{personalInfo.current_address}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {personalInfo.current_city}, {personalInfo.current_district},{" "}
                             {personalInfo.current_state} – {personalInfo.current_pincode}
                         </p>

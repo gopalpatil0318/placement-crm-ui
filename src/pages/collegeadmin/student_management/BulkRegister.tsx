@@ -1,11 +1,8 @@
-import BulkRegistrationView from '@/components/collegeadmin/student_management/BulkRegistrationView'
-import DashboardLayout from '@/components/collegeadmin/DashboardLayout'
+﻿import BulkRegistrationView from '@/components/collegeadmin/student_management/BulkRegistrationView'
 
 const BulkRegister = () => {
     return (
-        <DashboardLayout>
             <BulkRegistrationView />
-        </DashboardLayout>
     )
 }
 

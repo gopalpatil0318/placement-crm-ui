@@ -130,8 +130,8 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
         className={`
           relative overflow-hidden rounded-2xl border
           ${isSuccess
-            ? "border-emerald-200 bg-gradient-to-br from-emerald-50 via-emerald-50 to-white"
-            : "border-amber-200 bg-gradient-to-br from-amber-50 via-amber-50 to-white"}
+            ? "border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 via-emerald-50 to-white dark:from-emerald-900/20 dark:via-emerald-900/10 dark:to-gray-900"
+            : "border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50 via-amber-50 to-white dark:from-amber-900/20 dark:via-amber-900/10 dark:to-gray-900"}
           shadow-sm
         `}
       >
@@ -146,8 +146,8 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
               className={`
                 flex h-12 w-12 items-center justify-center rounded-xl
                 ${isSuccess
-                  ? "bg-emerald-100 text-emerald-600"
-                  : "bg-amber-100 text-amber-600"}
+                  ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+                  : "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"}
               `}
             >
               <CheckCircle size={26} strokeWidth={2.5} />
@@ -155,23 +155,23 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
 
             <div>
               <h3
-                className={`text-lg font-semibold ${isSuccess ? "text-emerald-900" : "text-amber-900"
+                className={`text-lg font-semibold ${isSuccess ? "text-emerald-900 dark:text-emerald-200" : "text-amber-900 dark:text-amber-200"
                   }`}
               >
                 {result.message}
               </h3>
 
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                 Processed{" "}
-                <span className="font-semibold text-slate-900">
+                <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {result.data.successful}
                 </span>{" "}
                 successes and{" "}
-                <span className="font-semibold text-slate-900">
+                <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {result.data.failed}
                 </span>{" "}
                 failures out of{" "}
-                <span className="font-semibold text-slate-900">
+                <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {result.data.total}
                 </span>{" "}
                 records.
@@ -185,10 +185,10 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
                 onClick={downloadSuccessCsv}
                 className="
                                 inline-flex items-center gap-2
-                                rounded-xl border border-emerald-200 bg-white
-                                px-5 py-2.5 text-sm font-semibold text-emerald-700
+                                rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-800
+                                px-5 py-2.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300
                                 shadow-sm transition-all
-                                hover:bg-emerald-50 hover:shadow
+                                hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:shadow
                                 active:scale-[0.98]
                                 "
               >
@@ -202,10 +202,10 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
                 onClick={downloadCredentialsCsv}
                 className="
                                 inline-flex items-center gap-2
-                                rounded-xl border border-blue-200 bg-blue-50
-                                px-5 py-2.5 text-sm font-bold text-blue-700
+                                rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20
+                                px-5 py-2.5 text-sm font-bold text-blue-700 dark:text-blue-300
                                 shadow-sm transition-all
-                                hover:bg-blue-100 hover:shadow
+                                hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:shadow
                                 active:scale-[0.98]
                                 "
               >
@@ -219,10 +219,10 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
                 onClick={downloadErrorCsv}
                 className="
                                 inline-flex items-center gap-2
-                                rounded-xl border border-red-200 bg-white
-                                px-5 py-2.5 text-sm font-semibold text-red-700
+                                rounded-xl border border-red-200 dark:border-red-800 bg-white dark:bg-gray-800
+                                px-5 py-2.5 text-sm font-semibold text-red-700 dark:text-red-300
                                 shadow-sm transition-all
-                                hover:bg-red-50 hover:shadow
+                                hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow
                                 active:scale-[0.98]
                                 "
               >
@@ -251,17 +251,17 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
 
       {/* Error Data Summary */}
       {!isSuccess && failedRecords.length > 0 && (
-        <div className="bg-white border border-red-200 rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4">
-          <div className="bg-red-50 px-6 py-4 border-b border-red-100 flex items-center justify-between">
+        <div className="bg-white dark:bg-gray-900 border border-red-200 dark:border-red-800 rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4">
+          <div className="bg-red-50 dark:bg-red-900/20 px-6 py-4 border-b border-red-100 dark:border-red-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle size={18} className="text-red-500" />
-              <h3 className="font-bold text-red-800 text-sm">Failed Students Detail</h3>
+              <h3 className="font-bold text-red-800 dark:text-red-300 text-sm">Failed Students Detail</h3>
             </div>
-            <span className="text-xs font-bold bg-white text-red-600 px-3 py-1.5 rounded-full shadow-sm">{failedRecords.length} Errors Found</span>
+            <span className="text-xs font-bold bg-white dark:bg-gray-800 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-full shadow-sm">{failedRecords.length} Errors Found</span>
           </div>
           <div className="overflow-x-auto max-h-[400px]">
-            <table className="w-full text-sm text-left text-slate-600">
-              <thead className="text-xs text-slate-500 uppercase bg-gray-50/50 sticky top-0 z-10 shadow-sm border-b border-gray-100">
+            <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
+              <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-gray-50/50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <tr>
                   {headers.slice(0, 3).map((h, i) => (
                     <th key={i} className="px-6 py-3 font-semibold tracking-wider whitespace-nowrap">{h}</th>
@@ -274,9 +274,9 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
               </thead>
               <tbody>
                 {failedRecords.map((req, idx) => (
-                  <tr key={idx} className="bg-white border-b border-gray-100 hover:bg-red-50/30 transition-colors">
+                  <tr key={idx} className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 hover:bg-red-50/30 dark:hover:bg-red-900/10 transition-colors">
                     {headers.slice(0, 3).map((h, i) => (
-                      <td key={i} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700">
+                      <td key={i} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
                         {req[h] || "-"}
                       </td>
                     ))}
@@ -284,7 +284,7 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
                       {req["Error Reason"] || "Validation Failed"}
                     </td>
                     {headers.slice(3).map((h, i) => (
-                      <td key={i + 3} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700">
+                      <td key={i + 3} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
                         {req[h] || "-"}
                       </td>
                     ))}
@@ -298,17 +298,17 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
 
       {/* Success Data Summary */}
       {successfulRecords.length > 0 && (
-        <div className="bg-white border border-emerald-200 rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-5">
-          <div className="bg-emerald-50 px-6 py-4 border-b border-emerald-100 flex items-center justify-between">
+        <div className="bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-800 rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-5">
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 px-6 py-4 border-b border-emerald-100 dark:border-emerald-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle size={18} className="text-emerald-500" />
-              <h3 className="font-bold text-emerald-800 text-sm">Successfully Registered Students</h3>
+              <h3 className="font-bold text-emerald-800 dark:text-emerald-300 text-sm">Successfully Registered Students</h3>
             </div>
-            <span className="text-xs font-bold bg-white text-emerald-600 px-3 py-1.5 rounded-full shadow-sm">{successfulRecords.length} Users Added</span>
+            <span className="text-xs font-bold bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-full shadow-sm">{successfulRecords.length} Users Added</span>
           </div>
           <div className="overflow-x-auto max-h-[400px]">
-            <table className="w-full text-sm text-left text-slate-600">
-              <thead className="text-xs text-slate-500 uppercase bg-gray-50/50 sticky top-0 z-10 shadow-sm border-b border-gray-100">
+            <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
+              <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-gray-50/50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <tr>
                   {headers.map((h, i) => (
                     <th key={i} className="px-6 py-3 font-semibold tracking-wider">{h}</th>
@@ -317,9 +317,9 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
               </thead>
               <tbody>
                 {successfulRecords.map((req, idx) => (
-                  <tr key={idx} className="bg-white border-b border-gray-100 hover:bg-emerald-50/20 transition-colors">
+                  <tr key={idx} className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 hover:bg-emerald-50/20 dark:hover:bg-emerald-900/10 transition-colors">
                     {headers.map((h, i) => (
-                      <td key={i} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700">
+                      <td key={i} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
                         {req[h]}
                       </td>
                     ))}

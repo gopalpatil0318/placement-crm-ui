@@ -1,7 +1,11 @@
 import { createContext, useState, useEffect, type ReactNode } from "react";
 import api from "../lib/api";
 import { showToast } from "@/utils/ToastUtils";
+import { clearOtherSessions } from "@/lib/clearAllAuthSessions";
 import type { User, UserRole, CollegeAuthContextType } from "../types/auth";
+import { queryClient } from "@/lib/queryClient";
+import { queryKeys } from "@/lib/queryKeys";
+import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 
 export const CollegeAuthContext = createContext<CollegeAuthContextType | undefined>(undefined);
 
@@ -46,6 +50,15 @@ export function CollegeAuthProvider({ children }: { children: ReactNode }) {
 
         setUser(newUser);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+        clearOtherSessions("college");
+
+        // Prefetch dashboard overview for instant dashboard load (non-blocking)
+        const currentYear = new Date().getFullYear();
+        queryClient.prefetchQuery({
+            queryKey: queryKeys.dashboard.overview(currentYear),
+            queryFn: () => CollegeAdminService.getDashboardOverview(currentYear),
+            staleTime: 5 * 60 * 1000,
+        });
 
         showToast({
             type: "success",

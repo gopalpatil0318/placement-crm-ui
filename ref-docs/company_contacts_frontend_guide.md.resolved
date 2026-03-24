@@ -1,0 +1,308 @@
+# Company Contacts — Frontend Reference & Postman Test Guide
+
+---
+
+## 🔗 API Endpoints
+
+| # | Method | Endpoint | Description |
+|---|--------|----------|-------------|
+| 1 | **POST** | `/api/college/add_company_contact/:companyId` | Add contact person to company |
+| 2 | **GET** | `/api/college/get_company_contacts/:companyId` | List contacts for a company |
+| 3 | **PUT** | `/api/college/update_contact/:contactId` | Update contact info |
+| 4 | **PATCH** | `/api/college/toggle_contact_status/:contactId` | Activate / Deactivate contact |
+
+> **Auth**: JWT cookie from college admin / TPO login required.
+
+---
+
+## 📝 API 1: Add Contact
+
+**`POST /api/college/add_company_contact/:companyId`**
+
+### Request Body
+```json
+{
+  "contact_name": "Priya Sharma",
+  "contact_designation": "HR Manager",
+  "contact_email": "priya.sharma@tcs.com",
+  "contact_phone": "9876543210",
+  "is_primary": true,
+  "notes": "Primary campus hiring contact for 2026 batch"
+}
+```
+
+### Fields
+
+| Field | Type | Required | UI Element | Validation |
+|-------|------|----------|------------|------------|
+| `contact_name` | string | ✅ Yes | **Single-line Input** | Min 2, Max 200 chars |
+| `contact_designation` | string | ❌ No | **Single-line Input** | Max 150 chars |
+| `contact_email` | string | ❌ No | **Single-line Input** (email) | Valid email format |
+| `contact_phone` | string | ❌ No | **Single-line Input** (tel) | 10-15 digits only |
+| `is_primary` | boolean | ❌ No | **Toggle Switch** | Default: false |
+| `notes` | string | ❌ No | **Textarea** (2-3 rows) | Max 1000 chars |
+
+> **⚡ Primary Contact Logic**: When `is_primary = true`, the API **auto-demotes** any existing primary contact for that company. Only 1 primary contact per company at a time.
+
+### Success Response (201)
+```json
+{
+  "success": true,
+  "message": "Contact person added successfully",
+  "data": {
+    "contact_id": "cnt-1234-...",
+    "company_id": "cmp-5678-...",
+    "company_name": "Tata Consultancy Services",
+    "contact_name": "Priya Sharma",
+    "contact_designation": "HR Manager",
+    "contact_email": "priya.sharma@tcs.com",
+    "contact_phone": "9876543210",
+    "is_primary": true,
+    "is_active": true,
+    "notes": "Primary campus hiring contact for 2026 batch",
+    "created_at": "2026-03-02T15:00:00.000Z"
+  }
+}
+```
+
+---
+
+## 📝 API 2: List Company Contacts
+
+**`GET /api/college/get_company_contacts/:companyId`**
+
+### Query Parameters
+| Param | Type | Required | Notes |
+|-------|------|----------|-------|
+| `is_active` | boolean | ❌ | Filter active/inactive contacts |
+| `search` | string | ❌ | Search by name, email, or designation |
+
+### Response (200)
+```json
+{
+  "success": true,
+  "message": "Company contacts retrieved successfully",
+  "data": {
+    "company": {
+      "company_id": "cmp-5678-...",
+      "company_name": "Tata Consultancy Services"
+    },
+    "total_contacts": 3,
+    "active_contacts": 2,
+    "contacts": [
+      {
+        "contact_id": "cnt-1234-...",
+        "contact_name": "Priya Sharma",
+        "contact_designation": "HR Manager",
+        "contact_email": "priya.sharma@tcs.com",
+        "contact_phone": "9876543210",
+        "is_primary": true,
+        "is_active": true,
+        "notes": "Primary campus hiring contact"
+      },
+      {
+        "contact_id": "cnt-5678-...",
+        "contact_name": "Amit Kumar",
+        "contact_designation": "Technical Lead",
+        "is_primary": false,
+        "is_active": true,
+        "notes": null
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 📝 API 3: Update Contact
+
+**`PUT /api/college/update_contact/:contactId`** — At least 1 field required.
+
+```json
+{
+  "contact_designation": "Senior HR Manager",
+  "contact_phone": "9876543211"
+}
+```
+Same fields as create, all optional. If `is_primary = true`, auto-demotes other primary contacts.
+
+---
+
+## 📝 API 4: Toggle Contact Status
+
+**`PATCH /api/college/toggle_contact_status/:contactId`**
+
+```json
+{ "is_active": false }
+```
+
+---
+
+## 🔄 Integration with Company Management
+
+```
+Company Detail Page (/api/college/get_company/:companyId)
+    │
+    ├── Company Info Section (from company APIs)
+    │
+    ├── 📋 Contacts Tab ← YOU ARE HERE
+    │   ├── "Add Contact" button → opens modal
+    │   ├── Contacts table (sorted: primary first)
+    │   │   └── Each row: Name, Designation, Email, Phone, Primary badge, Status, Actions
+    │   └── Actions: Edit, Toggle Status
+    │
+    └── 💼 Jobs Tab (future — job postings by this company)
+```
+
+### Data Lifecycle
+1. **Company created** → no contacts initially
+2. **Admin adds contacts** → first contact auto-suggested as primary
+3. **Job posting created** → references `company_id` (contacts shown for reference)
+4. **Contact deactivated** → hidden from active list but preserved for history
+5. **Primary changed** → old primary auto-demoted, new one promoted
+
+---
+
+## 🧪 Postman Test Data
+
+### Test 1: Add Primary Contact
+```
+POST /api/college/add_company_contact/<companyId>
+```
+```json
+{
+  "contact_name": "Priya Sharma",
+  "contact_designation": "HR Manager",
+  "contact_email": "priya.sharma@tcs.com",
+  "contact_phone": "9876543210",
+  "is_primary": true,
+  "notes": "Primary campus hiring contact for 2026 batch"
+}
+```
+
+### Test 2: Add Secondary Contact
+```json
+{
+  "contact_name": "Amit Kumar",
+  "contact_designation": "Technical Lead",
+  "contact_email": "amit.kumar@tcs.com",
+  "contact_phone": "9123456789",
+  "is_primary": false,
+  "notes": "Technical interview coordinator"
+}
+```
+
+### Test 3: Add Minimal Contact
+```json
+{
+  "contact_name": "Ravi Desai"
+}
+```
+
+### Test 4: Add Another Primary (auto-demotes Test 1)
+```json
+{
+  "contact_name": "Neha Patel",
+  "contact_designation": "Campus Relations Manager",
+  "contact_email": "neha.patel@tcs.com",
+  "is_primary": true
+}
+```
+
+### Test 5: List All Contacts
+```
+GET /api/college/get_company_contacts/<companyId>
+```
+
+### Test 6: List Active Only
+```
+GET /api/college/get_company_contacts/<companyId>?is_active=true
+```
+
+### Test 7: Search Contacts
+```
+GET /api/college/get_company_contacts/<companyId>?search=priya
+```
+
+### Test 8: Update Contact
+```
+PUT /api/college/update_contact/<contactId>
+```
+```json
+{
+  "contact_designation": "Senior HR Manager",
+  "contact_phone": "9876543211",
+  "notes": "Updated: Promoted to Senior HR Manager"
+}
+```
+
+### Test 9: Promote to Primary via Update
+```json
+{
+  "is_primary": true
+}
+```
+
+### Test 10: Deactivate Contact
+```
+PATCH /api/college/toggle_contact_status/<contactId>
+```
+```json
+{ "is_active": false }
+```
+
+### Test 11: Reactivate Contact
+```json
+{ "is_active": true }
+```
+
+### Test 12: Same Status Toggle (expect 400)
+Send `{ "is_active": true }` when already active → `400 Bad Request`
+
+### Test 13: Invalid Company (expect 404)
+```
+POST /api/college/add_company_contact/00000000-0000-0000-0000-000000000000
+```
+```json
+{ "contact_name": "Test Contact" }
+```
+
+### Test 14: Invalid Contact (expect 404)
+```
+PUT /api/college/update_contact/00000000-0000-0000-0000-000000000000
+```
+```json
+{ "contact_name": "Test" }
+```
+
+---
+
+## 🎨 Frontend UI Recommendations
+
+### Contacts Section (inside Company Detail Page)
+- Show as a **tab** or **section** below company info
+- **"Add Contact" button** → opens modal/drawer
+- **Table**: Name, Designation, Email, Phone, Primary (⭐ badge), Status, Actions
+- **Primary contact** highlighted with a star icon
+- **Actions**: Edit (pencil icon), Toggle Status (switch)
+
+### Add/Edit Contact Modal
+| # | Field | UI Element | Notes |
+|---|-------|------------|-------|
+| 1 | Name | **Single-line input** | Required, autofocus |
+| 2 | Designation | **Single-line input** | Optional, placeholder: "e.g. HR Manager" |
+| 3 | Email | **Single-line input** (email) | Optional, email validation |
+| 4 | Phone | **Single-line input** (tel) | Optional, 10-15 digits |
+| 5 | Primary Contact | **Toggle/Checkbox** | Show warning: "This will replace existing primary" |
+| 6 | Notes | **Textarea** (2-3 rows) | Optional, max 1000 chars |
+
+### Frontend Validation
+
+| Field | Rule |
+|-------|------|
+| `contact_name` | Required, min 2 chars, max 200 chars |
+| `contact_designation` | Optional, max 150 chars |
+| `contact_email` | Optional, valid email if provided |
+| `contact_phone` | Optional, digits only, 10-15 chars |
+| `notes` | Optional, max 1000 chars |

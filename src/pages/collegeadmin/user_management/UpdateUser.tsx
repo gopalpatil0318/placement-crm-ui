@@ -1,25 +1,28 @@
-import DashboardLayout from '@/components/collegeadmin/DashboardLayout';
+﻿import { useState, useMemo, useCallback } from 'react';
 import UpdateUserForm from '@/components/collegeadmin/user_management/UpdateUserForm';
 import PageHeader from '@/components/collegeadmin/PageHeader';
+import AnimatedPage from '@/components/ui/AnimatedPage';
 
 const UpdateUser = () => {
+    const [userName, setUserName] = useState<string | undefined>();
 
-    const breadcrumbs = [
+    const breadcrumbs = useMemo(() => [
         { label: "Dashboard", path: "/college/dashboard" },
         { label: "Users", path: "/college/view-users" },
-        { label: "Update User", active: true },
-    ];
+        { label: userName || "Update User", active: true },
+    ], [userName]);
+
+    const handleUserLoaded = useCallback((name: string) => {
+        setUserName(name);
+    }, []);
 
     return (
-        <DashboardLayout>
+        <AnimatedPage>
             <div className="space-y-8">
-                {/* Page Header */}
                 <PageHeader title="Update User Details" breadcrumbs={breadcrumbs} />
-
-                {/* Form Component with hook logic */}
-                <UpdateUserForm />
+                <UpdateUserForm onUserLoaded={handleUserLoaded} />
             </div>
-        </DashboardLayout>
+        </AnimatedPage>
     );
 };
 

@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, type ReactNode } from "react";
 import api from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
+import { clearOtherSessions } from "@/lib/clearAllAuthSessions";
 import type { User, StudentAuthContextType } from "@/types/auth";
 
 export const StudentAuthContext = createContext<StudentAuthContextType | null>(null);
@@ -56,6 +57,7 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
 
     setUser(newUser);
     localStorage.setItem("student_user", JSON.stringify(newUser));
+    clearOtherSessions("student");
 
     showToast({
       type: "success",

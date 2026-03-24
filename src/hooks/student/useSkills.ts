@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { StudentSkillsService } from "@/services/student/skills.service";
 import type { CatalogSkill, StudentSkill, SyncSkillItem } from "@/services/student/skills.service";
@@ -12,11 +15,8 @@ export interface SelectedSkill {
 }
 
 export const useSkills = () => {
-    const [catalogSkills, setCatalogSkills] = useState<CatalogSkill[]>([]);
+    const queryClient = useQueryClient();
     const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [addingSkill, setAddingSkill] = useState(false);
 
     // Add skill modal state
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -24,36 +24,40 @@ export const useSkills = () => {
     const [newSkillCategory, setNewSkillCategory] = useState("");
     const [addErrors, setAddErrors] = useState<Record<string, string>>({});
 
-    // Fetch catalog + student's skills
-    const fetchData = useCallback(async () => {
-        try {
-            const [catalogRes, myRes] = await Promise.all([
-                StudentSkillsService.getAllSkills(),
-                StudentSkillsService.getMySkills(),
-            ]);
+    // Fetch catalog skills
+    const catalogQuery = useQuery({
+        queryKey: queryKeys.studentPortal.skillsCatalog(),
+        queryFn: async () => {
+            const res = await StudentSkillsService.getAllSkills();
+            return (res.data || []) as CatalogSkill[];
+        },
+    });
 
-            setCatalogSkills(catalogRes.data || []);
+    // Fetch student's skills
+    const mySkillsQuery = useQuery({
+        queryKey: queryKeys.studentPortal.mySkills(),
+        queryFn: async () => {
+            const res = await StudentSkillsService.getMySkills();
+            return (res.data || []) as StudentSkill[];
+        },
+    });
 
-            // Map student's skills to SelectedSkill format
-            const mySkills: StudentSkill[] = myRes.data || [];
+    // Initialize selectedSkills from fetched data
+    useEffect(() => {
+        if (mySkillsQuery.data) {
             setSelectedSkills(
-                mySkills.map((s) => ({
+                mySkillsQuery.data.map((s) => ({
                     skill_id: s.skill_id,
                     skill_name: s.skill_name,
                     skill_category: s.skill_category,
                     proficiency_level: s.proficiency_level || "intermediate",
                 }))
             );
-        } catch {
-            console.log("Error loading skills");
-        } finally {
-            setLoading(false);
         }
-    }, []);
+    }, [mySkillsQuery.data]);
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    const catalogSkills = catalogQuery.data ?? [];
+    const loading = catalogQuery.isLoading || mySkillsQuery.isLoading;
 
     // Toggle a skill on/off
     const toggleSkill = (skill: CatalogSkill) => {
@@ -88,7 +92,55 @@ export const useSkills = () => {
         selectedSkills.some((s) => s.skill_id === skillId);
 
     // Add a new skill to catalog
-    const handleAddSkill = async () => {
+    const addSkillMutation = useMutation({
+        mutationFn: (args: { skill_name: string; skill_category: string }) =>
+            StudentSkillsService.addSkill(args),
+        onSuccess: (response, { skill_name, skill_category }) => {
+            const skillData = response.data || response;
+            const newSkill: CatalogSkill = {
+                skill_id: skillData.skill_id,
+                skill_name: skillData.skill_name || skill_name,
+                skill_category: skillData.skill_category || skill_category,
+            };
+
+            // Update catalog cache optimistically
+            queryClient.setQueryData<CatalogSkill[]>(
+                queryKeys.studentPortal.skillsCatalog(),
+                (prev) => [...(prev || []), newSkill]
+            );
+
+            // Auto-select the new skill
+            setSelectedSkills((prev) => [
+                ...prev,
+                {
+                    skill_id: newSkill.skill_id,
+                    skill_name: newSkill.skill_name,
+                    skill_category: newSkill.skill_category,
+                    proficiency_level: "intermediate",
+                },
+            ]);
+
+            setIsAddModalOpen(false);
+            setNewSkillName("");
+            setNewSkillCategory("");
+            setAddErrors({});
+
+            showToast({
+                type: "success",
+                title: "Skill Added",
+                description: `"${newSkill.skill_name}" added to catalog and selected`,
+            });
+        },
+        onError: (error) => {
+            showToast({
+                type: "error",
+                title: "Error",
+                description: error instanceof ApiError ? error.message : "Failed to add skill",
+            });
+        },
+    });
+
+    const handleAddSkill = () => {
         const result = addSkillSchema.safeParse({
             skill_name: newSkillName,
             skill_category: newSkillCategory,
@@ -103,89 +155,48 @@ export const useSkills = () => {
             return;
         }
 
-        setAddingSkill(true);
-        try {
-            const response = await StudentSkillsService.addSkill({
-                skill_name: newSkillName.trim(),
-                skill_category: newSkillCategory,
-            });
-
-            // API returns { skill_id, skill_name } — may not include skill_category
-            const skillData = response.data || response;
-            const newSkill: CatalogSkill = {
-                skill_id: skillData.skill_id,
-                skill_name: skillData.skill_name || newSkillName.trim(),
-                skill_category: skillData.skill_category || newSkillCategory,
-            };
-
-            // Add to catalog
-            setCatalogSkills((prev) => [...prev, newSkill]);
-
-            // Auto-select the new skill
-            setSelectedSkills((prev) => [
-                ...prev,
-                {
-                    skill_id: newSkill.skill_id,
-                    skill_name: newSkill.skill_name,
-                    skill_category: newSkill.skill_category,
-                    proficiency_level: "intermediate",
-                },
-            ]);
-
-            // Close modal
-            setIsAddModalOpen(false);
-            setNewSkillName("");
-            setNewSkillCategory("");
-            setAddErrors({});
-
-            showToast({
-                type: "success",
-                title: "Skill Added",
-                description: `"${newSkill.skill_name}" added to catalog and selected`,
-            });
-        } catch (error: any) {
-            showToast({
-                type: "error",
-                title: "Error",
-                description: error.message || "Failed to add skill",
-            });
-        } finally {
-            setAddingSkill(false);
-        }
+        addSkillMutation.mutate({
+            skill_name: newSkillName.trim(),
+            skill_category: newSkillCategory,
+        });
     };
 
     // Save — smart sync
-    const handleSave = async () => {
-        setSaving(true);
-        try {
-            const payload: SyncSkillItem[] = selectedSkills.map((s) => ({
-                skill_id: s.skill_id,
-                proficiency_level: s.proficiency_level,
-            }));
-
-            const response = await StudentSkillsService.syncMySkills(payload);
+    const syncMutation = useMutation({
+        mutationFn: (payload: SyncSkillItem[]) =>
+            StudentSkillsService.syncMySkills(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.mySkills() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
             showToast({
                 type: "success",
                 title: "Skills Saved",
-                description: response?.message || "Your skills have been synced successfully",
+                description: "Your skills have been synced successfully",
             });
-        } catch (error: any) {
+        },
+        onError: (error) => {
             showToast({
                 type: "error",
                 title: "Error Saving Skills",
-                description: error.message || "Something went wrong",
+                description: error instanceof ApiError ? error.message : "Something went wrong",
             });
-        } finally {
-            setSaving(false);
-        }
+        },
+    });
+
+    const handleSave = () => {
+        const payload: SyncSkillItem[] = selectedSkills.map((s) => ({
+            skill_id: s.skill_id,
+            proficiency_level: s.proficiency_level,
+        }));
+        syncMutation.mutate(payload);
     };
 
     return {
         catalogSkills,
         selectedSkills,
         loading,
-        saving,
-        addingSkill,
+        saving: syncMutation.isPending,
+        addingSkill: addSkillMutation.isPending,
         isAddModalOpen,
         setIsAddModalOpen,
         newSkillName,

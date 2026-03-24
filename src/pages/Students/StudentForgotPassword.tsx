@@ -20,7 +20,7 @@ export default function StudentForgotPassword() {
         setIsSubmitting(true)
 
         try {
-            await StudentProfileService.forgotPassword(email)
+            await StudentProfileService.forgotPassword(email.trim())
             setIsSubmitted(true)
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Something went wrong"
@@ -80,9 +80,9 @@ export default function StudentForgotPassword() {
 
                     {isSubmitted ? (
                         <div className="space-y-6">
-                            <Alert className="bg-green-50 border-green-200 rounded-xl">
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                                <AlertDescription className="text-green-700 text-sm ml-2 font-medium">
+                            <Alert className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/50 rounded-xl">
+                                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                <AlertDescription className="text-green-700 dark:text-green-300 text-sm ml-2 font-medium">
                                     If an account with this email exists, you will receive a password reset link.
                                 </AlertDescription>
                             </Alert>
@@ -91,7 +91,7 @@ export default function StudentForgotPassword() {
                             </p>
                             <Link
                                 to="/student/login"
-                                className="flex items-center gap-2 text-sm text-blue-600 hover:underline font-bold"
+                                className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline font-bold"
                             >
                                 <ArrowLeft className="h-4 w-4" />
                                 Back to Login
@@ -100,7 +100,7 @@ export default function StudentForgotPassword() {
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="font-semibold text-slate-700">Email Address</Label>
+                                <Label htmlFor="email" className="font-semibold text-slate-700 dark:text-slate-300">Email Address</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
@@ -139,7 +139,7 @@ export default function StudentForgotPassword() {
 
                             <Link
                                 to="/student/login"
-                                className="flex items-center gap-2 text-sm text-blue-600 hover:underline font-bold justify-center"
+                                className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline font-bold justify-center"
                             >
                                 <ArrowLeft className="h-4 w-4" />
                                 Back to Login

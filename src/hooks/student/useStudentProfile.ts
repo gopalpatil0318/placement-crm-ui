@@ -1,90 +1,45 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+import { ApiError } from "@/lib/api";
+import { showToast } from "@/utils/ToastUtils";
 import { StudentProfileService } from "@/services/student/student.services";
-import type {
-    StudentInfo,
-    PersonalInfo,
-    AcademicInfo,
-    SemesterGrade,
-    Project,
-    Experience,
-    Achievement,
-    Certificate,
-    Activity,
-    ProfileLinks,
-    ProfileCompletion,
-} from "@/types/student";
-
-interface StudentProfileState {
-    student: StudentInfo | null;
-    profileCompletion: ProfileCompletion | null;
-    personalInfo: PersonalInfo | null;
-    academicInfo: AcademicInfo | null;
-    semesterGrades: SemesterGrade[];
-    skills: any[];
-    projects: Project[];
-    experiences: Experience[];
-    achievements: Achievement[];
-    certificates: Certificate[];
-    activities: Activity[];
-    profileLinks: ProfileLinks | null;
-    isLoading: boolean;
-    error: string | null;
-}
+import type { FullProfileResponse, Skill } from "@/types/student";
 
 export const useStudentProfile = () => {
-    const [state, setState] = useState<StudentProfileState>({
-        student: null,
-        profileCompletion: null,
-        personalInfo: null,
-        academicInfo: null,
-        semesterGrades: [],
-        skills: [],
-        projects: [],
-        experiences: [],
-        achievements: [],
-        certificates: [],
-        activities: [],
-        profileLinks: null,
-        isLoading: true,
-        error: null,
+
+    const { data, isLoading, error, refetch } = useQuery<FullProfileResponse>({
+        queryKey: queryKeys.studentPortal.fullProfile(),
+        queryFn: () => StudentProfileService.getFullProfile(),
     });
 
-    const fetchAllData = useCallback(async () => {
-        setState((prev) => ({ ...prev, isLoading: true, error: null }));
-
-        try {
-            // get_full_profile returns ALL data in one call
-            const fullProfile = await StudentProfileService.getFullProfile();
-
-            setState({
-                student: fullProfile.student || null,
-                profileCompletion: fullProfile.profile_completion || null,
-                personalInfo: fullProfile.personal_information || null,
-                academicInfo: fullProfile.academic_information || null,
-                semesterGrades: fullProfile.semester_grades || [],
-                skills: fullProfile.skills || [],
-                projects: fullProfile.projects || [],
-                experiences: fullProfile.experience || [],
-                achievements: fullProfile.achievements || [],
-                certificates: fullProfile.certificates || [],
-                activities: fullProfile.activities || [],
-                profileLinks: fullProfile.profile_links || null,
-                isLoading: false,
-                error: null,
-            });
-        } catch (err: any) {
-            console.error("Failed to load student profile:", err);
-            setState((prev) => ({
-                ...prev,
-                isLoading: false,
-                error: err.message || "Failed to load profile data",
-            }));
-        }
-    }, []);
+    const errorMessage = error
+        ? error instanceof ApiError
+            ? error.message
+            : "Failed to load profile data"
+        : null;
 
     useEffect(() => {
-        fetchAllData();
-    }, [fetchAllData]);
+        if (errorMessage) {
+            showToast({ type: "error", title: "Profile Error", description: errorMessage });
+        }
+    }, [errorMessage]);
 
-    return { ...state, refetch: fetchAllData };
+    return {
+        student: data?.student ?? null,
+        profileCompletion: data?.profile_completion ?? null,
+        personalInfo: data?.personal_information ?? null,
+        academicInfo: data?.academic_information ?? null,
+        semesterGrades: data?.semester_grades ?? [],
+        skills: (data?.skills ?? []) as Skill[],
+        projects: data?.projects ?? [],
+        experiences: data?.experience ?? [],
+        achievements: data?.achievements ?? [],
+        certificates: data?.certificates ?? [],
+        activities: data?.activities ?? [],
+        profileLinks: data?.profile_links ?? null,
+        isLoading,
+        error: errorMessage,
+        refetch,
+    };
 };

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { ApiError } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 
 export interface StudentDetail {
     student_id: string;
@@ -20,30 +21,21 @@ export interface StudentDetail {
 }
 
 export const useStudentDetail = (studentId: string) => {
-    const [student, setStudent] = useState<StudentDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    const fetchStudent = useCallback(async () => {
-        if (!studentId) return;
-        setLoading(true);
-        setError(null);
-
-        try {
+    const { data, isLoading, error, refetch } = useQuery({
+        queryKey: queryKeys.students.detail(studentId!),
+        queryFn: async () => {
             const response = await CollegeAdminService.getStudent(studentId);
-            setStudent(response.data || response);
-        } catch (err: any) {
-            const msg = err?.response?.data?.error || err?.message || "Failed to fetch student details";
-            setError(msg);
-            showToast({ type: "error", title: "Error", description: msg });
-        } finally {
-            setLoading(false);
-        }
-    }, [studentId]);
+            return (response.data || response) as StudentDetail;
+        },
+        enabled: !!studentId,
+    });
 
-    useEffect(() => {
-        fetchStudent();
-    }, [fetchStudent]);
-
-    return { student, loading, error, refresh: fetchStudent };
+    return {
+        student: data ?? null,
+        loading: isLoading,
+        error: error
+            ? (error instanceof ApiError ? error.message : "Failed to fetch student details")
+            : null,
+        refresh: refetch,
+    };
 };

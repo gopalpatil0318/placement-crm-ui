@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { semesterGradeSchema } from "@/validators/student/semesterGradeSchema";
 import { StudentSemesterGradeService } from "@/services/student/semesterGrade.service";
@@ -17,10 +20,19 @@ const initialFormData = {
 type FormErrors = Partial<Record<string, string>>;
 
 export const useSemesterGrades = () => {
-    const [grades, setGrades] = useState<SemesterGradeData[]>([]);
-    const [totalSemesters, setTotalSemesters] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const queryClient = useQueryClient();
+
+    // Fetch grades via React Query
+    const { data: gradesData, isLoading: loading } = useQuery({
+        queryKey: queryKeys.studentPortal.semesterGrades(),
+        queryFn: async () => {
+            const response = await StudentSemesterGradeService.getAllGrades();
+            return response.data ?? { grades: [], total_semesters_in_dept: 0 };
+        },
+    });
+
+    const grades: SemesterGradeData[] = gradesData?.grades ?? [];
+    const totalSemesters: number = gradesData?.total_semesters_in_dept ?? 0;
 
     // Modal state
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -29,25 +41,6 @@ export const useSemesterGrades = () => {
     const [errors, setErrors] = useState<FormErrors>({});
     const [backlogInput, setBacklogInput] = useState("");
 
-    const fetchGrades = useCallback(async () => {
-        try {
-            const response = await StudentSemesterGradeService.getAllGrades();
-            if (response.data) {
-                setGrades(response.data.grades || []);
-                setTotalSemesters(response.data.total_semesters_in_dept || 0);
-            }
-        } catch (error) {
-            console.log("No semester grades found");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchGrades();
-    }, [fetchGrades]);
-
-    // Open form for adding a new semester
     const openAddForm = (semesterNumber: number) => {
         setFormData({ ...initialFormData, semester_number: semesterNumber });
         setEditingGradeId(null);
@@ -56,7 +49,6 @@ export const useSemesterGrades = () => {
         setIsFormOpen(true);
     };
 
-    // Open form for editing an existing semester
     const openEditForm = (grade: SemesterGradeData) => {
         setFormData({
             semester_number: grade.semester_number,
@@ -81,17 +73,17 @@ export const useSemesterGrades = () => {
         setBacklogInput("");
     };
 
-    const handleChange = (
+    const handleChange = useCallback((
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
-        if (errors[name]) {
-            setErrors((prev) => ({ ...prev, [name]: undefined }));
-        }
-    };
+        setErrors((prev) => {
+            if (!prev[name]) return prev;
+            return { ...prev, [name]: undefined };
+        });
+    }, []);
 
-    // Add a backlog subject
     const addBacklogSubject = () => {
         const subject = backlogInput.trim();
         if (subject && !formData.backlog_subjects.includes(subject)) {
@@ -103,7 +95,6 @@ export const useSemesterGrades = () => {
         }
     };
 
-    // Remove a backlog subject
     const removeBacklogSubject = (subject: string) => {
         setFormData((prev) => ({
             ...prev,
@@ -111,7 +102,29 @@ export const useSemesterGrades = () => {
         }));
     };
 
-    const handleSubmit = async (): Promise<void> => {
+    const saveMutation = useMutation({
+        mutationFn: async ({ payload, gradeId }: { payload: Omit<SemesterGradeData, "grade_id">; gradeId: string | null }) => {
+            if (gradeId) {
+                const { semester_number: _, ...updatePayload } = payload;
+                return StudentSemesterGradeService.updateGrade(gradeId, updatePayload);
+            }
+            return StudentSemesterGradeService.addGrade(payload);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.semesterGrades() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
+            closeForm();
+        },
+        onError: (error, { gradeId }) => {
+            showToast({
+                type: "error",
+                title: gradeId ? "Error Updating Grade" : "Error Adding Grade",
+                description: error instanceof ApiError ? error.message : "Something went wrong, please try again",
+            });
+        },
+    });
+
+    const handleSubmit = () => {
         const result = semesterGradeSchema.safeParse(formData);
 
         if (!result.success) {
@@ -131,54 +144,34 @@ export const useSemesterGrades = () => {
             return;
         }
 
-        setSaving(true);
+        const payload = {
+            ...formData,
+            semester_number: Number(formData.semester_number),
+            sgpa: Number(formData.sgpa),
+            cgpa: Number(formData.cgpa),
+            backlogs_in_semester: Number(formData.backlogs_in_semester),
+        };
 
-        try {
-            const payload = {
-                ...formData,
-                semester_number: Number(formData.semester_number),
-                sgpa: Number(formData.sgpa),
-                cgpa: Number(formData.cgpa),
-                backlogs_in_semester: Number(formData.backlogs_in_semester),
-            };
-
-            if (editingGradeId) {
-                // Update existing
-                const { semester_number: _, ...updatePayload } = payload;
-                const response = await StudentSemesterGradeService.updateGrade(editingGradeId, updatePayload);
-                showToast({
-                    type: "success",
-                    title: "Success",
-                    description: response?.message || "Semester grade updated successfully",
-                });
-            } else {
-                // Add new
-                const response = await StudentSemesterGradeService.addGrade(payload);
-                showToast({
-                    type: "success",
-                    title: "Success",
-                    description: response?.message || "Semester grade added successfully",
-                });
-            }
-
-            closeForm();
-            await fetchGrades();
-        } catch (error: any) {
-            showToast({
-                type: "error",
-                title: editingGradeId ? "Error Updating Grade" : "Error Adding Grade",
-                description: error.message || "Something went wrong, please try again",
-            });
-        } finally {
-            setSaving(false);
-        }
+        const isEditing = !!editingGradeId;
+        saveMutation.mutate(
+            { payload, gradeId: editingGradeId },
+            {
+                onSuccess: () => {
+                    showToast({
+                        type: "success",
+                        title: "Success",
+                        description: isEditing ? "Semester grade updated successfully" : "Semester grade added successfully",
+                    });
+                },
+            },
+        );
     };
 
     return {
         grades,
         totalSemesters,
         loading,
-        saving,
+        saving: saveMutation.isPending,
         isFormOpen,
         editingGradeId,
         formData,

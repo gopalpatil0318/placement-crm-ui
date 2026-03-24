@@ -16,6 +16,20 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    build: {
+      chunkSizeWarningLimit: 500,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+            query: ['@tanstack/react-query'],
+            motion: ['framer-motion'],
+            icons: ['lucide-react'],
+            validation: ['zod'],
+          },
+        },
+      },
+    },
     server: {
       proxy: {
         '/api': {

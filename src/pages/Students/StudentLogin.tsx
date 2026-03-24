@@ -25,7 +25,7 @@ export default function StudentLogin() {
         setIsSubmitting(true)
 
         try {
-            await login(email, password)
+            await login(email.trim(), password)
 
             // Read user from localStorage after login sets it
             const stored = localStorage.getItem("student_user")
@@ -111,7 +111,7 @@ export default function StudentLogin() {
                     <form onSubmit={handleLogin} className="space-y-6">
                         {/* Email */}
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="font-semibold text-slate-700">Email Address</Label>
+                            <Label htmlFor="email" className="font-semibold text-slate-700 dark:text-slate-300">Email Address</Label>
                             <div className="relative">
                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
@@ -128,7 +128,7 @@ export default function StudentLogin() {
 
                         {/* Password */}
                         <div className="space-y-2">
-                            <Label htmlFor="password" className="font-semibold text-slate-700">Password</Label>
+                            <Label htmlFor="password" className="font-semibold text-slate-700 dark:text-slate-300">Password</Label>
                             <div className="relative">
                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
@@ -143,7 +143,7 @@ export default function StudentLogin() {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                                 >
                                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
@@ -151,12 +151,12 @@ export default function StudentLogin() {
                         </div>
 
                         {/* Default Password Hint */}
-                        <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
-                            <p className="text-xs text-blue-700 font-medium">
+                        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-lg px-4 py-3">
+                            <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
                                 💡 First-time login? Your default password is your <strong>first name (lowercase)</strong> followed by <strong>@</strong> and your <strong>passout year</strong>.
                             </p>
-                            <p className="text-xs text-blue-500 mt-1">
-                                Example: <code className="bg-blue-100 px-1 rounded">rahul@2026</code>
+                            <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                                Example: <code className="bg-blue-100 dark:bg-blue-900/40 px-1 rounded">rahul@2026</code>
                             </p>
                         </div>
 
@@ -193,7 +193,7 @@ export default function StudentLogin() {
                         <div className="text-center">
                             <Link
                                 to="/student/forgot-password"
-                                className="text-sm text-blue-600 hover:underline font-semibold"
+                                className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-semibold"
                             >
                                 Forgot Password?
                             </Link>

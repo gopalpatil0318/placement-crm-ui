@@ -37,13 +37,11 @@ export interface PersonalInfoData {
 export const StudentPersonalInfoService ={
     getPersonalInfo: async () => {
         const response= await api.get("/student/get_personal_info");
-        console.log(response.data);
         return response.data;
     },
     
     savePersonalInfo: async (data: PersonalInfoData)=>{
         const response= await api.put("/student/save_personal_info", data);
-        console.log(response.data);
         return response.data;
     }
 }

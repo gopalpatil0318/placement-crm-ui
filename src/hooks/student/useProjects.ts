@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { StudentProjectsService } from "@/services/student/projects.service";
 import type { ProjectData } from "@/services/student/projects.service";
@@ -24,10 +27,15 @@ const emptyForm = {
 type FormErrors = Partial<Record<string, string>>;
 
 export const useProjects = () => {
-    const [projects, setProjects] = useState<ProjectData[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [deleting, setDeleting] = useState<string | null>(null);
+    const queryClient = useQueryClient();
+
+    const { data: projects = [], isLoading: loading } = useQuery({
+        queryKey: queryKeys.studentPortal.projects(),
+        queryFn: async () => {
+            const response = await StudentProjectsService.getAllProjects();
+            return (response.data?.projects || response.projects || []) as ProjectData[];
+        },
+    });
 
     // Modal state
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -40,22 +48,6 @@ export const useProjects = () => {
 
     const maxProjects = 10;
 
-    const fetchProjects = useCallback(async () => {
-        try {
-            const response = await StudentProjectsService.getAllProjects();
-            setProjects(response.data?.projects || response.projects || []);
-        } catch {
-            console.log("Error loading projects");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchProjects();
-    }, [fetchProjects]);
-
-    // Open add form
     const openAddForm = () => {
         setEditingId(null);
         setFormData({ ...emptyForm, display_order: String(projects.length + 1) });
@@ -64,7 +56,6 @@ export const useProjects = () => {
         setIsFormOpen(true);
     };
 
-    // Open edit form
     const openEditForm = (project: ProjectData) => {
         setEditingId(project.project_id || null);
         setFormData({
@@ -93,14 +84,17 @@ export const useProjects = () => {
         setEditingId(null);
     };
 
-    const handleChange = (
+    const handleChange = useCallback((
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
         const { name, value, type } = e.target;
         const newValue = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
         setFormData((prev) => ({ ...prev, [name]: newValue }));
-        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
-    };
+        setErrors((prev) => {
+            if (!prev[name]) return prev;
+            return { ...prev, [name]: undefined };
+        });
+    }, []);
 
     const addTech = () => {
         const tech = techInput.trim();
@@ -120,7 +114,21 @@ export const useProjects = () => {
         }));
     };
 
-    const handleSubmit = async () => {
+    const saveMutation = useMutation({
+        mutationFn: (payload: Omit<ProjectData, "project_id">) => {
+            if (editingId) return StudentProjectsService.updateProject(editingId, payload);
+            return StudentProjectsService.addProject(payload);
+        },
+        onError: (error) => {
+            showToast({
+                type: "error",
+                title: "Error",
+                description: error instanceof ApiError ? error.message : "Something went wrong",
+            });
+        },
+    });
+
+    const handleSubmit = () => {
         const result = projectSchema.safeParse(formData);
 
         if (!result.success) {
@@ -134,60 +142,63 @@ export const useProjects = () => {
             return;
         }
 
-        setSaving(true);
-        try {
-            const payload = {
-                project_title: formData.project_title,
-                project_description: formData.project_description,
-                project_type: formData.project_type,
-                project_url: formData.project_url || null,
-                github_link: formData.github_link || null,
-                demo_link: formData.demo_link || null,
-                technologies_used: formData.technologies_used,
-                start_date: formData.start_date,
-                end_date: formData.is_ongoing ? null : formData.end_date || null,
-                is_ongoing: formData.is_ongoing,
-                team_size: Number(formData.team_size),
-                role_in_project: formData.role_in_project,
-                display_order: Number(formData.display_order) || projects.length + 1,
-                is_featured: formData.is_featured,
-            };
+        const payload = {
+            project_title: formData.project_title,
+            project_description: formData.project_description,
+            project_type: formData.project_type,
+            project_url: formData.project_url || null,
+            github_link: formData.github_link || null,
+            demo_link: formData.demo_link || null,
+            technologies_used: formData.technologies_used,
+            start_date: formData.start_date,
+            end_date: formData.is_ongoing ? null : formData.end_date || null,
+            is_ongoing: formData.is_ongoing,
+            team_size: Number(formData.team_size),
+            role_in_project: formData.role_in_project,
+            display_order: Number(formData.display_order) || projects.length + 1,
+            is_featured: formData.is_featured,
+        };
 
-            if (editingId) {
-                await StudentProjectsService.updateProject(editingId, payload);
-                showToast({ type: "success", title: "Updated", description: "Project updated successfully" });
-            } else {
-                await StudentProjectsService.addProject(payload);
-                showToast({ type: "success", title: "Added", description: "Project added successfully" });
-            }
-
-            closeForm();
-            fetchProjects();
-        } catch (error: any) {
-            showToast({ type: "error", title: "Error", description: error.message || "Something went wrong" });
-        } finally {
-            setSaving(false);
-        }
+        const isEditing = !!editingId;
+        saveMutation.mutate(payload as Omit<ProjectData, "project_id">, {
+            onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.projects() });
+                queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
+                closeForm();
+                showToast({
+                    type: "success",
+                    title: isEditing ? "Updated" : "Added",
+                    description: isEditing ? "Project updated successfully" : "Project added successfully",
+                });
+            },
+        });
     };
 
-    const handleDelete = async (projectId: string) => {
-        setDeleting(projectId);
-        try {
-            await StudentProjectsService.deleteProject(projectId);
-            setProjects((prev) => prev.filter((p) => p.project_id !== projectId));
+    const deleteMutation = useMutation({
+        mutationFn: (projectId: string) => StudentProjectsService.deleteProject(projectId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.projects() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
             showToast({ type: "success", title: "Deleted", description: "Project removed successfully" });
-        } catch (error: any) {
-            showToast({ type: "error", title: "Error", description: error.message || "Failed to delete" });
-        } finally {
-            setDeleting(null);
-        }
+        },
+        onError: (error) => {
+            showToast({
+                type: "error",
+                title: "Error",
+                description: error instanceof ApiError ? error.message : "Failed to delete",
+            });
+        },
+    });
+
+    const handleDelete = (projectId: string) => {
+        deleteMutation.mutate(projectId);
     };
 
     return {
         projects,
         loading,
-        saving,
-        deleting,
+        saving: saveMutation.isPending,
+        deleting: deleteMutation.isPending ? (deleteMutation.variables ?? null) : null,
         isFormOpen,
         editingId,
         formData,

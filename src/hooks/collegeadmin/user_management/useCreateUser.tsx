@@ -1,5 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { ApiError } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { showToast } from "@/utils/ToastUtils";
 import { useNavigate } from "react-router-dom";
 import { userSchemaCreate } from "@/validators/UserSchemaCreate";
@@ -28,35 +31,61 @@ export const useCreateUser = () => {
         deptId: null,
     });
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [errors, setErrors] = useState<FormErrors>({});
-    const [loading, setLoading] = useState(false);
-    const [departments, setDepartments] = useState<Department[]>([]);
-    const [fetchingDepts, setFetchingDepts] = useState(false);
 
-    // Fetch departments for dropdown
-    useEffect(() => {
-        const fetchDepartments = async () => {
-            setFetchingDepts(true);
-            try {
-                const response = await CollegeAdminService.getDepartments();
-                const depts = response.data || response;
-                setDepartments(Array.isArray(depts) ? depts : []);
-            } catch {
-                // Silently handle — dropdown will be empty
-            } finally {
-                setFetchingDepts(false);
+    // Fetch departments for dropdown via React Query
+    const { data: deptData, isLoading: fetchingDepts } = useQuery({
+        queryKey: queryKeys.departments.all({ status: "active" }),
+        queryFn: () => CollegeAdminService.getDepartments({ is_active: true }),
+    });
+
+    const depts = deptData?.data || deptData;
+    const departments: Department[] = Array.isArray(depts) ? depts : [];
+
+    // Create mutation
+    const mutation = useMutation({
+        mutationFn: (payload: {
+            user_name: string;
+            user_email: string;
+            user_password: string;
+            user_role: string;
+            dept_id: string | null;
+        }) => CollegeAdminService.createUser(payload),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.users.all() });
+            showToast({
+                type: "success",
+                title: "Success",
+                description: response?.message || "User created successfully",
+            });
+            navigate("/college/view-users");
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong, please try again";
+            const status = error instanceof ApiError ? error.status : undefined;
+
+            if (status === 409) {
+                setErrors({ userEmail: message });
             }
-        };
-        fetchDepartments();
-    }, []);
+
+            showToast({
+                type: "error",
+                title: "Error Creating User",
+                description: message,
+            });
+        },
+    });
 
     const handleChange = useCallback((
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value === "" && name === "deptId" ? null : value }));
-        // Clear error for this field
-        setErrors((prev) => ({ ...prev, [name]: undefined }));
+        setErrors((prev) => {
+            if (!prev[name as keyof CreateUserForm]) return prev;
+            return { ...prev, [name]: undefined };
+        });
     }, []);
 
     const handleSubmit = useCallback(async (
@@ -69,12 +98,12 @@ export const useCreateUser = () => {
 
         if (!result.success) {
             const fieldErrors: FormErrors = {};
-            result.error.issues.forEach((issue) => {
+            for (const issue of result.error.issues) {
                 const field = issue.path[0] as keyof CreateUserForm;
                 if (!fieldErrors[field]) {
                     fieldErrors[field] = issue.message;
                 }
-            });
+            }
             setErrors(fieldErrors);
 
             showToast({
@@ -86,43 +115,20 @@ export const useCreateUser = () => {
         }
 
         setErrors({});
-        setLoading(true);
 
-        try {
-            const response = await CollegeAdminService.createUser({
-                user_name: formData.userName,
-                user_email: formData.userEmail,
-                user_password: formData.userPassword,
-                user_role: formData.userRole,
-                dept_id: formData.deptId || null,
-            });
-
-            showToast({
-                type: "success",
-                title: "Success",
-                description: response?.message || "User created successfully",
-            });
-
-            navigate("/college/view-users");
-        } catch (error: unknown) {
-            const errorMessage = error instanceof Error
-                ? error.message
-                : "Something went wrong, please try again";
-
-            showToast({
-                type: "error",
-                title: "Error Creating User",
-                description: errorMessage,
-            });
-        } finally {
-            setLoading(false);
-        }
-    }, [formData, navigate]);
+        mutation.mutate({
+            user_name: formData.userName.trim(),
+            user_email: formData.userEmail.trim(),
+            user_password: formData.userPassword,
+            user_role: formData.userRole,
+            dept_id: formData.deptId || null,
+        });
+    }, [formData, mutation]);
 
     return {
         formData,
         errors,
-        loading,
+        loading: mutation.isPending,
         departments,
         fetchingDepts,
         setErrors,

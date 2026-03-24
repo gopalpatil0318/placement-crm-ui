@@ -8,7 +8,7 @@ import {
 
 export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
     return (
-        <header className="sticky top-0 z-10 w-full h-16 bg-white border-b flex items-center justify-between px-6">
+        <header className="sticky top-0 z-30 w-full h-16 bg-white border-b flex items-center justify-between px-6">
             {/* LEFT */}
             <div className="flex items-center gap-4">
                 {/* Hamburger */}

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ========================
 // TYPES
@@ -31,110 +32,69 @@ interface Pagination {
 // ========================
 
 export const useViewDepartments = () => {
-    const [departments, setDepartments] = useState<Department[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [pagination, setPagination] = useState<Pagination>({
-        page: 1,
-        limit: 20,
-        total: 0,
-        totalPages: 0,
-    });
-
-    // Filters
+    // ── Local filter / pagination state ──
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(20);
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<"" | "true" | "false">("");
 
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const fetchDepartments = useCallback(
-        async (
-            page: number,
-            limit: number,
-            searchTerm: string,
-            isActive: "" | "true" | "false"
-        ) => {
-            setLoading(true);
-            setError(null);
+    // ── React Query ──
+    const queryFilters = {
+        page,
+        limit,
+        search: debouncedSearch || undefined,
+        is_active:
+            statusFilter === "true"
+                ? true
+                : statusFilter === "false"
+                    ? false
+                    : undefined,
+    };
 
-            try {
-                const response = await CollegeAdminService.getDepartments({
-                    page,
-                    limit,
-                    search: searchTerm || undefined,
-                    is_active:
-                        isActive === "true"
-                            ? true
-                            : isActive === "false"
-                                ? false
-                                : undefined,
-                });
+    const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
+        queryKey: queryKeys.departments.all(queryFilters),
+        queryFn: () => CollegeAdminService.getDepartments(queryFilters),
+        placeholderData: keepPreviousData,
+    });
 
-                setDepartments(Array.isArray(response.data) ? response.data : []);
+    const departments: Department[] = Array.isArray(data?.data) ? data.data : [];
+    const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
+    const error = queryError
+        ? (queryError instanceof Error ? queryError.message : "Failed to fetch departments")
+        : null;
 
-                if (response.pagination) {
-                    setPagination(response.pagination);
-                }
-            } catch (err: unknown) {
-                const msg =
-                    err instanceof Error ? err.message : "Failed to fetch departments";
-                setError(msg);
-                showToast({ type: "error", title: "Fetch Error", description: msg });
-            } finally {
-                setLoading(false);
-            }
-        },
-        []
-    );
+    // ── Handlers (same API surface as before) ──
 
-    // Refetch when pagination or status filter changes
-    useEffect(() => {
-        fetchDepartments(
-            pagination.page,
-            pagination.limit,
-            search,
-            statusFilter
-        );
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pagination.page, pagination.limit, statusFilter, fetchDepartments]);
-
-    // Debounced search — 300ms
-    const handleSearchChange = useCallback(
-        (value: string) => {
-            setSearch(value);
-
-            if (searchTimerRef.current) {
-                clearTimeout(searchTimerRef.current);
-            }
-
-            searchTimerRef.current = setTimeout(() => {
-                setPagination((prev) => ({ ...prev, page: 1 }));
-                fetchDepartments(1, pagination.limit, value, statusFilter);
-            }, 300);
-        },
-        [fetchDepartments, pagination.limit, statusFilter]
-    );
+    const handleSearchChange = useCallback((value: string) => {
+        setSearch(value);
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        searchTimerRef.current = setTimeout(() => {
+            setDebouncedSearch(value);
+            setPage(1);
+        }, 300);
+    }, []);
 
     const handlePageChange = useCallback((newPage: number) => {
-        setPagination((prev) => ({ ...prev, page: newPage }));
+        setPage(newPage);
     }, []);
 
     const handleLimitChange = useCallback((newLimit: number) => {
-        setPagination((prev) => ({ ...prev, page: 1, limit: newLimit }));
+        setLimit(newLimit);
+        setPage(1);
     }, []);
 
     const handleStatusFilterChange = useCallback((value: "" | "true" | "false") => {
         setStatusFilter(value);
-        setPagination((prev) => ({ ...prev, page: 1 }));
+        setPage(1);
     }, []);
-
-    const refresh = useCallback(() => {
-        fetchDepartments(pagination.page, pagination.limit, search, statusFilter);
-    }, [fetchDepartments, pagination.page, pagination.limit, search, statusFilter]);
 
     return {
         departments,
-        loading,
+        loading: isLoading,
+        isFetching,
         error,
         pagination,
         search,
@@ -143,6 +103,6 @@ export const useViewDepartments = () => {
         handlePageChange,
         handleLimitChange,
         handleStatusFilterChange,
-        refresh,
+        refresh: refetch,
     };
 };

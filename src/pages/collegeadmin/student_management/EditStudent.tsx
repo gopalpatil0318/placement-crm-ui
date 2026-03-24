@@ -1,10 +1,33 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
-import DashboardLayout from "@/components/collegeadmin/DashboardLayout";
+import { AlertCircle } from "lucide-react";
 import PageHeader from "@/components/collegeadmin/PageHeader";
+import AnimatedPage from "@/components/ui/AnimatedPage";
+import StudentForm from "@/components/collegeadmin/student_management/StudentForm";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
+
+// ========================
+// SKELETON
+// ========================
+
+const FormSkeleton = () => (
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 animate-pulse space-y-8">
+        {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-4">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+                    <div className="space-y-1"><div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded" /><div className="h-3 w-40 bg-gray-100 dark:bg-gray-800 rounded" /></div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {Array.from({ length: 3 }).map((_, j) => (
+                        <div key={j} className="h-12 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                    ))}
+                </div>
+            </div>
+        ))}
+    </div>
+);
 
 // ========================
 // COMPONENT
@@ -14,77 +37,75 @@ export default function EditStudent() {
     const { studentId } = useParams<{ studentId: string }>();
     const navigate = useNavigate();
 
-    const [loading, setLoading] = useState(true);
+    const [pageLoading, setPageLoading] = useState(true);
+    const [fetchError, setFetchError] = useState("");
     const [saving, setSaving] = useState(false);
-    const [departments, setDepartments] = useState<any[]>([]);
+    const [fetchedName, setFetchedName] = useState("");
 
     // Original values (for partial update diff)
-    const [original, setOriginal] = useState<Record<string, any>>({});
+    const [original, setOriginal] = useState<Record<string, unknown>>({});
 
     const [formData, setFormData] = useState({
         first_name: "",
         middle_name: "",
         last_name: "",
         student_email: "",
+        student_password: "",
         dept_name: "",
         student_passout_year: new Date().getFullYear(),
         current_year: 1,
     });
 
-    // Fetch student + departments
+    // Fetch student data
     useEffect(() => {
         const loadData = async () => {
-            setLoading(true);
+            setPageLoading(true);
+            setFetchError("");
             try {
-                const [studentRes, deptRes] = await Promise.all([
-                    CollegeAdminService.getStudent(studentId || ""),
-                    CollegeAdminService.getDepartments({ is_active: true, limit: 100 }),
-                ]);
-
-                const s = studentRes.data || studentRes;
+                const res = await CollegeAdminService.getStudent(studentId || "");
+                const s = res.data || res;
                 const data = {
                     first_name: s.first_name || "",
                     middle_name: s.middle_name || "",
                     last_name: s.last_name || "",
                     student_email: s.student_email || "",
+                    student_password: "",
                     dept_name: s.dept_name || "",
                     student_passout_year: s.student_passout_year || new Date().getFullYear(),
                     current_year: s.current_year || 1,
                 };
                 setFormData(data);
                 setOriginal(data);
-
-                const deptList = Array.isArray(deptRes?.data) ? deptRes.data : Array.isArray(deptRes) ? deptRes : [];
-                setDepartments(deptList);
-            } catch (err: any) {
-                showToast({
-                    type: "error",
-                    title: "Error",
-                    description: err?.response?.data?.error || "Failed to load student data",
-                });
-                navigate("/college/students");
+                setFetchedName([s.first_name, s.last_name].filter(Boolean).join(" "));
+            } catch (err: unknown) {
+                const msg = err instanceof Error ? err.message : "Failed to load student data";
+                setFetchError(msg);
             } finally {
-                setLoading(false);
+                setPageLoading(false);
             }
         };
         loadData();
-    }, [studentId, navigate]);
+    }, [studentId]);
 
-    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: name === "student_passout_year" || name === "current_year" ? Number(value) : value,
-        }));
-    }, []);
+    const handleChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+            const { name, value } = e.target;
+            setFormData((prev) => ({
+                ...prev,
+                [name]: name === "student_passout_year" || name === "current_year" ? Number(value) : value,
+            }));
+        },
+        []
+    );
 
-    const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!studentId) return;
 
         // Build partial update — only send changed fields
-        const changed: Record<string, any> = {};
+        const changed: Record<string, unknown> = {};
         for (const key of Object.keys(formData) as (keyof typeof formData)[]) {
+            if (key === "student_password") continue; // skip password in edit
             if (formData[key] !== original[key]) {
                 changed[key] = formData[key];
             }
@@ -96,18 +117,13 @@ export default function EditStudent() {
         }
 
         setSaving(true);
-
         try {
             const response = await CollegeAdminService.updateStudent(studentId, changed);
-            showToast({
-                type: "success",
-                title: "Updated",
-                description: response?.message || "Student updated successfully",
-            });
+            showToast({ type: "success", title: "Updated", description: response?.message || "Student updated successfully" });
             navigate(`/college/student/${studentId}`);
-        } catch (err: any) {
-            const errMsg = err?.response?.data?.error || err?.message || "Failed to update student";
-            showToast({ type: "error", title: "Error", description: errMsg });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Failed to update student";
+            showToast({ type: "error", title: "Error", description: msg });
         } finally {
             setSaving(false);
         }
@@ -116,184 +132,54 @@ export default function EditStudent() {
     const breadcrumbs = useMemo(() => [
         { label: "Dashboard", path: "/college/dashboard" },
         { label: "Students", path: "/college/students" },
-        { label: "Edit Student", active: true },
-    ], []);
+        { label: fetchedName ? `Edit ${fetchedName}` : "Edit Student", active: true },
+    ], [fetchedName]);
 
-    // Passout year options 2020–2040
-    const passoutYearOptions = useMemo(
-        () => Array.from({ length: 21 }, (_, i) => 2020 + i),
-        []
-    );
-
-    if (loading) {
+    // Loading state
+    if (pageLoading) {
         return (
-            <DashboardLayout>
+            <AnimatedPage>
                 <div className="space-y-6">
                     <PageHeader title="Edit Student" breadcrumbs={breadcrumbs} />
-                    <div className="bg-white rounded-xl border p-8 animate-pulse space-y-6">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className="h-12 bg-gray-100 rounded-lg" />
-                        ))}
+                    <FormSkeleton />
+                </div>
+            </AnimatedPage>
+        );
+    }
+
+    // Error state
+    if (fetchError) {
+        return (
+            <AnimatedPage>
+                <div className="space-y-6">
+                    <PageHeader title="Edit Student" breadcrumbs={breadcrumbs} />
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-12 text-center">
+                        <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+                        <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-4">{fetchError}</p>
+                        <button type="button" onClick={() => navigate("/college/students")} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                            Return to Students
+                        </button>
                     </div>
                 </div>
-            </DashboardLayout>
+            </AnimatedPage>
         );
     }
 
     return (
-        <DashboardLayout>
+        <AnimatedPage>
             <div className="space-y-6">
                 <PageHeader title="Edit Student" breadcrumbs={breadcrumbs} />
-
-                <button
-                    type="button"
-                    onClick={() => navigate(`/college/student/${studentId}`)}
-                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 font-medium transition"
-                >
-                    <ArrowLeft size={16} />
-                    Back to Student Detail
-                </button>
-
-                <div className="bg-white rounded-xl border p-8">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-6">Update Student Information</h2>
-
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Row 1 — Names */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
-                                <input
-                                    name="first_name"
-                                    value={formData.first_name}
-                                    onChange={handleChange}
-                                    required
-                                    minLength={2}
-                                    maxLength={100}
-                                    className="w-full rounded-lg border px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
-                                <input
-                                    name="middle_name"
-                                    value={formData.middle_name}
-                                    onChange={handleChange}
-                                    maxLength={100}
-                                    className="w-full rounded-lg border px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
-                                <input
-                                    name="last_name"
-                                    value={formData.last_name}
-                                    onChange={handleChange}
-                                    required
-                                    minLength={1}
-                                    maxLength={100}
-                                    className="w-full rounded-lg border px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Row 2 — Email + Department */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Student Email *</label>
-                                <input
-                                    type="email"
-                                    name="student_email"
-                                    value={formData.student_email}
-                                    onChange={handleChange}
-                                    required
-                                    maxLength={255}
-                                    className="w-full rounded-lg border px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
-                                <select
-                                    name="dept_name"
-                                    value={formData.dept_name}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full rounded-lg border px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                >
-                                    <option value="">Select Department</option>
-                                    {departments.map((d: any) => (
-                                        <option key={d.dept_id} value={d.dept_name}>
-                                            {d.dept_name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Row 3 — Year + Passout */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Current Year *</label>
-                                <select
-                                    name="current_year"
-                                    value={formData.current_year}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full rounded-lg border px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                >
-                                    <option value={1}>1st Year</option>
-                                    <option value={2}>2nd Year</option>
-                                    <option value={3}>3rd Year</option>
-                                    <option value={4}>4th Year</option>
-                                    <option value={5}>5th Year</option>
-                                    <option value={6}>6th Year</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Passout Year *</label>
-                                <select
-                                    name="student_passout_year"
-                                    value={formData.student_passout_year}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full rounded-lg border px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                >
-                                    {passoutYearOptions.map((y) => (
-                                        <option key={y} value={y}>{y}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Buttons */}
-                        <div className="flex items-center gap-4 pt-2">
-                            <button
-                                type="submit"
-                                disabled={saving}
-                                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition disabled:opacity-50"
-                            >
-                                {saving ? (
-                                    <>
-                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save size={16} />
-                                        Save Changes
-                                    </>
-                                )}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => navigate(`/college/student/${studentId}`)}
-                                className="px-6 py-2.5 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                <StudentForm
+                    mode="edit"
+                    formData={formData}
+                    errors={{}}
+                    loading={saving}
+                    fetchedStudentName={fetchedName}
+                    handleChange={handleChange}
+                    handleSubmit={handleSubmit}
+                    handleCancel={() => navigate(`/college/student/${studentId}`)}
+                />
             </div>
-        </DashboardLayout>
+        </AnimatedPage>
     );
 }

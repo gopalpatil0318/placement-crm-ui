@@ -1,0 +1,334 @@
+# Round Results API — Complete Documentation
+
+## Files Created
+
+| File | Path |
+|------|------|
+| Validator | [roundResult.validator.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/validators/college/roundResult.validator.js) |
+| Service | [roundResult.service.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/services/college/roundResult.service.js) |
+| Controller | [roundResult.controller.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/controllers/college/roundResult.controller.js) |
+| Routes | [roundResult.routes.js](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/routes/college/roundResult.routes.js) |
+
+Verification: ✅ `ROUTE_LOAD_SUCCESS`
+
+---
+
+## 1. API Endpoint Reference
+
+### API #70 — Add Single Round Result
+
+| Item | Value |
+|------|-------|
+| **Method** | `POST` |
+| **URL** | `/api/college/add_round_result/:roundId` |
+| **Auth** | Bearer Token (COLLEGEADMIN or TPO) |
+
+#### Request Body
+
+```json
+{
+  "application_id": "a1b2c3d4-....",
+  "result_status": "passed",
+  "score": 85.50,
+  "remarks": "Strong performance in coding round",
+  "attended": true,
+  "scheduled_at": "2026-03-05T10:00:00.000Z",
+  "completed_at": "2026-03-05T11:30:00.000Z"
+}
+```
+
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `application_id` | UUID | ✅ | Must belong to the round's job and college |
+| `result_status` | string | ❌ | `pending` (default), `passed`, `failed`, `on_hold`, `absent` |
+| `score` | number | ❌ | 0–100000, 2 decimal places |
+| `remarks` | string | ❌ | max 2000 chars |
+| `attended` | boolean | ❌ | defaults to false |
+| `scheduled_at` | ISO datetime | ❌ | When the student is scheduled |
+| `completed_at` | ISO datetime | ❌ | Must be after `scheduled_at` |
+
+> [!IMPORTANT]
+> The API auto-resolves `student_id` from the `application_id`. You only need to provide the `application_id`.
+> Duplicate check: UNIQUE on [(application_id, round_id)](file:///c:/Users/Gopal%20Bharat%20Patil/OneDrive/Desktop/placement-crm-api/src/config/db.js#61-97) — use Update API for existing results.
+
+#### Success Response (201)
+
+```json
+{
+  "success": true,
+  "message": "Round result added successfully",
+  "data": {
+    "result_id": "...",
+    "application_id": "...",
+    "round_id": "...",
+    "student_id": "...",
+    "result_status": "passed",
+    "score": 85.50,
+    "remarks": "Strong performance",
+    "attended": true,
+    "scheduled_at": "2026-03-05T10:00:00.000Z",
+    "completed_at": "2026-03-05T11:30:00.000Z",
+    "student_name": "Rahul Sharma",
+    "student_email": "rahul@email.com",
+    "round_name": "Coding Test",
+    "round_number": 1,
+    "job_title": "Software Developer",
+    "company_name": "TCS"
+  }
+}
+```
+
+---
+
+### API #71 — Bulk Add Round Results
+
+| Item | Value |
+|------|-------|
+| **Method** | `POST` |
+| **URL** | `/api/college/bulk_add_round_results/:roundId` |
+
+#### Request Body
+
+```json
+{
+  "results": [
+    { "application_id": "aaa-...", "result_status": "passed", "score": 85, "attended": true },
+    { "application_id": "bbb-...", "result_status": "failed", "score": 32, "attended": true },
+    { "application_id": "ccc-...", "result_status": "absent", "attended": false }
+  ]
+}
+```
+
+Max 200 results per request. Each item follows same validation as single add.
+
+#### Response — Created/Skipped/Errors
+
+```json
+{
+  "success": true,
+  "message": "Bulk add complete: 2 created, 1 skipped",
+  "data": {
+    "round_name": "Coding Test",
+    "round_number": 1,
+    "job_title": "Software Developer",
+    "company_name": "TCS",
+    "summary": { "total_requested": 3, "created": 2, "skipped": 1, "errors": 0 },
+    "created": [
+      { "result_id": "...", "application_id": "aaa-...", "student_name": "Rahul Sharma", "result_status": "passed" },
+      { "result_id": "...", "application_id": "bbb-...", "student_name": "Priya Patel", "result_status": "failed" }
+    ],
+    "skipped": [
+      { "application_id": "ccc-...", "student_name": "Amit Kumar", "reason": "Result already exists for this round" }
+    ],
+    "errors": []
+  }
+}
+```
+
+---
+
+### API #72 — Get Round Results
+
+| Item | Value |
+|------|-------|
+| **Method** | `GET` |
+| **URL** | `/api/college/get_round_results/:roundId` |
+
+#### Query Parameters
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `result_status` | string | ❌ | Filter: `pending`, `passed`, `failed`, `on_hold`, `absent` |
+| `attended` | string | ❌ | `true` or `false` |
+| `search` | string | ❌ | Search student name or email |
+| `sort_by` | string | ❌ | `student_name`, `score`, `result_status`, `scheduled_at`, `completed_at`, `created_at` (default) |
+| `sort_order` | string | ❌ | `asc` (default) or `desc` |
+| `page` | number | ❌ | Default: 1 |
+| `limit` | number | ❌ | Default: 50, max: 200 |
+
+#### Response includes `status_summary` with avg score
+
+```json
+{
+  "data": {
+    "results": [ "..." ],
+    "round_name": "Coding Test",
+    "round_number": 1,
+    "round_status": "in_progress",
+    "job_title": "Software Developer",
+    "company_name": "TCS",
+    "status_summary": {
+      "total": 30, "pending": 5, "passed": 18, "failed": 5, "on_hold": 1, "absent": 1,
+      "avg_score": 72.45
+    }
+  },
+  "pagination": { "page": 1, "limit": 50, "total": 30, "totalPages": 1 }
+}
+```
+
+---
+
+### API #73 — Update Round Result
+
+| Item | Value |
+|------|-------|
+| **Method** | `PUT` |
+| **URL** | `/api/college/update_round_result/:resultId` |
+
+```json
+{
+  "result_status": "passed",
+  "score": 92.5,
+  "attended": true,
+  "completed_at": "2026-03-05T12:00:00.000Z"
+}
+```
+
+Min 1 field required. Cannot update results in cancelled rounds or cancelled jobs.
+
+---
+
+## 2. Frontend Implementation Guide
+
+### Round Results Grid
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ Round 1: Coding Test - TCS Software Developer            │
+│ Status: In Progress                                      │
+├──────────────────────────────────────────────────────────┤
+│ Status Pills:                                            │
+│ [All: 30] [Passed: 18] [Failed: 5] [Pending: 5]         │
+│ [On Hold: 1] [Absent: 1]          Avg Score: 72.45      │
+├──────────────────────────────────────────────────────────┤
+│ [Search 🔍_______] [Sort: Score ▼ DESC]                  │
+├──┬──────────────┬────────┬───────┬──────────┬───────────┤
+│☐ │ Student Name │ Dept   │ Score │ Status   │ Actions   │
+├──┼──────────────┼────────┼───────┼──────────┼───────────┤
+│☐ │ Rahul Sharma │ CS     │ 85.5  │ ✅ Passed │ [Edit]   │
+│☐ │ Priya Patel  │ IT     │ 32.0  │ ❌ Failed │ [Edit]   │
+│☐ │ Amit Kumar   │ CS     │  —    │ ⏳ Pending│ [Edit]   │
+│☐ │ Neha Gupta   │ EXTC   │  —    │ 🚫 Absent│ [Edit]   │
+├──┴──────────────┴────────┴───────┴──────────┴───────────┤
+│ With selected: [Mark Passed] [Mark Failed] [Bulk Entry]  │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Status Badge Colors
+
+```js
+const RESULT_STATUS_COLORS = {
+  pending:  { bg: '#FFF3CD', text: '#856404', icon: '⏳', label: 'Pending' },
+  passed:   { bg: '#D4EDDA', text: '#155724', icon: '✅', label: 'Passed' },
+  failed:   { bg: '#F8D7DA', text: '#721C24', icon: '❌', label: 'Failed' },
+  on_hold:  { bg: '#D1ECF1', text: '#0C5460', icon: '⏸️', label: 'On Hold' },
+  absent:   { bg: '#E2E3E5', text: '#383D41', icon: '🚫', label: 'Absent' },
+};
+```
+
+### Bulk Entry Form (for entering results for multiple students)
+
+Use the **Bulk Add API** to send all entries at once:
+1. Show list of all shortlisted applicants (from Applications API)
+2. Each row has: Score input + Status dropdown + Attended checkbox
+3. Submit all at once via bulk POST
+4. Display created/skipped/errors summary
+
+---
+
+## 3. Integration Guide
+
+```mermaid
+flowchart LR
+    A[Job Postings] --> B[Job Rounds]
+    A --> C[Applications]
+    B --> D["Round Results ✨ NEW"]
+    C --> D
+    D --> E["Placement Results ❌ Future"]
+```
+
+### Data Flow
+1. Job created → Rounds defined → Job published
+2. Students apply → Application `shortlisted`
+3. Admin creates **round results** for shortlisted students (this module)
+4. Students marked `passed` → progress to next round
+5. Final round passed → Application → `selected` → Placement result
+
+### Prerequisite Relations
+| To Create | Requires |
+|-----------|----------|
+| Round Result | Valid round + valid application for same job |
+| Bulk Results | Same as above, per-item validation |
+
+---
+
+## 4. Postman Test Payloads
+
+### Add Single Result
+```json
+POST /api/college/add_round_result/{{roundId}}
+{
+  "application_id": "{{applicationId}}",
+  "result_status": "passed",
+  "score": 85.5,
+  "remarks": "Strong coding skills",
+  "attended": true,
+  "scheduled_at": "2026-03-05T10:00:00.000Z",
+  "completed_at": "2026-03-05T11:30:00.000Z"
+}
+```
+
+### Bulk Add Results
+```json
+POST /api/college/bulk_add_round_results/{{roundId}}
+{
+  "results": [
+    { "application_id": "{{app1}}", "result_status": "passed", "score": 92, "attended": true },
+    { "application_id": "{{app2}}", "result_status": "failed", "score": 28, "attended": true },
+    { "application_id": "{{app3}}", "result_status": "absent", "attended": false }
+  ]
+}
+```
+
+### Update Result
+```json
+PUT /api/college/update_round_result/{{resultId}}
+{ "result_status": "passed", "score": 78.5, "remarks": "Re-evaluated" }
+```
+
+---
+
+## 5. Edge Case Test Scenarios
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 1 | Add result for non-existent round | 404 |
+| 2 | Add result for another college's round | 404 |
+| 3 | Add result for cancelled round | 400 |
+| 4 | Add result for cancelled job | 400 |
+| 5 | Add result for non-existent application | 404 |
+| 6 | Add result for application from different job | 404 |
+| 7 | Add result for rejected application | 400 |
+| 8 | Add result for withdrawn application | 400 |
+| 9 | Add duplicate result (same app + round) | 409 |
+| 10 | Add result with `completed_at` before `scheduled_at` | 400 |
+| 11 | Add result with only `application_id` (all defaults) | 201 — status=pending, attended=false |
+| 12 | Add result with score=0 | 201 ✅ |
+| 13 | Add result with score=100000 (max) | 201 ✅ |
+| 14 | Bulk add: 3 valid | 201 — all created |
+| 15 | Bulk add: mix valid + duplicate + invalid | 201 — partial, reports each |
+| 16 | Bulk add: 201 items (over limit) | 422 — max 200 |
+| 17 | Bulk add: empty array | 422 — min 1 |
+| 18 | Bulk add: duplicate app IDs within same request | Second is skipped |
+| 19 | Get results: no results exist | 200 — empty array |
+| 20 | Get results: filter by `result_status=passed` | 200 — only passed |
+| 21 | Get results: search by student name | 200 — matching students |
+| 22 | Get results: sort by score desc | 200 — highest first |
+| 23 | Get results: status_summary always unfiltered | ✅ correct counts |
+| 24 | Update result in cancelled round | 400 |
+| 25 | Update with empty body | 422 — min 1 field |
+| 26 | Update `completed_at` to before existing `scheduled_at` | 400 |
+| 27 | Update score to null (clear) | 200 ✅ |
+| 28 | Unauthorized role (TEACHER) | 403 |
+| 29 | No auth token | 401 |
+| 30 | Get results with `limit=200` (max) | 200 — up to 200 per page |

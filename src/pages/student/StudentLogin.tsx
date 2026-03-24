@@ -24,7 +24,7 @@ export default function StudentLogin() {
         setIsSubmitting(true)
 
         try {
-            await login(email, password)
+            await login(email.trim(), password)
             navigate("/student/dashboard")
         } catch (err: any) {
             setFormError(err?.message || "Invalid credentials")

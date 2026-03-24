@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ========================
 // TYPES
@@ -24,32 +24,17 @@ export interface DepartmentDetail {
 // ========================
 
 export const useViewDepartment = (deptId: string | undefined) => {
-    const [department, setDepartment] = useState<DepartmentDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const { data, isLoading, error: queryError, refetch } = useQuery({
+        queryKey: queryKeys.departments.detail(deptId ?? ""),
+        queryFn: () => CollegeAdminService.getDepartment(deptId!),
+        enabled: !!deptId,
+    });
 
-    const fetchDepartment = useCallback(async () => {
-        if (!deptId) return;
-        setLoading(true);
-        setError(null);
+    const department: DepartmentDetail | null = data?.data ?? data ?? null;
+    const loading = isLoading;
+    const error = queryError
+        ? (queryError instanceof Error ? queryError.message : "Failed to fetch department")
+        : null;
 
-        try {
-            const response = await CollegeAdminService.getDepartment(deptId);
-            // Response is { success, data }, extract data
-            setDepartment(response.data || response);
-        } catch (err: unknown) {
-            const msg =
-                err instanceof Error ? err.message : "Failed to fetch department";
-            setError(msg);
-            showToast({ type: "error", title: "Error", description: msg });
-        } finally {
-            setLoading(false);
-        }
-    }, [deptId]);
-
-    useEffect(() => {
-        fetchDepartment();
-    }, [fetchDepartment]);
-
-    return { department, loading, error, refresh: fetchDepartment };
+    return { department, loading, error, refresh: refetch };
 };

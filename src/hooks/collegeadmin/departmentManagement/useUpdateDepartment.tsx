@@ -1,14 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { AxiosError } from "axios";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
+import { queryKeys } from "@/lib/queryKeys";
+import { departmentUpdateSchema } from "@/validators/DepartmentSchema";
 
 // ========================
 // TYPES
 // ========================
 
-interface UpdateDepartmentForm {
+export interface UpdateDepartmentForm {
     deptName: string;
     deptCode: string;
     deptType: string;
@@ -16,7 +19,7 @@ interface UpdateDepartmentForm {
     totalSemesters: number;
 }
 
-type FormErrors = Partial<Record<keyof UpdateDepartmentForm, string>>;
+export type DepartmentFormErrors = Partial<Record<keyof UpdateDepartmentForm, string>>;
 
 // ========================
 // HOOK
@@ -24,6 +27,7 @@ type FormErrors = Partial<Record<keyof UpdateDepartmentForm, string>>;
 
 export const useUpdateDepartment = (deptId: string) => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [formData, setFormData] = useState<UpdateDepartmentForm>({
         deptName: "",
         deptCode: "",
@@ -32,52 +36,69 @@ export const useUpdateDepartment = (deptId: string) => {
         totalSemesters: 8,
     });
     const originalDataRef = useRef<UpdateDepartmentForm | null>(null);
+    const [errors, setErrors] = useState<DepartmentFormErrors>({});
+    const [fetchedDeptName, setFetchedDeptName] = useState("");
 
-    const [errors, setErrors] = useState<FormErrors>({});
-    const [loading, setLoading] = useState(false);
-    const [fetching, setFetching] = useState(false);
+    // ── Fetch existing data via React Query ──
+    const { data: queryData, isLoading: fetching, error: queryError } = useQuery({
+        queryKey: queryKeys.departments.detail(deptId),
+        queryFn: () => CollegeAdminService.getDepartment(deptId),
+        enabled: !!deptId,
+    });
 
-    // ==============================
-    // FETCH DEPARTMENT (PRELOAD DATA)
-    // ==============================
+    const fetchError = queryError
+        ? (queryError instanceof Error ? queryError.message : "Failed to load department")
+        : null;
+
+    // Sync fetched data into form state (runs once when query resolves)
     useEffect(() => {
-        if (!deptId) return;
+        const dept = queryData?.data ?? queryData;
+        if (dept && !originalDataRef.current) {
+            const loaded: UpdateDepartmentForm = {
+                deptName: dept?.dept_name || "",
+                deptCode: dept?.dept_code || "",
+                deptType: dept?.dept_type || "",
+                programDurationYears: dept?.program_duration_years ?? 4,
+                totalSemesters: dept?.total_semesters ?? 8,
+            };
+            setFormData(loaded);
+            originalDataRef.current = loaded;
+            setFetchedDeptName(dept?.dept_name || "");
+        }
+    }, [queryData]);
 
-        const fetchDepartment = async () => {
-            setFetching(true);
-            try {
-                const response = await CollegeAdminService.getDepartment(deptId);
-                const dept = response.data || response;
+    // ── Update mutation ──
+    const mutation = useMutation({
+        mutationFn: (payload: Record<string, string | number>) =>
+            CollegeAdminService.updateDepartment(
+                deptId,
+                payload as Parameters<typeof CollegeAdminService.updateDepartment>[1]
+            ),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.departments.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.departments.detail(deptId) });
+            showToast({
+                type: "success",
+                title: "Success",
+                description: response?.message || "Department updated successfully",
+            });
+            navigate(`/college/department/${deptId}`);
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Something went wrong";
+            const status = error instanceof ApiError ? error.status : undefined;
 
-                const loaded: UpdateDepartmentForm = {
-                    deptName: dept?.dept_name || "",
-                    deptCode: dept?.dept_code || "",
-                    deptType: dept?.dept_type || "",
-                    programDurationYears: dept?.program_duration_years ?? 4,
-                    totalSemesters: dept?.total_semesters ?? 8,
-                };
-
-                setFormData(loaded);
-                originalDataRef.current = loaded;
-            } catch (error: unknown) {
-                const msg =
-                    error instanceof Error
-                        ? error.message
-                        : "Failed to fetch department data";
-                showToast({ type: "error", title: "Error", description: msg });
-            } finally {
-                setFetching(false);
+            if (status === 409) {
+                setErrors({ deptName: message });
             }
-        };
 
-        fetchDepartment();
-    }, [deptId]);
+            showToast({ type: "error", title: "Error Updating Department", description: message });
+        },
+    });
 
-    // ==============================
-    // HANDLE INPUT CHANGE
-    // ==============================
+    // ── Handle input change (stable — [] deps) ──
     const handleChange = useCallback(
-        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
             const { name, value } = e.target;
 
             setFormData((prev) => ({
@@ -90,98 +111,64 @@ export const useUpdateDepartment = (deptId: string) => {
                             : value,
             }));
 
-            // Clear field error on change
-            if (errors[name as keyof UpdateDepartmentForm]) {
-                setErrors((prev) => ({ ...prev, [name]: undefined }));
-            }
+            setErrors((prev) => {
+                if (!prev[name as keyof UpdateDepartmentForm]) return prev;
+                return { ...prev, [name]: undefined };
+            });
         },
-        [errors]
+        []
     );
 
-    // ==============================
-    // HANDLE UPDATE SUBMIT (PARTIAL)
-    // ==============================
+    // ── Handle update submit (diff-based partial payload) ──
     const handleSubmit = useCallback(
         async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
             e.preventDefault();
 
             if (!originalDataRef.current) return;
 
-            // Build partial payload — only changed fields
-            const payload: Record<string, string | number> = {};
             const orig = originalDataRef.current;
 
-            if (formData.deptName !== orig.deptName) {
-                if (formData.deptName.length < 2) {
-                    setErrors({ deptName: "Department name must be at least 2 characters" });
-                    return;
-                }
-                payload.dept_name = formData.deptName;
-            }
-            if (formData.deptCode !== orig.deptCode) {
-                payload.dept_code = formData.deptCode;
-            }
-            if (formData.deptType !== orig.deptType) {
-                payload.dept_type = formData.deptType;
-            }
-            if (formData.programDurationYears !== orig.programDurationYears) {
-                payload.program_duration_years = formData.programDurationYears;
-            }
-            if (formData.totalSemesters !== orig.totalSemesters) {
-                payload.total_semesters = formData.totalSemesters;
-            }
+            // Build changed-fields object for Zod validation
+            const changed: Record<string, unknown> = {};
+            if (formData.deptName.trim() !== orig.deptName.trim()) changed.deptName = formData.deptName.trim();
+            if (formData.deptCode !== orig.deptCode) changed.deptCode = formData.deptCode;
+            if (formData.deptType !== orig.deptType) changed.deptType = formData.deptType;
+            if (formData.programDurationYears !== orig.programDurationYears) changed.programDurationYears = formData.programDurationYears;
+            if (formData.totalSemesters !== orig.totalSemesters) changed.totalSemesters = formData.totalSemesters;
 
-            if (Object.keys(payload).length === 0) {
+            if (Object.keys(changed).length === 0) {
                 showToast({
-                    type: "info",
+                    type: "warning",
                     title: "No Changes",
-                    description: "No fields were modified",
+                    description: "Nothing has been changed.",
                 });
                 return;
             }
 
-            setErrors({});
-            setLoading(true);
-
-            try {
-                const response = await CollegeAdminService.updateDepartment(
-                    deptId,
-                    payload as Parameters<typeof CollegeAdminService.updateDepartment>[1]
-                );
-
-                showToast({
-                    type: "success",
-                    title: "Success",
-                    description:
-                        response?.message || "Department updated successfully",
-                });
-
-                navigate(`/college/department/${deptId}`);
-            } catch (error: unknown) {
-                const axiosErr = error as AxiosError<{
-                    error?: string;
-                    message?: string;
-                }>;
-                const status = axiosErr?.response?.status;
-                const errorMsg =
-                    axiosErr?.response?.data?.error ||
-                    axiosErr?.response?.data?.message ||
-                    "Something went wrong";
-
-                if (status === 409) {
-                    setErrors({ deptName: errorMsg });
+            // Validate changed fields with Zod
+            const result = departmentUpdateSchema.safeParse(changed);
+            if (!result.success) {
+                const fieldErrors: DepartmentFormErrors = {};
+                for (const issue of result.error.issues) {
+                    const field = issue.path[0] as keyof UpdateDepartmentForm;
+                    if (!fieldErrors[field]) fieldErrors[field] = issue.message;
                 }
-
-                showToast({
-                    type: "error",
-                    title: "Error Updating Department",
-                    description: errorMsg,
-                });
-            } finally {
-                setLoading(false);
+                setErrors(fieldErrors);
+                return;
             }
+
+            // Build API payload from validated data
+            const payload: Record<string, string | number> = {};
+            if (changed.deptName !== undefined) payload.dept_name = changed.deptName as string;
+            if (changed.deptCode !== undefined) payload.dept_code = changed.deptCode as string;
+            if (changed.deptType !== undefined) payload.dept_type = changed.deptType as string;
+            if (changed.programDurationYears !== undefined) payload.program_duration_years = changed.programDurationYears as number;
+            if (changed.totalSemesters !== undefined) payload.total_semesters = changed.totalSemesters as number;
+
+            setErrors({});
+            mutation.mutate(payload);
         },
-        [formData, deptId, navigate]
+        [formData, mutation]
     );
 
     const handleCancel = useCallback(() => {
@@ -191,8 +178,10 @@ export const useUpdateDepartment = (deptId: string) => {
     return {
         formData,
         errors,
-        loading,
+        loading: mutation.isPending,
         fetching,
+        fetchError,
+        fetchedDeptName,
         handleChange,
         handleSubmit,
         handleCancel,

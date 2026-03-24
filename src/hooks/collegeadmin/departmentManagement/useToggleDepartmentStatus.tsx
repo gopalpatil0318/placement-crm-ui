@@ -1,49 +1,45 @@
-import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
+import { queryKeys } from "@/lib/queryKeys";
 
 export const useToggleDepartmentStatus = () => {
-    const [loading, setLoading] = useState(false);
+    const queryClient = useQueryClient();
 
-    const toggleStatus = async (
+    const mutation = useMutation({
+        mutationFn: ({ deptId, newStatus }: { deptId: string; newStatus: boolean }) =>
+            CollegeAdminService.toggleDepartmentStatus(deptId, newStatus),
+        onSuccess: (response, { deptId, newStatus }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.departments.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.departments.detail(deptId) });
+            showToast({
+                type: "success",
+                title: "Status Updated",
+                description:
+                    response?.message ||
+                    `Department ${newStatus ? "activated" : "deactivated"} successfully`,
+            });
+        },
+        onError: (error: unknown) => {
+            const message = error instanceof ApiError ? error.message : "Failed to toggle department status";
+            showToast({ type: "error", title: "Error", description: message });
+        },
+    });
+
+    const toggleStatus = (
         deptId: string,
         currentStatus: boolean,
         onSuccess?: () => void
     ) => {
-        setLoading(true);
-        try {
-            const newStatus = !currentStatus;
-            const response = await CollegeAdminService.toggleDepartmentStatus(
-                deptId,
-                newStatus
-            );
-
-            const successMessage =
-                response?.message ||
-                `Department ${newStatus ? "activated" : "deactivated"} successfully`;
-
-            showToast({
-                type: "success",
-                title: "Status Updated",
-                description: successMessage,
-            });
-
-            // Callback to refresh the list
-            if (onSuccess) onSuccess();
-        } catch (error: any) {
-            showToast({
-                type: "error",
-                title: "Error",
-                description:
-                    error.message || "Failed to toggle department status",
-            });
-        } finally {
-            setLoading(false);
-        }
+        mutation.mutate(
+            { deptId, newStatus: !currentStatus },
+            { onSuccess: () => onSuccess?.() }
+        );
     };
 
     return {
         toggleStatus,
-        loading,
+        loading: mutation.isPending,
     };
 };

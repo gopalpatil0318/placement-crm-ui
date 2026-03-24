@@ -1,15 +1,34 @@
-"use client";
+﻿import { Suspense, lazy } from "react";
+import AnimatedPage from "@/components/ui/AnimatedPage";
 
-// Importing the specific layout from the collegeadmin components folder
-import DashboardLayout from "../../components/collegeadmin/DashboardLayout";
+const DashboardManager = lazy(
+  () => import("@/components/collegeadmin/dashboard/DashboardManager"),
+);
+
+function DashboardSkeleton() {
+  return (
+    <div className="animate-pulse space-y-5 p-4 lg:p-6">
+      <div className="h-8 w-48 rounded-lg bg-gray-200 dark:bg-gray-700" />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-24 rounded-xl bg-gray-200 dark:bg-gray-700"
+          />
+        ))}
+      </div>
+      <div className="h-10 rounded-xl bg-gray-200 dark:bg-gray-700" />
+      <div className="h-72 rounded-xl bg-gray-200 dark:bg-gray-700" />
+    </div>
+  );
+}
 
 export default function Dashboard() {
   return (
-    <DashboardLayout>
-      <div className="flex items-center justify-between px-4 py-4">
-        {/* Maintaining consistent typography and spacing */}
-        <h2 className="text-xl font-bold tracking-wide">College CRM</h2>
-      </div>
-    </DashboardLayout>
+    <AnimatedPage>
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardManager />
+      </Suspense>
+    </AnimatedPage>
   );
 }

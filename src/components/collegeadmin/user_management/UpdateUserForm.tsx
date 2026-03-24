@@ -1,210 +1,116 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import { useUpdateUser } from "@/hooks/collegeadmin/user_management/useUpdateUser";
+import UserForm from "./UserForm";
 
-const ROLE_OPTIONS = [
-  { value: "tpo", label: "TPO (Training & Placement Officer)" },
-  { value: "tpc", label: "TPC (Training & Placement Coordinator)" },
-  { value: "hod", label: "HOD (Head of Department)" },
-  { value: "teacher", label: "Teacher" },
-];
+interface UpdateUserFormProps {
+    onUserLoaded?: (name: string) => void;
+}
 
-const UpdateUserForm = () => {
-  const { userId } = useParams<{ userId: string }>();
-  const navigate = useNavigate();
+// ========================
+// SKELETON
+// ========================
 
-  const {
-    formData, errors, loading, fetching, departments,
-    isCollegeAdmin, handleChange, handleSubmit, handleCancel,
-  } = useUpdateUser(userId || "");
-
-  // Skeleton loading
-  if (fetching) {
-    return (
-      <div className="p-8 bg-white rounded-xl border space-y-6 animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-48" />
+const FormSkeleton = () => (
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 space-y-8 animate-pulse">
+        {/* Section header skeleton */}
+        <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gray-200 dark:bg-gray-700" />
+            <div className="space-y-1.5">
+                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-3 w-40 bg-gray-100 dark:bg-gray-800 rounded" />
+            </div>
+        </div>
+        {/* Row 1 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <div className="h-4 bg-gray-200 rounded w-24" />
-            <div className="h-10 bg-gray-100 rounded-lg" />
-          </div>
-          <div className="space-y-2">
-            <div className="h-4 bg-gray-200 rounded w-24" />
-            <div className="h-10 bg-gray-100 rounded-lg" />
-          </div>
+            <div className="space-y-2">
+                <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-11 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+            </div>
+            <div className="space-y-2">
+                <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-11 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+            </div>
         </div>
+        {/* Section header skeleton */}
+        <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gray-200 dark:bg-gray-700" />
+            <div className="space-y-1.5">
+                <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-3 w-48 bg-gray-100 dark:bg-gray-800 rounded" />
+            </div>
+        </div>
+        {/* Row 2 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <div className="h-4 bg-gray-200 rounded w-24" />
-            <div className="h-10 bg-gray-100 rounded-lg" />
-          </div>
-          <div className="space-y-2">
-            <div className="h-4 bg-gray-200 rounded w-24" />
-            <div className="h-10 bg-gray-100 rounded-lg" />
-          </div>
+            <div className="space-y-2">
+                <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-11 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+            </div>
+            <div className="space-y-2">
+                <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-11 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+            </div>
         </div>
-        <div className="flex gap-3">
-          <div className="h-10 bg-gray-200 rounded-full w-32" />
-          <div className="h-10 bg-gray-100 rounded-full w-24" />
+        {/* Bottom */}
+        <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+            <div className="h-10 w-24 bg-gray-100 dark:bg-gray-800 rounded-xl" />
         </div>
-      </div>
-    );
-  }
-
-  // Read-only for college admin accounts
-  if (isCollegeAdmin) {
-    return (
-      <div className="p-8 bg-white rounded-xl border">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-yellow-800 font-medium">
-            ⚠️ College admin accounts cannot be modified. Only the system administrator can change college admin details.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm font-medium text-gray-500">Name</p>
-            <p className="text-base text-gray-900">{formData.userName}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Email</p>
-            <p className="text-base text-gray-900">{formData.userEmail}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Role</p>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
-              College Admin
-            </span>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate("/college/view-users")}
-          className="mt-6 px-8 py-2.5 rounded-full font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
-        >
-          Back to Users
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-8 bg-white rounded-xl border">
-      <h1 className="text-xl font-semibold text-gray-800 mb-6">
-        Edit User Details
-      </h1>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Row 1: Name & Email */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              User Name
-            </label>
-            <input
-              name="userName"
-              value={formData.userName}
-              onChange={handleChange}
-              placeholder="User Name"
-              maxLength={100}
-              className={`w-full rounded-lg border ${errors.userName ? "border-red-500" : "border-gray-300"} px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-            />
-            {errors.userName && (
-              <p className="text-xs text-red-500 mt-1">{errors.userName}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              User Email
-            </label>
-            <input
-              type="email"
-              name="userEmail"
-              value={formData.userEmail}
-              onChange={handleChange}
-              placeholder="user@college.edu"
-              maxLength={255}
-              className={`w-full rounded-lg border ${errors.userEmail ? "border-red-500" : "border-gray-300"} px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-            />
-            {errors.userEmail && (
-              <p className="text-xs text-red-500 mt-1">{errors.userEmail}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Row 2: Role & Department */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              User Role
-            </label>
-            <select
-              name="userRole"
-              value={formData.userRole}
-              onChange={handleChange}
-              className={`w-full rounded-lg border ${errors.userRole ? "border-red-500" : "border-gray-300"} px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white`}
-            >
-              <option value="">Select Role</option>
-              {ROLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            {errors.userRole && (
-              <p className="text-xs text-red-500 mt-1">{errors.userRole}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Department
-              {(formData.userRole === "hod" || formData.userRole === "teacher") && (
-                <span className="text-blue-500 text-xs ml-2">(Recommended)</span>
-              )}
-            </label>
-            <select
-              name="deptId"
-              value={formData.deptId || ""}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">No Department</option>
-              {departments.map((dept) => (
-                <option key={dept.dept_id} value={dept.dept_id}>
-                  {dept.dept_name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Submit & Cancel */}
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="px-8 py-2.5 rounded-full font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-medium transition disabled:opacity-60"
-          >
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Updating...
-              </div>
-            ) : (
-              "Save Changes"
-            )}
-          </button>
-        </div>
-      </form>
     </div>
-  );
+);
+
+// ========================
+// COMPONENT
+// ========================
+
+const UpdateUserForm = ({ onUserLoaded }: UpdateUserFormProps) => {
+    const { userId } = useParams<{ userId: string }>();
+
+    const {
+        formData, errors, loading, fetching, fetchError, fetchedUserName,
+        departments, isCollegeAdmin, handleChange, handleSubmit, handleCancel,
+    } = useUpdateUser(userId || "");
+
+    useEffect(() => {
+        if (fetchedUserName && onUserLoaded) {
+            onUserLoaded(fetchedUserName);
+        }
+    }, [fetchedUserName, onUserLoaded]);
+
+    if (fetching) return <FormSkeleton />;
+
+    if (fetchError) {
+        return (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-12 text-center">
+                <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+                <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-4">{fetchError}</p>
+                <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Users
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <UserForm
+            mode="edit"
+            formData={{ ...formData, userPassword: "" }}
+            errors={errors}
+            loading={loading}
+            departments={departments}
+            fetchedUserName={fetchedUserName}
+            isCollegeAdmin={isCollegeAdmin}
+            handleChange={handleChange}
+            handleSubmit={handleSubmit}
+            handleCancel={handleCancel}
+        />
+    );
 };
 
 export default UpdateUserForm;
