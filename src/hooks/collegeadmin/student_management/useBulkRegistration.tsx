@@ -5,6 +5,28 @@ import { ApiError } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { showToast } from "@/utils/ToastUtils";
 
+interface BulkRegisterError {
+    row?: number;
+    rowNumber?: number;
+    index?: number;
+    first_name?: string;
+    last_name?: string;
+    student_email?: string;
+    email?: string;
+    error?: string;
+    message?: string;
+}
+
+interface RegisteredStudent {
+    row: number;
+    student_id: string;
+    first_name: string;
+    last_name: string;
+    student_email: string;
+    dept_name: string;
+    default_password: string;
+}
+
 interface BulkRegisterResponse {
     success: boolean;
     message: string;
@@ -12,8 +34,8 @@ interface BulkRegisterResponse {
         total: number;
         successful: number;
         failed: number;
-        errors?: unknown[];
-        [key: string]: unknown;
+        registered?: RegisteredStudent[];
+        errors?: BulkRegisterError[];
     };
 }
 
