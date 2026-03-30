@@ -5,7 +5,6 @@ import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
 import { AnimatedTableBody, AnimatedRow } from "@/components/ui/AnimatedList";
 import { useStudentList } from "@/hooks/collegeadmin/student_management/useStudentList";
-import type { Department } from "@/types/auth";
 
 // ========================
 // TYPES
@@ -61,7 +60,7 @@ const StudentAvatar = ({ firstName, lastName }: { firstName: string; lastName: s
         "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
         "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300",
     ] as const;
-    const color = COLORS[firstName.charCodeAt(0) % COLORS.length];
+    const color = COLORS[(firstName.codePointAt(0) ?? 0) % COLORS.length];
     return (
         <div className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${color}`}>
             {initials}
@@ -92,7 +91,7 @@ const PaginationNav = ({
             </button>
             {pages.map((p, idx) =>
                 p === "ellipsis" ? (
-                    <span key={`e-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
+                    <span key={`e-${p}-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
                 ) : (
                     <button key={p} type="button" onClick={() => onPageChange(p)} disabled={loading} className={`min-w-[44px] min-h-[44px] rounded-md text-sm font-medium transition ${p === page ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"} disabled:cursor-not-allowed`}>
                         {p}
@@ -127,11 +126,13 @@ const EmptyState = ({ hasFilters, onReset, onAdd }: { hasFilters: boolean; onRes
     </div>
 );
 
+const SKELETON_ROW_KEYS = ["sr1", "sr2", "sr3", "sr4", "sr5", "sr6"] as const;
+
 /** Skeleton rows matching column widths */
 const SkeletonRows = ({ showDept }: { showDept: boolean }) => (
     <>
-        {Array.from({ length: 6 }).map((_, i) => (
-            <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
+        {SKELETON_ROW_KEYS.map((key) => (
+            <tr key={key} className="border-b border-gray-100 dark:border-gray-800">
                 <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
@@ -168,7 +169,7 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
         updateFilters, handleSearchChange, handleLimitChange, handlePageChange,
     } = useStudentList({ initialDeptId: deptId, initialStatus });
 
-    const currentDept = deptId ? departments.find((d: Department) => d.dept_id === deptId) : null;
+    const currentDept = deptId ? departments.find((d) => d.dept_id === deptId) : null;
     const showDeptCol = !deptId;
     const hasActiveFilters = !!(filters.search || filters.status || filters.deptId || filters.profileComplete || filters.profileApproved);
 
@@ -232,7 +233,7 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                             {showDeptCol && (
                                 <select value={filters.deptId} onChange={(e) => updateFilters({ deptId: e.target.value })} aria-label="Filter by department" className={selectClass}>
                                     <option value="">All Departments</option>
-                                    {departments.map((d: Department) => (<option key={d.dept_id} value={d.dept_id}>{d.dept_name}</option>))}
+                                    {departments.map((d) => (<option key={d.dept_id} value={d.dept_id}>{d.dept_name}</option>))}
                                 </select>
                             )}
 
@@ -249,10 +250,10 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                             </select>
 
                             <div className="text-sm text-gray-600 dark:text-gray-400 font-medium ml-auto flex items-center gap-2">
-                                Show
+                                Show{" "}
                                 <select value={pagination.limit} onChange={(e) => handleLimitChange(Number(e.target.value))} className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30">
                                     {PAGE_SIZE_OPTIONS.map((s) => (<option key={s} value={s}>{s}</option>))}
-                                </select>
+                                </select>{" "}
                                 entries
                             </div>
                         </div>
@@ -273,17 +274,22 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                                 </tr>
                             </thead>
 
-                            {loading ? (
-                                <tbody><SkeletonRows showDept={showDeptCol} /></tbody>
-                            ) : students.length === 0 ? (
-                                <tbody>
-                                    <tr><td colSpan={showDeptCol ? 7 : 6}>
-                                        <EmptyState hasFilters={hasActiveFilters} onReset={clearFilters} onAdd={() => navigate("/college/create-student")} />
-                                    </td></tr>
-                                </tbody>
-                            ) : (
-                                <AnimatedTableBody>
-                                    {students.map((s: StudentRow) => {
+                            {(() => {
+                                if (loading) {
+                                    return <tbody><SkeletonRows showDept={showDeptCol} /></tbody>;
+                                }
+                                if (students.length === 0) {
+                                    return (
+                                        <tbody>
+                                            <tr><td colSpan={showDeptCol ? 7 : 6}>
+                                                <EmptyState hasFilters={hasActiveFilters} onReset={clearFilters} onAdd={() => navigate("/college/create-student")} />
+                                            </td></tr>
+                                        </tbody>
+                                    );
+                                }
+                                return (
+                                    <AnimatedTableBody>
+                                        {students.map((s: StudentRow) => {
                                         const fullName = [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(" ");
                                         const badge = STATUS_BADGE_MAP[s.student_status] || STATUS_BADGE_MAP.active;
 
@@ -337,17 +343,20 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                                             </AnimatedRow>
                                         );
                                     })}
-                                </AnimatedTableBody>
-                            )}
+                                    </AnimatedTableBody>
+                                );
+                            })()}
                         </table>
                     </div>
 
                     {/* Cards — mobile */}
                     <div className="md:hidden">
-                        {loading ? (
-                            <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                                {Array.from({ length: 4 }).map((_, i) => (
-                                    <div key={i} className="p-4 animate-pulse space-y-2">
+                        {(() => {
+                            if (loading) {
+                                return (
+                                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                        {["ms1", "ms2", "ms3", "ms4"].map((key) => (
+                                            <div key={key} className="p-4 animate-pulse space-y-2">
                                         <div className="flex items-center gap-3">
                                             <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700" />
                                             <div className="flex-1 space-y-1.5">
@@ -359,18 +368,21 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                                             <div className="h-5 w-14 bg-gray-200 dark:bg-gray-700 rounded-full" />
                                             <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : students.length === 0 ? (
-                            <EmptyState hasFilters={hasActiveFilters} onReset={clearFilters} onAdd={() => navigate("/college/create-student")} />
-                        ) : (
+                                        </div>
+                                    ))}
+                                </div>
+                                );
+                            }
+                            if (students.length === 0) {
+                                return <EmptyState hasFilters={hasActiveFilters} onReset={clearFilters} onAdd={() => navigate("/college/create-student")} />;
+                            }
+                            return (
                             <div className={`divide-y divide-gray-100 dark:divide-gray-800 ${isFetching ? "opacity-60" : ""}`}>
                                 {students.map((s: StudentRow) => {
                                     const fullName = [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(" ");
                                     const badge = STATUS_BADGE_MAP[s.student_status] || STATUS_BADGE_MAP.active;
                                     return (
-                                        <div key={s.student_id} onClick={() => navigate(`/college/student/${s.student_id}`)} className="p-4 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors active:bg-blue-50 dark:active:bg-blue-900/20">
+                                        <button type="button" key={s.student_id} onClick={() => navigate(`/college/student/${s.student_id}`)} className="w-full text-left p-4 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors active:bg-blue-50 dark:active:bg-blue-900/20">
                                             <div className="flex items-center gap-3">
                                                 <StudentAvatar firstName={s.first_name} lastName={s.last_name} />
                                                 <div className="min-w-0 flex-1">
@@ -395,11 +407,12 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                                                     {s.profile_complete ? "Complete" : "Incomplete"}
                                                 </span>
                                             </div>
-                                        </div>
+                                        </button>
                                     );
                                 })}
                             </div>
-                        )}
+                        );
+                        })()}
                     </div>
 
                     {/* Pagination Footer */}
