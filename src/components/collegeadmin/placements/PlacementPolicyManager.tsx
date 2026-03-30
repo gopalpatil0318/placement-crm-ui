@@ -67,6 +67,33 @@ const formatDate = (iso: string | null) => {
     return `${day}/${month}/${year} ${hours}:${minutes} ${ampm} IST`;
 };
 
+const useUnsavedChangesWarning = (isDirty: boolean) => {
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [isDirty]);
+};
+
+interface FormErrors {
+    passout_year?: string;
+    policy_title?: string;
+    policy_description?: string;
+}
+
+const extractFieldErrors = (issues: { path: PropertyKey[]; message: string }[]): FormErrors => {
+    const fieldErrors: FormErrors = {};
+    for (const issue of issues) {
+        const field = issue.path[0] as keyof FormErrors;
+        if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+    }
+    return fieldErrors;
+};
+
 // ========================
 // STATUS BADGE
 // ========================
@@ -74,12 +101,12 @@ const formatDate = (iso: string | null) => {
 const StatusBadge = ({ isActive }: { isActive: boolean }) =>
     isActive ? (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{" "}
             Active
         </span>
     ) : (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+            <span className="h-1.5 w-1.5 rounded-full bg-red-400" />{" "}
             Inactive
         </span>
     );
@@ -154,10 +181,12 @@ const StatsDashboard = ({
     );
 };
 
+const SKELETON_STAT_KEYS = ["total", "active", "inactive", "years"] as const;
+
 const SkeletonStats = () => (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-pulse">
-        {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 p-3 flex items-center gap-2.5">
+        {SKELETON_STAT_KEYS.map((key) => (
+            <div key={key} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 p-3 flex items-center gap-2.5">
                 <div className="h-9 w-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
                 <div className="space-y-1">
                     <div className="h-4 w-10 bg-gray-100 dark:bg-gray-700 rounded" />
@@ -194,14 +223,14 @@ const StatusPills = ({
                 type="button"
                 onClick={() => onFilter("")}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    !activeFilter
-                        ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-sm"
-                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    activeFilter
+                        ? "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        : "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-sm"
                 }`}
             >
-                All
+                All{" "}
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                    !activeFilter ? "bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900" : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                    activeFilter ? "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300" : "bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900"
                 }`}>
                     {summary.total_policies}
                 </span>
@@ -254,6 +283,16 @@ const SortHeader = ({
     onSort: (field: string) => void;
 }) => {
     const isActive = currentSort === field;
+
+    let sortIcon;
+    if (isActive && currentOrder === "asc") {
+        sortIcon = <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+    } else if (isActive) {
+        sortIcon = <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+    } else {
+        sortIcon = <ArrowUpDown className="h-3 w-3 text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500" />;
+    }
+
     return (
         <button
             type="button"
@@ -261,15 +300,7 @@ const SortHeader = ({
             className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
         >
             {label}
-            {isActive ? (
-                currentOrder === "asc" ? (
-                    <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                ) : (
-                    <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500" />
-            )}
+            {sortIcon}
         </button>
     );
 };
@@ -309,7 +340,7 @@ const PaginationControls = ({
             </button>
             {pages.map((p, idx) =>
                 p === "ellipsis" ? (
-                    <span key={`ell-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
+                    <span key={`ell-${p}-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
                 ) : (
                     <button
                         key={p}
@@ -375,10 +406,12 @@ const EmptyState = ({
 // SKELETON TABLE
 // ========================
 
+const SKELETON_ROW_KEYS = ["sr1", "sr2", "sr3", "sr4", "sr5"] as const;
+
 const SkeletonTable = () => (
     <>
-        {Array.from({ length: 5 }).map((_, i) => (
-            <tr key={`skel-${i}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
+        {SKELETON_ROW_KEYS.map((key) => (
+            <tr key={key} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
                 <td className="px-4 py-3.5 w-10"><div className="h-4 bg-gray-100 dark:bg-gray-700 rounded w-5" /></td>
                 <td className="px-4 py-3.5">
                     <div className="space-y-1.5">
@@ -401,12 +434,6 @@ const SkeletonTable = () => (
 // CREATE POLICY MODAL
 // ========================
 
-interface FormErrors {
-    passout_year?: string;
-    policy_title?: string;
-    policy_description?: string;
-}
-
 const CreatePolicyModal = ({
     onClose,
     onSuccess,
@@ -427,15 +454,7 @@ const CreatePolicyModal = ({
         [formData],
     );
 
-    useEffect(() => {
-        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            if (isDirty) {
-                e.preventDefault();
-            }
-        };
-        window.addEventListener("beforeunload", handleBeforeUnload);
-        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-    }, [isDirty]);
+    useUnsavedChangesWarning(isDirty);
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -461,12 +480,7 @@ const CreatePolicyModal = ({
         };
         const result = createPlacementPolicySchema.safeParse(trimmed);
         if (!result.success) {
-            const fieldErrors: FormErrors = {};
-            for (const issue of result.error.issues) {
-                const field = issue.path[0] as keyof FormErrors;
-                if (!fieldErrors[field]) fieldErrors[field] = issue.message;
-            }
-            setErrors(fieldErrors);
+            setErrors(extractFieldErrors(result.error.issues));
             showToast({
                 type: "warning",
                 title: "Validation Failed",
@@ -598,15 +612,7 @@ const EditPolicyModal = ({
         );
     }, [formData]);
 
-    useEffect(() => {
-        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            if (isDirty) {
-                e.preventDefault();
-            }
-        };
-        window.addEventListener("beforeunload", handleBeforeUnload);
-        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-    }, [isDirty]);
+    useUnsavedChangesWarning(isDirty);
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -628,12 +634,7 @@ const EditPolicyModal = ({
         };
         const result = updatePlacementPolicySchema.safeParse(trimmed);
         if (!result.success) {
-            const fieldErrors: FormErrors = {};
-            for (const issue of result.error.issues) {
-                const field = issue.path[0] as keyof FormErrors;
-                if (!fieldErrors[field]) fieldErrors[field] = issue.message;
-            }
-            setErrors(fieldErrors);
+            setErrors(extractFieldErrors(result.error.issues));
             showToast({
                 type: "warning",
                 title: "Validation Failed",
@@ -880,8 +881,8 @@ const TogglePolicyModal = ({
                 <div className={`rounded-xl border p-4 ${config.boxBg} ${config.boxBorder}`}>
                     <p className={`text-xs font-semibold ${config.boxText} mb-2`}>This action will:</p>
                     <ul className={`space-y-1 text-xs ${config.boxText}`}>
-                        {config.consequences.map((c, i) => (
-                            <li key={i} className="flex items-start gap-1.5">
+                        {config.consequences.map((c) => (
+                            <li key={c} className="flex items-start gap-1.5">
                                 <span className="mt-0.5">•</span>
                                 <span>{c}</span>
                             </li>
@@ -895,12 +896,15 @@ const TogglePolicyModal = ({
                     </button>
                     <button
                         type="button"
-                        onClick={handleToggle}
+                        onClick={() => handleToggle()}
                         disabled={loading}
                         className={`flex-1 px-4 py-2.5 text-sm font-semibold text-white rounded-xl transition disabled:opacity-50 inline-flex items-center justify-center gap-2 ${config.confirmBg}`}
                     >
                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {loading ? "Processing..." : willActivate ? "Activate" : "Deactivate"}
+                        {(() => {
+                            if (loading) return "Processing...";
+                            return willActivate ? "Activate" : "Deactivate";
+                        })()}
                     </button>
                 </div>
             </div>
@@ -1236,7 +1240,7 @@ const PlacementPolicyManager = () => {
                 </div>
                 <p className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-1">Failed to load policies</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{error}</p>
-                <button type="button" onClick={() => void refresh()} className="px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition">
+                <button type="button" onClick={() => { refresh(); }} className="px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition">
                     Try Again
                 </button>
             </div>
@@ -1301,14 +1305,14 @@ const PlacementPolicyManager = () => {
 
                         {/* Page size */}
                         <div className="text-sm text-gray-600 dark:text-gray-400 font-medium flex items-center gap-2 ml-auto">
-                            Show
+                            Show{" "}
                             <select
                                 value={pagination.limit}
                                 onChange={(e) => handleLimitChange(Number(e.target.value))}
                                 className="border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 {PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                            </select>
+                            </select>{" "}
                         </div>
 
                         {hasFilters && (
@@ -1326,27 +1330,32 @@ const PlacementPolicyManager = () => {
 
                 {/* Cards — mobile */}
                 <div className="md:hidden">
-                    {loading ? (
-                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                            {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="p-4 animate-pulse space-y-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-9 w-9 rounded-xl bg-gray-200 dark:bg-gray-700" />
-                                        <div className="flex-1 space-y-1.5">
-                                            <div className="h-3.5 w-36 bg-gray-200 dark:bg-gray-700 rounded" />
-                                            <div className="h-3 w-52 bg-gray-100 dark:bg-gray-800 rounded" />
+                    {(() => {
+                        if (loading) {
+                            return (
+                                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                    {["mc1", "mc2", "mc3", "mc4"].map((key) => (
+                                        <div key={key} className="p-4 animate-pulse space-y-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-9 w-9 rounded-xl bg-gray-200 dark:bg-gray-700" />
+                                                <div className="flex-1 space-y-1.5">
+                                                    <div className="h-3.5 w-36 bg-gray-200 dark:bg-gray-700 rounded" />
+                                                    <div className="h-3 w-52 bg-gray-100 dark:bg-gray-800 rounded" />
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 mt-2">
+                                                <div className="h-5 w-14 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                                                <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex gap-2 mt-2">
-                                        <div className="h-5 w-14 bg-gray-200 dark:bg-gray-700 rounded-full" />
-                                        <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
-                                    </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    ) : policies.length === 0 ? (
-                        <EmptyState hasFilters={hasFilters} onCreateClick={() => setCreateModalOpen(true)} />
-                    ) : (
+                            );
+                        }
+                        if (policies.length === 0) {
+                            return <EmptyState hasFilters={hasFilters} onCreateClick={() => setCreateModalOpen(true)} />;
+                        }
+                        return (
                         <div className="divide-y divide-gray-100 dark:divide-gray-800">
                             {policies.map((p) => (
                                 <div
@@ -1385,7 +1394,8 @@ const PlacementPolicyManager = () => {
                                 </div>
                             ))}
                         </div>
-                    )}
+                    );
+                    })()}
                 </div>
 
                 {/* Table — desktop */}
@@ -1412,28 +1422,30 @@ const PlacementPolicyManager = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {loading ? (
-                                <SkeletonTable />
-                            ) : policies.length > 0 ? (
-                                policies.map((p, i) => (
-                                    <PolicyRow
-                                        key={p.policy_id}
-                                        policy={p}
-                                        index={(pagination.page - 1) * pagination.limit + i + 1}
-                                        isExpanded={expandedId === p.policy_id}
-                                        onToggleExpand={toggleExpand}
-                                        onEdit={setEditingPolicy}
-                                        onToggleStatus={setTogglePolicy}
-                                        onDelete={setDeletingPolicy}
-                                    />
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={8}>
-                                        <EmptyState hasFilters={hasFilters} onCreateClick={() => setCreateModalOpen(true)} />
-                                    </td>
-                                </tr>
-                            )}
+                            {(() => {
+                                if (loading) return <SkeletonTable />;
+                                if (policies.length > 0) {
+                                    return policies.map((p, i) => (
+                                        <PolicyRow
+                                            key={p.policy_id}
+                                            policy={p}
+                                            index={(pagination.page - 1) * pagination.limit + i + 1}
+                                            isExpanded={expandedId === p.policy_id}
+                                            onToggleExpand={toggleExpand}
+                                            onEdit={setEditingPolicy}
+                                            onToggleStatus={setTogglePolicy}
+                                            onDelete={setDeletingPolicy}
+                                        />
+                                    ));
+                                }
+                                return (
+                                    <tr>
+                                        <td colSpan={8}>
+                                            <EmptyState hasFilters={hasFilters} onCreateClick={() => setCreateModalOpen(true)} />
+                                        </td>
+                                    </tr>
+                                );
+                            })()}
                         </tbody>
                     </table>
                 </div>
