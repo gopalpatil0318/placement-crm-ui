@@ -157,7 +157,7 @@ function AchDetail({ ach }: { ach: Achievement }) {
                 </p>
             )}
             <div className="flex items-center gap-3 flex-wrap">
-                {ach.participants_count > 0 && (
+                {(ach.participants_count ?? 0) > 0 && (
                     <span className="inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
                         <Users className="h-3 w-3" />
                         {ach.participants_count} participants
@@ -165,7 +165,7 @@ function AchDetail({ ach }: { ach: Achievement }) {
                 )}
                 {(ach.certificate_url || ach.proof_url) && (
                     <a
-                        href={ach.certificate_url || ach.proof_url}
+                        href={ach.certificate_url || ach.proof_url || undefined}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors"

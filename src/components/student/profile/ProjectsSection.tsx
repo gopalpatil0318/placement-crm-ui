@@ -94,7 +94,7 @@ export default function ProjectsSection({ projects }: ProjectsSectionProps) {
                                                 </span>
                                             )}
                                             <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
-                                                {capitalize(project.project_type)}
+                                                {capitalize(project.project_type ?? "")}
                                             </span>
                                             {project.is_ongoing && (
                                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">

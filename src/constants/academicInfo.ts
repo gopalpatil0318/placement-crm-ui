@@ -6,4 +6,4 @@ export const ADMISSION_OPTIONS = [
     { value: "Management", label: "Management" },
     { value: "CAT", label: "CAT" },
     { value: "Other", label: "Other" },
-] as const;
+];

@@ -318,7 +318,7 @@ const ActivityCard = memo(function ActivityCard({
                     {hiddenProofCount > 0 && (
                         <span className="text-xs text-gray-400 dark:text-gray-500">+{hiddenProofCount} more</span>
                     )}
-                    {act.is_verified && (
+                    {(act as ActivityData & { is_verified?: boolean }).is_verified && (
                         <span role="status" className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
                             <CheckCircle className="h-3.5 w-3.5" /> Verified
                         </span>

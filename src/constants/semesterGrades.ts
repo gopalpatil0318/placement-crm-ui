@@ -3,4 +3,4 @@ export const SEMESTER_STATUS_OPTIONS = [
     { value: "completed", label: "Completed" },
     { value: "detained", label: "Detained" },
     { value: "failed", label: "Failed" },
-] as const;
+];

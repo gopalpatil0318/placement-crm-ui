@@ -37,8 +37,8 @@ export interface ReviewProfileData {
         created_at: string;
         updated_at: string;
     };
-    personal_information: Record<string, unknown>;
-    academic_information: Record<string, unknown>;
+    personal_information: Record<string, unknown> | null;
+    academic_information: Record<string, unknown> | null;
     semester_grades: unknown[];
     skills: unknown[];
     projects: unknown[];
