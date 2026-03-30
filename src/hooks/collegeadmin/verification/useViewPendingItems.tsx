@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { type VerificationCategory } from "@/validators/VerificationSchema";
+import { useYearFilter } from "@/context/YearFilterContext";
 
 // ========================
 // TYPES
@@ -120,12 +121,12 @@ const QUERY_KEY_MAP: Record<
 // ========================
 
 export function useViewPendingItems(category: VerificationCategory) {
+    const { selectedYear } = useYearFilter();
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [deptId, setDeptId] = useState("");
-    const [passoutYear, setPassoutYear] = useState<number | undefined>();
     const [sortBy, setSortBy] = useState("created_at");
     const [sortOrder, setSortOrder] = useState("DESC");
 
@@ -142,11 +143,6 @@ export function useViewPendingItems(category: VerificationCategory) {
 
     const handleDeptChange = useCallback((value: string) => {
         setDeptId(value);
-        setPage(1);
-    }, []);
-
-    const handlePassoutYearChange = useCallback((value: number | undefined) => {
-        setPassoutYear(value);
         setPage(1);
     }, []);
 
@@ -167,29 +163,23 @@ export function useViewPendingItems(category: VerificationCategory) {
         setPage(1);
     }, []);
 
-    const queryFilters: Record<string, unknown> = {
-        page,
-        limit,
-        ...(debouncedSearch && { search: debouncedSearch }),
-        ...(deptId && { dept_id: deptId }),
-        ...(passoutYear && { student_passout_year: passoutYear }),
-        sort_by: sortBy,
-        sort_order: sortOrder,
-    };
+    const queryClient = useQueryClient();
 
-    const apiParams: PendingFilters = {
+    const filters = useMemo<PendingFilters>(() => ({
         page,
         limit,
         ...(debouncedSearch && { search: debouncedSearch }),
         ...(deptId && { dept_id: deptId }),
-        ...(passoutYear && { student_passout_year: passoutYear }),
+        student_passout_year: selectedYear,
         sort_by: sortBy,
         sort_order: sortOrder,
-    };
+    }), [page, limit, debouncedSearch, deptId, selectedYear, sortBy, sortOrder]);
+
+    const queryKey = QUERY_KEY_MAP[category]({ ...filters });
 
     const { data, isLoading, isFetching } = useQuery({
-        queryKey: QUERY_KEY_MAP[category](queryFilters),
-        queryFn: () => SERVICE_MAP[category](apiParams),
+        queryKey,
+        queryFn: () => SERVICE_MAP[category](filters),
         placeholderData: keepPreviousData,
     });
 
@@ -197,8 +187,20 @@ export function useViewPendingItems(category: VerificationCategory) {
         | { data: PendingItem[]; pagination: Pagination }
         | undefined;
 
+    // Prefetch next page for snappy pagination at scale
+    const totalPages = response?.pagination?.totalPages ?? 0;
+    useEffect(() => {
+        if (page < totalPages) {
+            const nextFilters = { ...filters, page: page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: QUERY_KEY_MAP[category]({ ...nextFilters }),
+                queryFn: () => SERVICE_MAP[category](nextFilters),
+            });
+        }
+    }, [category, filters, page, totalPages, queryClient]);
+
     return {
-        items: (response?.data ?? []) as PendingItem[],
+        items: response?.data ?? [],
         pagination: response?.pagination ?? {
             total: 0,
             page: 1,
@@ -210,7 +212,6 @@ export function useViewPendingItems(category: VerificationCategory) {
         // Filter state
         search,
         deptId,
-        passoutYear,
         sortBy,
         sortOrder,
         page,
@@ -219,7 +220,6 @@ export function useViewPendingItems(category: VerificationCategory) {
         setPage,
         handleSearchChange,
         handleDeptChange,
-        handlePassoutYearChange,
         handleSortChange,
         handleLimitChange,
     };

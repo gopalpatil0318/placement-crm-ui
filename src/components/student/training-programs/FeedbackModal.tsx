@@ -1,8 +1,16 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
 import { Loader2, Star, MessageSquare } from "lucide-react"
 import ModalWrapper from "@/components/ui/ModalWrapper"
 import { useSubmitTrainingFeedback } from "@/hooks/student/training-programs/useSubmitTrainingFeedback"
 import type { StudentEnrollment } from "@/validators/TrainingProgramSchema"
+
+// ─── Helpers ────────────────────────────────────────────────────────────────────
+
+function charCountColor(count: number): string {
+  if (count > 2000) return "text-red-500"
+  if (count >= 10) return "text-gray-400"
+  return "text-amber-500"
+}
 
 // ─── Component ──────────────────────────────────────────────────────────────────
 
@@ -12,7 +20,7 @@ interface FeedbackModalProps {
   onClose: () => void
 }
 
-export default function FeedbackModal({ enrollment, isOpen, onClose }: FeedbackModalProps) {
+export default function FeedbackModal({ enrollment, isOpen, onClose }: Readonly<FeedbackModalProps>) {
   const {
     rating,
     feedback,
@@ -27,14 +35,6 @@ export default function FeedbackModal({ enrollment, isOpen, onClose }: FeedbackM
 
   const [hoverRating, setHoverRating] = useState(0)
 
-  // Reset form + hover state when modal opens for a new enrollment
-  useEffect(() => {
-    if (isOpen) {
-      resetForm()
-      setHoverRating(0)
-    }
-  }, [isOpen, enrollment?.enrollment_id, resetForm])
-
   const handleSubmit = useCallback(() => {
     if (!enrollment) return
     const data = validate()
@@ -48,6 +48,7 @@ export default function FeedbackModal({ enrollment, isOpen, onClose }: FeedbackM
   const handleClose = useCallback(() => {
     if (!isSubmitting) {
       resetForm()
+      setHoverRating(0)
       onClose()
     }
   }, [isSubmitting, resetForm, onClose])
@@ -101,21 +102,21 @@ export default function FeedbackModal({ enrollment, isOpen, onClose }: FeedbackM
 
           {/* Star Rating */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <span id="rating-label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Rating
-            </label>
-            <div className="flex items-center gap-1" role="radiogroup" aria-label="Rating">
+            </span>
+            <div className="flex items-center gap-1" role="radiogroup" aria-labelledby="rating-label">
               {Array.from({ length: 5 }).map((_, i) => {
                 const starValue = i + 1
                 const isFilled = starValue <= (hoverRating || rating)
                 return (
                   <button
-                    key={i}
+                    key={`star-${String(i)}`}
                     type="button"
                     onClick={() => setRating(starValue)}
                     onMouseEnter={() => setHoverRating(starValue)}
                     onMouseLeave={() => setHoverRating(0)}
-                    className="p-1 rounded transition-transform hover:scale-110 cursor-pointer"
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-transform hover:scale-110 cursor-pointer"
                     role="radio"
                     aria-checked={starValue === rating}
                     aria-label={`${starValue} star${starValue === 1 ? "" : "s"}`}
@@ -166,13 +167,7 @@ export default function FeedbackModal({ enrollment, isOpen, onClose }: FeedbackM
                 <span />
               )}
               <span
-                className={`text-xs ${
-                  charCount > 2000
-                    ? "text-red-500"
-                    : charCount >= 10
-                      ? "text-gray-400"
-                      : "text-amber-500"
-                }`}
+                className={`text-xs ${charCountColor(charCount)}`}
               >
                 {charCount}/2000
               </span>

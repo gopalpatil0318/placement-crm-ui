@@ -129,7 +129,7 @@ const DepartmentStudentCards = () => {
                             <SkeletonCards />
                         ) : departments.length > 0 ? (
                             <AnimatedGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                                {departments.map((dept: any) => {
+                                {departments.map((dept: { dept_id: string; dept_name: string; dept_code?: string }) => {
                                     const colorIdx = dept.dept_name.charCodeAt(0) % CARD_COLORS.length;
                                     return (
                                         <AnimatedGridItem key={dept.dept_id}>

@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { useTheme } from "next-themes"
 import { useAuth } from "@/hooks/collegeadmin/useAuth"
 import NotificationDropdown from "@/components/collegeadmin/notifications/NotificationDropdown"
+import YearSelector from "@/components/collegeadmin/YearSelector"
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -54,6 +55,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           type="button"
           onClick={toggleTheme}
           aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          aria-pressed={theme === "dark"}
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors cursor-pointer relative overflow-hidden"
           {...btnMotion}
         >
@@ -83,6 +85,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
             )}
           </AnimatePresence>
         </motion.button>
+
+        {/* Year filter */}
+        <YearSelector />
 
         {/* Notifications */}
         <NotificationDropdown />

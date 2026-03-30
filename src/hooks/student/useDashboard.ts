@@ -45,5 +45,10 @@ export function useDashboard() {
     // Combined
     isLoading,
     hasError: profileQuery.isError || jobsQuery.isError || applicationsQuery.isError,
+    refetch: () => {
+      profileQuery.refetch();
+      jobsQuery.refetch();
+      applicationsQuery.refetch();
+    },
   }
 }

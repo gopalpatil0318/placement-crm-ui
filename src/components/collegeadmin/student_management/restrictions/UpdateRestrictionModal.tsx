@@ -22,7 +22,7 @@ export default function UpdateRestrictionModal({
     restriction,
     onClose,
     onSuccess,
-}: UpdateRestrictionModalProps) {
+}: Readonly<UpdateRestrictionModalProps>) {
     const { formData, errors, loading, loadRestriction, handleChange, handleSubmit, resetForm } =
         useUpdateRestriction(onSuccess);
 
@@ -37,7 +37,7 @@ export default function UpdateRestrictionModal({
         || formData.valid_until !== originalData.valid_until;
 
     const handleClose = useCallback(() => {
-        if (isDirty && !window.confirm("You have unsaved changes. Discard and close?")) return;
+        if (isDirty && !globalThis.confirm("You have unsaved changes. Discard and close?")) return;
         onClose();
     }, [isDirty, onClose]);
 

@@ -185,6 +185,7 @@ export const queryKeys = {
     achievements: () => ["studentPortal", "achievements"] as const,
     activities: () => ["studentPortal", "activities"] as const,
     profileLinks: () => ["studentPortal", "profileLinks"] as const,
+    availableJobYears: () => ["studentPortal", "availableJobYears"] as const,
     availableJobs: (filters?: Record<string, unknown>) =>
       filters
         ? (["studentPortal", "jobs", filters] as const)

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
@@ -188,12 +188,33 @@ export const useAddQuestion = (jobId: string, onSuccess?: () => void) => {
         }
 
         mutation.mutate(apiPayload);
-    }, [formData, mutation, resetForm]);
+    }, [formData, mutation]);
+
+    // ── Dirty check + beforeunload ──
+
+    const isDirty = useMemo(() => {
+        return (
+            formData.question_text.trim() !== "" ||
+            formData.question_type !== "" ||
+            formData.is_required !== true ||
+            formData.question_options.some((o) => o.trim() !== "")
+        );
+    }, [formData]);
+
+    useEffect(() => {
+        if (!isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+        };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     return {
         formData,
         errors,
         loading: mutation.isPending,
+        isDirty,
         handleChange,
         handleSubmit,
         resetForm,

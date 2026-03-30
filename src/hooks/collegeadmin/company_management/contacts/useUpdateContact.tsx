@@ -50,6 +50,7 @@ export const useUpdateContact = (companyId: string, contact: Contact | null, onS
             isPrimary: contact.is_primary,
             notes: contact.notes || "",
         };
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- data prefill from query
         setFormData(loaded);
         originalData.current = loaded;
         setErrors({});

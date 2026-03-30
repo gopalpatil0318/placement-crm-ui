@@ -39,17 +39,22 @@ function formatDate(dateStr: string): string {
     year: "numeric",
     month: "short",
     day: "numeric",
+    timeZone: "Asia/Kolkata",
   })
 }
 
 function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-IN", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  return (
+    new Date(dateStr).toLocaleString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "Asia/Kolkata",
+    }) + " IST"
+  )
 }
 
 // ─── Status Config ──────────────────────────────────────────────────────────────
@@ -95,7 +100,7 @@ const STATUS_CONFIG: Record<
   },
 }
 
-const WITHDRAWABLE_STATUSES = ["pending", "under_review", "shortlisted"]
+const WITHDRAWABLE_STATUSES = new Set(["pending", "under_review", "shortlisted"])
 
 // ─── Journey Steps ──────────────────────────────────────────────────────────────
 
@@ -109,7 +114,7 @@ const JOURNEY_STEPS = [
 
 function getJourneyIndex(status: string): number {
   const idx = JOURNEY_STEPS.findIndex((s) => s.key === status)
-  return idx >= 0 ? idx : 0
+  return Math.max(idx, 0)
 }
 
 // ─── Round Result Helpers ───────────────────────────────────────────────────────
@@ -167,6 +172,30 @@ const roundStatusStyles = {
   },
 }
 
+// ─── Journey Step Style Helpers ─────────────────────────────────────────────
+
+function getJourneyDotClass(isCurrent: boolean, isReached: boolean): string {
+  if (isCurrent) return "bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-900/30"
+  if (isReached) return "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
+  return "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
+}
+
+function getJourneyTextClass(isCurrent: boolean, isReached: boolean): string {
+  if (isCurrent) return "text-indigo-600 dark:text-indigo-400"
+  if (isReached) return "text-gray-700 dark:text-gray-300"
+  return "text-gray-400 dark:text-gray-500"
+}
+
+function getRoundDotIcon(
+  status: "passed" | "failed" | "pending" | "upcoming" | "current",
+  roundNumber: number,
+): React.ReactNode {
+  if (status === "passed") return <CheckCircle2 className="h-5 w-5" />
+  if (status === "failed") return <XCircle className="h-5 w-5" />
+  if (status === "pending") return <Clock className="h-5 w-5" />
+  return <span>{roundNumber}</span>
+}
+
 // ─── Skeleton ───────────────────────────────────────────────────────────────────
 
 function DetailSkeleton() {
@@ -178,13 +207,13 @@ function DetailSkeleton() {
         <div className="h-4 w-40 rounded bg-gray-100 dark:bg-gray-800" />
         <div className="flex gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800" />
+            <div key={`journey-skel-${String(i)}`} className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800" />
           ))}
         </div>
       </div>
       <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-6 space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-16 rounded-xl bg-gray-100 dark:bg-gray-800" />
+          <div key={`round-skel-${String(i)}`} className="h-16 rounded-xl bg-gray-100 dark:bg-gray-800" />
         ))}
       </div>
     </div>
@@ -233,7 +262,7 @@ export default function ApplicationDetail() {
   const { application: app, answers, round_results, all_rounds, placement } = data
   const statusConfig = STATUS_CONFIG[app.application_status] ?? STATUS_CONFIG.pending
   const StatusIcon = statusConfig.icon
-  const canWithdraw = WITHDRAWABLE_STATUSES.includes(app.application_status)
+  const canWithdraw = WITHDRAWABLE_STATUSES.has(app.application_status)
   const journeyIdx = getJourneyIndex(app.application_status)
   const isTerminal = app.application_status === "rejected" || app.application_status === "withdrawn"
 
@@ -242,7 +271,7 @@ export default function ApplicationDetail() {
       { withdrawal_reason: withdrawReason.trim() || undefined },
       {
         onSuccess: (res) => {
-          toast.success(`Withdrawn from ${res.job_title} at ${res.company_name}`)
+          toast.success(res.message || `Withdrawn from ${res.job_title} at ${res.company_name}`)
           setShowWithdrawModal(false)
           setWithdrawReason("")
         },
@@ -319,10 +348,6 @@ export default function ApplicationDetail() {
           <div className="pt-1">
             <div
               className="flex items-center justify-between"
-              role="progressbar"
-              aria-valuenow={journeyIdx + 1}
-              aria-valuemin={1}
-              aria-valuemax={JOURNEY_STEPS.length}
               aria-label="Application progress"
             >
               {JOURNEY_STEPS.map((step, i) => {
@@ -334,22 +359,12 @@ export default function ApplicationDetail() {
                     {/* Step dot */}
                     <div className="flex flex-col items-center gap-1.5">
                       <div
-                        className={`flex items-center justify-center h-10 w-10 rounded-full transition-all ${isCurrent
-                            ? "bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-900/30"
-                            : isReached
-                              ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
-                          }`}
+                        className={`flex items-center justify-center h-10 w-10 rounded-full transition-all ${getJourneyDotClass(isCurrent, isReached)}`}
                       >
                         <Icon className="h-4.5 w-4.5" />
                       </div>
                       <span
-                        className={`text-xs font-medium ${isCurrent
-                            ? "text-indigo-600 dark:text-indigo-400"
-                            : isReached
-                              ? "text-gray-700 dark:text-gray-300"
-                              : "text-gray-400 dark:text-gray-500"
-                          }`}
+                        className={`text-xs font-medium ${getJourneyTextClass(isCurrent, isReached)}`}
                       >
                         {step.label}
                       </span>
@@ -488,7 +503,7 @@ export default function ApplicationDetail() {
               animate="animate"
               className="space-y-4"
             >
-              {all_rounds
+              {[...all_rounds]
                 .sort((a, b) => a.round_number - b.round_number)
                 .map((round) => {
                   const roundInfo = getRoundStatus(round, round_results, app.current_round_id)
@@ -505,15 +520,7 @@ export default function ApplicationDetail() {
                       <div
                         className={`relative z-10 flex items-center justify-center h-10 w-10 rounded-full shrink-0 ${styles.dot} text-white text-sm font-bold`}
                       >
-                        {roundInfo.status === "passed" ? (
-                          <CheckCircle2 className="h-5 w-5" />
-                        ) : roundInfo.status === "failed" ? (
-                          <XCircle className="h-5 w-5" />
-                        ) : roundInfo.status === "pending" ? (
-                          <Clock className="h-5 w-5" />
-                        ) : (
-                          <span>{round.round_number}</span>
-                        )}
+                        {getRoundDotIcon(roundInfo.status, round.round_number)}
                       </div>
 
                       {/* Content card */}
@@ -527,7 +534,7 @@ export default function ApplicationDetail() {
                             </h4>
                             <div className="mt-1 flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
                               <span className="capitalize">
-                                {round.round_type.replace("_", " ")}
+                                {round.round_type.replaceAll("_", " ")}
                               </span>
                               {round.round_date && (
                                 <span className="flex items-center gap-1">
@@ -623,7 +630,7 @@ export default function ApplicationDetail() {
               animate="animate"
               className="px-6 pb-6 space-y-4"
             >
-              {answers
+              {[...answers]
                 .sort((a, b) => a.question_order - b.question_order)
                 .map((ans, idx) => {
                   let displayAnswer = ""
@@ -716,11 +723,12 @@ export default function ApplicationDetail() {
 
           {/* Reason */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            <label htmlFor="withdraw-reason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               Reason for withdrawal{" "}
               <span className="text-gray-400 text-xs font-normal">(optional)</span>
             </label>
             <textarea
+              id="withdraw-reason"
               value={withdrawReason}
               onChange={(e) => setWithdrawReason(e.target.value)}
               placeholder="Why are you withdrawing this application?"

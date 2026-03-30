@@ -62,6 +62,7 @@ export const useAchievements = () => {
             const response = await StudentAchievementService.getAllAchievements();
             return (response.data?.achievements || response.achievements || []) as AchievementData[];
         },
+        staleTime: 2 * 60 * 1000,
     });
 
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -156,14 +157,14 @@ export const useAchievements = () => {
 
         const isEditing = !!editingId;
         saveMutation.mutate(payload, {
-            onSuccess: () => {
+            onSuccess: (response) => {
                 queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.achievements() });
                 queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
                 closeForm();
                 showToast({
                     type: "success",
                     title: isEditing ? "Updated" : "Added",
-                    description: isEditing ? "Achievement updated successfully" : "Achievement added successfully",
+                    description: response.message || (isEditing ? "Achievement updated successfully" : "Achievement added successfully"),
                 });
             },
         });
@@ -171,10 +172,10 @@ export const useAchievements = () => {
 
     const deleteMutation = useMutation({
         mutationFn: (id: string) => StudentAchievementService.deleteAchievement(id),
-        onSuccess: () => {
+        onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.achievements() });
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
-            showToast({ type: "success", title: "Deleted", description: "Achievement removed" });
+            showToast({ type: "success", title: "Deleted", description: response.message || "Achievement removed" });
         },
         onError: (error) => {
             showToast({

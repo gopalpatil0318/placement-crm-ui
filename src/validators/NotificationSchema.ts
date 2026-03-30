@@ -1,4 +1,23 @@
 import { z } from "zod/v4";
+import type { ComponentType } from "react";
+import {
+    Briefcase,
+    ClipboardCheck,
+    RefreshCw,
+    Calendar,
+    BarChart3,
+    PartyPopper,
+    Clock,
+    Ban,
+    CheckCircle,
+    BookOpen,
+    GraduationCap,
+    AlertTriangle,
+    Megaphone,
+    ShieldQuestion,
+    ShieldCheck,
+    ShieldX,
+} from "lucide-react";
 
 // ========================
 // NOTIFICATION TYPES
@@ -17,6 +36,9 @@ export const NOTIFICATION_TYPES = [
     "training_enrollment",
     "training_completed",
     "profile_incomplete",
+    "eligibility_override_requested",
+    "eligibility_override_approved",
+    "eligibility_override_rejected",
     "general",
 ] as const;
 
@@ -35,6 +57,9 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
     training_enrollment: "Training Enrollment",
     training_completed: "Training Completed",
     profile_incomplete: "Profile Incomplete",
+    eligibility_override_requested: "Override Requested",
+    eligibility_override_approved: "Override Approved",
+    eligibility_override_rejected: "Override Rejected",
     general: "General Announcement",
 };
 
@@ -120,6 +145,24 @@ export const NOTIFICATION_TYPE_COLORS: Record<
         dot: "bg-gray-500",
         iconBg: "bg-gray-100 dark:bg-gray-800/60",
     },
+    eligibility_override_requested: {
+        bg: "bg-amber-50 dark:bg-amber-900/20",
+        text: "text-amber-700 dark:text-amber-400",
+        dot: "bg-amber-500",
+        iconBg: "bg-amber-100 dark:bg-amber-900/40",
+    },
+    eligibility_override_approved: {
+        bg: "bg-emerald-50 dark:bg-emerald-900/20",
+        text: "text-emerald-700 dark:text-emerald-400",
+        dot: "bg-emerald-500",
+        iconBg: "bg-emerald-100 dark:bg-emerald-900/40",
+    },
+    eligibility_override_rejected: {
+        bg: "bg-red-50 dark:bg-red-900/20",
+        text: "text-red-700 dark:text-red-400",
+        dot: "bg-red-500",
+        iconBg: "bg-red-100 dark:bg-red-900/40",
+    },
 };
 
 // ========================
@@ -165,7 +208,7 @@ export const SORT_OPTIONS_NOTIFICATIONS = [
 // STUDENT STATUS & PROFILE STATUS
 // ========================
 
-export const STUDENT_STATUS_OPTIONS = ["active", "inactive", "graduated"] as const;
+export const STUDENT_STATUS_OPTIONS = ["active", "inactive", "suspended", "graduated", "dropout"] as const;
 export const PROFILE_STATUS_OPTIONS = ["approved", "pending", "rejected"] as const;
 export const USER_ROLE_OPTIONS = ["tpo", "hod", "teacher"] as const;
 
@@ -404,23 +447,6 @@ export interface StudentNotificationFilters {
 // NOTIFICATION ICON MAP (Lucide component references)
 // ========================
 
-import {
-    Briefcase,
-    ClipboardCheck,
-    RefreshCw,
-    Calendar,
-    BarChart3,
-    PartyPopper,
-    Clock,
-    Ban,
-    CheckCircle,
-    BookOpen,
-    GraduationCap,
-    AlertTriangle,
-    Megaphone,
-} from "lucide-react";
-import type { ComponentType } from "react";
-
 export const NOTIFICATION_TYPE_ICONS: Record<
     NotificationType,
     ComponentType<{ size?: number; className?: string }>
@@ -437,6 +463,9 @@ export const NOTIFICATION_TYPE_ICONS: Record<
     training_enrollment: BookOpen,
     training_completed: GraduationCap,
     profile_incomplete: AlertTriangle,
+    eligibility_override_requested: ShieldQuestion,
+    eligibility_override_approved: ShieldCheck,
+    eligibility_override_rejected: ShieldX,
     general: Megaphone,
 };
 
@@ -488,5 +517,5 @@ export function formatRelativeTime(dateString: string): string {
     if (diffHour < 24) return `${diffHour}h ago`;
     if (diffDay < 7) return `${diffDay}d ago`;
 
-    return date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-IN", { month: "short", day: "numeric", timeZone: "Asia/Kolkata" });
 }

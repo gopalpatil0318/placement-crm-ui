@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
     Search, ShieldAlert, ShieldCheck, Filter, ArrowUpDown, ArrowUp, ArrowDown,
-    ChevronLeft, ChevronRight, Calendar,
+    ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { AnimatedTableBody, AnimatedRow } from "@/components/ui/AnimatedList";
 import { useViewRestrictions } from "@/hooks/collegeadmin/student_management/restrictions/useViewRestrictions";
@@ -25,8 +25,6 @@ import RestrictionDetailModal from "./RestrictionDetailModal";
 // HELPERS
 // ========================
 
-const currentYear = new Date().getFullYear();
-const PASSOUT_YEARS = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 function formatDate(d: string | null): string {
@@ -53,14 +51,22 @@ function SortHeader({
     currentSort,
     currentOrder,
     onSort,
-}: {
+}: Readonly<{
     label: string;
     field: RestrictionSortField;
     currentSort: string;
     currentOrder: string;
     onSort: (field: RestrictionSortField) => void;
-}) {
+}>) {
     const isActive = currentSort === field;
+
+    let sortIcon = <ArrowUpDown className="h-3 w-3 text-gray-300 group-hover:text-gray-400 dark:text-gray-600 dark:group-hover:text-gray-500" />;
+    if (isActive && currentOrder === "asc") {
+        sortIcon = <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+    } else if (isActive) {
+        sortIcon = <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+    }
+
     return (
         <button
             type="button"
@@ -68,25 +74,19 @@ function SortHeader({
             className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400 transition-colors group cursor-pointer"
         >
             {label}
-            {isActive ? (
-                currentOrder === "asc" ? (
-                    <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                ) : (
-                    <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 text-gray-300 group-hover:text-gray-400 dark:text-gray-600 dark:group-hover:text-gray-500" />
-            )}
+            {sortIcon}
         </button>
     );
 }
+
+const SKELETON_KEYS = ["sk-1", "sk-2", "sk-3", "sk-4", "sk-5", "sk-6", "sk-7", "sk-8"];
 
 function TableSkeleton() {
     return (
         <div className="animate-pulse">
             <div className="space-y-3 p-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3">
+                {SKELETON_KEYS.map((id) => (
+                    <div key={id} className="flex items-center gap-3">
                         <div className="h-4 w-8 bg-gray-200 dark:bg-gray-700 rounded" />
                         <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
                         <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
@@ -103,6 +103,22 @@ function TableSkeleton() {
     );
 }
 
+function getPageNumbers(currentPage: number, totalPages: number): (number | string)[] {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+        for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+        pages.push(1);
+        if (currentPage > 3) pages.push("start-ellipsis");
+        for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+            pages.push(i);
+        }
+        if (currentPage < totalPages - 2) pages.push("end-ellipsis");
+        pages.push(totalPages);
+    }
+    return pages;
+}
+
 // ========================
 // MAIN COMPONENT
 // ========================
@@ -112,9 +128,9 @@ export default function RestrictionListView() {
 
     const {
         restrictions, loading, error, pagination,
-        search, passoutYear, statusFilter, typeFilter, sortBy, sortOrder,
+        search, statusFilter, typeFilter, sortBy, sortOrder,
         handleSearchChange, handlePageChange, handleLimitChange,
-        handlePassoutYearChange, handleStatusFilterChange,
+        handleStatusFilterChange,
         handleTypeFilterChange, handleSortFieldChange, handleSortOrderToggle,
         refresh,
     } = useViewRestrictions();
@@ -144,26 +160,59 @@ export default function RestrictionListView() {
         }
     }, [sortBy, handleSortFieldChange, handleSortOrderToggle]);
 
-    // Pagination helpers
     const totalPages = pagination.totalPages;
-    const getPageNumbers = () => {
-        const pages: (number | "...")[] = [];
-        if (totalPages <= 7) {
-            for (let i = 1; i <= totalPages; i++) pages.push(i);
-        } else {
-            pages.push(1);
-            if (pagination.page > 3) pages.push("...");
-            for (let i = Math.max(2, pagination.page - 1); i <= Math.min(totalPages - 1, pagination.page + 1); i++) {
-                pages.push(i);
-            }
-            if (pagination.page < totalPages - 2) pages.push("...");
-            pages.push(totalPages);
-        }
-        return pages;
-    };
 
     const showStart = (pagination.page - 1) * pagination.limit + 1;
     const showEnd = Math.min(pagination.page * pagination.limit, pagination.total);
+
+    let content: React.ReactNode | undefined;
+    if (loading) {
+        content = <TableSkeleton />;
+    } else if (error) {
+        content = (
+            <div className="flex flex-col items-center justify-center py-16">
+                <ShieldAlert className="h-12 w-12 text-red-400 dark:text-red-500 mb-4" />
+                <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-4">{error}</p>
+                <button
+                    type="button"
+                    onClick={() => refresh()}
+                    className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition cursor-pointer"
+                >
+                    Try Again
+                </button>
+            </div>
+        );
+    } else if (restrictions.length === 0) {
+        content = (
+            <div className="flex flex-col items-center justify-center py-16">
+                <div className="h-16 w-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+                    {search || typeFilter ? (
+                        <Search className="h-7 w-7 text-gray-400 dark:text-gray-500" />
+                    ) : (
+                        <ShieldCheck className="h-7 w-7 text-emerald-400 dark:text-emerald-500" />
+                    )}
+                </div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                    {search || typeFilter ? "No restrictions match your filters" : "No restrictions found"}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                    {search || typeFilter
+                        ? "Try adjusting your search or filter criteria"
+                        : "No students have been restricted yet"}
+                </p>
+                {!(search || typeFilter) && (
+                    <button
+                        type="button"
+                        onClick={() => setShowAddModal(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition shadow-sm cursor-pointer"
+                    >
+                        <ShieldAlert className="h-4 w-4" />
+                        Add Restriction
+                    </button>
+                )}
+            </div>
+        );
+    }
 
     return (
         <>
@@ -196,37 +245,16 @@ export default function RestrictionListView() {
                     </button>
                 </div>
 
-                {/* Passout Year Selector */}
-                <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-                    <div className="flex items-center gap-3">
-                        <Calendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Passout Year:</span>
-                        <div className="flex gap-1.5">
-                            {PASSOUT_YEARS.map((year) => (
-                                <button
-                                    key={year}
-                                    type="button"
-                                    onClick={() => handlePassoutYearChange(year)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                                        passoutYear === year
-                                            ? "bg-blue-600 text-white shadow-sm"
-                                            : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-600 dark:hover:text-blue-400"
-                                    }`}
-                                >
-                                    {year}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
                 {/* Status Tabs */}
                 <div className="px-6 border-b border-gray-100 dark:border-gray-800">
-                    <nav className="flex gap-1 -mb-px" aria-label="Status tabs">
+                    <div className="flex gap-1 -mb-px" role="tablist" aria-label="Status tabs">
                         {RESTRICTION_STATUS_TABS.map((tab) => (
                             <button
                                 key={tab}
                                 type="button"
+                                role="tab"
+                                aria-selected={statusFilter === tab}
+                                tabIndex={statusFilter === tab ? 0 : -1}
                                 onClick={() => handleStatusFilterChange(tab)}
                                 className={`relative px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
                                     statusFilter === tab
@@ -244,7 +272,7 @@ export default function RestrictionListView() {
                                 )}
                             </button>
                         ))}
-                    </nav>
+                    </div>
                 </div>
 
                 {/* Filter Bar */}
@@ -257,6 +285,7 @@ export default function RestrictionListView() {
                             value={search}
                             onChange={(e) => handleSearchChange(e.target.value)}
                             placeholder="Search by name or email..."
+                            aria-label="Search restrictions by name or email"
                             className="w-full pl-9 pr-4 py-2 rounded-xl text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition"
                         />
                     </div>
@@ -306,6 +335,7 @@ export default function RestrictionListView() {
                     <select
                         value={pagination.limit}
                         onChange={(e) => handleLimitChange(Number(e.target.value))}
+                        aria-label="Results per page"
                         className="px-3 py-2 rounded-xl text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition cursor-pointer [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-800"
                     >
                         {PAGE_SIZE_OPTIONS.map((size) => (
@@ -315,70 +345,29 @@ export default function RestrictionListView() {
                 </div>
 
                 {/* Content */}
-                {loading ? (
-                    <TableSkeleton />
-                ) : error ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                        <ShieldAlert className="h-12 w-12 text-red-400 dark:text-red-500 mb-4" />
-                        <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-4">{error}</p>
-                        <button
-                            type="button"
-                            onClick={() => refresh()}
-                            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition cursor-pointer"
-                        >
-                            Try Again
-                        </button>
-                    </div>
-                ) : restrictions.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                        <div className="h-16 w-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-                            {search || typeFilter ? (
-                                <Search className="h-7 w-7 text-gray-400 dark:text-gray-500" />
-                            ) : (
-                                <ShieldCheck className="h-7 w-7 text-emerald-400 dark:text-emerald-500" />
-                            )}
-                        </div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                            {search || typeFilter ? "No restrictions match your filters" : "No restrictions found"}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                            {search || typeFilter
-                                ? "Try adjusting your search or filter criteria"
-                                : `No students have been restricted for ${passoutYear}`}
-                        </p>
-                        {!(search || typeFilter) && (
-                            <button
-                                type="button"
-                                onClick={() => setShowAddModal(true)}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition shadow-sm cursor-pointer"
-                            >
-                                <ShieldAlert className="h-4 w-4" />
-                                Add Restriction
-                            </button>
-                        )}
-                    </div>
-                ) : (
+                {content}
+                {!loading && !error && restrictions.length > 0 && (
                     <>
                         {/* Table */}
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[1000px]">
                                 <thead>
                                     <tr className="border-b border-gray-100 dark:border-gray-800">
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[48px]">#</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[180px]">Student</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Dept</th>
-                                        <th className="px-4 py-3 text-left text-gray-500 dark:text-gray-400">
+                                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[48px]">#</th>
+                                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[180px]">Student</th>
+                                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Dept</th>
+                                        <th scope="col" className="px-4 py-3 text-left text-gray-500 dark:text-gray-400">
                                             <SortHeader label="Type" field="restriction_type" currentSort={sortBy} currentOrder={sortOrder} onSort={handleColumnSort} />
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px]">Reason</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Applied By</th>
-                                        <th className="px-4 py-3 text-left text-gray-500 dark:text-gray-400">
+                                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px]">Reason</th>
+                                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Applied By</th>
+                                        <th scope="col" className="px-4 py-3 text-left text-gray-500 dark:text-gray-400">
                                             <SortHeader label="Applied" field="applied_on" currentSort={sortBy} currentOrder={sortOrder} onSort={handleColumnSort} />
                                         </th>
-                                        <th className="px-4 py-3 text-left text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                        <th scope="col" className="px-4 py-3 text-left text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                             <SortHeader label="Valid Until" field="valid_until" currentSort={sortBy} currentOrder={sortOrder} onSort={handleColumnSort} />
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                                     </tr>
                                 </thead>
                                 <AnimatedTableBody>
@@ -453,13 +442,13 @@ export default function RestrictionListView() {
                                                     <td className="px-4 py-3.5">
                                                         {r.is_active ? (
                                                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                                                Active
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                                                <span>Active</span>
                                                             </span>
                                                         ) : (
                                                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                                Resolved
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                                <span>Resolved</span>
                                                             </span>
                                                         )}
                                                     </td>
@@ -487,14 +476,16 @@ export default function RestrictionListView() {
                                     >
                                         <ChevronLeft className="h-4 w-4" />
                                     </button>
-                                    {getPageNumbers().map((p, i) =>
-                                        p === "..." ? (
-                                            <span key={`ellipsis-${i}`} className="px-2 text-gray-400 dark:text-gray-500">…</span>
+                                    {getPageNumbers(pagination.page, totalPages).map((p) =>
+                                        typeof p === "string" ? (
+                                            <span key={p} className="px-2 text-gray-400 dark:text-gray-500">…</span>
                                         ) : (
                                             <button
                                                 key={p}
                                                 type="button"
                                                 onClick={() => handlePageChange(p)}
+                                                aria-label={`Go to page ${String(p)}`}
+                                                aria-current={pagination.page === p ? "page" : undefined}
                                                 className={`h-8 w-8 rounded-lg text-sm font-medium transition cursor-pointer ${
                                                     pagination.page === p
                                                         ? "bg-blue-600 text-white shadow-sm"

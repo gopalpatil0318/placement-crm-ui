@@ -72,6 +72,15 @@ export const StudentProfileService = {
         return response.data;
     },
 
+    resetPassword: async (data: {
+        token: string;
+        new_password: string;
+        confirm_password: string;
+    }) => {
+        const response = await api.post("/student/reset_password", data);
+        return response.data;
+    },
+
     changePassword: async (data: {
         current_password: string;
         new_password: string;

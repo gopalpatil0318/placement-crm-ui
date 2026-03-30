@@ -317,6 +317,7 @@ const CreateJobForm = () => {
                     label="Salary Min (₹)"
                     name="salary_min"
                     type="number"
+                    inputMode="numeric"
                     value={String(formData.salary_min)}
                     onChange={handleChange}
                     placeholder="e.g. 700000"
@@ -325,6 +326,7 @@ const CreateJobForm = () => {
                     label="Salary Max (₹)"
                     name="salary_max"
                     type="number"
+                    inputMode="numeric"
                     value={String(formData.salary_max)}
                     onChange={handleChange}
                     placeholder="e.g. 700000"
@@ -384,7 +386,7 @@ const CreateJobForm = () => {
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Vacancies</label>
-                            <input type="number" value={pos.vacancies || ""} onChange={(e) => updatePosition(i, "vacancies", e.target.value ? Number(e.target.value) : undefined)} min={1} className={inputClass(false)} />
+                            <input type="number" inputMode="numeric" value={pos.vacancies || ""} onChange={(e) => updatePosition(i, "vacancies", e.target.value ? Number(e.target.value) : undefined)} min={1} className={inputClass(false)} />
                         </div>
                     </div>
                 </div>
@@ -405,26 +407,26 @@ const CreateJobForm = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div>
                         <label className={labelClass}>Min CGPA (0-10)</label>
-                        <input type="number" value={ec.min_overall_cgpa ?? ""} onChange={(e) => updateEligibility("min_overall_cgpa", e.target.value ? Number(e.target.value) : undefined)} step={0.1} min={0} max={10} className={inputClass(false)} />
+                        <input type="number" inputMode="decimal" value={ec.min_overall_cgpa ?? ""} onChange={(e) => updateEligibility("min_overall_cgpa", e.target.value ? Number(e.target.value) : undefined)} step={0.1} min={0} max={10} className={inputClass(false)} />
                     </div>
                     <div>
                         <label className={labelClass}>Max Live KTs (0-20)</label>
-                        <input type="number" value={ec.max_live_kts ?? ""} onChange={(e) => updateEligibility("max_live_kts", e.target.value ? Number(e.target.value) : undefined)} min={0} max={20} className={inputClass(false)} />
+                        <input type="number" inputMode="numeric" value={ec.max_live_kts ?? ""} onChange={(e) => updateEligibility("max_live_kts", e.target.value ? Number(e.target.value) : undefined)} min={0} max={20} className={inputClass(false)} />
                     </div>
                     <div>
                         <label className={labelClass}>Min 10th %</label>
-                        <input type="number" value={ec.min_tenth_percentage ?? ""} onChange={(e) => updateEligibility("min_tenth_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
+                        <input type="number" inputMode="decimal" value={ec.min_tenth_percentage ?? ""} onChange={(e) => updateEligibility("min_tenth_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div>
                         <label className={labelClass}>Min 12th %</label>
-                        <input type="number" value={ec.min_twelfth_percentage ?? ""} onChange={(e) => updateEligibility("min_twelfth_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
+                        <input type="number" inputMode="decimal" value={ec.min_twelfth_percentage ?? ""} onChange={(e) => updateEligibility("min_twelfth_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
                     </div>
                     <div>
                         <label className={labelClass}>Min Diploma %</label>
-                        <input type="number" value={ec.min_diploma_percentage ?? ""} onChange={(e) => updateEligibility("min_diploma_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
+                        <input type="number" inputMode="decimal" value={ec.min_diploma_percentage ?? ""} onChange={(e) => updateEligibility("min_diploma_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
                     </div>
                     <div className="flex items-end">
                         <label className="flex items-center gap-2.5 cursor-pointer select-none">
@@ -448,7 +450,7 @@ const CreateJobForm = () => {
                                     }}
                                     className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                                 />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">{g.charAt(0).toUpperCase() + g.slice(1)}</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{g}</span>
                             </label>
                         ))}
                     </div>

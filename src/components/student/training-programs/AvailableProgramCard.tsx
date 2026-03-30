@@ -11,7 +11,6 @@ import { staggerItem } from "@/lib/animations"
 import {
   PROGRAM_TYPE_LABELS,
   type StudentAvailableProgram,
-  type ProgramType,
 } from "@/validators/TrainingProgramSchema"
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
@@ -42,7 +41,21 @@ function formatDate(d: string | null): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Kolkata",
   })
+}
+
+function getSpotsLabel(remaining: number | null): string {
+  if (remaining === null) return "No limit"
+  if (remaining <= 0) return "Full"
+  return `${remaining} spot${remaining === 1 ? "" : "s"} left`
+}
+
+function getDisabledReason(program: StudentAvailableProgram): string | undefined {
+  const canEnroll = !program.is_deadline_passed && (program.spots_remaining === null || program.spots_remaining > 0)
+  if (canEnroll) return undefined
+  if (program.is_deadline_passed) return "Enrollment deadline has passed"
+  return "This program is full"
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────────
@@ -52,21 +65,12 @@ interface AvailableProgramCardProps {
   onEnroll: (program: StudentAvailableProgram) => void
 }
 
-export default memo(function AvailableProgramCard({ program, onEnroll }: AvailableProgramCardProps) {
+export default memo(function AvailableProgramCard({ program, onEnroll }: Readonly<AvailableProgramCardProps>) {
   const shouldReduce = useReducedMotion()
   const deadline = getDeadlineInfo(program.enrollment_deadline, program.is_deadline_passed)
-  const spotsLabel =
-    program.spots_remaining === null
-      ? "No limit"
-      : program.spots_remaining <= 0
-        ? "Full"
-        : `${program.spots_remaining} spot${program.spots_remaining === 1 ? "" : "s"} left`
+  const spotsLabel = getSpotsLabel(program.spots_remaining)
   const canEnroll = !program.is_deadline_passed && (program.spots_remaining === null || program.spots_remaining > 0)
-  const disabledReason = !canEnroll
-    ? program.is_deadline_passed
-      ? "Enrollment deadline has passed"
-      : "This program is full"
-    : undefined
+  const disabledReason = getDisabledReason(program)
 
   return (
     <motion.div
@@ -80,7 +84,7 @@ export default memo(function AvailableProgramCard({ program, onEnroll }: Availab
             {program.program_name}
           </h3>
           <span className={`inline-block mt-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400`}>
-            {PROGRAM_TYPE_LABELS[program.program_type as ProgramType] ?? program.program_type}
+            {PROGRAM_TYPE_LABELS[program.program_type] ?? program.program_type}
           </span>
         </div>
         {deadline && (

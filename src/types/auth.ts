@@ -2,6 +2,12 @@ export type UserRole = "sysadmin" | "collegeadmin" | "teacher" | "hod" | "tpo" |
 
 export const COLLEGE_ROLES: UserRole[] = ["collegeadmin", "teacher", "hod", "tpo", "tpc"]
 
+export interface Department {
+  dept_id: string
+  dept_name: string
+  dept_code: string | null
+}
+
 export interface User {
   id: string
   email: string
@@ -12,6 +18,9 @@ export interface User {
   collegeId?: string
   collegeName?: string
   deptId?: string | null
+  defaultAcademicYear?: number
+  collegeType?: string
+  departments?: Department[]
   // Student-specific fields (populated only when role === "student")
   firstName?: string
   middleName?: string
@@ -51,6 +60,14 @@ export interface AuthContextType {
 export type SysAdminAuthContextType = AuthContextType
 
 export type CollegeAuthContextType = AuthContextType
+
+export interface YearFilterContextType {
+  selectedYear: number
+  setSelectedYear: (year: number) => void
+  yearOptions: number[]
+  isDefaultYear: boolean
+  defaultYear: number
+}
 
 export interface StudentAuthContextType {
   user: User | null

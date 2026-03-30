@@ -11,7 +11,6 @@ import {
   NOTIFICATION_TYPE_COLORS,
   formatRelativeTime,
   type StudentNotification,
-  type NotificationType,
 } from "@/validators/NotificationSchema"
 
 // ─── Component ──────────────────────────────────────────────────────────────────
@@ -28,7 +27,7 @@ export default function NotificationDropdown({
   onClose,
   unreadCount,
   containerRef,
-}: NotificationDropdownProps) {
+}: Readonly<NotificationDropdownProps>) {
   const shouldReduce = useReducedMotion()
   const { handleNotificationClick, markAllRead, isMarkingAllRead } =
     useNotificationActions()
@@ -119,7 +118,7 @@ export default function NotificationDropdown({
               type="button"
               onClick={() => markAllRead()}
               disabled={unreadCount === 0 || isMarkingAllRead}
-              className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 disabled:text-gray-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 min-h-[44px] text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 disabled:text-gray-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               {isMarkingAllRead ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -132,13 +131,10 @@ export default function NotificationDropdown({
 
           {/* ── List ── */}
           <div className="max-h-[400px] overflow-y-auto" aria-live="polite">
-            {isLoading ? (
-              <SkeletonItems />
-            ) : isError ? (
-              <ErrorDropdown onRetry={refetch} />
-            ) : notifications.length === 0 ? (
-              <EmptyDropdown />
-            ) : (
+            {isLoading && <SkeletonItems />}
+            {!isLoading && isError && <ErrorDropdown onRetry={refetch} />}
+            {!isLoading && !isError && notifications.length === 0 && <EmptyDropdown />}
+            {!isLoading && !isError && notifications.length > 0 &&
               notifications.map((notification) => (
                 <NotificationItem
                   key={notification.notification_id}
@@ -146,7 +142,7 @@ export default function NotificationDropdown({
                   onClick={handleItemClick}
                 />
               ))
-            )}
+            }
           </div>
 
           {/* ── Footer ── */}
@@ -171,11 +167,11 @@ export default function NotificationDropdown({
 function NotificationItem({
   notification,
   onClick,
-}: {
+}: Readonly<{
   notification: StudentNotification
   onClick: (n: StudentNotification) => void
-}) {
-  const type = notification.notification_type as NotificationType
+}>) {
+  const { notification_type: type } = notification
   const Icon = NOTIFICATION_TYPE_ICONS[type] ?? Bell
   const colors = NOTIFICATION_TYPE_COLORS[type] ?? NOTIFICATION_TYPE_COLORS.general
 
@@ -184,9 +180,9 @@ function NotificationItem({
       type="button"
       onClick={() => onClick(notification)}
       className={`w-full flex items-start gap-3 px-5 py-3.5 text-left transition-colors cursor-pointer group hover:bg-gray-50 dark:hover:bg-gray-800/40 ${
-        !notification.is_read
-          ? "bg-indigo-50/40 dark:bg-indigo-950/20 border-l-[3px] border-l-indigo-500"
-          : "border-l-[3px] border-l-transparent"
+        notification.is_read
+          ? "border-l-[3px] border-l-transparent"
+          : "bg-indigo-50/40 dark:bg-indigo-950/20 border-l-[3px] border-l-indigo-500"
       }`}
     >
       {/* Icon */}
@@ -200,9 +196,9 @@ function NotificationItem({
       <div className="min-w-0 flex-1">
         <p
           className={`text-sm leading-snug ${
-            !notification.is_read
-              ? "font-semibold text-gray-900 dark:text-gray-100"
-              : "font-normal text-gray-700 dark:text-gray-300"
+            notification.is_read
+              ? "font-normal text-gray-700 dark:text-gray-300"
+              : "font-semibold text-gray-900 dark:text-gray-100"
           } line-clamp-1`}
         >
           {notification.title}
@@ -227,11 +223,13 @@ function NotificationItem({
 
 // ─── Skeleton ───────────────────────────────────────────────────────────────────
 
+const SKELETON_KEYS_4 = ["sk-d-1", "sk-d-2", "sk-d-3", "sk-d-4"] as const;
+
 function SkeletonItems() {
   return (
     <div className="divide-y divide-gray-100 dark:divide-gray-800">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-3 px-5 py-3.5 motion-safe:animate-pulse">
+      {SKELETON_KEYS_4.map((key) => (
+        <div key={key} className="flex items-start gap-3 px-5 py-3.5 motion-safe:animate-pulse">
           <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
           <div className="flex-1 space-y-2">
             <div className="h-3.5 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
@@ -246,7 +244,7 @@ function SkeletonItems() {
 
 // ─── Error ──────────────────────────────────────────────────────────────────────
 
-function ErrorDropdown({ onRetry }: { onRetry: () => void }) {
+function ErrorDropdown({ onRetry }: Readonly<{ onRetry: () => void }>) {
   return (
     <div className="flex flex-col items-center justify-center py-10 px-6">
       <div className="h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-3">

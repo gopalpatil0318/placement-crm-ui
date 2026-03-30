@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import { queryKeys } from "@/lib/queryKeys";
 import { addRestrictionSchema, type RestrictionType } from "@/validators/RestrictionSchema";
 
@@ -55,7 +55,7 @@ export const useAddRestriction = (onSuccess?: () => void) => {
                 setErrors({ valid_until: message });
             }
 
-            showToast({ type: "error", title: "Error", description: message });
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
         },
     });
 

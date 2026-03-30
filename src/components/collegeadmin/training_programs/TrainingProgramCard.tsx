@@ -19,6 +19,22 @@ import {
 } from "@/validators/TrainingProgramSchema";
 
 // ========================
+// HELPERS
+// ========================
+
+const getDeadlineClassName = (info: { expired: boolean; urgentSoon: boolean }): string => {
+    if (info.expired) return "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400";
+    if (info.urgentSoon) return "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400";
+    return "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400";
+};
+
+const getEnrollmentBarColor = (percent: number): string => {
+    if (percent >= 90) return "bg-red-500";
+    if (percent >= 70) return "bg-amber-500";
+    return "bg-emerald-500";
+};
+
+// ========================
 // COMPONENT
 // ========================
 
@@ -26,7 +42,7 @@ interface TrainingProgramCardProps {
     program: TrainingProgram;
 }
 
-const TrainingProgramCard = ({ program }: TrainingProgramCardProps) => {
+const TrainingProgramCard = ({ program }: Readonly<TrainingProgramCardProps>) => {
     const statusColors = PROGRAM_STATUS_COLORS[program.program_status as ProgramStatus];
     const statusLabel = PROGRAM_STATUS_LABELS[program.program_status as ProgramStatus] ?? program.program_status;
     const typeLabel = PROGRAM_TYPE_LABELS[program.program_type as ProgramType] ?? program.program_type;
@@ -42,6 +58,7 @@ const TrainingProgramCard = ({ program }: TrainingProgramCardProps) => {
             day: "numeric",
             month: "short",
             year: "numeric",
+            timeZone: "Asia/Kolkata",
         });
     };
 
@@ -125,13 +142,7 @@ const TrainingProgramCard = ({ program }: TrainingProgramCardProps) => {
 
                 {/* Enrollment Deadline Warning */}
                 {deadlineInfo && (
-                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium mb-3 ${
-                        deadlineInfo.expired
-                            ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"
-                            : deadlineInfo.urgentSoon
-                                ? "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
-                                : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
-                    }`}>
+                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium mb-3 ${getDeadlineClassName(deadlineInfo)}`}>
                         <Timer className="h-3 w-3" />
                         <span>{deadlineInfo.sublabel}</span>
                     </div>
@@ -168,13 +179,7 @@ const TrainingProgramCard = ({ program }: TrainingProgramCardProps) => {
                     <div className="mt-2.5">
                         <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                             <div
-                                className={`h-full rounded-full transition-all duration-300 ${
-                                    enrollmentPercent >= 90
-                                        ? "bg-red-500"
-                                        : enrollmentPercent >= 70
-                                            ? "bg-amber-500"
-                                            : "bg-emerald-500"
-                                }`}
+                                className={`h-full rounded-full transition-all duration-300 ${getEnrollmentBarColor(enrollmentPercent)}`}
                                 style={{ width: `${enrollmentPercent}%` }}
                             />
                         </div>

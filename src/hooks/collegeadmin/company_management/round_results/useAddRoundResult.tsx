@@ -1,10 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { type ChangeEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import { addRoundResultSchema } from "@/validators/RoundResultSchema";
 
 // ========================
@@ -42,6 +42,19 @@ export const useAddRoundResult = (roundId: string, onSuccess?: () => void) => {
     const [errors, setErrors] = useState<FormErrors>({});
     const queryClient = useQueryClient();
 
+    const isDirty = useMemo(() => {
+        return Object.keys(INITIAL_FORM).some(
+            (key) => formData[key as keyof AddRoundResultFormData] !== INITIAL_FORM[key as keyof AddRoundResultFormData]
+        );
+    }, [formData]);
+
+    useEffect(() => {
+        if (!isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
+
     const mutation = useMutation({
         mutationFn: (payload: Record<string, unknown>) =>
             CollegeAdminService.addRoundResult(roundId, payload),
@@ -65,7 +78,7 @@ export const useAddRoundResult = (roundId: string, onSuccess?: () => void) => {
 
             showToast({
                 type: "error",
-                title: status === 404 ? "Not Found" : status === 400 ? "Invalid Action" : "Error",
+                title: getErrorTitle(status),
                 description: message,
             });
         },
@@ -148,5 +161,6 @@ export const useAddRoundResult = (roundId: string, onSuccess?: () => void) => {
         handleChange,
         handleSubmit,
         reset,
+        isDirty,
     };
 };

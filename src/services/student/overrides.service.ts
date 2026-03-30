@@ -20,7 +20,7 @@ export interface RequestOverrideApiResponse {
 
 export interface MyOverridesResponse {
   overrides: MyOverrideRequest[]
-  pagination: { total: number; page: number; limit: number; total_pages: number }
+  pagination: { total: number; page: number; limit: number; totalPages: number }
 }
 
 // ─── Service ────────────────────────────────────────────────────────────────────
@@ -40,12 +40,15 @@ export const OverridesService = {
   requestOverride: async (
     jobId: string,
     data: RequestOverrideInput,
-  ): Promise<OverrideRequestResponse> => {
+  ): Promise<RequestOverrideApiResponse> => {
     const response = await api.post(
       `/student/request_job_override/${encodeURIComponent(jobId)}`,
       { request_reason: data.request_reason.trim() },
     )
-    return response.data.data as OverrideRequestResponse
+    return {
+      data: response.data.data as OverrideRequestResponse,
+      message: response.data.message as string,
+    }
   },
 
   /** List the student's own override requests with filters */

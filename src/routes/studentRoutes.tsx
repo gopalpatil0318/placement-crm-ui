@@ -7,6 +7,7 @@ import StudentLayout from "@/components/student/layout/StudentLayout";
 // Auth pages (public — no layout)
 const StudentLogin = lazy(() => import("@/pages/Students/StudentLogin"));
 const StudentForgotPassword = lazy(() => import("@/pages/Students/StudentForgotPassword"));
+const StudentResetPassword = lazy(() => import("@/pages/Students/StudentResetPassword"));
 
 // Dashboard & Profile
 const StudentDashboard = lazy(() => import("@/pages/Students/StudentDashboard"));
@@ -49,6 +50,7 @@ export const studentRoutes = (
         {/* Public (no layout) */}
         <Route path="/student/login" element={<StudentPublicRoute><StudentLogin /></StudentPublicRoute>} />
         <Route path="/student/forgot-password" element={<StudentPublicRoute><StudentForgotPassword /></StudentPublicRoute>} />
+        <Route path="/student/reset-password" element={<StudentPublicRoute><StudentResetPassword /></StudentPublicRoute>} />
 
         {/* Protected (shared StudentLayout: sidebar + top bar) */}
         <Route element={<StudentProtectedRoute><StudentLayout /></StudentProtectedRoute>}>

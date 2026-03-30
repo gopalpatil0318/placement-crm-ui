@@ -8,6 +8,7 @@ import CollegeAdminLayout from "@/components/collegeadmin/CollegeAdminLayout";
 // Public pages
 const CollegeAdminLogin = lazy(() => import("@/pages/collegeadmin/CollegeAdminLogin"));
 const ForgotPassword = lazy(() => import("@/pages/collegeadmin/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/collegeadmin/ResetPassword"));
 
 // Dashboard & Settings
 const CollegeDashboard = lazy(() => import("@/pages/collegeadmin/Dashboard"));
@@ -81,6 +82,7 @@ export const collegeAdminRoutes = (
         {/* Public (no layout) */}
         <Route path="/college/login" element={<PublicRoute><CollegeAdminLogin /></PublicRoute>} />
         <Route path="/college/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+        <Route path="/college/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
 
         {/* Protected (shared DashboardLayout via CollegeAdminLayout) */}
         <Route element={<ProtectedRoute allowedRoles={COLLEGE_ROLES}><CollegeAdminLayout /></ProtectedRoute>}>

@@ -1,10 +1,10 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { type ChangeEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import { updateRoundResultSchema } from "@/validators/RoundResultSchema";
 import { type RoundResult } from "./useViewRoundResults";
 
@@ -40,8 +40,27 @@ export const useUpdateRoundResult = (roundId: string, onSuccess?: () => void) =>
     const [formData, setFormData] = useState<UpdateRoundResultFormData>({ ...INITIAL_FORM });
     const [errors, setErrors] = useState<FormErrors>({});
     const [resultId, setResultId] = useState("");
-    const originalData = useRef<UpdateRoundResultFormData | null>(null);
+    const [originalData, setOriginalData] = useState<UpdateRoundResultFormData | null>(null);
     const queryClient = useQueryClient();
+
+    const isDirty = useMemo(() => {
+        if (!originalData) return false;
+        return (
+            formData.result_status !== originalData.result_status ||
+            formData.score !== originalData.score ||
+            formData.remarks !== originalData.remarks ||
+            formData.attended !== originalData.attended ||
+            formData.scheduled_at !== originalData.scheduled_at ||
+            formData.completed_at !== originalData.completed_at
+        );
+    }, [formData, originalData]);
+
+    useEffect(() => {
+        if (!isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     const mutation = useMutation({
         mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
@@ -65,7 +84,7 @@ export const useUpdateRoundResult = (roundId: string, onSuccess?: () => void) =>
 
             showToast({
                 type: "error",
-                title: status === 409 ? "Conflict" : status === 400 ? "Invalid Action" : status === 404 ? "Not Found" : "Error",
+                title: getErrorTitle(status),
                 description: message,
             });
         },
@@ -105,9 +124,47 @@ export const useUpdateRoundResult = (roundId: string, onSuccess?: () => void) =>
                 : "",
         };
         setFormData(loaded);
-        originalData.current = { ...loaded };
+        setOriginalData({ ...loaded });
         setErrors({});
     }, []);
+
+    // Extract diff payload from formData vs original — reduces handleSubmit complexity
+    const buildDiffPayload = (
+        formData: UpdateRoundResultFormData,
+        orig: UpdateRoundResultFormData | null,
+    ): Record<string, unknown> => {
+        const payload: Record<string, unknown> = {};
+
+        if (orig?.result_status !== formData.result_status && formData.result_status) {
+            payload.result_status = formData.result_status;
+        }
+
+        if (orig?.score !== formData.score) {
+            if (formData.score === "" && orig?.score !== "") {
+                payload.score = null;
+            } else if (formData.score !== "") {
+                payload.score = Number(formData.score);
+            }
+        }
+
+        if (formData.remarks.trim() !== (orig?.remarks || "").trim()) {
+            payload.remarks = formData.remarks.trim();
+        }
+
+        if (orig?.attended !== formData.attended) {
+            payload.attended = formData.attended;
+        }
+
+        if (orig?.scheduled_at !== formData.scheduled_at) {
+            payload.scheduled_at = formData.scheduled_at || undefined;
+        }
+
+        if (orig?.completed_at !== formData.completed_at) {
+            payload.completed_at = formData.completed_at || undefined;
+        }
+
+        return payload;
+    };
 
     const handleSubmit = useCallback(() => {
         if (mutation.isPending) return;
@@ -117,40 +174,7 @@ export const useUpdateRoundResult = (roundId: string, onSuccess?: () => void) =>
             return;
         }
 
-        const orig = originalData.current;
-
-        // Build diff payload — only include changed fields
-        const payload: Record<string, unknown> = {};
-
-        if (!orig || formData.result_status !== orig.result_status) {
-            if (formData.result_status) {
-                payload.result_status = formData.result_status;
-            }
-        }
-
-        if (!orig || formData.score !== orig.score) {
-            if (formData.score === "" && orig?.score !== "") {
-                payload.score = null; // Clear score
-            } else if (formData.score !== "") {
-                payload.score = Number(formData.score);
-            }
-        }
-
-        if (!orig || formData.remarks.trim() !== (orig.remarks || "").trim()) {
-            payload.remarks = formData.remarks.trim();
-        }
-
-        if (!orig || formData.attended !== orig.attended) {
-            payload.attended = formData.attended;
-        }
-
-        if (!orig || formData.scheduled_at !== orig.scheduled_at) {
-            payload.scheduled_at = formData.scheduled_at || undefined;
-        }
-
-        if (!orig || formData.completed_at !== orig.completed_at) {
-            payload.completed_at = formData.completed_at || undefined;
-        }
+        const payload = buildDiffPayload(formData, originalData);
 
         // No changes guard
         if (Object.keys(payload).length === 0) {
@@ -181,12 +205,12 @@ export const useUpdateRoundResult = (roundId: string, onSuccess?: () => void) =>
 
         setErrors({});
         mutation.mutate({ id: resultId, payload });
-    }, [formData, resultId, mutation]);
+    }, [formData, resultId, mutation, originalData]);
 
     const reset = useCallback(() => {
         setFormData({ ...INITIAL_FORM });
         setResultId("");
-        originalData.current = null;
+        setOriginalData(null);
         setErrors({});
     }, []);
 
@@ -199,5 +223,6 @@ export const useUpdateRoundResult = (roundId: string, onSuccess?: () => void) =>
         handleSubmit,
         loadResult,
         reset,
+        isDirty,
     };
 };

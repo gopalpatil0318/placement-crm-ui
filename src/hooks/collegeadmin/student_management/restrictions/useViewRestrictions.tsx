@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 import { queryKeys } from "@/lib/queryKeys";
+import { useYearFilter } from "@/context/YearFilterContext";
 import {
     type CollegeRestrictionListItem,
     type RestrictionType,
@@ -17,14 +18,20 @@ interface Pagination {
     totalPages: number;
 }
 
+function resolveIsActive(statusFilter: RestrictionStatusFilter): string | undefined {
+    if (statusFilter === "active") return "true";
+    if (statusFilter === "resolved") return "false";
+    return undefined;
+}
+
 export const useViewRestrictions = (config?: { limit?: number }) => {
-    const currentYear = new Date().getFullYear();
+    const { selectedYear } = useYearFilter();
+    const queryClient = useQueryClient();
 
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(config?.limit ?? 20);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [passoutYear, setPassoutYear] = useState<number>(currentYear);
     const [statusFilter, setStatusFilter] = useState<RestrictionStatusFilter>("all");
     const [typeFilter, setTypeFilter] = useState<RestrictionType | "">("");
     const [sortBy, setSortBy] = useState<RestrictionSortField>("created_at");
@@ -32,17 +39,16 @@ export const useViewRestrictions = (config?: { limit?: number }) => {
 
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const queryFilters = {
-        passout_year: passoutYear,
+    const queryFilters = useMemo(() => ({
+        passout_year: selectedYear,
         page,
         limit,
         search: debouncedSearch || undefined,
         restriction_type: typeFilter || undefined,
-        is_active:
-            statusFilter === "active" ? "true" : statusFilter === "resolved" ? "false" : undefined,
+        is_active: resolveIsActive(statusFilter),
         sort_by: sortBy || undefined,
         sort_order: sortOrder || undefined,
-    };
+    }), [selectedYear, page, limit, debouncedSearch, typeFilter, statusFilter, sortBy, sortOrder]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.restrictions.all(queryFilters),
@@ -55,15 +61,27 @@ export const useViewRestrictions = (config?: { limit?: number }) => {
 
     const restrictions: CollegeRestrictionListItem[] = Array.isArray(data?.data) ? data.data : [];
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
-    const error = queryError
-        ? queryError instanceof Error
-            ? queryError.message
-            : "Failed to fetch restrictions"
-        : null;
+
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch restrictions";
+    }
 
     useEffect(() => {
         if (error) showToast({ type: "error", title: "Fetch Error", description: error });
     }, [error]);
+
+    // Prefetch next page
+    useEffect(() => {
+        if (pagination.page < pagination.totalPages) {
+            const nextFilters = { ...queryFilters, page: pagination.page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.restrictions.all(nextFilters),
+                queryFn: () => CollegeAdminService.getAllRestrictions(nextFilters),
+                staleTime: 30_000,
+            });
+        }
+    }, [pagination.page, pagination.totalPages, queryFilters, queryClient]);
 
     const handleSearchChange = useCallback((value: string) => {
         setSearch(value);
@@ -80,11 +98,6 @@ export const useViewRestrictions = (config?: { limit?: number }) => {
 
     const handleLimitChange = useCallback((newLimit: number) => {
         setLimit(newLimit);
-        setPage(1);
-    }, []);
-
-    const handlePassoutYearChange = useCallback((year: number) => {
-        setPassoutYear(year);
         setPage(1);
     }, []);
 
@@ -116,7 +129,6 @@ export const useViewRestrictions = (config?: { limit?: number }) => {
         error,
         pagination,
         search,
-        passoutYear,
         statusFilter,
         typeFilter,
         sortBy,
@@ -124,7 +136,6 @@ export const useViewRestrictions = (config?: { limit?: number }) => {
         handleSearchChange,
         handlePageChange,
         handleLimitChange,
-        handlePassoutYearChange,
         handleStatusFilterChange,
         handleTypeFilterChange,
         handleSortFieldChange,

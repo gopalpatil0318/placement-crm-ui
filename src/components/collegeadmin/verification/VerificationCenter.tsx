@@ -70,8 +70,7 @@ const CATEGORY_COLORS: Record<VerificationCategory, { bg: string; icon: string; 
 
 const PAGE_SIZES = [10, 20, 50] as const;
 
-const currentYear = new Date().getFullYear();
-const PASSOUT_YEARS = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
+const SKELETON_ROWS = ['sr-0', 'sr-1', 'sr-2', 'sr-3', 'sr-4'] as const;
 
 // ========================
 // HELPERS
@@ -126,27 +125,30 @@ function CountCard({
     count,
     isActive,
     onClick,
-}: {
+}: Readonly<{
     category: VerificationCategory;
     count: number;
     isActive: boolean;
     onClick: () => void;
-}) {
+}>) {
     const Icon = CATEGORY_ICONS[category];
     const colors = CATEGORY_COLORS[category];
     const hasItems = count > 0;
+
+    let stateClass: string;
+    if (isActive) {
+        stateClass = `${colors.activeBg} ${colors.border} ring-2 ring-blue-400/30 shadow-sm`;
+    } else if (hasItems) {
+        stateClass = `${colors.bg} ${colors.border} hover:shadow-md hover:scale-[1.01]`;
+    } else {
+        stateClass = "bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800";
+    }
 
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`flex items-center gap-4 p-5 rounded-xl border transition-all duration-200 cursor-pointer text-left w-full ${
-                isActive
-                    ? `${colors.activeBg} ${colors.border} ring-2 ring-blue-400/30 shadow-sm`
-                    : hasItems
-                      ? `${colors.bg} ${colors.border} hover:shadow-md hover:scale-[1.01]`
-                      : "bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800"
-            }`}
+            className={`flex items-center gap-4 p-5 rounded-xl border transition-all duration-200 cursor-pointer text-left w-full ${stateClass}`}
         >
             <div
                 className={`h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
@@ -201,21 +203,26 @@ function AllCaughtUpState() {
 
 // ─── Table Skeleton ─────────────────────────────────────────────────────
 
-function TableSkeleton({ columns }: { columns: number }) {
+function TableSkeleton({ columns }: Readonly<{ columns: number }>) {
+    const colKeys = useMemo(
+        () => Array.from({ length: columns }, (_, i) => `sc-${i}`),
+        [columns],
+    );
+
     return (
         <div className="animate-pulse">
             <div className="h-12 bg-gray-50 dark:bg-gray-800/50 rounded-t-lg mb-1" />
-            {Array.from({ length: 5 }).map((_, i) => (
+            {SKELETON_ROWS.map((rowKey) => (
                 <div
-                    key={i}
+                    key={rowKey}
                     className="flex items-center gap-4 px-4 py-4 border-b border-gray-50 dark:border-gray-800"
                 >
                     <div className="h-4 w-4 rounded bg-gray-200 dark:bg-gray-700" />
-                    {Array.from({ length: columns }).map((__, j) => (
+                    {colKeys.map((ck) => (
                         <div
-                            key={j}
+                            key={ck}
                             className="h-4 rounded bg-gray-200 dark:bg-gray-700"
-                            style={{ width: `${60 + Math.random() * 80}px` }}
+                            style={{ width: `${80}px` }}
                         />
                     ))}
                 </div>
@@ -229,10 +236,10 @@ function TableSkeleton({ columns }: { columns: number }) {
 function EmptyState({
     category,
     hasFilters,
-}: {
+}: Readonly<{
     category: VerificationCategory;
     hasFilters: boolean;
-}) {
+}>) {
     const Icon = CATEGORY_ICONS[category];
 
     if (hasFilters) {
@@ -274,14 +281,24 @@ function SortHeader({
     currentSort,
     currentOrder,
     onSort,
-}: {
+}: Readonly<{
     label: string;
     field: string;
     currentSort: string;
     currentOrder: string;
     onSort: (field: string) => void;
-}) {
+}>) {
     const isActive = currentSort === field;
+
+    let sortIcon: React.ReactNode;
+    if (isActive && currentOrder === "ASC") {
+        sortIcon = <ArrowUp className="h-3 w-3" />;
+    } else if (isActive) {
+        sortIcon = <ArrowDown className="h-3 w-3" />;
+    } else {
+        sortIcon = <ArrowUpDown className="h-3 w-3 opacity-40" />;
+    }
+
     return (
         <button
             type="button"
@@ -289,15 +306,7 @@ function SortHeader({
             className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer"
         >
             {label}
-            {isActive ? (
-                currentOrder === "ASC" ? (
-                    <ArrowUp className="h-3 w-3" />
-                ) : (
-                    <ArrowDown className="h-3 w-3" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 opacity-40" />
-            )}
+            {sortIcon}
         </button>
     );
 }
@@ -310,27 +319,28 @@ function RejectModal({
     onConfirm,
     entityLabel,
     isLoading,
-}: {
+}: Readonly<{
     isOpen: boolean;
     onClose: () => void;
     onConfirm: (reason: string) => void;
     entityLabel: string;
     isLoading: boolean;
-}) {
+}>) {
     const [reason, setReason] = useState("");
     const [error, setError] = useState("");
 
     // Reset state when modal opens
     useEffect(() => {
         if (isOpen) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on modal open
             setReason("");
             setError("");
         }
     }, [isOpen]);
 
     const handleSubmit = () => {
-        if (reason.trim().length < 3) {
-            setError("Rejection reason must be at least 3 characters");
+        if (reason.trim().length < 5) {
+            setError("Rejection reason must be at least 5 characters");
             return;
         }
         setError("");
@@ -372,25 +382,26 @@ function RejectModal({
                     <ul className="space-y-1">
                         <li className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
                             <span className="mt-1 h-1 w-1 rounded-full bg-amber-400 flex-shrink-0" />
-                            Student will be notified of the rejection
+                            <span>Student will be notified of the rejection</span>
                         </li>
                         <li className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
                             <span className="mt-1 h-1 w-1 rounded-full bg-amber-400 flex-shrink-0" />
-                            Item will be hidden from the student&apos;s public profile
+                            <span>Item will be hidden from the student&apos;s public profile</span>
                         </li>
                         <li className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
                             <span className="mt-1 h-1 w-1 rounded-full bg-amber-400 flex-shrink-0" />
-                            Student can edit and resubmit for review
+                            <span>Student can edit and resubmit for review</span>
                         </li>
                     </ul>
                 </div>
 
                 {/* Reason textarea */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                    <label htmlFor="reject-reason" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                         Rejection Reason <span className="text-red-500">*</span>
                     </label>
                     <textarea
+                        id="reject-reason"
                         rows={3}
                         maxLength={500}
                         value={reason}
@@ -431,7 +442,7 @@ function RejectModal({
                 <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={isLoading || reason.trim().length < 3}
+                    disabled={isLoading || reason.trim().length < 5}
                     className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                 >
                     {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -450,13 +461,13 @@ function BulkActionBar({
     onReject,
     onClear,
     isProcessing,
-}: {
+}: Readonly<{
     selectedCount: number;
     onApprove: () => void;
     onReject: () => void;
     onClear: () => void;
     isProcessing: boolean;
-}) {
+}>) {
     return (
         <motion.div
             initial={{ y: 80, opacity: 0 }}
@@ -526,31 +537,31 @@ function Pagination({
     total,
     limit,
     onPageChange,
-}: {
+}: Readonly<{
     page: number;
     totalPages: number;
     total: number;
     limit: number;
     onPageChange: (p: number) => void;
-}) {
+}>) {
     if (totalPages <= 1) return null;
 
     const start = (page - 1) * limit + 1;
     const end = Math.min(page * limit, total);
 
-    const pages: (number | "...")[] = [];
+    const pages: (number | string)[] = [];
     if (totalPages <= 7) {
         for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
         pages.push(1);
-        if (page > 3) pages.push("...");
+        if (page > 3) pages.push("ellipsis-start");
         for (
             let i = Math.max(2, page - 1);
             i <= Math.min(totalPages - 1, page + 1);
             i++
         )
             pages.push(i);
-        if (page < totalPages - 2) pages.push("...");
+        if (page < totalPages - 2) pages.push("ellipsis-end");
         pages.push(totalPages);
     }
 
@@ -560,10 +571,10 @@ function Pagination({
                 Showing {start}–{end} of {total}
             </p>
             <div className="flex items-center gap-1">
-                {pages.map((p, idx) =>
-                    p === "..." ? (
+                {pages.map((p) =>
+                    typeof p === "string" ? (
                         <span
-                            key={`ellipsis-${idx}`}
+                            key={p}
                             className="px-2 text-xs text-gray-400"
                         >
                             …
@@ -573,7 +584,7 @@ function Pagination({
                             key={p}
                             type="button"
                             onClick={() => onPageChange(p)}
-                            className={`h-8 min-w-[2rem] px-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                            className={`min-h-[44px] min-w-[44px] px-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                                 p === page
                                     ? "bg-blue-600 text-white"
                                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -614,9 +625,9 @@ export default function VerificationCenter() {
         queryFn: () => CollegeAdminService.getDepartments({ is_active: true, limit: 100 }),
     });
     const deptData = deptQuery.data;
-    const departments: { dept_id: string; dept_name: string }[] = Array.isArray(deptData?.data)
-        ? deptData.data
-        : Array.isArray(deptData) ? deptData : [];
+    let departments: { dept_id: string; dept_name: string }[] = [];
+    if (Array.isArray(deptData?.data)) departments = deptData.data;
+    else if (Array.isArray(deptData)) departments = deptData;
 
     const {
         items,
@@ -625,7 +636,6 @@ export default function VerificationCenter() {
         isFetching,
         search,
         deptId,
-        passoutYear,
         sortBy,
         sortOrder,
         page,
@@ -633,7 +643,6 @@ export default function VerificationCenter() {
         setPage,
         handleSearchChange,
         handleDeptChange,
-        handlePassoutYearChange,
         handleSortChange,
         handleLimitChange,
     } = useViewPendingItems(activeCategory);
@@ -704,6 +713,7 @@ export default function VerificationCenter() {
     const wasRejectingRef = useRef(false);
     useEffect(() => {
         if (wasRejectingRef.current && !isRejectPending) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- async operation completion sync
             setRejectModalOpen(false);
             setRejectTarget(null);
         }
@@ -740,7 +750,7 @@ export default function VerificationCenter() {
         [items, selectedIds, activeCategory],
     );
 
-    const hasFilters = !!(search || deptId || passoutYear);
+    const hasFilters = !!(search || deptId);
     const rejectEntityLabel =
         rejectTarget?.type === "bulk"
             ? `${selectedIds.size} ${CATEGORY_LABELS[activeCategory].toLowerCase()}`
@@ -884,7 +894,7 @@ export default function VerificationCenter() {
                                 type="button"
                                 onClick={() => approve(itemId)}
                                 disabled={isProcessingItem || isApproving}
-                                className="h-7 w-7 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50 cursor-pointer"
+                                className="min-h-[44px] min-w-[44px] rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50 cursor-pointer"
                                 aria-label="Approve"
                             >
                                 {isProcessingItem && isApproving ? (
@@ -897,7 +907,7 @@ export default function VerificationCenter() {
                                 type="button"
                                 onClick={() => openRejectSingle(itemId)}
                                 disabled={isProcessingItem || isRejecting}
-                                className="h-7 w-7 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 cursor-pointer"
+                                className="min-h-[44px] min-w-[44px] rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 cursor-pointer"
                                 aria-label="Reject"
                             >
                                 {isProcessingItem && isRejecting ? (
@@ -1008,8 +1018,8 @@ export default function VerificationCenter() {
             <Wrapper {...wrapperProps}>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {countsLoading
-                        ? Array.from({ length: 4 }).map((_, i) => (
-                              <CountCardSkeleton key={i} />
+                        ? VERIFICATION_CATEGORIES.map((cat) => (
+                              <CountCardSkeleton key={cat} />
                           ))
                         : VERIFICATION_CATEGORIES.map((cat) => (
                               <CountCard
@@ -1044,6 +1054,7 @@ export default function VerificationCenter() {
                                     type="button"
                                     role="tab"
                                     aria-selected={isActive}
+                                    aria-label={CATEGORY_LABELS[cat]}
                                     onClick={() => handleCategoryChange(cat)}
                                     className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer ${
                                         isActive
@@ -1088,33 +1099,13 @@ export default function VerificationCenter() {
                             <select
                                 value={deptId}
                                 onChange={(e) => handleDeptChange(e.target.value)}
-                                className="appearance-none pl-3 pr-8 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-colors cursor-pointer"
+                                aria-label="Filter by department"
+                                className="appearance-none pl-3 pr-8 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-colors cursor-pointer min-h-[44px]"
                             >
                                 <option value="">All Departments</option>
                                 {departments.map((d) => (
                                     <option key={d.dept_id} value={d.dept_id}>
                                         {d.dept_name}
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-                        </div>
-
-                        {/* Passout Year filter */}
-                        <div className="relative">
-                            <select
-                                value={passoutYear || ""}
-                                onChange={(e) =>
-                                    handlePassoutYearChange(
-                                        e.target.value ? Number(e.target.value) : undefined,
-                                    )
-                                }
-                                className="appearance-none pl-3 pr-8 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-colors cursor-pointer"
-                            >
-                                <option value="">All Years</option>
-                                {PASSOUT_YEARS.map((y) => (
-                                    <option key={y} value={y}>
-                                        {y}
                                     </option>
                                 ))}
                             </select>
@@ -1132,7 +1123,8 @@ export default function VerificationCenter() {
                                     onChange={(e) =>
                                         handleLimitChange(Number(e.target.value))
                                     }
-                                    className="appearance-none pl-3 pr-7 py-2 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 focus:outline-none cursor-pointer"
+                                    aria-label="Items per page"
+                                    className="appearance-none pl-3 pr-7 py-2 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 focus:outline-none cursor-pointer min-h-[44px]"
                                 >
                                     {PAGE_SIZES.map((s) => (
                                         <option key={s} value={s}>
@@ -1146,34 +1138,39 @@ export default function VerificationCenter() {
                     </div>
 
                     {/* ═══════════════════════ Table ═══════════════════════ */}
-                    {isLoading ? (
+                    {isLoading && (
                         <TableSkeleton columns={columnHeaders.length + 1} />
-                    ) : items.length === 0 ? (
+                    )}
+                    {!isLoading && items.length === 0 && (
                         <EmptyState category={activeCategory} hasFilters={hasFilters} />
-                    ) : (
+                    )}
+                    {!isLoading && items.length > 0 && (
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
                                     <tr className="bg-gray-50/80 dark:bg-gray-800/50">
                                         {/* Checkbox header */}
-                                        <th className="px-4 py-3 w-10">
+                                        <th scope="col" className="px-4 py-3 w-10">
                                             <button
                                                 type="button"
                                                 onClick={toggleSelectAll}
                                                 className="cursor-pointer"
                                                 aria-label="Select all"
                                             >
-                                                {allOnPageSelected ? (
+                                                {allOnPageSelected && (
                                                     <CheckSquare className="h-4 w-4 text-blue-600" />
-                                                ) : someOnPageSelected ? (
+                                                )}
+                                                {!allOnPageSelected && someOnPageSelected && (
                                                     <Minus className="h-4 w-4 text-blue-400" />
-                                                ) : (
+                                                )}
+                                                {!allOnPageSelected && !someOnPageSelected && (
                                                     <Square className="h-4 w-4 text-gray-300 dark:text-gray-600" />
                                                 )}
                                             </button>
                                         </th>
                                         {columnHeaders.map((col) => (
                                             <th
+                                                scope="col"
                                                 key={col.label}
                                                 className={`px-3 py-3 text-left ${col.width}`}
                                             >
@@ -1192,7 +1189,7 @@ export default function VerificationCenter() {
                                                 )}
                                             </th>
                                         ))}
-                                        <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-24">
+                                        <th scope="col" className="px-3 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-24">
                                             Actions
                                         </th>
                                     </tr>

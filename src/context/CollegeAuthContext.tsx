@@ -7,6 +7,7 @@ import { queryClient } from "@/lib/queryClient";
 import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 
+// eslint-disable-next-line react-refresh/only-export-components -- context object co-exported with provider
 export const CollegeAuthContext = createContext<CollegeAuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = "college_user";
@@ -46,6 +47,9 @@ export function CollegeAuthProvider({ children }: { children: ReactNode }) {
             collegeId: userData.college_id,
             collegeName: userData.college_name,
             deptId: userData.dept_id,
+            defaultAcademicYear: userData.default_academic_year,
+            collegeType: userData.college_type,
+            departments: userData.departments,
         };
 
         setUser(newUser);
@@ -53,10 +57,13 @@ export function CollegeAuthProvider({ children }: { children: ReactNode }) {
         clearOtherSessions("college");
 
         // Prefetch dashboard overview for instant dashboard load (non-blocking)
-        const currentYear = new Date().getFullYear();
+        const defaultYear = userData.default_academic_year ?? new Date().getFullYear();
         queryClient.prefetchQuery({
-            queryKey: queryKeys.dashboard.overview(currentYear),
-            queryFn: () => CollegeAdminService.getDashboardOverview(currentYear),
+            queryKey: queryKeys.dashboard.overview(defaultYear),
+            queryFn: async () => {
+                const res = await CollegeAdminService.getDashboardOverview(defaultYear);
+                return res.data;
+            },
             staleTime: 5 * 60 * 1000,
         });
 

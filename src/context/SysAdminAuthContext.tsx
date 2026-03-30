@@ -4,6 +4,7 @@ import { showToast } from "@/utils/ToastUtils";
 import { clearOtherSessions } from "@/lib/clearAllAuthSessions";
 import type { User, UserRole, SysAdminAuthContextType } from "../types/auth";
 
+// eslint-disable-next-line react-refresh/only-export-components -- context object co-exported with provider
 export const SysAdminAuthContext = createContext<SysAdminAuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = "sysadmin_user";
@@ -30,16 +31,16 @@ export function SysAdminAuthProvider({ children }: { children: ReactNode }) {
             const response = await api.post("/sysadmin/login", { email, password });
 
             const responseData = response.data;
-            const userData = responseData.data?.user || responseData.data;
+            const userData = responseData.data;
 
             if (!userData) {
                 throw new Error("Invalid response: User data missing");
             }
 
             const newUser: User = {
-                id: userData.user_id || email,
-                email: userData.user_email || email,
-                role: (userData.user_role || "sysadmin") as UserRole,
+                id: email,
+                email: userData.email || email,
+                role: (userData.role || "sysadmin") as UserRole,
             };
 
             setUser(newUser);

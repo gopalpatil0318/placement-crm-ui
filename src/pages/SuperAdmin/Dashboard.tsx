@@ -7,6 +7,8 @@ import {
   XCircle,
   Plus,
   ArrowRight,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react"
 import AnimatedPage from "@/components/ui/AnimatedPage"
 import { AnimatedGrid, AnimatedGridItem } from "@/components/ui/AnimatedList"
@@ -18,25 +20,26 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const { data: allData, isLoading: loadingAll } = useQuery({
+  const { data: allData, isLoading: loadingAll, isError: errorAll, refetch: refetchAll } = useQuery({
     queryKey: queryKeys.colleges.all({ page: 1, limit: 1 }),
     queryFn: () => SysAdminService.getCollegesData({ page: 1, limit: 1 }),
     staleTime: 5 * 60 * 1000,
   })
 
-  const { data: activeData, isLoading: loadingActive } = useQuery({
+  const { data: activeData, isLoading: loadingActive, isError: errorActive } = useQuery({
     queryKey: queryKeys.colleges.all({ page: 1, limit: 1, status: "active" }),
     queryFn: () => SysAdminService.getCollegesData({ page: 1, limit: 1, status: "active" }),
     staleTime: 5 * 60 * 1000,
   })
 
-  const { data: inactiveData, isLoading: loadingInactive } = useQuery({
+  const { data: inactiveData, isLoading: loadingInactive, isError: errorInactive } = useQuery({
     queryKey: queryKeys.colleges.all({ page: 1, limit: 1, status: "inactive" }),
     queryFn: () => SysAdminService.getCollegesData({ page: 1, limit: 1, status: "inactive" }),
     staleTime: 5 * 60 * 1000,
   })
 
   const isLoading = loadingAll || loadingActive || loadingInactive
+  const hasError = errorAll || errorActive || errorInactive
 
   const stats = useMemo(() => ({
     total: allData?.pagination?.total ?? 0,
@@ -56,6 +59,27 @@ export default function Dashboard() {
             Here's what's happening across your colleges.
           </p>
         </div>
+
+        {/* Error State */}
+        {hasError && !isLoading && (
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-red-200 dark:border-red-800/50 shadow-sm p-10 flex flex-col items-center gap-4 text-center">
+            <div className="h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+              <AlertCircle className="h-6 w-6 text-red-500 dark:text-red-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Failed to load dashboard data</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Something went wrong. Please try again.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => refetchAll()}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Try Again
+            </button>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <AnimatedGrid className="grid grid-cols-1 sm:grid-cols-3 gap-5">

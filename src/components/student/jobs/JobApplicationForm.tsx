@@ -30,8 +30,7 @@ type AnswerMap = Record<
   { answer_text?: string; answer_options?: string[]; answer_boolean?: boolean }
 >
 
-const STEPS = ["Position", "Questions", "Review"] as const
-type Step = (typeof STEPS)[number]
+type Step = "Position" | "Questions" | "Review"
 
 export default function JobApplicationForm({
   positions,
@@ -70,9 +69,9 @@ export default function JobApplicationForm({
       .every((q) => {
         const a = answers[q.question_id]
         if (!a) return false
-        if (q.question_type === "text") return !!a.answer_text?.trim()
-        if (q.question_type === "boolean") return a.answer_boolean !== undefined
-        if (q.question_type === "single_choice" || q.question_type === "multiple_choice")
+        if (q.question_type === "text" || q.question_type === "essay") return !!a.answer_text?.trim()
+        if (q.question_type === "yes_no") return a.answer_boolean !== undefined
+        if (q.question_type === "mcq_single" || q.question_type === "mcq_multiple")
           return a.answer_options && a.answer_options.length > 0
         return false
       })
@@ -208,17 +207,17 @@ export default function JobApplicationForm({
                           {q.is_required && <span className="text-red-500 ml-1">*</span>}
                         </p>
                         <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
-                          {q.question_type === "text" && <Type className="h-3 w-3" />}
-                          {q.question_type === "boolean" && <ToggleLeft className="h-3 w-3" />}
-                          {q.question_type === "single_choice" && <CircleCheck className="h-3 w-3" />}
-                          {q.question_type === "multiple_choice" && <ListChecks className="h-3 w-3" />}
-                          <span className="capitalize">{q.question_type.replace("_", " ")}</span>
+                          {(q.question_type === "text" || q.question_type === "essay") && <Type className="h-3 w-3" />}
+                          {q.question_type === "yes_no" && <ToggleLeft className="h-3 w-3" />}
+                          {q.question_type === "mcq_single" && <CircleCheck className="h-3 w-3" />}
+                          {q.question_type === "mcq_multiple" && <ListChecks className="h-3 w-3" />}
+                          <span className="capitalize">{q.question_type.replaceAll("_", " ")}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Text answer */}
-                    {q.question_type === "text" && (
+                    {/* Text / Essay answer */}
+                    {(q.question_type === "text" || q.question_type === "essay") && (
                       <textarea
                         value={answers[q.question_id]?.answer_text ?? ""}
                         onChange={(e) =>
@@ -233,7 +232,7 @@ export default function JobApplicationForm({
                     )}
 
                     {/* Single choice */}
-                    {q.question_type === "single_choice" && q.question_options && (
+                    {q.question_type === "mcq_single" && q.question_options && (
                       <div className="grid gap-2">
                         {q.question_options.map((opt) => (
                           <label
@@ -261,7 +260,7 @@ export default function JobApplicationForm({
                     )}
 
                     {/* Multiple choice */}
-                    {q.question_type === "multiple_choice" && q.question_options && (
+                    {q.question_type === "mcq_multiple" && q.question_options && (
                       <div className="grid gap-2">
                         {q.question_options.map((opt) => {
                           const selected =
@@ -296,8 +295,8 @@ export default function JobApplicationForm({
                       </div>
                     )}
 
-                    {/* Boolean */}
-                    {q.question_type === "boolean" && (
+                    {/* Yes / No */}
+                    {q.question_type === "yes_no" && (
                       <div className="flex gap-3">
                         {[true, false].map((val) => (
                           <button

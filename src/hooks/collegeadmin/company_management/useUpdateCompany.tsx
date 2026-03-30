@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
@@ -36,6 +36,7 @@ export const useUpdateCompany = (companyId: string | undefined) => {
         companyLogo: "",
     });
     const originalData = useRef<UpdateCompanyForm | null>(null);
+    const [originalSnapshot, setOriginalSnapshot] = useState<UpdateCompanyForm | null>(null);
     const [fetchedCompanyName, setFetchedCompanyName] = useState<string>("");
     const [errors, setErrors] = useState<FormErrors>({});
 
@@ -57,8 +58,10 @@ export const useUpdateCompany = (companyId: string | undefined) => {
                 industry: company.industry || "",
                 companyLogo: company.company_logo || "",
             };
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- data prefill from query
             setFormData(loaded);
             originalData.current = loaded;
+            setOriginalSnapshot(loaded);
             setFetchedCompanyName(company.company_name || "");
         }
     }, [queryData]);
@@ -68,6 +71,26 @@ export const useUpdateCompany = (companyId: string | undefined) => {
         : queryFetchError
             ? (queryFetchError instanceof Error ? queryFetchError.message : "Failed to fetch company details")
             : null;
+
+    // ── Unsaved-changes guard ──
+    const isDirty = useMemo(() => {
+        if (!originalSnapshot) return false;
+        return (
+            formData.companyName.trim() !== originalSnapshot.companyName.trim() ||
+            formData.companyDescription !== originalSnapshot.companyDescription ||
+            formData.companyWebsite !== originalSnapshot.companyWebsite ||
+            formData.industry !== originalSnapshot.industry ||
+            formData.companyLogo !== originalSnapshot.companyLogo
+        );
+    }, [formData, originalSnapshot]);
+
+    useEffect(() => {
+        const handler = (e: BeforeUnloadEvent) => {
+            if (isDirty) e.preventDefault();
+        };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     // ── Update mutation ──
     const mutation = useMutation({

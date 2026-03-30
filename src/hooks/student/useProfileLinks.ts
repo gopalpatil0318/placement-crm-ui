@@ -37,13 +37,15 @@ export const useProfileLinks = () => {
         queryKey: queryKeys.studentPortal.profileLinks(),
         queryFn: async () => {
             const response = await StudentProfileLinksService.getProfileLinks();
-            return response.data?.profile_links || response.profile_links || response.data || null;
+            return response.data ?? null;
         },
+        staleTime: 2 * 60 * 1000,
     });
 
     // Prefill form from fetched data
     useEffect(() => {
         if (linksData && typeof linksData === "object" && Object.keys(linksData).length > 0) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- data prefill from query
             setFormData({
                 personal_portfolio_url: linksData.personal_portfolio_url || "",
                 resume_url: linksData.resume_url || "",
@@ -86,14 +88,14 @@ export const useProfileLinks = () => {
     const saveMutation = useMutation({
         mutationFn: (payload: Record<string, unknown>) =>
             StudentProfileLinksService.saveProfileLinks(payload),
-        onSuccess: () => {
+        onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.profileLinks() });
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
 
             if (isExisting) {
-                showToast({ type: "success", title: "Updated", description: "Profile links updated successfully" });
+                showToast({ type: "success", title: "Updated", description: response.message || "Profile links updated successfully" });
             } else {
-                showToast({ type: "success", title: "Created", description: "Profile links saved successfully" });
+                showToast({ type: "success", title: "Created", description: response.message || "Profile links saved successfully" });
                 setIsExisting(true);
             }
         },

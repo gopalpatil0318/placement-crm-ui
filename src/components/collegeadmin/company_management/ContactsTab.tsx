@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
     Users,
     Plus,
@@ -178,6 +178,8 @@ const ContactsTab = ({ companyId, onContactsChanged }: ContactsTabProps) => {
                         placeholder="Search name, email, designation..."
                         value={search}
                         onChange={(e) => handleSearchChange(e.target.value)}
+                        aria-label="Search contacts"
+                        maxLength={100}
                         className="w-full border border-gray-300 dark:border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                     />
                 </div>
@@ -200,14 +202,14 @@ const ContactsTab = ({ companyId, onContactsChanged }: ContactsTabProps) => {
                     <table className="w-full">
                         <thead>
                             <tr className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-800">
-                                <th className="px-4 py-3 w-10">#</th>
-                                <th className="px-4 py-3">Contact</th>
-                                <th className="px-4 py-3">Designation</th>
-                                <th className="px-4 py-3">Email</th>
-                                <th className="px-4 py-3">Phone</th>
-                                <th className="px-4 py-3 text-center">Type</th>
-                                <th className="px-4 py-3 text-center">Status</th>
-                                <th className="px-4 py-3 text-center">Actions</th>
+                                <th scope="col" className="px-4 py-3 w-10">#</th>
+                                <th scope="col" className="px-4 py-3">Contact</th>
+                                <th scope="col" className="px-4 py-3">Designation</th>
+                                <th scope="col" className="px-4 py-3">Email</th>
+                                <th scope="col" className="px-4 py-3">Phone</th>
+                                <th scope="col" className="px-4 py-3 text-center">Type</th>
+                                <th scope="col" className="px-4 py-3 text-center">Status</th>
+                                <th scope="col" className="px-4 py-3 text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -363,11 +365,13 @@ const AddContactModal = ({
     onSuccess: () => void;
     onClose: () => void;
 }) => {
+    const resetRef = useRef<(() => void) | undefined>(undefined);
     const { formData, errors, loading, handleChange, handleCheckboxChange, handleSubmit, reset } =
         useAddContact(companyId, () => {
-            reset();
+            resetRef.current?.();
             onSuccess();
         });
+    useEffect(() => { resetRef.current = reset; }, [reset]);
 
     const handleCancel = useCallback(() => {
         reset();

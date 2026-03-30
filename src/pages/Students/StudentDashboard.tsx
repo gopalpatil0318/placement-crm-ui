@@ -187,6 +187,7 @@ export default function StudentDashboard() {
     statusSummary,
     applicationsLoading,
     hasError,
+    refetch,
   } = useDashboard()
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Student"
@@ -216,7 +217,7 @@ export default function StudentDashboard() {
           </div>
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => refetch()}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 transition"
           >
             <RefreshCw className="h-3.5 w-3.5" />

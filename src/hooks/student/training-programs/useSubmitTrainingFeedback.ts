@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ApiError } from "@/lib/api"
-import { showToast } from "@/utils/ToastUtils"
+import { queryKeys } from "@/lib/queryKeys"
+import { showToast, getErrorTitle } from "@/utils/ToastUtils"
 import { TrainingProgramsService } from "@/services/student/trainingPrograms.service"
 import { submitFeedbackSchema } from "@/validators/TrainingProgramSchema"
 
@@ -12,6 +13,16 @@ export function useSubmitTrainingFeedback() {
   const [rating, setRating] = useState(0)
   const [feedback, setFeedback] = useState("")
   const [errors, setErrors] = useState<{ student_rating?: string; student_feedback?: string }>({})
+
+  const isDirty = rating > 0 || feedback.trim().length > 0
+
+  // ── Protect unsaved feedback ──
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [isDirty])
 
   const resetForm = useCallback(() => {
     setRating(0)
@@ -52,18 +63,12 @@ export function useSubmitTrainingFeedback() {
         description: "Thank you for your feedback!",
       })
       resetForm()
-      queryClient.invalidateQueries({ queryKey: ["studentPortal", "myEnrollments"] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.myEnrollments() })
     },
     onError: (error: unknown) => {
       const message = error instanceof ApiError ? error.message : "Failed to submit feedback"
       const status = error instanceof ApiError ? error.status : undefined
-      const title =
-        status === 409 ? "Already Submitted"
-        : status === 404 ? "Not Found"
-        : status === 422 ? "Validation Error"
-        : status === 429 ? "Too Many Requests"
-        : "Error"
-      showToast({ type: "error", title, description: message })
+      showToast({ type: "error", title: getErrorTitle(status), description: message })
     },
   })
 

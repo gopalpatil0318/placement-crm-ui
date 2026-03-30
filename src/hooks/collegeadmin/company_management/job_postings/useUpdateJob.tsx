@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
@@ -34,6 +34,53 @@ const toLocalDatetimeValue = (iso: string): string => {
         .slice(0, 16);
 };
 
+function coerceInputValue(type: string, value: string): string | number {
+    if (type === "number") {
+        return value === "" ? "" : Number(value);
+    }
+    return value;
+}
+
+function computePayloadDiff(
+    formData: UpdateJobFormData,
+    orig: UpdateJobFormData | null,
+): Record<string, unknown> {
+    const payload: Record<string, unknown> = {};
+    if (formData.job_title.trim() !== orig?.job_title.trim()) {
+        payload.job_title = formData.job_title.trim();
+    }
+    if (formData.job_description.trim() !== orig?.job_description.trim()) {
+        payload.job_description = formData.job_description.trim();
+    }
+    if (formData.job_location.trim() !== orig?.job_location.trim()) {
+        payload.job_location = formData.job_location.trim();
+    }
+    if (formData.salary_package.trim() !== orig?.salary_package.trim()) {
+        payload.salary_package = formData.salary_package.trim();
+    }
+    if (formData.salary_min !== orig?.salary_min) {
+        payload.salary_min = formData.salary_min === "" ? null : formData.salary_min;
+    }
+    if (formData.salary_max !== orig?.salary_max) {
+        payload.salary_max = formData.salary_max === "" ? null : formData.salary_max;
+    }
+    if (formData.bond_duration.trim() !== orig?.bond_duration.trim()) {
+        payload.bond_duration = formData.bond_duration.trim();
+    }
+    if (formData.bond_details.trim() !== orig?.bond_details.trim()) {
+        payload.bond_details = formData.bond_details.trim();
+    }
+    if (formData.application_deadline !== orig?.application_deadline) {
+        payload.application_deadline = formData.application_deadline;
+    }
+    const currentYears = [...formData.passout_years].sort((a, b) => a - b).join(",");
+    const origYears = orig ? [...orig.passout_years].sort((a, b) => a - b).join(",") : "";
+    if (currentYears !== origYears) {
+        payload.passout_years = formData.passout_years;
+    }
+    return payload;
+}
+
 // ========================
 // HOOK
 // ========================
@@ -56,10 +103,10 @@ export const useUpdateJob = (
         application_deadline: "",
         passout_years: [],
     });
-    const originalData = useRef<UpdateJobFormData | null>(null);
+    const [originalData, setOriginalData] = useState<UpdateJobFormData | null>(null);
     const [fetchedJobTitle, setFetchedJobTitle] = useState("");
     const [errors, setErrors] = useState<FormErrors>({});
-    const [fetchError, _setFetchError] = useState<string | null>(null);
+    const [fetchError] = useState<string | null>(null);
 
     // ========================
     // FETCH EXISTING DATA (React Query)
@@ -93,7 +140,7 @@ export const useUpdateJob = (
 
     // Populate form from query cache — runs once when data arrives
     const populatedRef = useRef(false);
-    const queryData = queryClient.getQueryData(queryKeys.jobs.detail(jobId!)) as Record<string, unknown> | undefined;
+    const queryData = queryClient.getQueryData<Record<string, unknown>>(queryKeys.jobs.detail(jobId!));
 
     useEffect(() => {
         if (!queryData || populatedRef.current) return;
@@ -112,8 +159,9 @@ export const useUpdateJob = (
                 : "",
             passout_years: Array.isArray(queryData.passout_years) ? queryData.passout_years as number[] : [],
         };
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- data prefill from query
         setFormData(loaded);
-        originalData.current = loaded;
+        setOriginalData(loaded);
         setFetchedJobTitle((queryData.job_title as string) || "");
         onItemLoaded?.((queryData.job_title as string) || "");
     }, [queryData, onItemLoaded]);
@@ -160,7 +208,7 @@ export const useUpdateJob = (
             const { name, value, type } = e.target;
             setFormData((prev) => ({
                 ...prev,
-                [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,
+                [name]: coerceInputValue(type, value),
             }));
             setErrors((prev) => {
                 if (!prev[name as keyof UpdateJobFormData]) return prev;
@@ -178,8 +226,6 @@ export const useUpdateJob = (
         async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
             e.preventDefault();
             if (!jobId) return;
-
-            const orig = originalData.current;
 
             // Build validation object from current form
             const validationData = {
@@ -214,40 +260,7 @@ export const useUpdateJob = (
             setErrors({});
 
             // Compute diff — only send changed fields
-            const payload: Record<string, unknown> = {};
-            if (!orig || formData.job_title.trim() !== orig.job_title.trim()) {
-                payload.job_title = formData.job_title.trim();
-            }
-            if (!orig || formData.job_description.trim() !== orig.job_description.trim()) {
-                payload.job_description = formData.job_description.trim();
-            }
-            if (!orig || formData.job_location.trim() !== orig.job_location.trim()) {
-                payload.job_location = formData.job_location.trim();
-            }
-            if (!orig || formData.salary_package.trim() !== orig.salary_package.trim()) {
-                payload.salary_package = formData.salary_package.trim();
-            }
-            if (!orig || formData.salary_min !== orig.salary_min) {
-                payload.salary_min = formData.salary_min === "" ? null : formData.salary_min;
-            }
-            if (!orig || formData.salary_max !== orig.salary_max) {
-                payload.salary_max = formData.salary_max === "" ? null : formData.salary_max;
-            }
-            if (!orig || formData.bond_duration.trim() !== orig.bond_duration.trim()) {
-                payload.bond_duration = formData.bond_duration.trim();
-            }
-            if (!orig || formData.bond_details.trim() !== orig.bond_details.trim()) {
-                payload.bond_details = formData.bond_details.trim();
-            }
-            if (!orig || formData.application_deadline !== orig.application_deadline) {
-                payload.application_deadline = formData.application_deadline;
-            }
-            // passout_years — compare as sorted JSON
-            const currentYears = [...formData.passout_years].sort().join(",");
-            const origYears = orig ? [...orig.passout_years].sort().join(",") : "";
-            if (!orig || currentYears !== origYears) {
-                payload.passout_years = formData.passout_years;
-            }
+            const payload = computePayloadDiff(formData, originalData);
 
             // No-changes guard
             if (Object.keys(payload).length === 0) {
@@ -261,7 +274,7 @@ export const useUpdateJob = (
 
             mutation.mutate(payload);
         },
-        [formData, jobId, mutation]
+        [formData, originalData, jobId, mutation]
     );
 
     const handleCancel = useCallback(() => {
@@ -282,6 +295,22 @@ export const useUpdateJob = (
         },
         []
     );
+
+    // isDirty: warn on unsaved changes
+    const isDirty = useMemo(() => {
+        if (!originalData) return false;
+        return Object.keys(computePayloadDiff(formData, originalData)).length > 0;
+    }, [formData, originalData]);
+
+    useEffect(() => {
+        const handler = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+            }
+        };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     return {
         formData,

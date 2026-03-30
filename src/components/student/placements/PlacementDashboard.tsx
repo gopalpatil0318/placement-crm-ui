@@ -124,10 +124,10 @@ export default function PlacementDashboard() {
       </div>
 
       {/* ── Summary Cards ── */}
-      {isLoading ? (
+      {isLoading && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200/40 dark:border-gray-800/40 bg-gray-50 dark:bg-gray-800/30 motion-safe:animate-pulse">
+            <div key={`summary-skeleton-${String(i)}`} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200/40 dark:border-gray-800/40 bg-gray-50 dark:bg-gray-800/30 motion-safe:animate-pulse">
               <div className="h-9 w-9 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700" />
               <div className="space-y-1.5 flex-1">
                 <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-8" />
@@ -136,7 +136,8 @@ export default function PlacementDashboard() {
             </div>
           ))}
         </div>
-      ) : statusSummary.total > 0 ? (
+      )}
+      {!isLoading && statusSummary.total > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <SummaryCard label="Offered" count={statusSummary.offered} status="offered" />
           <SummaryCard label="Accepted" count={statusSummary.accepted} status="accepted" />
@@ -144,7 +145,7 @@ export default function PlacementDashboard() {
           <SummaryCard label="Rejected" count={statusSummary.rejected} status="rejected" />
           <SummaryCard label="Cancelled" count={statusSummary.cancelled} status="cancelled" />
         </div>
-      ) : null}
+      )}
 
       {/* ── Filters Bar ── */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/60 dark:border-gray-800/60 shadow-sm">
@@ -230,13 +231,12 @@ export default function PlacementDashboard() {
 
         {/* ── Placement List ── */}
         <div id="placement-tabpanel" role="tabpanel" aria-labelledby={`placement-tab-${statusFilter}`} className="border-t border-gray-100 dark:border-gray-800">
-          {isLoading ? (
-            <SkeletonList />
-          ) : isError ? (
-            <ErrorState onRetry={() => refetch()} />
-          ) : placements.length === 0 ? (
+          {isLoading && <SkeletonList />}
+          {!isLoading && isError && <ErrorState onRetry={() => refetch()} />}
+          {!isLoading && !isError && placements.length === 0 && (
             <EmptyState hasFilters={statusFilter !== "all" || typeFilter !== "all"} />
-          ) : (
+          )}
+          {!isLoading && !isError && placements.length > 0 && (
             <Wrapper {...wrapperProps}>
               {placements.map((placement) => {
                 const ItemWrapper = shouldReduce ? "div" : motion.div
@@ -270,7 +270,7 @@ export default function PlacementDashboard() {
                 type="button"
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page <= 1}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Previous page"
               >
                 <ChevronLeft size={16} className="text-gray-500" />
@@ -278,7 +278,7 @@ export default function PlacementDashboard() {
               {pageNumbers.map((p, idx) =>
                 p === "..." ? (
                   <span
-                    key={`ellipsis-${idx}`}
+                    key={idx < pagination.page ? "ellipsis-start" : "ellipsis-end"}
                     className="px-1 text-xs text-gray-400"
                   >
                     …
@@ -288,7 +288,7 @@ export default function PlacementDashboard() {
                     key={p}
                     type="button"
                     onClick={() => handlePageChange(p)}
-                    className={`h-8 min-w-8 px-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                    className={`min-h-[44px] min-w-[44px] px-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                       page === p
                         ? "bg-indigo-600 text-white"
                         : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -302,7 +302,7 @@ export default function PlacementDashboard() {
                 type="button"
                 onClick={() => handlePageChange(page + 1)}
                 disabled={page >= pagination.totalPages}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Next page"
               >
                 <ChevronRight size={16} className="text-gray-500" />
@@ -333,11 +333,11 @@ function SummaryCard({
   label,
   count,
   status,
-}: {
+}: Readonly<{
   label: string
   count: number
   status: PlacementStatus
-}) {
+}>) {
   const colors = PLACEMENT_STATUS_COLORS[status]
   const Icon = PLACEMENT_STATUS_ICONS[status]
 
@@ -364,11 +364,11 @@ function PlacementCard({
   placement,
   onAccept,
   onReject,
-}: {
+}: Readonly<{
   placement: StudentPlacement
   onAccept: (placement: StudentPlacement) => void
   onReject: (placement: StudentPlacement) => void
-}) {
+}>) {
   const colors = PLACEMENT_STATUS_COLORS[placement.placement_status]
   const StatusIcon = PLACEMENT_STATUS_ICONS[placement.placement_status]
   const showActions = canActOnPlacement(placement)
@@ -420,13 +420,12 @@ function PlacementCard({
             </p>
           </div>
           {/* Status Badge */}
-          <span
-            role="status"
+          <output
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
           >
             <StatusIcon size={12} />
             {PLACEMENT_STATUS_LABELS[placement.placement_status]}
-          </span>
+          </output>
         </div>
 
         {/* Row 2: Key Details */}
@@ -473,6 +472,7 @@ function PlacementCard({
                 year: "numeric",
                 month: "short",
                 day: "numeric",
+                timeZone: "Asia/Kolkata",
               })}
             </span>
           )}
@@ -483,6 +483,7 @@ function PlacementCard({
                 year: "numeric",
                 month: "short",
                 day: "numeric",
+                timeZone: "Asia/Kolkata",
               })}
             </span>
           )}
@@ -516,6 +517,7 @@ function PlacementCard({
               year: "numeric",
               month: "short",
               day: "numeric",
+              timeZone: "Asia/Kolkata",
             })}
           </span>
         </div>
@@ -526,7 +528,7 @@ function PlacementCard({
             <button
               type="button"
               onClick={() => onAccept(placement)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 rounded-xl transition-colors cursor-pointer"
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 rounded-xl transition-colors cursor-pointer"
             >
               <CheckCircle size={14} />
               Accept
@@ -534,7 +536,7 @@ function PlacementCard({
             <button
               type="button"
               onClick={() => onReject(placement)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl transition-colors cursor-pointer"
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl transition-colors cursor-pointer"
             >
               <XCircle size={14} />
               Decline
@@ -555,7 +557,7 @@ function SkeletonList() {
     <div>
       {Array.from({ length: 4 }).map((_, i) => (
         <div
-          key={i}
+          key={`skel-${String(i)}`}
           className="flex items-start gap-4 px-5 py-5 motion-safe:animate-pulse border-b border-gray-50 dark:border-gray-800/50 last:border-b-0"
         >
           <div className="h-12 w-12 rounded-xl bg-gray-200 dark:bg-gray-700 shrink-0" />
@@ -585,7 +587,7 @@ function SkeletonList() {
 
 // ─── Error State ────────────────────────────────────────────────────────────────
 
-function ErrorState({ onRetry }: { onRetry: () => void }) {
+function ErrorState({ onRetry }: Readonly<{ onRetry: () => void }>) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6">
       <div className="h-14 w-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
@@ -611,7 +613,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 
 // ─── Empty States ───────────────────────────────────────────────────────────────
 
-function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+function EmptyState({ hasFilters }: Readonly<{ hasFilters: boolean }>) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6">
       <div className="h-14 w-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">

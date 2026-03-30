@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom"
 import DashboardLayout from "./DashboardLayout"
+import { YearFilterProvider } from "@/context/YearFilterContext"
 
 /**
  * Shared layout route for all /college/* pages.
@@ -8,8 +9,10 @@ import DashboardLayout from "./DashboardLayout"
  */
 export default function CollegeAdminLayout() {
   return (
-    <DashboardLayout>
-      <Outlet />
-    </DashboardLayout>
+    <YearFilterProvider>
+      <DashboardLayout>
+        <Outlet />
+      </DashboardLayout>
+    </YearFilterProvider>
   )
 }

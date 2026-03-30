@@ -28,6 +28,7 @@ function formatDate(d: string | null): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Kolkata",
   })
 }
 
@@ -49,7 +50,7 @@ const JOB_TYPE_LABELS: Record<string, string> = {
 
 // ─── Expandable Text ────────────────────────────────────────────────────────────
 
-function ExpandableText({ text, label }: { text: string; label: string }) {
+function ExpandableText({ text, label }: Readonly<{ text: string; label: string }>) {
   const [expanded, setExpanded] = useState(false)
   const [isClamped, setIsClamped] = useState(false)
   const ref = useRef<HTMLParagraphElement>(null)
@@ -90,17 +91,18 @@ interface OverrideRequestCardProps {
   override: MyOverrideRequest
 }
 
-export default memo(function OverrideRequestCard({ override }: OverrideRequestCardProps) {
+const ACCENT_COLOR_MAP: Record<string, string> = {
+  approved: "bg-emerald-500",
+  rejected: "bg-red-400",
+  pending: "bg-amber-500",
+}
+
+export default memo(function OverrideRequestCard({ override }: Readonly<OverrideRequestCardProps>) {
   const shouldReduce = useReducedMotion()
   const statusColor = OVERRIDE_STATUS_COLORS[override.override_status]
   const deadline = getDeadlineInfo(override.application_deadline)
 
-  const accentColor =
-    override.override_status === "approved"
-      ? "bg-emerald-500"
-      : override.override_status === "rejected"
-        ? "bg-red-400"
-        : "bg-amber-500"
+  const accentColor = ACCENT_COLOR_MAP[override.override_status] ?? "bg-gray-400"
 
   return (
     <motion.div
@@ -146,18 +148,17 @@ export default memo(function OverrideRequestCard({ override }: OverrideRequestCa
               {override.industry_type}
             </span>
           )}
-          <span
-            className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md ${
-              deadline.expired
-                ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20"
-                : deadline.urgent
-                  ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20"
-                  : "text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50"
-            }`}
-          >
-            <Clock size={11} />
-            {deadline.text}
-          </span>
+          {(() => {
+            let deadlineClass = "text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50"
+            if (deadline.expired) deadlineClass = "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20"
+            else if (deadline.urgent) deadlineClass = "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20"
+            return (
+              <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md ${deadlineClass}`}>
+                <Clock size={11} />
+                {deadline.text}
+              </span>
+            )
+          })()}
         </div>
 
         {/* Ineligibility Reasons */}
@@ -231,7 +232,7 @@ export default memo(function OverrideRequestCard({ override }: OverrideRequestCa
           {override.override_status === "approved" && !deadline.expired && (
             <Link
               to={`/student/jobs/${override.job_id}`}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 rounded-lg transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 min-h-[44px] text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 rounded-lg transition-colors"
             >
               <ExternalLink size={13} />
               Apply Now

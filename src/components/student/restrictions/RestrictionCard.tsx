@@ -1,4 +1,4 @@
-import { memo, useState, useRef, useEffect } from "react"
+import { memo, useState, useRef, useEffect, type ReactNode } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import {
   AlertTriangle,
@@ -28,6 +28,7 @@ function formatDate(d: string | null): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Kolkata",
   })
 }
 
@@ -73,7 +74,7 @@ function getSeverityIcon(type: RestrictionType) {
 
 // ─── Expandable Details ─────────────────────────────────────────────────────────
 
-function ExpandableDetails({ text }: { text: string }) {
+function ExpandableDetails({ text }: Readonly<{ text: string }>) {
   const [expanded, setExpanded] = useState(false)
   const [isClamped, setIsClamped] = useState(false)
   const ref = useRef<HTMLParagraphElement>(null)
@@ -95,6 +96,7 @@ function ExpandableDetails({ text }: { text: string }) {
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
           className="inline-flex items-center gap-0.5 mt-1 text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 cursor-pointer"
         >
           {expanded ? "Show less" : "Show more"}
@@ -120,6 +122,34 @@ export default memo(function RestrictionCard({ restriction, onAppeal }: Restrict
   const severity = getSeverityIcon(restriction.restriction_type)
   const SeverityIcon = severity.icon
 
+  let appealSection: ReactNode
+  if (restriction.can_appeal) {
+    appealSection = (
+      <button
+        type="button"
+        onClick={() => onAppeal(restriction)}
+        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-lg transition-colors cursor-pointer"
+      >
+        <MessageSquareText size={13} />
+        Submit Appeal
+      </button>
+    )
+  } else if (appealStatus) {
+    appealSection = (
+      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg ${appealStatus.bg} ${appealStatus.color}`}>
+        <appealStatus.icon size={13} />
+        {appealStatus.label}
+        {restriction.appeal_resolved_at && (
+          <span className="text-gray-400 dark:text-gray-500 ml-1">
+            · {formatDate(restriction.appeal_resolved_at)}
+          </span>
+        )}
+      </span>
+    )
+  } else {
+    appealSection = <span />
+  }
+
   return (
     <motion.div
       variants={shouldReduce ? undefined : staggerItem}
@@ -142,13 +172,13 @@ export default memo(function RestrictionCard({ restriction, onAppeal }: Restrict
               <SeverityIcon size={16} className={severity.color} />
             </div>
             <div className="min-w-0">
-              <span role="status" className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full ${typeColor.bg} ${typeColor.text}`}>
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full ${typeColor.bg} ${typeColor.text}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${typeColor.dot}`} />
                 {RESTRICTION_TYPE_LABELS[restriction.restriction_type]}
               </span>
             </div>
           </div>
-          <span role="status" className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap ${statusBadge.bg} ${statusBadge.text}`}>
+          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap ${statusBadge.bg} ${statusBadge.text}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`} />
             {statusBadge.label}
           </span>
@@ -199,29 +229,7 @@ export default memo(function RestrictionCard({ restriction, onAppeal }: Restrict
 
         {/* Footer: Appeal Section */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700 gap-2 flex-wrap">
-          {/* Appeal Status or Action */}
-          {restriction.can_appeal ? (
-            <button
-              type="button"
-              onClick={() => onAppeal(restriction)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-lg transition-colors cursor-pointer"
-            >
-              <MessageSquareText size={13} />
-              Submit Appeal
-            </button>
-          ) : appealStatus ? (
-            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg ${appealStatus.bg} ${appealStatus.color}`}>
-              <appealStatus.icon size={13} />
-              {appealStatus.label}
-              {restriction.appeal_resolved_at && (
-                <span className="text-gray-400 dark:text-gray-500 ml-1">
-                  · {formatDate(restriction.appeal_resolved_at)}
-                </span>
-              )}
-            </span>
-          ) : (
-            <span />
-          )}
+          {appealSection}
 
           {/* Expired indicator */}
           {restriction.is_expired && restriction.is_active && (

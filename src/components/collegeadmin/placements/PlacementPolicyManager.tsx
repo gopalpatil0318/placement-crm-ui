@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
     Search,
     ChevronLeft,
@@ -30,6 +30,8 @@ import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingSelect from "@/components/ui/FloatingSelect";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 import {
     useViewPlacementPolicies,
     type PolicyListItem,
@@ -54,11 +56,15 @@ const PASSOUT_YEARS = Array.from({ length: 8 }, (_, i) => currentYear - 2 + i);
 
 const formatDate = (iso: string | null) => {
     if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-    });
+    const d = new Date(iso);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    return `${day}/${month}/${year} ${hours}:${minutes} ${ampm} IST`;
 };
 
 // ========================
@@ -298,7 +304,7 @@ const PaginationControls = ({
 
     return (
         <div className="flex items-center gap-1">
-            <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || loading} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition" aria-label="Previous page">
+            <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || loading} className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900" aria-label="Previous page">
                 <ChevronLeft className="h-4 w-4" />
             </button>
             {pages.map((p, idx) =>
@@ -311,7 +317,7 @@ const PaginationControls = ({
                         onClick={() => onPageChange(p)}
                         disabled={loading}
                         aria-current={p === page ? "page" : undefined}
-                        className={`min-w-[32px] h-8 rounded-lg text-sm font-medium transition ${
+                        className={`min-w-[44px] min-h-[44px] rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                             p === page ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                         } disabled:cursor-not-allowed`}
                     >
@@ -319,7 +325,7 @@ const PaginationControls = ({
                     </button>
                 ),
             )}
-            <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages || loading} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition" aria-label="Next page">
+            <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages || loading} className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900" aria-label="Next page">
                 <ChevronRight className="h-4 w-4" />
             </button>
         </div>
@@ -415,6 +421,21 @@ const CreatePolicyModal = ({
     });
     const [errors, setErrors] = useState<FormErrors>({});
     const [loading, setLoading] = useState(false);
+
+    const isDirty = useMemo(
+        () => formData.policy_title.trim() !== "" || formData.policy_description.trim() !== "",
+        [formData],
+    );
+
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [isDirty]);
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -568,6 +589,24 @@ const EditPolicyModal = ({
         policy_title: policy.policy_title,
         policy_description: policy.policy_description,
     });
+
+    const isDirty = useMemo(() => {
+        const orig = originalDataRef.current;
+        return (
+            formData.policy_title.trim() !== orig.policy_title.trim() ||
+            formData.policy_description.trim() !== orig.policy_description.trim()
+        );
+    }, [formData]);
+
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [isDirty]);
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -723,7 +762,7 @@ const TogglePolicyModal = ({
     onClose: () => void;
     onSuccess: () => void;
 }) => {
-    const [loading, setLoading] = useState(false);
+    const queryClient = useQueryClient();
     const willActivate = !policy.is_active;
 
     const config = willActivate
@@ -754,26 +793,71 @@ const TogglePolicyModal = ({
             ],
         };
 
-    const handleToggle = async () => {
-        setLoading(true);
-        try {
-            const response = await CollegeAdminService.togglePlacementPolicyStatus(
-                policy.policy_id,
-                { is_active: willActivate },
+    interface ToggleContext {
+        previousQueries: [unknown[], unknown][];
+    }
+
+    const { mutate: handleToggle, isPending: loading } = useMutation<
+        unknown,
+        unknown,
+        void,
+        ToggleContext
+    >({
+        mutationFn: () =>
+            CollegeAdminService.togglePlacementPolicyStatus(policy.policy_id, {
+                is_active: willActivate,
+            }),
+
+        onMutate: async () => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.placements.policies() });
+
+            const previousQueries = queryClient.getQueriesData<unknown>({
+                queryKey: queryKeys.placements.policies(),
+            }) as [unknown[], unknown][];
+
+            queryClient.setQueriesData<{ data?: { policies?: PolicyListItem[] } }>(
+                { queryKey: queryKeys.placements.policies() },
+                (old) => {
+                    if (!old?.data?.policies) return old;
+                    return {
+                        ...old,
+                        data: {
+                            ...old.data,
+                            policies: old.data.policies.map((p) =>
+                                p.policy_id === policy.policy_id
+                                    ? { ...p, is_active: willActivate }
+                                    : p,
+                            ),
+                        },
+                    };
+                },
             );
+
+            return { previousQueries };
+        },
+
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.placements.policies() });
             showToast({
                 type: "success",
                 title: "Success",
-                description: response?.message || `Policy ${willActivate ? "activated" : "deactivated"} successfully`,
+                description:
+                    (response as { message?: string })?.message ||
+                    `Policy ${willActivate ? "activated" : "deactivated"} successfully`,
             });
             onSuccess();
-        } catch (error: unknown) {
+        },
+
+        onError: (error, _vars, context) => {
+            if (context?.previousQueries) {
+                for (const [key, data] of context.previousQueries) {
+                    queryClient.setQueryData(key, data);
+                }
+            }
             const message = error instanceof ApiError ? error.message : "Something went wrong";
             showToast({ type: "error", title: "Error", description: message });
-        } finally {
-            setLoading(false);
-        }
-    };
+        },
+    });
 
     return (
         <ModalWrapper
@@ -983,7 +1067,7 @@ const PolicyRow = ({
                 <button
                     type="button"
                     onClick={() => onToggleExpand(policy.policy_id)}
-                    className="p-1 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition"
+                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                     aria-label={isExpanded ? "Collapse details" : "Expand details"}
                 >
                     {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -1107,7 +1191,6 @@ const PlacementPolicyManager = () => {
         error,
         pagination,
         search,
-        passoutYear,
         isActive,
         sortBy,
         sortOrder,
@@ -1115,7 +1198,6 @@ const PlacementPolicyManager = () => {
         handlePageChange,
         handleLimitChange,
         handleSortChange,
-        handlePassoutYearChange,
         handleStatusFilterChange,
         clearFilters,
         refresh,
@@ -1127,10 +1209,6 @@ const PlacementPolicyManager = () => {
     const [togglePolicy, setTogglePolicy] = useState<PolicyListItem | null>(null);
     const [deletingPolicy, setDeletingPolicy] = useState<PolicyListItem | null>(null);
 
-    useEffect(() => {
-        setExpandedId(null);
-    }, [policies]);
-
     const toggleExpand = useCallback((id: string) => {
         setExpandedId((prev) => (prev === id ? null : id));
     }, []);
@@ -1140,10 +1218,11 @@ const PlacementPolicyManager = () => {
         setEditingPolicy(null);
         setTogglePolicy(null);
         setDeletingPolicy(null);
+        setExpandedId(null);
         refresh();
     }, [refresh]);
 
-    const hasFilters = !!(search || passoutYear || isActive);
+    const hasFilters = !!(search || isActive);
 
     const startEntry = policies.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
     const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
@@ -1177,7 +1256,7 @@ const PlacementPolicyManager = () => {
                             <div>
                                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Policy Dashboard</h2>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    {passoutYear ? `Class of ${passoutYear}` : "All batches"}
+                                    All batches
                                 </p>
                             </div>
                         </div>
@@ -1220,18 +1299,6 @@ const PlacementPolicyManager = () => {
                             />
                         </div>
 
-                        {/* Year filter */}
-                        <select
-                            value={passoutYear}
-                            onChange={(e) => handlePassoutYearChange(e.target.value)}
-                            className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors appearance-none"
-                        >
-                            <option value="">All Years</option>
-                            {PASSOUT_YEARS.map((y) => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
-
                         {/* Page size */}
                         <div className="text-sm text-gray-600 dark:text-gray-400 font-medium flex items-center gap-2 ml-auto">
                             Show
@@ -1257,27 +1324,91 @@ const PlacementPolicyManager = () => {
                     </div>
                 </div>
 
-                {/* Table */}
-                <div className="overflow-x-auto">
+                {/* Cards — mobile */}
+                <div className="md:hidden">
+                    {loading ? (
+                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="p-4 animate-pulse space-y-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-9 w-9 rounded-xl bg-gray-200 dark:bg-gray-700" />
+                                        <div className="flex-1 space-y-1.5">
+                                            <div className="h-3.5 w-36 bg-gray-200 dark:bg-gray-700 rounded" />
+                                            <div className="h-3 w-52 bg-gray-100 dark:bg-gray-800 rounded" />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 mt-2">
+                                        <div className="h-5 w-14 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                                        <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : policies.length === 0 ? (
+                        <EmptyState hasFilters={hasFilters} onCreateClick={() => setCreateModalOpen(true)} />
+                    ) : (
+                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {policies.map((p) => (
+                                <div
+                                    key={p.policy_id}
+                                    className="p-4 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className="h-9 w-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{p.policy_title}</p>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-2">{p.policy_description}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2 mt-2.5 ml-12">
+                                        <StatusBadge isActive={p.is_active} />
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 text-xs font-semibold">
+                                            {p.passout_year}
+                                        </span>
+                                        <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(p.created_at)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-3 ml-12">
+                                        <button type="button" onClick={() => setEditingPolicy(p)} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 dark:hover:text-amber-400 transition">
+                                            <Pencil className="h-3.5 w-3.5" />
+                                            Edit
+                                        </button>
+                                        <button type="button" onClick={() => setTogglePolicy(p)} className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 px-3 text-xs font-medium rounded-lg transition ${p.is_active ? "text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20" : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"}`}>
+                                            {p.is_active ? <><ToggleLeft className="h-3.5 w-3.5" /> Deactivate</> : <><ToggleRight className="h-3.5 w-3.5" /> Activate</>}
+                                        </button>
+                                        <button type="button" onClick={() => setDeletingPolicy(p)} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 px-3 text-xs font-medium text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Table — desktop */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-gray-50/70 dark:bg-gray-800/50 text-left text-gray-500 dark:text-gray-400">
-                                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader label="Policy Title" field="policy_title" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                 </th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader label="Year" field="passout_year" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                 </th>
-                                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Status</th>
-                                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Created By</th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Status</th>
+                                <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Created By</th>
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader label="Created" field="created_at" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                 </th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader label="Updated" field="updated_at" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                 </th>
-                                <th className="px-4 py-3 w-12" />
+                                <th scope="col" className="px-4 py-3 w-12" />
                             </tr>
                         </thead>
                         <tbody>

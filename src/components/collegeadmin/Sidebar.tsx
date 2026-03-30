@@ -230,6 +230,7 @@ export default function Sidebar({ isOpen, onClose, isMobile = false }: SidebarPr
         item.subItems?.some((sub) => location.pathname.startsWith(sub.path)),
       )?.label
     if (activeSection) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- navigation sync
       setExpandedItems((prev) =>
         prev.includes(activeSection) ? prev : [...prev, activeSection],
       )

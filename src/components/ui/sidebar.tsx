@@ -606,10 +606,10 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<"div"> & {
   showIcon?: boolean;
 }) {
-  // Random width between 50 to 90%.
-  const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`;
-  }, []);
+  // Deterministic widths for skeleton loading
+  const SKELETON_WIDTHS = ["60%", "75%", "50%", "80%", "65%", "70%", "55%", "85%"];
+  const skeletonIndex = React.useId().charCodeAt(0) % SKELETON_WIDTHS.length;
+  const width = SKELETON_WIDTHS[skeletonIndex];
 
   return (
     <div
@@ -722,5 +722,6 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
+  // eslint-disable-next-line react-refresh/only-export-components -- useSidebar hook co-exported with sidebar components
   useSidebar,
 };

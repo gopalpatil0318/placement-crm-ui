@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ApiError } from "@/lib/api"
 import { queryKeys } from "@/lib/queryKeys"
-import { showToast } from "@/utils/ToastUtils"
+import { showToast, getErrorTitle } from "@/utils/ToastUtils"
 import { FeedbackService } from "@/services/student/feedback.service"
 import { submitFeedbackSchema } from "@/validators/FeedbackSchema"
 
@@ -25,6 +25,18 @@ export function useSubmitFeedback(onSuccess?: () => void) {
   const [feedbackText, setFeedbackText] = useState("")
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+
+  // Unsaved changes protection
+  const isDirty = useMemo(
+    () => rating > 0 || feedbackText.trim().length > 0,
+    [rating, feedbackText],
+  )
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    globalThis.addEventListener("beforeunload", handler)
+    return () => globalThis.removeEventListener("beforeunload", handler)
+  }, [isDirty])
 
   const resetForm = useCallback(() => {
     setJobId("")
@@ -86,7 +98,7 @@ export function useSubmitFeedback(onSuccess?: () => void) {
       setErrors({})
       return FeedbackService.submitFeedback(result.data)
     },
-    onSuccess: (_data, _vars, _ctx) => {
+    onSuccess: () => {
       showToast({
         type: "success",
         title: "Feedback Submitted",
@@ -103,11 +115,7 @@ export function useSubmitFeedback(onSuccess?: () => void) {
       if (status === 409) {
         setErrors({ job_id: message })
       }
-      const title =
-        status === 409 ? "Already Submitted"
-        : status === 404 ? "Not Found"
-        : status === 429 ? "Too Many Requests"
-        : "Error"
+      const title = status === 409 ? "Already Submitted" : getErrorTitle(status)
       showToast({ type: "error", title, description: message })
     },
   })

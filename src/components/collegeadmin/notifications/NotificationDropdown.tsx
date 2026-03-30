@@ -28,7 +28,7 @@ export default function NotificationDropdown() {
             <button
                 type="button"
                 onClick={toggle}
-                className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="relative p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 aria-label="Sent notifications"
                 aria-expanded={isOpen}
             >
@@ -65,23 +65,25 @@ export default function NotificationDropdown() {
 
                         {/* Content */}
                         <div className="max-h-80 overflow-y-auto">
-                            {isLoading ? (
+                            {isLoading && (
                                 <div className="flex items-center justify-center py-8 text-gray-400">
                                     <Loader2 size={18} className="animate-spin" />
                                 </div>
-                            ) : recentNotifications.length === 0 ? (
+                            )}
+                            {!isLoading && recentNotifications.length === 0 && (
                                 <div className="py-8 text-center">
                                     <Bell size={24} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
                                     <p className="text-sm text-gray-400">No notifications sent yet</p>
                                 </div>
-                            ) : (
-                                recentNotifications.map((n, i) => {
+                            )}
+                            {!isLoading && recentNotifications.length > 0 && (
+                                recentNotifications.map((n) => {
                                     const colors = NOTIFICATION_TYPE_COLORS[n.notification_type];
                                     const timeAgo = getTimeAgo(n.sent_at);
 
                                     return (
                                         <div
-                                            key={`${n.sent_at}-${i}`}
+                                            key={`${n.title}-${n.notification_type}-${n.sent_at}`}
                                             className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0"
                                         >
                                             <div className={`w-8 h-8 rounded-lg ${colors.bg} flex items-center justify-center shrink-0 mt-0.5`}>
@@ -149,5 +151,5 @@ function getTimeAgo(dateStr: string): string {
     const days = Math.floor(hours / 24);
     if (days < 7) return `${days}d ago`;
 
-    return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
 }

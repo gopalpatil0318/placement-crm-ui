@@ -19,6 +19,13 @@ export interface ExperienceData {
     offer_letter_url?: string | null;
     completion_certificate_url?: string | null;
     is_verified?: boolean;
+    verification_status?: string;
+    verified_by?: string | null;
+    verified_at?: string | null;
+    rejection_reason?: string | null;
+    rejected_at?: string | null;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export const StudentExperienceService = {

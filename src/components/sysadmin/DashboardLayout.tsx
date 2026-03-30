@@ -25,6 +25,7 @@ export default function DashboardLayout({
 
   // Auto-close sidebar when switching to mobile
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- responsive layout sync
     if (isMobile) setIsSidebarOpen(false)
     else setIsSidebarOpen(true)
   }, [isMobile])

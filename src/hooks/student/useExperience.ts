@@ -37,6 +37,7 @@ export const useExperience = () => {
             const response = await StudentExperienceService.getAllExperience();
             return (response.data?.experience || response.experience || []) as ExperienceData[];
         },
+        staleTime: 2 * 60 * 1000,
     });
 
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -166,14 +167,14 @@ export const useExperience = () => {
 
         const isEditing = !!editingId;
         saveMutation.mutate(payload as Omit<ExperienceData, "experience_id">, {
-            onSuccess: () => {
+            onSuccess: (response) => {
                 queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.experience() });
                 queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
                 closeForm();
                 showToast({
                     type: "success",
                     title: isEditing ? "Updated" : "Added",
-                    description: isEditing ? "Experience updated successfully" : "Experience added successfully",
+                    description: response.message || (isEditing ? "Experience updated successfully" : "Experience added successfully"),
                 });
             },
         });
@@ -181,10 +182,10 @@ export const useExperience = () => {
 
     const deleteMutation = useMutation({
         mutationFn: (id: string) => StudentExperienceService.deleteExperience(id),
-        onSuccess: () => {
+        onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.experience() });
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
-            showToast({ type: "success", title: "Deleted", description: "Experience removed" });
+            showToast({ type: "success", title: "Deleted", description: response.message || "Experience removed" });
         },
         onError: (error) => {
             showToast({

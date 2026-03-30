@@ -125,6 +125,7 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         min={0}
                         max={10}
                         step={0.1}
+                        inputMode="decimal"
                         disabled={!toggles.min_overall_cgpa || isCancelled}
                         placeholder="e.g. 7.0"
                         className={inputClass(toggles.min_overall_cgpa && !isCancelled, errors.min_overall_cgpa)}
@@ -147,6 +148,7 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         onChange={handleChange}
                         min={0}
                         max={20}
+                        inputMode="numeric"
                         disabled={!toggles.max_live_kts || isCancelled}
                         placeholder="e.g. 0"
                         className={inputClass(toggles.max_live_kts && !isCancelled, errors.max_live_kts)}
@@ -169,6 +171,7 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         onChange={handleChange}
                         min={0}
                         max={100}
+                        inputMode="decimal"
                         disabled={!toggles.min_tenth_percentage || isCancelled}
                         placeholder="e.g. 60"
                         className={inputClass(toggles.min_tenth_percentage && !isCancelled, errors.min_tenth_percentage)}
@@ -191,6 +194,7 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         onChange={handleChange}
                         min={0}
                         max={100}
+                        inputMode="decimal"
                         disabled={!toggles.min_twelfth_percentage || isCancelled}
                         placeholder="e.g. 55"
                         className={inputClass(toggles.min_twelfth_percentage && !isCancelled, errors.min_twelfth_percentage)}
@@ -213,6 +217,7 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         onChange={handleChange}
                         min={0}
                         max={100}
+                        inputMode="decimal"
                         disabled={!toggles.min_diploma_percentage || isCancelled}
                         placeholder="e.g. 60"
                         className={inputClass(toggles.min_diploma_percentage && !isCancelled, errors.min_diploma_percentage)}
@@ -234,6 +239,7 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         value={formData.min_existing_package}
                         onChange={handleChange}
                         min={0}
+                        inputMode="numeric"
                         disabled={!toggles.min_existing_package || isCancelled}
                         placeholder="e.g. 300000"
                         className={inputClass(toggles.min_existing_package && !isCancelled, errors.min_existing_package)}
@@ -255,6 +261,7 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         value={formData.max_existing_package}
                         onChange={handleChange}
                         min={0}
+                        inputMode="numeric"
                         disabled={!toggles.max_existing_package || isCancelled}
                         placeholder="e.g. 800000"
                         className={inputClass(toggles.max_existing_package && !isCancelled, errors.max_existing_package)}
@@ -300,7 +307,7 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         {GENDER_OPTIONS.map((g) => (
                             <label
                                 key={g}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-all ${
+                                className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${
                                     !toggles.allowed_genders || isCancelled
                                         ? "opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
                                         : formData.allowed_genders.includes(g)
@@ -334,7 +341,7 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         {GAP_OPTIONS.map((g) => (
                             <label
                                 key={g.value}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-all ${
+                                className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${
                                     !toggles.allowed_gap_statuses || isCancelled
                                         ? "opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
                                         : formData.allowed_gap_statuses.includes(g.value)
@@ -371,7 +378,7 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                             {departments.map((d) => (
                                 <label
                                     key={d.dept_id}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-all ${
+                                    className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${
                                         !toggles.allowed_departments || isCancelled
                                             ? "opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
                                             : formData.allowed_departments.includes(d.dept_name)

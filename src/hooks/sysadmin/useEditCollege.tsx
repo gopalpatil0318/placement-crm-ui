@@ -55,6 +55,7 @@ export const useEditCollege = (onItemLoaded?: (name: string) => void) => {
         college_state: college.college_state || "",
         college_pincode: college.college_pincode || "",
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- data prefill from query
       setFormData(data)
       originalData.current = { ...data }
       onItemLoaded?.(college.college_name)

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import { reviewOverrideSchema } from "@/validators/OverrideSchema";
 
 // ========================
@@ -53,14 +53,7 @@ export const useReviewOverride = (jobId?: string, onSuccess?: () => void) => {
         onError: (error: unknown) => {
             const message = error instanceof ApiError ? error.message : "Something went wrong";
             const status = error instanceof ApiError ? error.status : undefined;
-
-            if (status === 404) {
-                showToast({ type: "error", title: "Not Found", description: message });
-            } else if (status === 409) {
-                showToast({ type: "error", title: "Already Reviewed", description: message });
-            } else {
-                showToast({ type: "error", title: "Error", description: message });
-            }
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
         },
     });
 
@@ -117,7 +110,7 @@ export const useReviewOverride = (jobId?: string, onSuccess?: () => void) => {
             }
 
             const payload = {
-                action: currentAction as "approve" | "reject",
+                action: currentAction,
                 review_notes: currentNotes || undefined,
                 rejection_reason: currentAction === "reject" ? currentReason : undefined,
             };

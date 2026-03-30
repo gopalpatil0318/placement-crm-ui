@@ -3,7 +3,6 @@ import ModalWrapper from "@/components/ui/ModalWrapper"
 import {
   PROGRAM_TYPE_LABELS,
   type StudentAvailableProgram,
-  type ProgramType,
 } from "@/validators/TrainingProgramSchema"
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
@@ -14,7 +13,13 @@ function formatDate(d: string | null): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Kolkata",
   })
+}
+
+function getSpotsLabel(program: StudentAvailableProgram): string {
+  if (program.spots_remaining === null) return "No limit"
+  return `${program.spots_remaining} spot${program.spots_remaining === 1 ? "" : "s"} remaining`
 }
 
 function formatDeadline(d: string | null, isPassed: boolean): { text: string; urgent: boolean } | null {
@@ -43,12 +48,8 @@ export default function EnrollConfirmModal({
   isEnrolling,
   onConfirm,
   onClose,
-}: EnrollConfirmModalProps) {
-  const spotsLabel = program
-    ? program.spots_remaining === null
-      ? "No limit"
-      : `${program.spots_remaining} spot${program.spots_remaining === 1 ? "" : "s"} remaining`
-    : ""
+}: Readonly<EnrollConfirmModalProps>) {
+  const spotsLabel = program ? getSpotsLabel(program) : ""
 
   const deadlineInfo = program
     ? formatDeadline(program.enrollment_deadline, program.is_deadline_passed)
@@ -100,7 +101,7 @@ export default function EnrollConfirmModal({
           <div className="space-y-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4 text-sm">
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400">
-                {PROGRAM_TYPE_LABELS[program.program_type as ProgramType] ?? program.program_type}
+                {PROGRAM_TYPE_LABELS[program.program_type] ?? program.program_type}
               </span>
             </div>
             {program.trainer_name && (

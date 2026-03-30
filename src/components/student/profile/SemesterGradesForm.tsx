@@ -110,9 +110,9 @@ export default function SemesterGradesForm({
                                             <td className="py-3">
                                                 {hasSubjects ? (
                                                     <div className="flex flex-wrap gap-1">
-                                                        {grade.backlog_subjects.map((subject, idx) => (
+                                                        {grade.backlog_subjects.map((subject) => (
                                                             <span
-                                                                key={idx}
+                                                                key={subject}
                                                                 className="px-2 py-0.5 rounded text-[11px] font-medium bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800/50"
                                                             >
                                                                 {subject}

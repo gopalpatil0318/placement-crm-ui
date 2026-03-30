@@ -17,14 +17,13 @@ import {
     type SentNotification,
     type NotificationType,
     type NotificationSummary,
-    type RecipientType,
 } from "@/validators/NotificationSchema";
 
 // ========================
 // SUB-COMPONENTS
 // ========================
 
-function SummaryCards({ summary }: { summary: NotificationSummary | null }) {
+function SummaryCards({ summary }: Readonly<{ summary: NotificationSummary | null }>) {
     const shouldReduce = useReducedMotion();
     const motionProps = shouldReduce ? {} : staggerItem;
 
@@ -64,8 +63,8 @@ function SummaryCards({ summary }: { summary: NotificationSummary | null }) {
     );
 }
 
-function TypeBreakdown({ summary }: { summary: NotificationSummary | null }) {
-    if (!summary || !summary.by_type || Object.keys(summary.by_type).length === 0) return null;
+function TypeBreakdown({ summary }: Readonly<{ summary: NotificationSummary | null }>) {
+    if (!summary?.by_type || Object.keys(summary.by_type).length === 0) return null;
 
     const entries = Object.entries(summary.by_type)
         .filter(([, count]) => count > 0)
@@ -123,7 +122,7 @@ function FilterBar({
     onDateToChange,
     sortIndex,
     onSortChange,
-}: {
+}: Readonly<{
     search: string;
     onSearchChange: (value: string) => void;
     notificationTypeFilter: string;
@@ -136,7 +135,7 @@ function FilterBar({
     onDateToChange: (value: string) => void;
     sortIndex: number;
     onSortChange: (index: number) => void;
-}) {
+}>) {
     return (
         <div className="space-y-3">
             {/* Search + Sort */}
@@ -159,8 +158,8 @@ function FilterBar({
                         onChange={(e) => onSortChange(Number(e.target.value))}
                         className="rounded-lg border border-gray-200 dark:border-gray-700 pl-9 pr-8 py-2.5 text-sm bg-white dark:bg-gray-900 appearance-none"
                     >
-                        {SORT_OPTIONS_NOTIFICATIONS.map((opt, i) => (
-                            <option key={i} value={i}>{opt.label}</option>
+                        {SORT_OPTIONS_NOTIFICATIONS.map((opt) => (
+                            <option key={opt.label} value={SORT_OPTIONS_NOTIFICATIONS.indexOf(opt)}>{opt.label}</option>
                         ))}
                     </select>
                 </div>
@@ -210,7 +209,7 @@ function FilterBar({
     );
 }
 
-function NotificationBatchCard({ notification }: { notification: SentNotification }) {
+function NotificationBatchCard({ notification }: Readonly<{ notification: SentNotification }>) {
     const [expanded, setExpanded] = useState(false);
     const colors = NOTIFICATION_TYPE_COLORS[notification.notification_type];
     const typeLabel = NOTIFICATION_TYPE_LABELS[notification.notification_type];
@@ -226,6 +225,7 @@ function NotificationBatchCard({ notification }: { notification: SentNotificatio
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
+            timeZone: "Asia/Kolkata",
         });
     }, [notification.sent_at]);
 
@@ -257,7 +257,7 @@ function NotificationBatchCard({ notification }: { notification: SentNotificatio
                             </div>
                         </div>
                         <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 shrink-0">
-                            {RECIPIENT_TYPE_LABELS[notification.recipient_type as RecipientType]}
+                            {RECIPIENT_TYPE_LABELS[notification.recipient_type]}
                         </span>
                     </div>
 
@@ -308,7 +308,7 @@ function NotificationBatchCard({ notification }: { notification: SentNotificatio
     );
 }
 
-function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+function EmptyState({ hasFilters }: Readonly<{ hasFilters: boolean }>) {
     return (
         <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
@@ -334,16 +334,14 @@ function PaginationBar({
     total,
     onPageChange,
     onLimitChange,
-}: {
+}: Readonly<{
     page: number;
     totalPages: number;
     limit: number;
     total: number;
     onPageChange: (page: number) => void;
     onLimitChange: (limit: number) => void;
-}) {
-    if (totalPages <= 1) return null;
-
+}>) {
     const pages = useMemo(() => {
         const result: (number | "...")[] = [];
         const maxVisible = 5;
@@ -360,6 +358,8 @@ function PaginationBar({
         }
         return result;
     }, [page, totalPages]);
+
+    if (totalPages <= 1) return null;
 
     return (
         <div className="flex items-center justify-between pt-4">
@@ -382,20 +382,20 @@ function PaginationBar({
                     type="button"
                     onClick={() => onPageChange(page - 1)}
                     disabled={page <= 1}
-                    className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors"
+                    className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors"
                     aria-label="Previous page"
                 >
                     <ChevronLeft size={14} />
                 </button>
                 {pages.map((p, i) =>
                     p === "..." ? (
-                        <span key={`dots-${i}`} className="px-1 text-xs text-gray-400">...</span>
+                        <span key={`dots-${String(i)}`} className="px-1 text-xs text-gray-400">...</span>
                     ) : (
                         <button
                             key={p}
                             type="button"
-                            onClick={() => onPageChange(p as number)}
-                            className={`w-7 h-7 rounded text-xs font-medium transition-colors ${
+                            onClick={() => onPageChange(p)}
+                            className={`min-w-[44px] min-h-[44px] rounded text-xs font-medium transition-colors ${
                                 p === page
                                     ? "bg-blue-600 text-white"
                                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -409,7 +409,7 @@ function PaginationBar({
                     type="button"
                     onClick={() => onPageChange(page + 1)}
                     disabled={page >= totalPages}
-                    className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors"
+                    className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors"
                     aria-label="Next page"
                 >
                     <ChevronRight size={14} />
@@ -429,7 +429,7 @@ export function SentNotificationsSkeleton() {
             {/* Summary cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+                    <div key={`summary-skeleton-${String(i)}`} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-800" />
                             <div className="space-y-2">
@@ -447,7 +447,7 @@ export function SentNotificationsSkeleton() {
             </div>
             {/* Cards */}
             {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+                <div key={`card-skeleton-${String(i)}`} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                     <div className="flex gap-3">
                         <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-800 shrink-0" />
                         <div className="flex-1 space-y-2">
@@ -537,8 +537,8 @@ export default function SentNotificationsManager() {
                 <EmptyState hasFilters={hasFilters} />
             ) : (
                 <div className="space-y-3">
-                    {notifications.map((n, i) => (
-                        <motion.div key={`${n.sent_at}-${i}`} {...(shouldReduce ? {} : staggerItem)}>
+                    {notifications.map((n) => (
+                        <motion.div key={`${n.title}-${n.notification_type}-${n.sent_at}`} {...(shouldReduce ? {} : staggerItem)}>
                             <NotificationBatchCard notification={n} />
                         </motion.div>
                     ))}

@@ -145,6 +145,7 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
             )?.label;
 
         if (activeSection) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- navigation sync
             setExpandedItems((prev) =>
                 prev.includes(activeSection) ? prev : [...prev, activeSection]
             );

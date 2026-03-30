@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
@@ -372,6 +372,28 @@ export const useCreateJob = () => {
     const handleCancel = useCallback(() => {
         navigate("/college/jobs");
     }, [navigate]);
+
+    // isDirty: warn on unsaved changes
+    const isDirty = useMemo(() => {
+        return (
+            formData.company_id !== "" ||
+            formData.job_title !== "" ||
+            formData.job_location !== "" ||
+            formData.job_description !== "" ||
+            formData.passout_years.length > 0 ||
+            formData.application_deadline !== ""
+        );
+    }, [formData.company_id, formData.job_title, formData.job_location, formData.job_description, formData.passout_years, formData.application_deadline]);
+
+    useEffect(() => {
+        const handler = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+            }
+        };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     return {
         currentStep,

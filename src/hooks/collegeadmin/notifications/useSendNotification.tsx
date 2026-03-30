@@ -1,9 +1,9 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import {
     sendNotificationSchema,
     bulkNotificationSchema,
@@ -116,7 +116,7 @@ export function useSendNotification() {
         });
     }, []);
 
-    const handleBulkChange = useCallback((field: keyof BulkData, value: string | string[] | number[] | RecipientType) => {
+    const handleBulkChange = useCallback((field: keyof BulkData, value: string | string[] | number[]) => {
         setBulkData(prev => ({ ...prev, [field]: value }));
     }, []);
 
@@ -273,15 +273,7 @@ export function useSendNotification() {
         onError: (error: unknown) => {
             const message = error instanceof ApiError ? error.message : "Failed to send notification";
             const status = error instanceof ApiError ? error.status : undefined;
-            if (status === 400) {
-                showToast({ type: "error", title: "No Recipients", description: message });
-            } else if (status === 422) {
-                showToast({ type: "error", title: "Validation Error", description: message });
-            } else if (status === 429) {
-                showToast({ type: "error", title: "Rate Limited", description: message });
-            } else {
-                showToast({ type: "error", title: "Error", description: message });
-            }
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
         },
     });
 
@@ -297,51 +289,35 @@ export function useSendNotification() {
         onError: (error: unknown) => {
             const message = error instanceof ApiError ? error.message : "Failed to send bulk notification";
             const status = error instanceof ApiError ? error.status : undefined;
-            if (status === 400) {
-                showToast({ type: "error", title: "No Recipients", description: message });
-            } else if (status === 422) {
-                showToast({ type: "error", title: "Validation Error", description: message });
-            } else if (status === 429) {
-                showToast({ type: "error", title: "Rate Limited", description: message });
-            } else {
-                showToast({ type: "error", title: "Error", description: message });
-            }
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
         },
     });
 
     // ── Submit ────────────────────────────────────────────────────────────────
 
+    const parseAndSetErrors = useCallback((result: { success: false; error: { issues: Array<{ path: PropertyKey[]; message: string }> } }) => {
+        const newErrors: Record<string, string> = {};
+        for (const issue of result.error.issues) {
+            const key = String(issue.path[0] ?? "form");
+            if (!newErrors[key]) newErrors[key] = issue.message;
+        }
+        setErrors(newErrors);
+        showToast({ type: "error", title: "Validation Error", description: "Please fix the errors before sending" });
+    }, []);
+
     const handleSubmit = useCallback(() => {
         if (sendMode === "targeted") {
             const payload = buildTargetedPayload();
             const result = sendNotificationSchema.safeParse(payload);
-            if (!result.success) {
-                const newErrors: Record<string, string> = {};
-                for (const issue of result.error.issues) {
-                    const key = String(issue.path[0] ?? "form");
-                    if (!newErrors[key]) newErrors[key] = issue.message;
-                }
-                setErrors(newErrors);
-                showToast({ type: "error", title: "Validation Error", description: "Please fix the errors before sending" });
-                return;
-            }
+            if (!result.success) { parseAndSetErrors(result); return; }
             sendMutation.mutate(payload);
         } else {
             const payload = buildBulkPayload();
             const result = bulkNotificationSchema.safeParse(payload);
-            if (!result.success) {
-                const newErrors: Record<string, string> = {};
-                for (const issue of result.error.issues) {
-                    const key = String(issue.path[0] ?? "form");
-                    if (!newErrors[key]) newErrors[key] = issue.message;
-                }
-                setErrors(newErrors);
-                showToast({ type: "error", title: "Validation Error", description: "Please fix the errors before sending" });
-                return;
-            }
+            if (!result.success) { parseAndSetErrors(result); return; }
             bulkMutation.mutate(payload);
         }
-    }, [sendMode, buildTargetedPayload, buildBulkPayload, sendMutation, bulkMutation]);
+    }, [sendMode, buildTargetedPayload, buildBulkPayload, sendMutation, bulkMutation, parseAndSetErrors]);
 
     // ── Reset (send another) ─────────────────────────────────────────────────
 
@@ -356,6 +332,29 @@ export function useSendNotification() {
         setDebouncedRecipientSearch("");
         setSendMode("targeted");
     }, []);
+
+    // ── isDirty + beforeunload ────────────────────────────────────────────────
+
+    const isDirty = useMemo(() => {
+        if (step === 4) return false; // success page
+        if (formData.title.trim() || formData.body.trim()) return true;
+        if (sendMode === "targeted" && targetedData.recipient_ids.length > 0) return true;
+        if (sendMode === "bulk" && (
+            bulkData.dept_ids.length > 0 ||
+            bulkData.passout_years.length > 0 ||
+            bulkData.user_roles.length > 0 ||
+            bulkData.exclude_ids.length > 0
+        )) return true;
+        return false;
+    }, [step, formData.title, formData.body, sendMode, targetedData.recipient_ids.length, bulkData.dept_ids.length, bulkData.passout_years.length, bulkData.user_roles.length, bulkData.exclude_ids.length]);
+
+    useEffect(() => {
+        const handler = (e: BeforeUnloadEvent) => {
+            if (isDirty) e.preventDefault();
+        };
+        globalThis.addEventListener("beforeunload", handler);
+        return () => globalThis.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     return {
         // Wizard

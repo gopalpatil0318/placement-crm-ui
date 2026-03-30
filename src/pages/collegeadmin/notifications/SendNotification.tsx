@@ -17,7 +17,7 @@ function ComposeSkeleton() {
             {/* Step indicator */}
             <div className="flex items-center justify-center gap-2 mb-8">
                 {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-2">
+                    <div key={`step-skeleton-${String(i)}`} className="flex items-center gap-2">
                         {i > 0 && <div className="w-12 h-0.5 bg-gray-200 dark:bg-gray-700" />}
                         <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700" />
                     </div>

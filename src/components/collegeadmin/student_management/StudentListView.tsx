@@ -5,6 +5,25 @@ import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
 import { AnimatedTableBody, AnimatedRow } from "@/components/ui/AnimatedList";
 import { useStudentList } from "@/hooks/collegeadmin/student_management/useStudentList";
+import type { Department } from "@/types/auth";
+
+// ========================
+// TYPES
+// ========================
+
+interface StudentRow {
+    student_id: string;
+    first_name: string;
+    middle_name?: string;
+    last_name: string;
+    student_email: string;
+    dept_name?: string;
+    current_year?: number;
+    student_passout_year: number;
+    student_status: string;
+    profile_complete: boolean;
+    profile_is_approved: boolean;
+}
 
 // ========================
 // CONSTANTS
@@ -68,19 +87,19 @@ const PaginationNav = ({
 
     return (
         <div className="flex items-center gap-1">
-            <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || loading} className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition" aria-label="Previous page">
+            <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || loading} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition" aria-label="Previous page">
                 <ChevronLeft className="h-4 w-4" />
             </button>
             {pages.map((p, idx) =>
                 p === "ellipsis" ? (
                     <span key={`e-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
                 ) : (
-                    <button key={p} type="button" onClick={() => onPageChange(p)} disabled={loading} className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition ${p === page ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"} disabled:cursor-not-allowed`}>
+                    <button key={p} type="button" onClick={() => onPageChange(p)} disabled={loading} className={`min-w-[44px] min-h-[44px] rounded-md text-sm font-medium transition ${p === page ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"} disabled:cursor-not-allowed`}>
                         {p}
                     </button>
                 )
             )}
-            <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages || loading} className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition" aria-label="Next page">
+            <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages || loading} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition" aria-label="Next page">
                 <ChevronRight className="h-4 w-4" />
             </button>
         </div>
@@ -139,20 +158,19 @@ const SkeletonRows = ({ showDept }: { showDept: boolean }) => (
 
 interface StudentListViewProps {
     deptId?: string;
-    initialPassoutYear?: number;
     initialStatus?: string;
 }
 
-const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassoutYear, initialStatus }) => {
+const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus }) => {
     const navigate = useNavigate();
     const {
         students, departments, loading, isFetching, pagination, filters,
         updateFilters, handleSearchChange, handleLimitChange, handlePageChange,
-    } = useStudentList({ initialDeptId: deptId, initialPassoutYear, initialStatus });
+    } = useStudentList({ initialDeptId: deptId, initialStatus });
 
-    const currentDept = deptId ? departments.find((d: any) => d.dept_id === deptId) : null;
+    const currentDept = deptId ? departments.find((d: Department) => d.dept_id === deptId) : null;
     const showDeptCol = !deptId;
-    const hasActiveFilters = !!(filters.search || filters.status || filters.deptId || filters.passoutYear || filters.profileComplete || filters.profileApproved);
+    const hasActiveFilters = !!(filters.search || filters.status || filters.deptId || filters.profileComplete || filters.profileApproved);
 
     const breadcrumbs = useMemo(() => [
         { label: "Dashboard", path: "/college/dashboard" },
@@ -160,15 +178,12 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
         ...(deptId ? [{ label: currentDept?.dept_name || "Department", active: true }] : []),
     ], [deptId, currentDept]);
 
-    const currentYear = new Date().getFullYear();
-    const passoutYearOptions = useMemo(() => Array.from({ length: 7 }, (_, i) => currentYear - 2 + i), [currentYear]);
-
     const startEntry = students.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
     const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
 
     const clearFilters = useMemo(() => () => {
         handleSearchChange("");
-        updateFilters({ status: "", deptId: deptId || "", passoutYear: 0, profileComplete: "", profileApproved: "" });
+        updateFilters({ status: "", deptId: deptId || "", profileComplete: "", profileApproved: "" });
     }, [handleSearchChange, updateFilters, deptId]);
 
     const selectClass = "px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition";
@@ -202,10 +217,10 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
                         <div className="flex flex-wrap items-center gap-3">
                             <div className="relative flex-1 max-w-xs">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-                                <input type="text" value={filters.search} onChange={(e) => handleSearchChange(e.target.value)} placeholder="Search by name or email..." className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                                <input type="text" value={filters.search} onChange={(e) => handleSearchChange(e.target.value)} placeholder="Search by name or email..." maxLength={100} aria-label="Search students by name or email" className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
                             </div>
 
-                            <select value={filters.status} onChange={(e) => updateFilters({ status: e.target.value })} className={selectClass}>
+                            <select value={filters.status} onChange={(e) => updateFilters({ status: e.target.value })} aria-label="Filter by status" className={selectClass}>
                                 <option value="">All Status</option>
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
@@ -215,24 +230,19 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
                             </select>
 
                             {showDeptCol && (
-                                <select value={filters.deptId} onChange={(e) => updateFilters({ deptId: e.target.value })} className={selectClass}>
+                                <select value={filters.deptId} onChange={(e) => updateFilters({ deptId: e.target.value })} aria-label="Filter by department" className={selectClass}>
                                     <option value="">All Departments</option>
-                                    {departments.map((d: any) => (<option key={d.dept_id} value={d.dept_id}>{d.dept_name}</option>))}
+                                    {departments.map((d: Department) => (<option key={d.dept_id} value={d.dept_id}>{d.dept_name}</option>))}
                                 </select>
                             )}
 
-                            <select value={filters.passoutYear} onChange={(e) => updateFilters({ passoutYear: Number(e.target.value) })} className={selectClass}>
-                                <option value={0}>All Years</option>
-                                {passoutYearOptions.map((y) => (<option key={y} value={y}>{y}</option>))}
-                            </select>
-
-                            <select value={filters.profileComplete} onChange={(e) => updateFilters({ profileComplete: e.target.value })} className={selectClass}>
+                            <select value={filters.profileComplete} onChange={(e) => updateFilters({ profileComplete: e.target.value })} aria-label="Filter by profile completion" className={selectClass}>
                                 <option value="">All Profiles</option>
                                 <option value="true">Complete</option>
                                 <option value="false">Incomplete</option>
                             </select>
 
-                            <select value={filters.profileApproved} onChange={(e) => updateFilters({ profileApproved: e.target.value })} className={selectClass}>
+                            <select value={filters.profileApproved} onChange={(e) => updateFilters({ profileApproved: e.target.value })} aria-label="Filter by approval status" className={selectClass}>
                                 <option value="">All Approval</option>
                                 <option value="true">Approved</option>
                                 <option value="false">Pending</option>
@@ -248,18 +258,18 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="overflow-x-auto">
+                    {/* Table — desktop */}
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 dark:bg-gray-800/60 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    <th className="px-4 py-3">Student</th>
-                                    {showDeptCol && <th className="px-4 py-3">Department</th>}
-                                    <th className="px-4 py-3">Year</th>
-                                    <th className="px-4 py-3">Passout</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3">Profile</th>
-                                    <th className="px-4 py-3">Approved</th>
+                                    <th scope="col" className="px-4 py-3">Student</th>
+                                    {showDeptCol && <th scope="col" className="px-4 py-3">Department</th>}
+                                    <th scope="col" className="px-4 py-3">Year</th>
+                                    <th scope="col" className="px-4 py-3">Passout</th>
+                                    <th scope="col" className="px-4 py-3">Status</th>
+                                    <th scope="col" className="px-4 py-3">Profile</th>
+                                    <th scope="col" className="px-4 py-3">Approved</th>
                                 </tr>
                             </thead>
 
@@ -273,7 +283,7 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
                                 </tbody>
                             ) : (
                                 <AnimatedTableBody>
-                                    {students.map((s: any) => {
+                                    {students.map((s: StudentRow) => {
                                         const fullName = [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(" ");
                                         const badge = STATUS_BADGE_MAP[s.student_status] || STATUS_BADGE_MAP.active;
 
@@ -330,6 +340,66 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialPassou
                                 </AnimatedTableBody>
                             )}
                         </table>
+                    </div>
+
+                    {/* Cards — mobile */}
+                    <div className="md:hidden">
+                        {loading ? (
+                            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                    <div key={i} className="p-4 animate-pulse space-y-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700" />
+                                            <div className="flex-1 space-y-1.5">
+                                                <div className="h-3.5 w-28 bg-gray-200 dark:bg-gray-700 rounded" />
+                                                <div className="h-3 w-40 bg-gray-100 dark:bg-gray-800 rounded" />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 mt-2">
+                                            <div className="h-5 w-14 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                                            <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : students.length === 0 ? (
+                            <EmptyState hasFilters={hasActiveFilters} onReset={clearFilters} onAdd={() => navigate("/college/create-student")} />
+                        ) : (
+                            <div className={`divide-y divide-gray-100 dark:divide-gray-800 ${isFetching ? "opacity-60" : ""}`}>
+                                {students.map((s: StudentRow) => {
+                                    const fullName = [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(" ");
+                                    const badge = STATUS_BADGE_MAP[s.student_status] || STATUS_BADGE_MAP.active;
+                                    return (
+                                        <div key={s.student_id} onClick={() => navigate(`/college/student/${s.student_id}`)} className="p-4 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors active:bg-blue-50 dark:active:bg-blue-900/20">
+                                            <div className="flex items-center gap-3">
+                                                <StudentAvatar firstName={s.first_name} lastName={s.last_name} />
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{fullName}</p>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{s.student_email}</p>
+                                                </div>
+                                                <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2 mt-2.5 ml-12">
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${badge.bg}`}>
+                                                    <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
+                                                    {s.student_status ? s.student_status.charAt(0).toUpperCase() + s.student_status.slice(1) : "—"}
+                                                </span>
+                                                {showDeptCol && s.dept_name && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">{s.dept_name}</span>
+                                                )}
+                                                {s.current_year && (
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400">{formatYearLabel(s.current_year)}</span>
+                                                )}
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{s.student_passout_year}</span>
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${s.profile_complete ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300" : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300"}`}>
+                                                    {s.profile_complete ? "Complete" : "Incomplete"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
                     {/* Pagination Footer */}

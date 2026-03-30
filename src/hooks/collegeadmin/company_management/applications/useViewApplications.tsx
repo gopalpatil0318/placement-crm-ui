@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -62,8 +62,9 @@ export const useViewApplications = (jobId: string) => {
     const [sortOrder, setSortOrder] = useState("desc");
 
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const queryClient = useQueryClient();
 
-    const queryFilters = {
+    const queryFilters = useMemo(() => ({
         page,
         limit,
         search: debouncedSearch || undefined,
@@ -74,7 +75,7 @@ export const useViewApplications = (jobId: string) => {
         applied_before: appliedBefore || undefined,
         sort_by: sortBy || undefined,
         sort_order: sortOrder || undefined,
-    };
+    }), [page, limit, debouncedSearch, statusFilter, eligibilityFilter, positionFilter, appliedAfter, appliedBefore, sortBy, sortOrder]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.jobs.applications(jobId, queryFilters),
@@ -90,7 +91,22 @@ export const useViewApplications = (jobId: string) => {
     const companyName: string = responseData?.company_name ?? "";
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
     const loading = isLoading || isFetching;
-    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch applications") : null;
+
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch applications";
+    }
+
+    // Prefetch next page for smoother navigation
+    useEffect(() => {
+        if (pagination.totalPages > page) {
+            const nextFilters = { ...queryFilters, page: page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.jobs.applications(jobId, nextFilters),
+                queryFn: () => CollegeAdminService.getJobApplications(jobId, nextFilters),
+            });
+        }
+    }, [queryClient, jobId, queryFilters, page, pagination.totalPages]);
 
     const handleSearchChange = useCallback((value: string) => {
         setSearch(value);

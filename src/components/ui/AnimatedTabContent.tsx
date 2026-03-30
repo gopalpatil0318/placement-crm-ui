@@ -1,4 +1,4 @@
-import { useRef } from "react"
+import { useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { tabContentVariants } from "@/lib/animations"
 
@@ -31,15 +31,15 @@ export default function AnimatedTabContent({
   className,
 }: AnimatedTabContentProps) {
   const shouldReduce = useReducedMotion()
-  const prevTabRef = useRef(activeTab)
-  const directionRef = useRef(0)
+  const [prevTab, setPrevTab] = useState(activeTab)
+  const [direction, setDirection] = useState(0)
 
-  // Compute direction synchronously during render (idempotent — safe in StrictMode)
-  if (prevTabRef.current !== activeTab) {
-    const prevIndex = tabKeys.indexOf(prevTabRef.current)
+  // Compute direction synchronously during render (React 18 derived-state-from-props pattern)
+  if (prevTab !== activeTab) {
+    const prevIndex = tabKeys.indexOf(prevTab)
     const nextIndex = tabKeys.indexOf(activeTab)
-    directionRef.current = nextIndex > prevIndex ? 1 : -1
-    prevTabRef.current = activeTab
+    setDirection(nextIndex > prevIndex ? 1 : -1)
+    setPrevTab(activeTab)
   }
 
   if (shouldReduce) {
@@ -47,10 +47,10 @@ export default function AnimatedTabContent({
   }
 
   return (
-    <AnimatePresence mode="wait" custom={directionRef.current}>
+    <AnimatePresence mode="wait" custom={direction}>
       <motion.div
         key={activeTab}
-        custom={directionRef.current}
+        custom={direction}
         variants={tabContentVariants}
         initial="initial"
         animate="animate"

@@ -27,7 +27,7 @@ interface AppealModalProps {
   onClose: () => void
 }
 
-export default function AppealModal({ restriction, isOpen, onClose }: AppealModalProps) {
+export default function AppealModal({ restriction, isOpen, onClose }: Readonly<AppealModalProps>) {
   const {
     appealNotes,
     errors,
@@ -73,15 +73,29 @@ export default function AppealModal({ restriction, isOpen, onClose }: AppealModa
   const isValid = charCount >= 10 && charCount <= 2000
   const typeColor = RESTRICTION_TYPE_COLORS[restriction.restriction_type]
 
+  let buttonText = "Submit Appeal"
+  if (isSubmitting) buttonText = "Submitting\u2026"
+  else if (showConfirm) buttonText = "Yes, Submit Appeal"
+
+  let cancelText = "Cancel"
+  let cancelHandler = handleClose
+  if (showConfirm) {
+    cancelText = "Go Back"
+    cancelHandler = () => setShowConfirm(false)
+  }
+  const buttonIcon = isSubmitting
+    ? <Loader2 size={16} className="animate-spin" />
+    : <MessageSquareText size={16} />
+
   const footer = (
     <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
       <button
         type="button"
-        onClick={showConfirm ? () => setShowConfirm(false) : handleClose}
+        onClick={cancelHandler}
         disabled={isSubmitting}
         className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors disabled:opacity-40 cursor-pointer"
       >
-        {showConfirm ? "Go Back" : "Cancel"}
+        {cancelText}
       </button>
       <button
         type="button"
@@ -89,15 +103,19 @@ export default function AppealModal({ restriction, isOpen, onClose }: AppealModa
         disabled={isSubmitting || !isValid}
         className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-60 cursor-pointer"
       >
-        {isSubmitting ? (
-          <Loader2 size={16} className="animate-spin" />
-        ) : (
-          <MessageSquareText size={16} />
-        )}
-        {isSubmitting ? "Submitting…" : showConfirm ? "Yes, Submit Appeal" : "Submit Appeal"}
+        {buttonIcon}
+        {buttonText}
       </button>
     </div>
   )
+
+  let charCountColor = "text-gray-400 dark:text-gray-500"
+  if (charCount > 2000) charCountColor = "text-red-500"
+  else if (charCount > 1800) charCountColor = "text-amber-500"
+
+  const textareaBorder = errors.appeal_notes
+    ? "border-red-300 dark:border-red-700 focus:ring-red-500/30"
+    : "border-gray-200 dark:border-gray-700 focus:ring-indigo-500/30"
 
   return (
     <ModalWrapper
@@ -163,11 +181,7 @@ export default function AppealModal({ restriction, isOpen, onClose }: AppealModa
             placeholder="Please provide a detailed explanation of why you believe this restriction should be reconsidered…"
             rows={5}
             maxLength={2000}
-            className={`w-full px-3.5 py-2.5 text-sm rounded-xl border ${
-              errors.appeal_notes
-                ? "border-red-300 dark:border-red-700 focus:ring-red-500/30"
-                : "border-gray-200 dark:border-gray-700 focus:ring-indigo-500/30"
-            } bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all resize-none`}
+            className={`w-full px-3.5 py-2.5 text-sm rounded-xl border ${textareaBorder} bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all resize-none`}
           />
           <div className="flex items-center justify-between">
             {errors.appeal_notes ? (
@@ -180,13 +194,7 @@ export default function AppealModal({ restriction, isOpen, onClose }: AppealModa
               </p>
             )}
             <p
-              className={`text-xs ${
-                charCount > 2000
-                  ? "text-red-500"
-                  : charCount > 1800
-                    ? "text-amber-500"
-                    : "text-gray-400 dark:text-gray-500"
-              }`}
+              className={`text-xs ${charCountColor}`}
             >
               {charCount}/2000
             </p>

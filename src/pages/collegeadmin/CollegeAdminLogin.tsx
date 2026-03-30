@@ -28,14 +28,21 @@ export default function CollegeAdminLogin() {
       await login(email, password)
       navigate("/college/dashboard")
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Invalid credentials"
-
-      // Handle specific error scenarios
-      if (errorMessage.toLowerCase().includes("too many")) {
-        setFormError("Too many login attempts. Please try again in 15 minutes.")
-      } else {
-        setFormError(errorMessage)
+      // Extract error message — handle both ApiError and raw axios errors
+      let errorMessage = "Invalid credentials"
+      if (err && typeof err === "object" && "response" in err) {
+        const axiosErr = err as { response?: { data?: { error?: string; message?: string }; status?: number } }
+        const status = axiosErr.response?.status
+        const apiMsg = axiosErr.response?.data?.error || axiosErr.response?.data?.message
+        if (status === 429) {
+          errorMessage = "Too many login attempts. Please try again in 15 minutes."
+        } else if (apiMsg) {
+          errorMessage = apiMsg
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message
       }
+      setFormError(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -90,6 +97,7 @@ export default function CollegeAdminLogin() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="admin@college.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -114,6 +122,7 @@ export default function CollegeAdminLogin() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -124,6 +133,7 @@ export default function CollegeAdminLogin() {
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

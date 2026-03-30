@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import { createSkillSchema } from "@/validators/SkillSchema";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -52,7 +52,7 @@ export const useCreateSkill = (onSuccess?: () => void) => {
                 setErrors({ skill_name: message });
             }
 
-            showToast({ type: "error", title: "Error Adding Skill", description: message });
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
         },
     });
 

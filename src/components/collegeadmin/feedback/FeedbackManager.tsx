@@ -25,11 +25,13 @@ import {
 
 const PAGE_SIZES = [10, 20, 50] as const;
 
+const SKELETON_IDS = ["s1", "s2", "s3", "s4", "s5"] as const;
+
 // ========================
 // HELPERS
 // ========================
 
-function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) {
+function StarRating({ rating, size = "sm" }: Readonly<{ rating: number; size?: "sm" | "md" }>) {
     const dim = size === "md" ? "h-5 w-5" : "h-4 w-4";
     return (
         <div className="flex items-center gap-0.5">
@@ -44,10 +46,11 @@ function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
 }
 
 function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
         month: "short",
         day: "numeric",
         year: "numeric",
+        timeZone: "Asia/Kolkata",
     });
 }
 
@@ -59,11 +62,11 @@ function StatsBar({
     total,
     pending,
     approved,
-}: {
+}: Readonly<{
     total: number;
     pending: number;
     approved: number;
-}) {
+}>) {
     return (
         <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
@@ -81,7 +84,7 @@ function StatsBar({
     );
 }
 
-function StatusBadge({ isApproved }: { isApproved: boolean }) {
+function StatusBadge({ isApproved }: Readonly<{ isApproved: boolean }>) {
     const status = isApproved ? "approved" : "pending";
     const colors = APPROVAL_STATUS_COLORS[status];
     return (
@@ -114,7 +117,7 @@ function CardSkeleton() {
     );
 }
 
-function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+function EmptyState({ hasFilters }: Readonly<{ hasFilters: boolean }>) {
     if (hasFilters) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -153,14 +156,14 @@ function FeedbackCard({
     onApprove,
     onReject,
     isProcessing,
-}: {
+}: Readonly<{
     item: Feedback;
     isSelected: boolean;
     onToggleSelect: (id: string) => void;
     onApprove: (id: string) => void;
     onReject: (id: string) => void;
     isProcessing: boolean;
-}) {
+}>) {
     const [expanded, setExpanded] = useState(false);
     const shouldReduce = useReducedMotion();
     const textTruncated = item.feedback_text && item.feedback_text.length > 200;
@@ -179,7 +182,7 @@ function FeedbackCard({
                     type="button"
                     aria-label={isSelected ? "Deselect feedback" : "Select feedback"}
                     onClick={() => onToggleSelect(item.feedback_id)}
-                    className="mt-0.5 flex-shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
+                    className="mt-0.5 flex-shrink-0 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-blue-600 transition-colors"
                 >
                     {isSelected ? (
                         <CheckSquare className="h-5 w-5 text-blue-600" />
@@ -257,7 +260,7 @@ function FeedbackCard({
                                     type="button"
                                     aria-label="Approve feedback"
                                     onClick={() => onApprove(item.feedback_id)}
-                                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
+                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
                                 >
                                     <Check className="h-4 w-4" />
                                 </button>
@@ -266,7 +269,7 @@ function FeedbackCard({
                                 type="button"
                                 aria-label={item.is_approved ? "Revoke approval" : "Reject feedback"}
                                 onClick={() => onReject(item.feedback_id)}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
+                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-red-50 text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
                             >
                                 <X className="h-4 w-4" />
                             </button>
@@ -285,14 +288,14 @@ function BulkActionBar({
     onClearSelection,
     bulkProcessing,
     bulkProgress,
-}: {
+}: Readonly<{
     selectedCount: number;
     onBulkApprove: () => void;
     onBulkReject: () => void;
     onClearSelection: () => void;
     bulkProcessing: boolean;
     bulkProgress: { done: number; total: number };
-}) {
+}>) {
     const shouldReduce = useReducedMotion();
     const Wrapper = shouldReduce ? "div" : motion.div;
 
@@ -322,21 +325,21 @@ function BulkActionBar({
                     <button
                         type="button"
                         onClick={onBulkApprove}
-                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
+                        className="rounded-lg bg-emerald-600 px-3 py-1.5 min-h-[44px] text-xs font-medium text-white transition-colors hover:bg-emerald-700"
                     >
                         Approve Selected
                     </button>
                     <button
                         type="button"
                         onClick={onBulkReject}
-                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                        className="rounded-lg bg-red-600 px-3 py-1.5 min-h-[44px] text-xs font-medium text-white transition-colors hover:bg-red-700"
                     >
                         Reject Selected
                     </button>
                     <button
                         type="button"
                         onClick={onClearSelection}
-                        className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                        className="rounded-lg bg-gray-100 px-3 py-1.5 min-h-[44px] text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                     >
                         Clear
                     </button>
@@ -353,14 +356,14 @@ function PaginationBar({
     limit,
     onPageChange,
     onLimitChange,
-}: {
+}: Readonly<{
     page: number;
     totalPages: number;
     total: number;
     limit: number;
     onPageChange: (p: number) => void;
     onLimitChange: (l: number) => void;
-}) {
+}>) {
     const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
     const endItem = Math.min(page * limit, total);
 
@@ -402,7 +405,7 @@ function PaginationBar({
                 <div className="flex items-center gap-1">
                     {pageNumbers.map((p, i) =>
                         p === "..." ? (
-                            <span key={`e${i}`} className="px-1 text-xs text-gray-400">
+                            <span key={`ellipsis-${i === 1 ? 'start' : 'end'}`} className="px-1 text-xs text-gray-400">
                                 ...
                             </span>
                         ) : (
@@ -615,8 +618,8 @@ export default function FeedbackManager() {
                     onChange={(e) => handleSortChange(Number(e.target.value))}
                     className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                 >
-                    {SORT_OPTIONS_FEEDBACK.map((opt, i) => (
-                        <option key={i} value={i}>
+                    {SORT_OPTIONS_FEEDBACK.map((opt) => (
+                        <option key={opt.label} value={SORT_OPTIONS_FEEDBACK.indexOf(opt)}>
                             {opt.label}
                         </option>
                     ))}
@@ -637,13 +640,15 @@ export default function FeedbackManager() {
                         onClick={toggleSelectAll}
                         className="text-gray-400 hover:text-blue-600 transition-colors"
                     >
-                        {selectedIds.size === feedback.length && feedback.length > 0 ? (
-                            <CheckSquare className="h-4.5 w-4.5 text-blue-600" />
-                        ) : selectedIds.size > 0 ? (
-                            <Minus className="h-4.5 w-4.5 text-blue-500" />
-                        ) : (
-                            <Square className="h-4.5 w-4.5" />
-                        )}
+                        {(() => {
+                            if (selectedIds.size === feedback.length && feedback.length > 0) {
+                                return <CheckSquare className="h-4.5 w-4.5 text-blue-600" />;
+                            }
+                            if (selectedIds.size > 0) {
+                                return <Minus className="h-4.5 w-4.5 text-blue-500" />;
+                            }
+                            return <Square className="h-4.5 w-4.5" />;
+                        })()}
                     </button>
                     <span>
                         {selectedIds.size > 0
@@ -654,29 +659,35 @@ export default function FeedbackManager() {
             )}
 
             {/* Content */}
-            {isLoading ? (
-                <div className="space-y-4">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <CardSkeleton key={i} />
-                    ))}
-                </div>
-            ) : feedback.length === 0 ? (
-                <EmptyState hasFilters={hasFilters} />
-            ) : (
-                <div className="space-y-3">
-                    {feedback.map((item) => (
-                        <FeedbackCard
-                            key={item.feedback_id}
-                            item={item}
-                            isSelected={selectedIds.has(item.feedback_id)}
-                            onToggleSelect={toggleSelect}
-                            onApprove={approve}
-                            onReject={reject}
-                            isProcessing={processingId === item.feedback_id}
-                        />
-                    ))}
-                </div>
-            )}
+            {(() => {
+                if (isLoading) {
+                    return (
+                        <div className="space-y-4">
+                            {SKELETON_IDS.map((id) => (
+                                <CardSkeleton key={id} />
+                            ))}
+                        </div>
+                    );
+                }
+                if (feedback.length === 0) {
+                    return <EmptyState hasFilters={hasFilters} />;
+                }
+                return (
+                    <div className="space-y-3">
+                        {feedback.map((item) => (
+                            <FeedbackCard
+                                key={item.feedback_id}
+                                item={item}
+                                isSelected={selectedIds.has(item.feedback_id)}
+                                onToggleSelect={toggleSelect}
+                                onApprove={approve}
+                                onReject={reject}
+                                isProcessing={processingId === item.feedback_id}
+                            />
+                        ))}
+                    </div>
+                );
+            })()}
 
             {/* Pagination */}
             <PaginationBar

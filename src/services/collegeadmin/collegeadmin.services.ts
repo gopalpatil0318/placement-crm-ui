@@ -51,6 +51,15 @@ export const CollegeAdminService = {
         return response.data;
     },
 
+    resetPassword: async (data: {
+        token: string;
+        new_password: string;
+        confirm_password: string;
+    }) => {
+        const response = await api.post("/college/reset_password", data);
+        return response.data;
+    },
+
     // ========================
     // USER MANAGEMENT
     // ========================
@@ -1002,6 +1011,11 @@ export const CollegeAdminService = {
         if (params.sort_by) query.append("sort_by", params.sort_by);
         if (params.sort_order) query.append("sort_order", params.sort_order);
         const response = await api.get(`/college/get_all_skills?${query}`);
+        return response.data;
+    },
+
+    deleteSkill: async (skillId: string) => {
+        const response = await api.delete(`/college/delete_skill/${skillId}`);
         return response.data;
     },
 

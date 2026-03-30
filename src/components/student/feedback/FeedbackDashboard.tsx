@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, memo, useMemo } from "react"
+import { useState, useCallback, useEffect, memo, useMemo } from "react"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import {
   AlertCircle,
@@ -36,6 +36,15 @@ const TABS: { key: DashboardTab; label: string; icon: typeof Send }[] = [
   { key: "my-feedback", label: "My Feedback", icon: MessageSquare },
 ]
 
+const STAR_VALUES = [1, 2, 3, 4, 5] as const
+const SKELETON_CARD_KEYS = ["skel-card-1", "skel-card-2", "skel-card-3"] as const
+
+function getCharCountColor(count: number): string {
+  if (count >= 2850) return "text-red-500"
+  if (count >= 2400) return "text-amber-500"
+  return "text-gray-400 dark:text-gray-500"
+}
+
 // ─── Date Formatter ─────────────────────────────────────────────────────────────
 
 function formatDate(iso: string): string {
@@ -43,6 +52,7 @@ function formatDate(iso: string): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Kolkata",
   })
 }
 
@@ -51,12 +61,12 @@ function formatDate(iso: string): string {
 const StarDisplay = memo(function StarDisplay({ rating, size = 16 }: { rating: number; size?: number }) {
   return (
     <div className="flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
-      {Array.from({ length: 5 }).map((_, i) => (
+      {STAR_VALUES.map((starValue) => (
         <Star
-          key={i}
+          key={starValue}
           size={size}
           className={
-            i < rating
+            starValue <= rating
               ? "text-amber-400 fill-amber-400"
               : "text-gray-300 dark:text-gray-600"
           }
@@ -73,7 +83,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void
 }
 
-function Pagination({ pagination, onPageChange }: PaginationProps) {
+function Pagination({ pagination, onPageChange }: Readonly<PaginationProps>) {
   const { page, total_pages, total, limit } = pagination
   if (total <= 0) return null
   const start = (page - 1) * limit + 1
@@ -90,20 +100,20 @@ function Pagination({ pagination, onPageChange }: PaginationProps) {
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
           aria-label="Previous page"
-          className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
+          className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
         >
           <ChevronLeft size={14} />
         </button>
         {Array.from({ length: total_pages }, (_, i) => i + 1)
           .filter((p) => p === 1 || p === total_pages || Math.abs(p - page) <= 1)
-          .reduce<(number | "dots")[]>((acc, p, i, arr) => {
-            if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("dots")
+          .reduce<(number | string)[]>((acc, p, i, arr) => {
+            if (i > 0 && p - arr[i - 1] > 1) acc.push(`dots-after-${arr[i - 1]}`)
             acc.push(p)
             return acc
           }, [])
-          .map((item, i) =>
-            item === "dots" ? (
-              <span key={`dots-${i}`} className="px-1 text-xs text-gray-400">…</span>
+          .map((item) =>
+            typeof item === "string" ? (
+              <span key={item} className="px-1 text-xs text-gray-400">…</span>
             ) : (
               <button
                 key={item}
@@ -124,7 +134,7 @@ function Pagination({ pagination, onPageChange }: PaginationProps) {
           onClick={() => onPageChange(page + 1)}
           disabled={page >= total_pages}
           aria-label="Next page"
-          className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
+          className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
         >
           <ChevronRight size={14} />
         </button>
@@ -135,7 +145,7 @@ function Pagination({ pagination, onPageChange }: PaginationProps) {
 
 // ─── Feedback Card ──────────────────────────────────────────────────────────────
 
-const FeedbackCard = memo(function FeedbackCard({ item }: { item: StudentFeedback }) {
+const FeedbackCard = memo(function FeedbackCard({ item }: Readonly<{ item: StudentFeedback }>) {
   const colors = APPROVAL_STATUS_COLORS[item.is_approved ? "approved" : "pending"]
 
   return (
@@ -195,8 +205,8 @@ function CardSkeleton() {
         <div className="h-6 w-20 rounded-full bg-gray-200 dark:bg-gray-700" />
       </div>
       <div className="flex gap-1">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-4 w-4 rounded bg-gray-200 dark:bg-gray-700" />
+        {STAR_VALUES.map((n) => (
+          <div key={n} className="h-4 w-4 rounded bg-gray-200 dark:bg-gray-700" />
         ))}
       </div>
       <div className="space-y-1.5">
@@ -208,9 +218,67 @@ function CardSkeleton() {
   )
 }
 
+// ─── Anonymous Confirm Dialog ────────────────────────────────────────────────────
+
+function AnonConfirmDialog({
+  show,
+  onClose,
+  onConfirm,
+}: Readonly<{ show: boolean; onClose: () => void; onConfirm: () => void }>) {
+  const shouldReduce = useReducedMotion()
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={shouldReduce ? undefined : { opacity: 0 }}
+          animate={shouldReduce ? undefined : { opacity: 1 }}
+          exit={shouldReduce ? undefined : { opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={shouldReduce ? undefined : { opacity: 0, scale: 0.95 }}
+            animate={shouldReduce ? undefined : { opacity: 1, scale: 1 }}
+            exit={shouldReduce ? undefined : { opacity: 0, scale: 0.95 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm mx-4 space-y-4"
+          >
+            <div className="flex items-center gap-2">
+              <EyeOff size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Submit Anonymously?</h3>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Your identity will be hidden from college admins. They will not be able to see who submitted this feedback.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  onConfirm()
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-lg transition-colors cursor-pointer"
+              >
+                Confirm & Submit
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 // ─── Submit Panel ───────────────────────────────────────────────────────────────
 
-function SubmitPanel({ onTabSwitch }: { onTabSwitch: (tab: DashboardTab) => void }) {
+function SubmitPanel({ onTabSwitch }: Readonly<{ onTabSwitch: (tab: DashboardTab) => void }>) {
   const shouldReduce = useReducedMotion()
   const {
     jobId,
@@ -246,7 +314,10 @@ function SubmitPanel({ onTabSwitch }: { onTabSwitch: (tab: DashboardTab) => void
     return new Set(feedbackData.feedback.map((f) => f.job_id))
   }, [feedbackData])
 
-  const applications: ApplicationListItem[] = appsData?.applications ?? []
+  const applications: ApplicationListItem[] = useMemo(
+    () => appsData?.applications ?? [],
+    [appsData],
+  )
 
   const handleJobChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -278,7 +349,7 @@ function SubmitPanel({ onTabSwitch }: { onTabSwitch: (tab: DashboardTab) => void
 
   return (
     <Wrapper
-      {...(!shouldReduce ? { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.25 } } : {})}
+      {...(shouldReduce ? {} : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.25 } })}
       className="max-w-2xl mx-auto space-y-6"
     >
       {/* Info banner */}
@@ -290,13 +361,14 @@ function SubmitPanel({ onTabSwitch }: { onTabSwitch: (tab: DashboardTab) => void
 
       {/* Job selector */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+        <label htmlFor="job-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
           Select Job <span className="text-red-500">*</span>
         </label>
         {appsLoading ? (
           <div className="h-11 rounded-xl bg-gray-100 dark:bg-gray-800 motion-safe:animate-pulse" />
         ) : (
           <select
+            id="job-select"
             value={jobId}
             onChange={handleJobChange}
             className={`w-full h-11 rounded-xl border bg-white dark:bg-gray-800 px-4 text-sm transition-colors cursor-pointer
@@ -326,9 +398,9 @@ function SubmitPanel({ onTabSwitch }: { onTabSwitch: (tab: DashboardTab) => void
       {/* Company (auto-populated from selected job) */}
       {selectedCompanyName && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
             Company
-          </label>
+          </p>
           <div className="w-full h-11 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 flex items-center text-sm text-gray-700 dark:text-gray-300">
             {selectedCompanyName}
           </div>
@@ -337,16 +409,15 @@ function SubmitPanel({ onTabSwitch }: { onTabSwitch: (tab: DashboardTab) => void
 
       {/* Star rating */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <p id="rating-label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Rating <span className="text-red-500">*</span>
-        </label>
-        <div className="flex items-center gap-1" role="radiogroup" aria-label="Rating">
-          {Array.from({ length: 5 }).map((_, i) => {
-            const starValue = i + 1
+        </p>
+        <div className="flex items-center gap-1" role="radiogroup" aria-labelledby="rating-label">
+          {STAR_VALUES.map((starValue) => {
             const isFilled = starValue <= displayRating
             return (
               <button
-                key={i}
+                key={starValue}
                 type="button"
                 onClick={() => handleRatingChange(starValue)}
                 onMouseEnter={() => setHoverRating(starValue)}
@@ -399,13 +470,7 @@ function SubmitPanel({ onTabSwitch }: { onTabSwitch: (tab: DashboardTab) => void
             <span />
           )}
           <span
-            className={`text-xs ${
-              charCount >= 2850
-                ? "text-red-500"
-                : charCount >= 2400
-                  ? "text-amber-500"
-                  : "text-gray-400 dark:text-gray-500"
-            }`}
+            className={`text-xs ${getCharCountColor(charCount)}`}
           >
             {charCount} / 3000
           </span>
@@ -456,59 +521,18 @@ function SubmitPanel({ onTabSwitch }: { onTabSwitch: (tab: DashboardTab) => void
       </div>
 
       {/* Anonymous confirmation dialog */}
-      <AnimatePresence>
-        {showAnonConfirm && (
-          <motion.div
-            initial={shouldReduce ? undefined : { opacity: 0 }}
-            animate={shouldReduce ? undefined : { opacity: 1 }}
-            exit={shouldReduce ? undefined : { opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={() => setShowAnonConfirm(false)}
-          >
-            <motion.div
-              initial={shouldReduce ? undefined : { opacity: 0, scale: 0.95 }}
-              animate={shouldReduce ? undefined : { opacity: 1, scale: 1 }}
-              exit={shouldReduce ? undefined : { opacity: 0, scale: 0.95 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm mx-4 space-y-4"
-            >
-              <div className="flex items-center gap-2">
-                <EyeOff size={18} className="text-indigo-600 dark:text-indigo-400" />
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Submit Anonymously?</h3>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Your identity will be hidden from college admins. They will not be able to see who submitted this feedback.
-              </p>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAnonConfirm(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAnonConfirm(false)
-                    handleSubmit()
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-lg transition-colors cursor-pointer"
-                >
-                  Confirm & Submit
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AnonConfirmDialog
+        show={showAnonConfirm}
+        onClose={() => setShowAnonConfirm(false)}
+        onConfirm={handleSubmit}
+      />
     </Wrapper>
   )
 }
 
 // ─── My Feedback Panel ──────────────────────────────────────────────────────────
 
-function MyFeedbackPanel({ enabled }: { enabled: boolean }) {
+function MyFeedbackPanel({ enabled }: Readonly<{ enabled: boolean }>) {
   const shouldReduce = useReducedMotion()
   const {
     feedback,
@@ -526,8 +550,8 @@ function MyFeedbackPanel({ enabled }: { enabled: boolean }) {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <CardSkeleton key={i} />
+        {SKELETON_CARD_KEYS.map((id) => (
+          <CardSkeleton key={id} />
         ))}
       </div>
     )
@@ -578,7 +602,7 @@ function MyFeedbackPanel({ enabled }: { enabled: boolean }) {
           className="h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
         >
           {SORT_OPTIONS_FEEDBACK.map((opt, i) => (
-            <option key={i} value={i}>{opt.label}</option>
+            <option key={opt.label} value={i}>{opt.label}</option>
           ))}
         </select>
         {isFetching && (
@@ -588,13 +612,13 @@ function MyFeedbackPanel({ enabled }: { enabled: boolean }) {
 
       {/* Cards */}
       <Container
-        {...(!shouldReduce ? { variants: staggerContainer, initial: "hidden", animate: "show" } : {})}
+        {...(shouldReduce ? {} : { variants: staggerContainer, initial: "hidden", animate: "show" })}
         className="space-y-3"
       >
         {feedback.map((item) => {
           const ItemWrapper = shouldReduce ? "div" : motion.div
           return (
-            <ItemWrapper key={item.feedback_id} {...(!shouldReduce ? { variants: staggerItem } : {})}>
+            <ItemWrapper key={item.feedback_id} {...(shouldReduce ? {} : { variants: staggerItem })}>
               <FeedbackCard item={item} />
             </ItemWrapper>
           )
@@ -619,8 +643,14 @@ function MyFeedbackPanel({ enabled }: { enabled: boolean }) {
 
 export default function FeedbackDashboard() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("submit")
-  const visitedTabs = useRef<Set<DashboardTab>>(new Set(["submit"]))
-  if (!visitedTabs.current.has(activeTab)) visitedTabs.current.add(activeTab)
+  const [visitedTabs, setVisitedTabs] = useState<Set<DashboardTab>>(new Set(["submit"]))
+
+  useEffect(() => {
+    if (!visitedTabs.has(activeTab)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- track visited tabs
+      setVisitedTabs(prev => new Set([...prev, activeTab]))
+    }
+  }, [activeTab, visitedTabs])
 
   return (
     <div className="space-y-6">
@@ -659,7 +689,7 @@ export default function FeedbackDashboard() {
         {activeTab === "submit" ? (
           <SubmitPanel onTabSwitch={setActiveTab} />
         ) : (
-          <MyFeedbackPanel enabled={visitedTabs.current.has("my-feedback")} />
+          <MyFeedbackPanel enabled={visitedTabs.has("my-feedback")} />
         )}
       </div>
     </div>

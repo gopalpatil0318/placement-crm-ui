@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/queryKeys"
 import { ApiError } from "@/lib/api"
-import { showToast } from "@/utils/ToastUtils"
+import { showToast, getErrorTitle } from "@/utils/ToastUtils"
 import { NotificationService } from "@/services/student/notification.service"
 import {
   getNotificationLink,
@@ -63,7 +63,7 @@ export function useNotificationActions() {
     onError: (error: unknown) => {
       const message = error instanceof ApiError ? error.message : "Failed to mark notification as read"
       const status = error instanceof ApiError ? error.status : undefined
-      const title = status === 429 ? "Too Many Requests" : "Error"
+      const title = getErrorTitle(status)
       const description = status === 429 ? "You're acting too quickly. Please wait a moment." : message
       showToast({ type: "error", title, description })
     },
@@ -112,7 +112,7 @@ export function useNotificationActions() {
         ? error.message
         : "Failed to mark notifications as read"
       const status = error instanceof ApiError ? error.status : undefined
-      const title = status === 429 ? "Too Many Requests" : "Error"
+      const title = getErrorTitle(status)
       const description = status === 429 ? "You're acting too quickly. Please wait a moment." : message
       showToast({ type: "error", title, description })
     },

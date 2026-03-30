@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
+import { useYearFilter } from "@/context/YearFilterContext";
 
 // ========================
 // TYPES
@@ -31,12 +32,13 @@ export interface PolicySummary {
 // ========================
 
 export const useViewPlacementPolicies = () => {
+    const { selectedYear } = useYearFilter();
+    const queryClient = useQueryClient();
     // ── Local filter / pagination state ──
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [passoutYear, setPassoutYear] = useState("");
     const [isActive, setIsActive] = useState("");
     const [sortBy, setSortBy] = useState("created_at");
     const [sortOrder, setSortOrder] = useState("desc");
@@ -44,15 +46,15 @@ export const useViewPlacementPolicies = () => {
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // ── React Query ──
-    const queryFilters = {
+    const queryFilters = useMemo(() => ({
         page,
         limit,
         search: debouncedSearch || undefined,
-        passout_year: passoutYear ? Number(passoutYear) : undefined,
+        passout_year: selectedYear,
         is_active: isActive || undefined,
         sort_by: sortBy,
         sort_order: sortOrder,
-    };
+    }), [page, limit, debouncedSearch, selectedYear, isActive, sortBy, sortOrder]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.placements.policies(queryFilters),
@@ -86,6 +88,17 @@ export const useViewPlacementPolicies = () => {
         ? (queryError instanceof Error ? queryError.message : "Failed to load policies")
         : null;
 
+    // ── Next-page prefetch ──
+    useEffect(() => {
+        if (pagination.totalPages > page) {
+            const nextFilters = { ...queryFilters, page: page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.placements.policies(nextFilters),
+                queryFn: () => CollegeAdminService.getAllPlacementPolicies(nextFilters),
+            });
+        }
+    }, [page, pagination.totalPages, queryClient, queryFilters]);
+
     // ── Handlers ──
 
     const handleSearchChange = useCallback((value: string) => {
@@ -118,11 +131,6 @@ export const useViewPlacementPolicies = () => {
         setPage(1);
     }, []);
 
-    const handlePassoutYearChange = useCallback((year: string) => {
-        setPassoutYear(year);
-        setPage(1);
-    }, []);
-
     const handleStatusFilterChange = useCallback((status: string) => {
         setIsActive(status);
         setPage(1);
@@ -131,7 +139,6 @@ export const useViewPlacementPolicies = () => {
     const clearFilters = useCallback(() => {
         setSearch("");
         setDebouncedSearch("");
-        setPassoutYear("");
         setIsActive("");
         setSortBy("created_at");
         setSortOrder("desc");
@@ -145,7 +152,6 @@ export const useViewPlacementPolicies = () => {
         error,
         pagination,
         search,
-        passoutYear,
         isActive,
         sortBy,
         sortOrder,
@@ -153,7 +159,6 @@ export const useViewPlacementPolicies = () => {
         handlePageChange,
         handleLimitChange,
         handleSortChange,
-        handlePassoutYearChange,
         handleStatusFilterChange,
         clearFilters,
         refresh: refetch,

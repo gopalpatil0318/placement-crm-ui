@@ -88,6 +88,7 @@ const ContactForm = ({
                 onChange={handleChange}
                 error={errors.contactPhone}
                 type="tel"
+                inputMode="tel"
                 maxLength={15}
             />
 

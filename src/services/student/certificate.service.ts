@@ -15,6 +15,13 @@ export interface CertificateData {
     skills_covered?: string[];
     certificate_url?: string | null;
     is_verified?: boolean;
+    verification_status?: string | null;
+    verified_by?: string | null;
+    verified_at?: string | null;
+    rejection_reason?: string | null;
+    rejected_at?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
 }
 
 export const StudentCertificateService = {

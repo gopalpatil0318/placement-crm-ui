@@ -151,12 +151,12 @@ const ExperienceForm = () => {
             }>
                         {/* Body */}
                         <div className="p-6 space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingInput label="Company Name" name="company_name" value={formData.company_name} onChange={handleChange} error={errors.company_name} required />
                                 <FloatingInput label="Position Title" name="position_title" value={formData.position_title} onChange={handleChange} error={errors.position_title} required placeholder="e.g. Software Engineering Intern" />
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <FloatingSelect label="Employment Type" name="employment_type" value={formData.employment_type} onChange={handleChange} error={errors.employment_type} required options={VALID_EMPLOYMENT_TYPES.map(t => ({ value: t, label: EMPLOYMENT_TYPE_LABELS[t] }))} />
                                 <FloatingSelect label="Work Mode" name="work_mode" value={formData.work_mode} onChange={handleChange} error={errors.work_mode} required options={VALID_WORK_MODES.map(m => ({ value: m, label: WORK_MODE_LABELS[m] }))} />
                                 <FloatingInput label="Location" name="work_location" value={formData.work_location} onChange={handleChange} error={errors.work_location} required placeholder="e.g. Pune" />
@@ -177,8 +177,8 @@ const ExperienceForm = () => {
                                 </div>
                                 {formData.responsibilities.length > 0 && (
                                     <ul className="mt-2 space-y-1">
-                                        {formData.responsibilities.map((r, i) => (
-                                            <li key={i} className="flex items-center justify-between text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg">
+                                        {formData.responsibilities.map((r) => (
+                                            <li key={r} className="flex items-center justify-between text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg">
                                                 <span>• {r}</span>
                                                 <button type="button" onClick={() => removeResp(r)} className="text-red-400 hover:text-red-600 cursor-pointer"><X className="h-3 w-3" /></button>
                                             </li>
@@ -210,7 +210,7 @@ const ExperienceForm = () => {
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingInput label="Start Date" name="start_date" value={formData.start_date} onChange={handleChange} error={errors.start_date} required type="date" />
                                 {!formData.is_current && (
                                     <FloatingInput label="End Date" name="end_date" value={formData.end_date} onChange={handleChange} error={errors.end_date} required type="date" />
@@ -223,16 +223,16 @@ const ExperienceForm = () => {
                                 <span className="text-sm text-gray-700 dark:text-gray-300">I currently work here</span>
                             </label>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <FloatingInput label="Stipend / Salary (₹)" name="stipend_amount" value={formData.stipend_amount} onChange={handleChange} type="number" />
-                                <FloatingInput label="Duration (months)" name="duration_months" value={formData.duration_months} onChange={handleChange} type="number" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FloatingInput label="Stipend / Salary (₹)" name="stipend_amount" value={formData.stipend_amount} onChange={handleChange} type="number" inputMode="decimal" />
+                                <FloatingInput label="Duration (months)" name="duration_months" value={formData.duration_months} onChange={handleChange} type="number" inputMode="numeric" />
                             </div>
 
                             <div className="space-y-4">
-                                <FloatingInput label="Company Website" name="company_website" value={formData.company_website} onChange={handleChange} error={errors.company_website} placeholder="https://..." />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FloatingInput label="Offer Letter URL" name="offer_letter_url" value={formData.offer_letter_url} onChange={handleChange} error={errors.offer_letter_url} placeholder="https://..." />
-                                    <FloatingInput label="Completion Certificate URL" name="completion_certificate_url" value={formData.completion_certificate_url} onChange={handleChange} error={errors.completion_certificate_url} placeholder="https://..." />
+                                <FloatingInput label="Company Website" name="company_website" value={formData.company_website} onChange={handleChange} error={errors.company_website} placeholder="https://..." inputMode="url" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FloatingInput label="Offer Letter URL" name="offer_letter_url" value={formData.offer_letter_url} onChange={handleChange} error={errors.offer_letter_url} placeholder="https://..." inputMode="url" />
+                                    <FloatingInput label="Completion Certificate URL" name="completion_certificate_url" value={formData.completion_certificate_url} onChange={handleChange} error={errors.completion_certificate_url} placeholder="https://..." inputMode="url" />
                                 </div>
                             </div>
                         </div>

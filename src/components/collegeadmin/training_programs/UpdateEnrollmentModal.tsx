@@ -9,7 +9,6 @@ import FloatingSelect from "@/components/ui/FloatingSelect";
 import {
     ENROLLMENT_STATUS_OPTIONS,
     ENROLLMENT_STATUS_LABELS,
-    type EnrollmentStatus,
     type UpdateEnrollmentInput,
 } from "@/validators/TrainingProgramSchema";
 
@@ -40,7 +39,7 @@ const STATUS_OPTIONS = [
     { value: "", label: "" },
     ...ENROLLMENT_STATUS_OPTIONS.map((s) => ({
         value: s,
-        label: ENROLLMENT_STATUS_LABELS[s as EnrollmentStatus],
+        label: ENROLLMENT_STATUS_LABELS[s],
     })),
 ];
 
@@ -59,7 +58,7 @@ const UpdateEnrollmentModal = ({
     handleChange,
     handleSubmit,
     handleClose,
-}: UpdateEnrollmentModalProps) => {
+}: Readonly<UpdateEnrollmentModalProps>) => {
     const shouldReduce = useReducedMotion();
 
     const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -128,7 +127,7 @@ const UpdateEnrollmentModal = ({
             <div className="px-6 py-5 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <FloatingInput
-                        label={`Sessions Attended${totalSessions ? ` (out of ${totalSessions})` : ""}`}
+                        label={totalSessions ? `Sessions Attended (out of ${totalSessions})` : "Sessions Attended"}
                         name="sessions_attended"
                         type="number"
                         value={formData.sessions_attended ?? ""}
@@ -161,6 +160,7 @@ const UpdateEnrollmentModal = ({
                             type="checkbox"
                             checked={formData.certificate_issued ?? false}
                             onChange={(e) => handleChange("certificate_issued", e.target.checked)}
+                            aria-label="Certificate issued"
                             className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500/30"
                         />
                         <span className="text-sm text-gray-700 dark:text-gray-300">Certificate Issued</span>

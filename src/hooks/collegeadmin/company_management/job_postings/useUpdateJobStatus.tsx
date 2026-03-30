@@ -14,6 +14,21 @@ export const useUpdateJobStatus = (onSuccess?: () => void) => {
     const mutation = useMutation({
         mutationFn: ({ jobId, newStatus }: { jobId: string; newStatus: string }) =>
             CollegeAdminService.updateJobStatus(jobId, newStatus),
+        onMutate: async ({ jobId, newStatus }) => {
+            // Cancel any outgoing refetches so they don't overwrite our optimistic update
+            await queryClient.cancelQueries({ queryKey: queryKeys.jobs.detail(jobId) });
+            // Snapshot previous value
+            const previousJob = queryClient.getQueryData(queryKeys.jobs.detail(jobId));
+            // Optimistically update the cache
+            if (previousJob && typeof previousJob === "object") {
+                queryClient.setQueryData(queryKeys.jobs.detail(jobId), {
+                    ...previousJob,
+                    job_status: newStatus,
+                    allow_applications: newStatus === "published",
+                });
+            }
+            return { previousJob, jobId };
+        },
         onSuccess: (response, { jobId }) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all() });
@@ -24,7 +39,11 @@ export const useUpdateJobStatus = (onSuccess?: () => void) => {
             });
             onSuccess?.();
         },
-        onError: (error: unknown) => {
+        onError: (error: unknown, _variables, context) => {
+            // Rollback on error
+            if (context?.previousJob && context?.jobId) {
+                queryClient.setQueryData(queryKeys.jobs.detail(context.jobId), context.previousJob);
+            }
             const message = error instanceof ApiError ? error.message : "Failed to update status";
             showToast({
                 type: "error",

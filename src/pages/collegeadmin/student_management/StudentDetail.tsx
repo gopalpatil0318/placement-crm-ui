@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, LayoutGroup, useReducedMotion } from "framer-motion";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import {
     Mail, Building2, Calendar, Clock, GraduationCap, Hash,
     CheckCircle, XCircle, Power, Pencil, AlertTriangle, AlertCircle,
@@ -72,8 +72,8 @@ const getInitials = (first: string, last: string) =>
 
 const formatDateTime = (dateStr: string | undefined | null) => {
     if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("en-US", {
-        month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true,
     });
 };
 
@@ -176,12 +176,11 @@ export default function StudentDetail() {
     // Status change modal
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [newStatus, setNewStatus] = useState("");
-    const [updatingStatus, setUpdatingStatus] = useState(false);
 
     // Approve modal
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [approveAction, setApproveAction] = useState(true);
-    const [approvingProfile, setApprovingProfile] = useState(false);
+    const [revokeReason, setRevokeReason] = useState("");
 
     // Review mode: full profile data + verification hooks
     const { profileData, isLoading: reviewLoading, refetch: refetchProfile } = useStudentReviewProfile(
@@ -205,37 +204,38 @@ export default function StudentDetail() {
         if (student) { setNewStatus(student.student_status); setShowStatusModal(true); }
     }, [student]);
 
-    const handleStatusSubmit = useCallback(async () => {
-        if (!student || !newStatus || newStatus === student.student_status) return;
-        setUpdatingStatus(true);
-        try {
-            const res = await CollegeAdminService.updateStudentStatus(student.student_id, newStatus);
-            showToast({ type: "success", title: "Status Updated", description: res?.message || `Status changed to ${newStatus}` });
+    // Status toggle mutation
+    const statusMutation = useMutation({
+        mutationFn: ({ sid, status }: { sid: string; status: string }) =>
+            CollegeAdminService.updateStudentStatus(sid, status),
+        onSuccess: (response) => {
+            const msg = (response as { message?: string })?.message || `Status changed to ${newStatus}`;
+            showToast({ type: "success", title: "Status Updated", description: msg });
             refresh();
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Failed to update status";
+            queryClient.invalidateQueries({ queryKey: queryKeys.students.all() });
+            setShowStatusModal(false);
+        },
+        onError: (err: unknown) => {
+            const msg = err instanceof ApiError ? err.message : "Failed to update status";
             showToast({ type: "error", title: "Error", description: msg });
-        } finally { setUpdatingStatus(false); setShowStatusModal(false); }
-    }, [student, newStatus, refresh]);
+        },
+    });
 
-    const handleApproveSubmit = useCallback(async () => {
+    const handleStatusSubmit = useCallback(() => {
+        if (!student || !newStatus || newStatus === student.student_status) return;
+        statusMutation.mutate({ sid: student.student_id, status: newStatus });
+    }, [student, newStatus, statusMutation]);
+
+    const handleApproveSubmit = useCallback(() => {
         if (!student) return;
-        setApprovingProfile(true);
-        try {
-            const res = await CollegeAdminService.approveStudentProfile(
-                student.student_id,
-                { action: approveAction ? "approved" : "rejected" },
-            );
-            showToast({ type: "success", title: approveAction ? "Profile Approved" : "Approval Revoked", description: res?.message || `Profile ${approveAction ? "approved" : "rejected"}` });
-            refresh();
-            // Invalidate verification caches so counts/lists stay in sync
-            queryClient.invalidateQueries({ queryKey: queryKeys.verifications.counts() });
-            queryClient.invalidateQueries({ queryKey: queryKeys.verifications.profiles() });
-        } catch (err: unknown) {
-            const msg = err instanceof ApiError ? err.message : "Failed to update approval";
-            showToast({ type: "error", title: "Error", description: msg });
-        } finally { setApprovingProfile(false); setShowApproveModal(false); }
-    }, [student, approveAction, refresh, queryClient]);
+        if (approveAction) {
+            profileApproval.approve();
+        } else {
+            profileApproval.reject(revokeReason);
+        }
+        setShowApproveModal(false);
+        setRevokeReason("");
+    }, [student, approveAction, revokeReason, profileApproval]);
 
     const breadcrumbs = useMemo(() => {
         const crumbs = [
@@ -671,7 +671,7 @@ export default function StudentDetail() {
             <ModalWrapper
                 isOpen={showStatusModal}
                 onClose={() => setShowStatusModal(false)}
-                disabled={updatingStatus}
+                disabled={statusMutation.isPending}
                 title="Change Student Status"
                 titleIcon={<Power className="h-5 w-5 text-gray-500" />}
             >
@@ -683,7 +683,8 @@ export default function StudentDetail() {
                     <select
                         value={newStatus}
                         onChange={(e) => setNewStatus(e.target.value)}
-                        disabled={updatingStatus}
+                        disabled={statusMutation.isPending}
+                        aria-label="Select new student status"
                         className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition disabled:opacity-50"
                     >
                         {ALL_STATUSES.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
@@ -698,10 +699,10 @@ export default function StudentDetail() {
                     )}
                 </div>
                 <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-end gap-3">
-                    <button type="button" onClick={() => setShowStatusModal(false)} disabled={updatingStatus} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40">Cancel</button>
-                    <button type="button" onClick={handleStatusSubmit} disabled={updatingStatus || newStatus === student.student_status} className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed">
-                        {updatingStatus && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {updatingStatus ? "Updating..." : "Update Status"}
+                    <button type="button" onClick={() => setShowStatusModal(false)} disabled={statusMutation.isPending} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40">Cancel</button>
+                    <button type="button" onClick={handleStatusSubmit} disabled={statusMutation.isPending || newStatus === student.student_status} className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed">
+                        {statusMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {statusMutation.isPending ? "Updating..." : "Update Status"}
                     </button>
                 </div>
             </ModalWrapper>
@@ -709,8 +710,8 @@ export default function StudentDetail() {
             {/* Approve/Reject Modal */}
             <ModalWrapper
                 isOpen={showApproveModal}
-                onClose={() => setShowApproveModal(false)}
-                disabled={approvingProfile}
+                onClose={() => { setShowApproveModal(false); setRevokeReason(""); }}
+                disabled={profileApproval.isApproving || profileApproval.isRejecting}
                 title={approveAction ? "Approve Profile" : "Revoke Approval"}
                 titleIcon={approveAction ? <CheckCircle className="h-5 w-5 text-emerald-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
             >
@@ -727,19 +728,33 @@ export default function StudentDetail() {
                             </div>
                         </div>
                     ) : (
-                        <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                            <div className="flex items-start gap-2">
-                                <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                                <p className="text-xs text-red-700 dark:text-red-300">They will no longer be eligible for placements.</p>
+                        <>
+                            <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                                <div className="flex items-start gap-2">
+                                    <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                    <p className="text-xs text-red-700 dark:text-red-300">They will no longer be eligible for placements.</p>
+                                </div>
                             </div>
-                        </div>
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-1.5">
+                                Reason for Revoking <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                maxLength={500}
+                                rows={3}
+                                value={revokeReason}
+                                onChange={(e) => setRevokeReason(e.target.value)}
+                                placeholder="Explain why this profile approval is being revoked…"
+                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                            />
+                            <p className="mt-1 text-xs text-gray-400 text-right">{revokeReason.length}/500</p>
+                        </>
                     )}
                 </div>
                 <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-end gap-3">
-                    <button type="button" onClick={() => setShowApproveModal(false)} disabled={approvingProfile} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40">Cancel</button>
-                    <button type="button" onClick={handleApproveSubmit} disabled={approvingProfile} className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed ${approveAction ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"}`}>
-                        {approvingProfile && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {approvingProfile ? "Processing..." : approveAction ? "Approve" : "Revoke"}
+                    <button type="button" onClick={() => { setShowApproveModal(false); setRevokeReason(""); }} disabled={profileApproval.isApproving || profileApproval.isRejecting} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40">Cancel</button>
+                    <button type="button" onClick={handleApproveSubmit} disabled={profileApproval.isApproving || profileApproval.isRejecting || (!approveAction && revokeReason.trim().length < 3)} className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed ${approveAction ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"}`}>
+                        {(profileApproval.isApproving || profileApproval.isRejecting) && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {(profileApproval.isApproving || profileApproval.isRejecting) ? "Processing..." : approveAction ? "Approve" : "Revoke"}
                     </button>
                 </div>
             </ModalWrapper>
