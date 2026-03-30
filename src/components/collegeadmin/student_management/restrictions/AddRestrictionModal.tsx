@@ -39,7 +39,7 @@ export default function AddRestrictionModal({
     onSuccess,
     preSelectedStudentId,
     preSelectedStudentName,
-}: AddRestrictionModalProps) {
+}: Readonly<AddRestrictionModalProps>) {
     const hasPreSelected = !!preSelectedStudentId;
 
     // Student search state (only used when no pre-selected student)
@@ -54,7 +54,7 @@ export default function AddRestrictionModal({
     const isDirty = !!(formData.restriction_type || formData.reason || formData.details || formData.valid_until);
 
     const handleClose = useCallback(() => {
-        if (isDirty && !window.confirm("You have unsaved changes. Discard and close?")) return;
+        if (isDirty && !globalThis.confirm("You have unsaved changes. Discard and close?")) return;
         onClose();
     }, [isDirty, onClose]);
 
@@ -127,12 +127,13 @@ export default function AddRestrictionModal({
                     {/* Student Selection */}
                     {!hasPreSelected && !selectedStudent && (
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <label htmlFor="student-search-input" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Select Student <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                                 <input
+                                    id="student-search-input"
                                     type="text"
                                     value={studentSearch}
                                     onChange={(e) => handleStudentSearch(e.target.value)}

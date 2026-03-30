@@ -172,31 +172,30 @@ const StatusPills = ({
                 type="button"
                 onClick={() => onFilter("")}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    !activeFilter
+                    activeFilter === ""
                         ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-sm"
                         : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                 }`}
             >
                 All
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                    !activeFilter ? "bg-white/20 text-white dark:bg-gray-900/20 dark:text-gray-900" : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                    activeFilter === "" ? "bg-white/20 text-white dark:bg-gray-900/20 dark:text-gray-900" : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
                 }`}>
                     {total}
                 </span>
             </button>
 
             {STATUS_PILL_ORDER.map((key) => {
-                const count = summary[key] as number;
-                const statusKey = key as string;
-                const colors = APPLICATION_STATUS_COLORS[statusKey];
-                const label = APPLICATION_STATUS_LABELS[statusKey];
-                const isActive = activeFilter === statusKey;
+                const count = summary[key];
+                const colors = APPLICATION_STATUS_COLORS[key];
+                const label = APPLICATION_STATUS_LABELS[key];
+                const isActive = activeFilter === key;
 
                 return (
                     <button
                         key={key}
                         type="button"
-                        onClick={() => onFilter(isActive ? "" : statusKey)}
+                        onClick={() => onFilter(isActive ? "" : key)}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                             isActive
                                 ? `${colors.bg} ${colors.text} ring-2 ring-offset-1 ring-current shadow-sm`
@@ -243,15 +242,11 @@ const SortHeader = ({
             className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
         >
             {label}
-            {isActive ? (
-                currentOrder === "asc" ? (
-                    <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                ) : (
-                    <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 text-gray-300 group-hover:text-gray-400 dark:text-gray-600 dark:group-hover:text-gray-500" />
-            )}
+            {(() => {
+                if (!isActive) return <ArrowUpDown className="h-3 w-3 text-gray-300 group-hover:text-gray-400 dark:text-gray-600 dark:group-hover:text-gray-500" />;
+                if (currentOrder === "asc") return <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+                return <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+            })()}
         </button>
     );
 };
@@ -292,7 +287,7 @@ const Pagination = ({
                 type="button"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1 || loading}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Previous page"
             >
                 <ChevronLeft className="h-4 w-4" />
@@ -310,7 +305,7 @@ const Pagination = ({
                         onClick={() => onPageChange(p)}
                         disabled={loading}
                         aria-current={p === page ? "page" : undefined}
-                        className={`min-w-[32px] h-8 rounded-lg text-sm font-medium transition ${
+                        className={`min-w-[44px] min-h-[44px] rounded-lg text-sm font-medium transition ${
                             p === page
                                 ? "bg-blue-600 text-white shadow-sm"
                                 : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
@@ -325,7 +320,7 @@ const Pagination = ({
                 type="button"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages || loading}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Next page"
             >
                 <ChevronRight className="h-4 w-4" />
@@ -413,8 +408,8 @@ const StatusChangeModal = ({
     const config = STATUS_MODAL_CONFIG[targetStatus];
     const label = APPLICATION_STATUS_LABELS[targetStatus] || targetStatus;
 
-    const handleConfirm = async () => {
-        await handleSubmit(applicationId);
+    const handleConfirm = () => {
+        handleSubmit(applicationId);
     };
 
     const handleClose = () => {
@@ -443,7 +438,7 @@ const StatusChangeModal = ({
                     <p className={`text-sm font-medium mb-2 ${config.boxText}`}>This action will:</p>
                     <ul className={`text-sm space-y-1 ${config.boxText}`}>
                         {config.consequences.map((c, i) => (
-                            <li key={i} className="flex items-start gap-2">
+                            <li key={`consequence-${String(i)}`} className="flex items-start gap-2">
                                 <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current flex-shrink-0" />
                                 {c}
                             </li>
@@ -592,8 +587,8 @@ const BulkActionBar = ({
 }) => {
     const { status, remarks, loading, bulkResult, setStatus, setRemarks, handleSubmit, reset } =
         useBulkUpdateStatus(jobId, onBulkSuccess);
-    const [showResultModal, setShowResultModal] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const showResultModal = bulkResult !== null;
 
     // Compute valid transitions = intersection of all selected apps' valid transitions
     const validTargets = useMemo(() => {
@@ -608,24 +603,17 @@ const BulkActionBar = ({
         return intersection;
     }, [selectedIds, applications]);
 
-    useEffect(() => {
-        if (bulkResult) {
-            setShowResultModal(true);
-        }
-    }, [bulkResult]);
-
     const handleBulkSubmit = () => {
         if (!status) return;
         setShowConfirmModal(true);
     };
 
-    const handleConfirmBulk = async () => {
+    const handleConfirmBulk = () => {
         setShowConfirmModal(false);
-        await handleSubmit(Array.from(selectedIds));
+        handleSubmit(Array.from(selectedIds));
     };
 
     const handleCloseResult = () => {
-        setShowResultModal(false);
         reset();
         onDeselectAll();
     };
@@ -639,7 +627,7 @@ const BulkActionBar = ({
                             <span className="text-xs font-bold text-blue-700 dark:text-blue-400">{selectedIds.size}</span>
                         </div>
                         <span className="text-gray-600 dark:text-gray-400 font-medium">
-                            application{selectedIds.size !== 1 ? "s" : ""} selected
+                            application{selectedIds.size === 1 ? "" : "s"} selected
                         </span>
                         <button type="button" onClick={onDeselectAll} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition p-1">
                             <X className="h-4 w-4" />
@@ -703,7 +691,7 @@ const BulkActionBar = ({
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                             You are about to update{" "}
                             <span className="font-semibold text-gray-800 dark:text-gray-200">{selectedIds.size}</span>{" "}
-                            application{selectedIds.size !== 1 ? "s" : ""} to <StatusBadge status={status} />
+                            application{selectedIds.size === 1 ? "" : "s"} to <StatusBadge status={status} />
                         </p>
 
                         {STATUS_MODAL_CONFIG[status] && (
@@ -711,7 +699,7 @@ const BulkActionBar = ({
                                 <p className={`text-sm font-medium mb-2 ${STATUS_MODAL_CONFIG[status].boxText}`}>This action will:</p>
                                 <ul className={`text-sm space-y-1 ${STATUS_MODAL_CONFIG[status].boxText}`}>
                                     {STATUS_MODAL_CONFIG[status].consequences.map((c, i) => (
-                                        <li key={i} className="flex items-start gap-2">
+                                        <li key={`bulk-consequence-${String(i)}`} className="flex items-start gap-2">
                                             <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current flex-shrink-0" />
                                             {c}
                                         </li>
@@ -743,7 +731,11 @@ const BulkActionBar = ({
                                 className={`flex-1 px-4 py-2.5 text-sm font-semibold text-white rounded-xl transition disabled:opacity-50 inline-flex items-center justify-center gap-2 ${STATUS_MODAL_CONFIG[status]?.confirmBg || "bg-blue-600 hover:bg-blue-700"}`}
                             >
                                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {loading ? "Updating..." : `Update ${selectedIds.size} Application${selectedIds.size !== 1 ? "s" : ""}`}
+                                {(() => {
+                                    if (loading) return "Updating...";
+                                    const suffix = selectedIds.size === 1 ? "" : "s";
+                                    return `Update ${selectedIds.size} Application${suffix}`;
+                                })()}
                             </button>
                         </div>
                     </div>
@@ -833,10 +825,11 @@ const CreatePlacementFromAppModal = ({
                         </p>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                <label htmlFor="result-package" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                                     Package (₹) <span className="text-red-500">*</span>
                                 </label>
                                 <input
+                                    id="result-package"
                                     type="number"
                                     name="fulltime_package"
                                     value={formData.fulltime_package}
@@ -862,8 +855,9 @@ const CreatePlacementFromAppModal = ({
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Joining Date</label>
+                            <label htmlFor="result-joining-date" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Joining Date</label>
                             <input
+                                id="result-joining-date"
                                 type="date"
                                 name="fulltime_joining_date"
                                 value={formData.fulltime_joining_date}
@@ -884,10 +878,11 @@ const CreatePlacementFromAppModal = ({
                         </p>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                <label htmlFor="result-stipend" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                                     Stipend (₹/month) <span className="text-red-500">*</span>
                                 </label>
                                 <input
+                                    id="result-stipend"
                                     type="number"
                                     name="internship_stipend"
                                     value={formData.internship_stipend}
@@ -912,8 +907,9 @@ const CreatePlacementFromAppModal = ({
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
+                            <label htmlFor="result-start-date" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
                             <input
+                                id="result-start-date"
                                 type="date"
                                 name="internship_start_date"
                                 value={formData.internship_start_date}
@@ -1116,7 +1112,7 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Applications</h2>
                             {statusSummary && (
-                                <p className="text-sm text-gray-500 dark:text-gray-400">{statusSummary.total} total application{statusSummary.total !== 1 ? "s" : ""}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{statusSummary.total} total application{statusSummary.total === 1 ? "" : "s"}</p>
                             )}
                         </div>
                     </div>
@@ -1141,6 +1137,8 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                             placeholder="Search by name, email, PRN..."
                             value={search}
                             onChange={(e) => handleSearchChange(e.target.value)}
+                            aria-label="Search applications"
+                            maxLength={200}
                             className="w-full border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-4 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                         />
                     </div>
@@ -1150,6 +1148,7 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                         <select
                             value={positionFilter}
                             onChange={(e) => handlePositionFilterChange(e.target.value)}
+                            aria-label="Filter by position"
                             className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors appearance-none"
                         >
                             <option value="">All Positions</option>
@@ -1163,6 +1162,7 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                     <select
                         value={eligibilityFilter}
                         onChange={(e) => handleEligibilityFilterChange(e.target.value)}
+                        aria-label="Filter by eligibility"
                         className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors appearance-none"
                     >
                         <option value="">All Eligibility</option>
@@ -1229,12 +1229,12 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                 </div>
             </div>
 
-            {/* Table */}
-            <div className={`overflow-x-auto${selectedIds.size > 0 ? " pb-20" : ""}`}>
+            {/* Desktop Table */}
+            <div className={`hidden md:block overflow-x-auto${selectedIds.size > 0 ? " pb-20" : ""}`}>
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="bg-gray-50/70 dark:bg-gray-800/70 text-left text-gray-500 dark:text-gray-400">
-                            <th className="px-4 py-3 w-10">
+                            <th scope="col" className="px-4 py-3 w-10">
                                 <button
                                     type="button"
                                     onClick={toggleSelectAll}
@@ -1242,34 +1242,30 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition disabled:opacity-30"
                                     aria-label="Select all"
                                 >
-                                    {allOnPageSelected ? (
-                                        <CheckSquare className="h-4 w-4 text-blue-600" />
-                                    ) : someOnPageSelected ? (
-                                        <Minus className="h-4 w-4 text-blue-400" />
-                                    ) : (
-                                        <Square className="h-4 w-4" />
-                                    )}
+                                    {(() => {
+                                        if (allOnPageSelected) return <CheckSquare className="h-4 w-4 text-blue-600" />;
+                                        if (someOnPageSelected) return <Minus className="h-4 w-4 text-blue-400" />;
+                                        return <Square className="h-4 w-4" />;
+                                    })()}
                                 </button>
                             </th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Student" field="student_name" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Department</th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Position</th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Department</th>
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Position</th>
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Status" field="application_status" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Applied" field="applied_at" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? (
-                            <SkeletonTable />
-                        ) : applications.length > 0 ? (
-                            applications.map((app, index) => {
+                        {loading && <SkeletonTable />}
+                        {!loading && applications.length > 0 && applications.map((app, index) => {
                                 const isSelected = selectedIds.has(app.application_id);
                                 const transitions = VALID_TRANSITIONS[app.application_status] || [];
 
@@ -1368,16 +1364,19 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
 
                                         {/* Applied date */}
                                         <td className="px-4 py-3.5 text-sm text-gray-500 dark:text-gray-400">
-                                            {new Date(app.applied_at).toLocaleDateString("en-IN", {
+                                            {new Date(app.applied_at).toLocaleString("en-IN", {
                                                 day: "2-digit",
                                                 month: "short",
                                                 year: "numeric",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                                timeZone: "Asia/Kolkata",
                                             })}
                                         </td>
                                     </tr>
                                 );
-                            })
-                        ) : (
+                            })}
+                        {!loading && applications.length === 0 && (
                             <tr>
                                 <td colSpan={7}>
                                     <EmptyState hasFilters={hasFilters} />
@@ -1386,6 +1385,86 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className={`md:hidden${selectedIds.size > 0 ? " pb-20" : ""}`}>
+                {loading && (
+                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <div key={`mskel-${i}`} className="px-4 py-4 animate-pulse space-y-2">
+                                <div className="h-4 bg-gray-100 dark:bg-gray-700 rounded w-36" />
+                                <div className="h-3 bg-gray-50 dark:bg-gray-800 rounded w-48" />
+                                <div className="flex gap-2 mt-2">
+                                    <div className="h-5 bg-gray-50 dark:bg-gray-800 rounded-full w-20" />
+                                    <div className="h-5 bg-gray-50 dark:bg-gray-800 rounded-full w-16" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {!loading && applications.length > 0 && (
+                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {applications.map((app) => {
+                            const isSelected = selectedIds.has(app.application_id);
+                            return (
+                                <div
+                                    key={app.application_id}
+                                    className={`px-4 py-3.5 ${isSelected ? "bg-blue-50/60 dark:bg-blue-900/20" : ""}`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleSelect(app.application_id)}
+                                            className="mt-0.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-blue-600 transition flex-shrink-0 -ml-2"
+                                            aria-label={`Select ${app.student_name}`}
+                                        >
+                                            {isSelected ? <CheckSquare className="h-4 w-4 text-blue-600" /> : <Square className="h-4 w-4" />}
+                                        </button>
+                                        <div
+                                            className="flex-1 min-w-0 cursor-pointer"
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={() => handleRowClick(app.application_id)}
+                                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRowClick(app.application_id); } }}
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{app.student_name}</p>
+                                                <StatusBadge status={app.application_status} />
+                                            </div>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+                                                {app.student_email}
+                                                {app.prn_no && ` · ${app.prn_no}`}
+                                            </p>
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+                                                {app.dept_name && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                                                        {app.dept_name}
+                                                    </span>
+                                                )}
+                                                {app.position_name && (
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400">{app.position_name}</span>
+                                                )}
+                                                <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-auto">
+                                                    {new Date(app.applied_at).toLocaleString("en-IN", {
+                                                        day: "2-digit",
+                                                        month: "short",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                        timeZone: "Asia/Kolkata",
+                                                    })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+                {!loading && applications.length === 0 && (
+                    <EmptyState hasFilters={hasFilters} />
+                )}
             </div>
 
             {/* Pagination Footer */}

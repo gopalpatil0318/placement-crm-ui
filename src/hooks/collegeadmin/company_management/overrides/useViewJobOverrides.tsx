@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
@@ -97,7 +97,35 @@ export const useViewJobOverrides = (jobId: string) => {
     const job: OverrideJob | null = rawData?.job || null;
     const summary: OverrideSummary | null = rawData?.summary || null;
     const pagination: Pagination = response?.pagination || { page, limit, total: 0, totalPages: 0 };
-    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch override requests") : null;
+
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch override requests";
+    }
+
+    // Prefetch next page
+    useEffect(() => {
+        if (pagination.page < pagination.totalPages) {
+            const nextFilters = { ...queryFilters, page: page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.jobs.overrides(jobId, nextFilters),
+                queryFn: () => CollegeAdminService.getJobOverrideRequests(jobId, {
+                    ...nextFilters,
+                    status: statusFilter || undefined,
+                    dept_name: deptFilter || undefined,
+                    sort_by: sortBy || undefined,
+                    sort_order: sortOrder || undefined,
+                }),
+            });
+        }
+    }, [pagination.page, pagination.totalPages, queryFilters, queryClient, jobId, page, statusFilter, deptFilter, sortBy, sortOrder]);
+
+    // Cleanup search timer on unmount
+    useEffect(() => {
+        return () => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        };
+    }, []);
 
     const handleSearchChange = useCallback(
         (value: string) => {

@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
 import { type OverrideStatus } from "@/validators/OverrideSchema";
+import { useYearFilter } from "@/context/YearFilterContext";
 
 // ========================
 // TYPES
@@ -54,6 +55,7 @@ interface Pagination {
 
 export const useViewAllOverrides = () => {
     const queryClient = useQueryClient();
+    const { selectedYear } = useYearFilter();
 
     // Filters
     const [page, setPage] = useState(1);
@@ -63,7 +65,6 @@ export const useViewAllOverrides = () => {
     const [statusFilter, setStatusFilter] = useState("");
     const [jobIdFilter, setJobIdFilter] = useState("");
     const [deptFilter, setDeptFilter] = useState("");
-    const [passoutYearFilter, setPassoutYearFilter] = useState<number | null>(null);
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
     const [sortBy, setSortBy] = useState("requested_at");
@@ -74,9 +75,9 @@ export const useViewAllOverrides = () => {
     const queryFilters = useMemo(() => ({
         page, limit, search: debouncedSearch,
         status: statusFilter, job_id: jobIdFilter, dept_name: deptFilter,
-        passout_year: passoutYearFilter, date_from: dateFrom, date_to: dateTo,
+        passout_year: selectedYear, date_from: dateFrom, date_to: dateTo,
         sort_by: sortBy, sort_order: sortOrder,
-    }), [page, limit, debouncedSearch, statusFilter, jobIdFilter, deptFilter, passoutYearFilter, dateFrom, dateTo, sortBy, sortOrder]);
+    }), [page, limit, debouncedSearch, statusFilter, jobIdFilter, deptFilter, selectedYear, dateFrom, dateTo, sortBy, sortOrder]);
 
     const { data: response, isLoading: loading, error: queryError, isFetching } = useQuery({
         queryKey: queryKeys.overrides.all(queryFilters),
@@ -87,7 +88,7 @@ export const useViewAllOverrides = () => {
             status: statusFilter || undefined,
             job_id: jobIdFilter || undefined,
             dept_name: deptFilter || undefined,
-            passout_year: passoutYearFilter ?? undefined,
+            passout_year: selectedYear,
             date_from: dateFrom || undefined,
             date_to: dateTo || undefined,
             sort_by: sortBy || undefined,
@@ -101,7 +102,40 @@ export const useViewAllOverrides = () => {
     const overrides: DashboardOverrideRequest[] = Array.isArray(rawData?.override_requests) ? rawData.override_requests : [];
     const summary: OverrideSummary | null = rawData?.summary || null;
     const pagination: Pagination = response?.pagination || { page, limit, total: 0, totalPages: 0 };
-    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch override requests") : null;
+
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch override requests";
+    }
+
+    // Prefetch next page
+    useEffect(() => {
+        if (pagination.page < pagination.totalPages) {
+            const nextFilters = { ...queryFilters, page: page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.overrides.all(nextFilters),
+                queryFn: () => CollegeAdminService.getAllOverrideRequests({
+                    ...nextFilters,
+                    search: debouncedSearch || undefined,
+                    status: statusFilter || undefined,
+                    job_id: jobIdFilter || undefined,
+                    dept_name: deptFilter || undefined,
+                    passout_year: selectedYear,
+                    date_from: dateFrom || undefined,
+                    date_to: dateTo || undefined,
+                    sort_by: sortBy || undefined,
+                    sort_order: sortOrder || undefined,
+                }),
+            });
+        }
+    }, [pagination.page, pagination.totalPages, queryFilters, queryClient, page, debouncedSearch, statusFilter, jobIdFilter, deptFilter, selectedYear, dateFrom, dateTo, sortBy, sortOrder]);
+
+    // Cleanup search timer on unmount
+    useEffect(() => {
+        return () => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        };
+    }, []);
 
     const handleSearchChange = useCallback(
         (value: string) => {
@@ -127,11 +161,6 @@ export const useViewAllOverrides = () => {
 
     const handleDeptFilterChange = useCallback((value: string) => {
         setDeptFilter(value);
-        setPage(1);
-    }, []);
-
-    const handlePassoutYearFilterChange = useCallback((value: number | null) => {
-        setPassoutYearFilter(value);
         setPage(1);
     }, []);
 
@@ -177,7 +206,6 @@ export const useViewAllOverrides = () => {
         setStatusFilter("");
         setJobIdFilter("");
         setDeptFilter("");
-        setPassoutYearFilter(null);
         setDateFrom("");
         setDateTo("");
         setPage(1);
@@ -193,7 +221,6 @@ export const useViewAllOverrides = () => {
         statusFilter,
         jobIdFilter,
         deptFilter,
-        passoutYearFilter,
         dateFrom,
         dateTo,
         sortBy,
@@ -202,7 +229,6 @@ export const useViewAllOverrides = () => {
         handleStatusFilterChange,
         handleJobIdFilterChange,
         handleDeptFilterChange,
-        handlePassoutYearFilterChange,
         handleDateFromChange,
         handleDateToChange,
         handleSortChange,

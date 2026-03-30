@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 import { queryKeys } from "@/lib/queryKeys";
@@ -59,6 +59,7 @@ interface Pagination {
 // ========================
 
 export const useViewEnrollments = (programId: string | undefined) => {
+    const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [search, setSearch] = useState("");
@@ -69,14 +70,14 @@ export const useViewEnrollments = (programId: string | undefined) => {
 
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const queryFilters = {
+    const queryFilters = useMemo(() => ({
         page,
         limit,
         search: debouncedSearch || undefined,
         completion_status: statusFilter || undefined,
         sort_by: sortBy || undefined,
         sort_order: sortOrder || undefined,
-    };
+    }), [page, limit, debouncedSearch, statusFilter, sortBy, sortOrder]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.trainingPrograms.enrollments(programId!, queryFilters),
@@ -90,11 +91,25 @@ export const useViewEnrollments = (programId: string | undefined) => {
     const program: EnrollmentProgram | null = data?.data?.program ?? null;
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
     const loading = isLoading || isFetching;
-    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch enrollments") : null;
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch enrollments";
+    }
 
     useEffect(() => {
         if (error) showToast({ type: "error", title: "Fetch Error", description: error });
     }, [error]);
+
+    // ── Prefetch next page for smoother pagination ──
+    useEffect(() => {
+        if (pagination.totalPages > page && programId) {
+            const nextFilters = { ...queryFilters, page: page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.trainingPrograms.enrollments(programId, nextFilters),
+                queryFn: () => CollegeAdminService.getTrainingEnrollments(programId, nextFilters),
+            });
+        }
+    }, [page, pagination.totalPages, queryClient, queryFilters, programId]);
 
     const handleSearchChange = useCallback((value: string) => {
         setSearch(value);

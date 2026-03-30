@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
@@ -35,6 +35,7 @@ export const useUpdateQuestion = (jobId: string, onSuccess?: () => void) => {
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [questionId, setQuestionId] = useState<string>("");
+    const [originalSnapshot, setOriginalSnapshot] = useState<UpdateQuestionFormData | null>(null);
     const originalData = useRef<UpdateQuestionFormData | null>(null);
 
     const mutation = useMutation({
@@ -170,6 +171,10 @@ export const useUpdateQuestion = (jobId: string, onSuccess?: () => void) => {
             ...loaded,
             question_options: [...loaded.question_options],
         };
+        setOriginalSnapshot({
+            ...loaded,
+            question_options: [...loaded.question_options],
+        });
         setErrors({});
     }, []);
 
@@ -253,6 +258,29 @@ export const useUpdateQuestion = (jobId: string, onSuccess?: () => void) => {
         setErrors({});
         mutation.mutate({ id: questionId, payload });
     }, [formData, questionId, mutation]);
+
+    // ── Dirty check + beforeunload ──
+
+    const isDirty = useMemo(() => {
+        if (!originalSnapshot) return false;
+        if (formData.question_text.trim() !== originalSnapshot.question_text.trim()) return true;
+        if (formData.question_type !== originalSnapshot.question_type) return true;
+        if (formData.is_required !== originalSnapshot.is_required) return true;
+        if (formData.question_order !== originalSnapshot.question_order) return true;
+        const currentOpts = formData.question_options.map((o) => o.trim()).filter((o) => o.length > 0);
+        const origOpts = originalSnapshot.question_options.map((o) => o.trim()).filter((o) => o.length > 0);
+        if (currentOpts.length !== origOpts.length || currentOpts.some((o, i) => o !== origOpts[i])) return true;
+        return false;
+    }, [formData, originalSnapshot]);
+
+    useEffect(() => {
+        if (!isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+        };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     return {
         formData,

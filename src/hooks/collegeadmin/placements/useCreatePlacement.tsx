@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { type ChangeEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import { createPlacementSchema } from "@/validators/PlacementSchema";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -38,6 +38,43 @@ const INITIAL_FORM: CreatePlacementForm = {
 };
 
 // ========================
+// HELPERS
+// ========================
+
+function buildCreatePayload(formData: CreatePlacementForm): Record<string, unknown> {
+    const payload: Record<string, unknown> = {
+        application_id: formData.application_id.trim(),
+        placement_type: formData.placement_type,
+    };
+
+    const isFullTime = formData.placement_type === "full-time" || formData.placement_type === "both";
+    const isInternship = formData.placement_type === "internship" || formData.placement_type === "both";
+
+    if (isFullTime) {
+        if (formData.fulltime_package)
+            payload.fulltime_package = Number(formData.fulltime_package);
+        if (formData.fulltime_designation.trim())
+            payload.fulltime_designation = formData.fulltime_designation.trim();
+        if (formData.fulltime_joining_date)
+            payload.fulltime_joining_date = formData.fulltime_joining_date;
+    }
+
+    if (isInternship) {
+        if (formData.internship_stipend)
+            payload.internship_stipend = Number(formData.internship_stipend);
+        if (formData.internship_duration.trim())
+            payload.internship_duration = formData.internship_duration.trim();
+        if (formData.internship_start_date)
+            payload.internship_start_date = formData.internship_start_date;
+    }
+
+    if (formData.offer_letter_url.trim())
+        payload.offer_letter_url = formData.offer_letter_url.trim();
+
+    return payload;
+}
+
+// ========================
 // HOOK
 // ========================
 
@@ -52,6 +89,7 @@ export const useCreatePlacement = (onSuccess: () => void, prefilledApplicationId
     // Sync formData.application_id when prefilledApplicationId changes
     useEffect(() => {
         if (prefilledApplicationId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- prop sync
             setFormData((prev) => ({ ...prev, application_id: prefilledApplicationId }));
         }
     }, [prefilledApplicationId]);
@@ -77,33 +115,14 @@ export const useCreatePlacement = (onSuccess: () => void, prefilledApplicationId
                     : "Something went wrong";
             const status = err instanceof ApiError ? err.status : undefined;
 
-            if (status === 409) {
+            if (status === 409 || status === 404) {
                 setErrors({ application_id: message });
-                showToast({
-                    type: "error",
-                    title: "Duplicate Placement",
-                    description: message,
-                });
-            } else if (status === 400) {
-                showToast({
-                    type: "error",
-                    title: "Invalid Action",
-                    description: message,
-                });
-            } else if (status === 404) {
-                setErrors({ application_id: message });
-                showToast({
-                    type: "error",
-                    title: "Not Found",
-                    description: message,
-                });
-            } else {
-                showToast({
-                    type: "error",
-                    title: "Error",
-                    description: message,
-                });
             }
+            showToast({
+                type: "error",
+                title: getErrorTitle(status),
+                description: message,
+            });
         },
     });
 
@@ -128,6 +147,25 @@ export const useCreatePlacement = (onSuccess: () => void, prefilledApplicationId
         setErrors({});
     }, [prefilledApplicationId]);
 
+    // ── Unsaved-changes guard ──
+    const initialRef = useMemo(
+        () => ({ ...INITIAL_FORM, application_id: prefilledApplicationId || "" }),
+        [prefilledApplicationId],
+    );
+
+    const isDirty = useMemo(() => {
+        return (Object.keys(INITIAL_FORM) as (keyof CreatePlacementForm)[]).some(
+            (key) => formData[key] !== initialRef[key],
+        );
+    }, [formData, initialRef]);
+
+    useEffect(() => {
+        if (!isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
+
     const handleSubmit = useCallback(async () => {
         if (mutation.isPending) return;
 
@@ -149,47 +187,13 @@ export const useCreatePlacement = (onSuccess: () => void, prefilledApplicationId
         }
         setErrors({});
 
-        // Build payload
-        const payload: Record<string, unknown> = {
-            application_id: formData.application_id.trim(),
-            placement_type: formData.placement_type,
-        };
-
-        if (
-            formData.placement_type === "full-time" ||
-            formData.placement_type === "both"
-        ) {
-            if (formData.fulltime_package)
-                payload.fulltime_package = Number(formData.fulltime_package);
-            if (formData.fulltime_designation.trim())
-                payload.fulltime_designation =
-                    formData.fulltime_designation.trim();
-            if (formData.fulltime_joining_date)
-                payload.fulltime_joining_date = formData.fulltime_joining_date;
-        }
-
-        if (
-            formData.placement_type === "internship" ||
-            formData.placement_type === "both"
-        ) {
-            if (formData.internship_stipend)
-                payload.internship_stipend = Number(formData.internship_stipend);
-            if (formData.internship_duration.trim())
-                payload.internship_duration =
-                    formData.internship_duration.trim();
-            if (formData.internship_start_date)
-                payload.internship_start_date = formData.internship_start_date;
-        }
-
-        if (formData.offer_letter_url.trim())
-            payload.offer_letter_url = formData.offer_letter_url.trim();
-
-        mutation.mutate(payload);
+        mutation.mutate(buildCreatePayload(formData));
     }, [formData, mutation]);
 
     return {
         formData,
         errors,
+        isDirty,
         loading: mutation.isPending,
         handleChange,
         handleSubmit,

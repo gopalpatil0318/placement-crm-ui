@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react"
-import { useQuery, keepPreviousData } from "@tanstack/react-query"
+import { useState, useCallback, useMemo, useEffect } from "react"
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/queryKeys"
 import { PlacementService } from "@/services/student/placement.service"
 import type {
@@ -8,9 +8,7 @@ import type {
   PlacementStatusSummary,
   PlacementFilters,
   PlacementStatusFilter,
-  PlacementStatus,
   PlacementTypeFilter,
-  PlacementType,
 } from "@/validators/PlacementSchema"
 
 // ─── Hook ───────────────────────────────────────────────────────────────────────
@@ -25,16 +23,17 @@ export function useMyPlacements(initialLimit = 10) {
   const [limit] = useState(initialLimit)
 
   // ── Build query filters ──
-  const queryFilters: PlacementFilters = {
-    ...(statusFilter !== "all" ? { placement_status: statusFilter as PlacementStatus } : {}),
-    ...(typeFilter !== "all" ? { placement_type: typeFilter as PlacementType } : {}),
+  const queryFilters = useMemo<PlacementFilters>(() => ({
+    ...(statusFilter !== "all" ? { placement_status: statusFilter } : {}),
+    ...(typeFilter !== "all" ? { placement_type: typeFilter } : {}),
     sort_by: sortBy,
     sort_order: sortOrder,
     page,
     limit,
-  }
+  }), [statusFilter, typeFilter, sortBy, sortOrder, page, limit])
 
   // ── Query ──
+  const queryClient = useQueryClient()
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: queryKeys.studentPortal.myPlacements(queryFilters as Record<string, unknown>),
     queryFn: () => PlacementService.getMyPlacements(queryFilters),
@@ -57,6 +56,17 @@ export function useMyPlacements(initialLimit = 10) {
     total: 0,
     totalPages: 0,
   }
+
+  // ── Next-page prefetching ──
+  useEffect(() => {
+    if (pagination.page < pagination.totalPages) {
+      const nextFilters = { ...queryFilters, page: pagination.page + 1 }
+      void queryClient.prefetchQuery({
+        queryKey: queryKeys.studentPortal.myPlacements(nextFilters as Record<string, unknown>),
+        queryFn: () => PlacementService.getMyPlacements(nextFilters),
+      })
+    }
+  }, [pagination.page, pagination.totalPages, queryFilters, queryClient])
 
   // ── Handlers ──
   const handleStatusFilterChange = useCallback((filter: PlacementStatusFilter) => {

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import {
     verifyItemSchema,
     type VerificationCategory,
@@ -53,21 +53,7 @@ export function useVerifyItem(category: VerificationCategory) {
             const message =
                 error instanceof ApiError ? error.message : "Something went wrong";
             const status = error instanceof ApiError ? error.status : undefined;
-            if (status === 400) {
-                showToast({
-                    type: "error",
-                    title: "Cannot Approve",
-                    description: message,
-                });
-            } else if (status === 404) {
-                showToast({
-                    type: "error",
-                    title: "Not Found",
-                    description: message,
-                });
-            } else {
-                showToast({ type: "error", title: "Error", description: message });
-            }
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
             setProcessingId(null);
         },
     });
@@ -96,21 +82,7 @@ export function useVerifyItem(category: VerificationCategory) {
             const message =
                 error instanceof ApiError ? error.message : "Something went wrong";
             const status = error instanceof ApiError ? error.status : undefined;
-            if (status === 422) {
-                showToast({
-                    type: "error",
-                    title: "Validation Error",
-                    description: message,
-                });
-            } else if (status === 404) {
-                showToast({
-                    type: "error",
-                    title: "Not Found",
-                    description: message,
-                });
-            } else {
-                showToast({ type: "error", title: "Error", description: message });
-            }
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
             setProcessingId(null);
         },
     });

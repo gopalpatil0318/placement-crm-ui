@@ -39,6 +39,22 @@ export const useUpdateRoundStatus = (jobId: string, onSuccess?: () => void) => {
     const mutation = useMutation({
         mutationFn: (args: { roundId: string; newStatus: string }) =>
             CollegeAdminService.updateRoundStatus(args.roundId, args.newStatus),
+        onMutate: async (variables) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.jobs.detail(jobId) });
+            const previousDetail = queryClient.getQueryData(queryKeys.jobs.detail(jobId));
+            queryClient.setQueryData(queryKeys.jobs.detail(jobId), (old: Record<string, unknown> | undefined) => {
+                if (!old) return old;
+                const data = old as { rounds?: { round_id: string; round_status: string }[] };
+                if (!data.rounds) return old;
+                return {
+                    ...data,
+                    rounds: data.rounds.map((r: { round_id: string; round_status: string }) =>
+                        r.round_id === variables.roundId ? { ...r, round_status: variables.newStatus } : r
+                    ),
+                };
+            });
+            return { previousDetail };
+        },
         onSuccess: (response, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.jobs.rounds(jobId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) });
@@ -49,7 +65,10 @@ export const useUpdateRoundStatus = (jobId: string, onSuccess?: () => void) => {
             });
             onSuccess?.();
         },
-        onError: (error: unknown) => {
+        onError: (error: unknown, _variables, context) => {
+            if (context?.previousDetail) {
+                queryClient.setQueryData(queryKeys.jobs.detail(jobId), context.previousDetail);
+            }
             const message = error instanceof ApiError ? error.message : "Something went wrong";
             const status = error instanceof ApiError ? error.status : undefined;
 

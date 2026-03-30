@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from "react"
+import { useState, useCallback, useRef, useEffect, useMemo, memo } from "react"
 import { Link } from "react-router-dom"
 import { motion, useReducedMotion } from "framer-motion"
 import {
@@ -21,6 +21,7 @@ import {
 import { staggerContainer, staggerItem, fadeInUp } from "@/lib/animations"
 import AnimatedPage from "@/components/ui/AnimatedPage"
 import { useJobList } from "@/hooks/student/jobs/useJobList"
+import { useAvailableJobYears } from "@/hooks/student/jobs/useAvailableJobYears"
 import type { JobListFilters, JobListItem } from "@/services/student/jobBrowsing.service"
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
@@ -44,6 +45,24 @@ function formatSalary(pkg: string, min: number, max: number, jobType: string): s
     return `${fmtMin} – ${fmtMax}`
   }
   return "Not disclosed"
+}
+
+const JOB_TYPE_LABELS: Record<string, string> = {
+  "full-time": "Full-time",
+  internship: "Internship",
+  both: "Both",
+}
+
+function getCountdownClassName(countdown: { urgent: boolean; expired: boolean }): string {
+  if (countdown.expired) return "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+  if (countdown.urgent) return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+  return "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+}
+
+function getSubtitleText(total: number, isLoading: boolean): string {
+  if (total > 0) return `${total} jobs available`
+  if (isLoading) return "Loading jobs..."
+  return "No jobs found"
 }
 
 const JOB_TYPE_OPTIONS = [
@@ -159,7 +178,7 @@ const JobCard = memo(function JobCard({
           </span>
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-400">
             <Briefcase className="h-3 w-3" />
-            {job.job_type === "full-time" ? "Full-time" : job.job_type === "internship" ? "Internship" : "Both"}
+            {job.job_type === "full-time" ? "Full-time" : JOB_TYPE_LABELS[job.job_type] ?? "Both"}
           </span>
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-400">
             <IndianRupee className="h-3 w-3" />
@@ -183,13 +202,7 @@ const JobCard = memo(function JobCard({
           </div>
 
           <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-              countdown.expired
-                ? "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
-                : countdown.urgent
-                  ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                  : "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-            }`}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getCountdownClassName(countdown)}`}
           >
             <Clock className="h-3 w-3" />
             {countdown.text}
@@ -229,44 +242,43 @@ export default function JobBrowse() {
   const [page, setPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
   const [companyName, setCompanyName] = useState("")
+  const [selectedJobYear, setSelectedJobYear] = useState("")
 
   const shouldReduceMotion = useReducedMotion()
 
+  const { years: availableYears } = useAvailableJobYears()
+
   const limit = 12
 
-  // Debounce search
-  const debounceTimer = useCallback(
-    (() => {
-      let timer: ReturnType<typeof setTimeout>
-      return (value: string) => {
-        clearTimeout(timer)
-        timer = setTimeout(() => {
-          setDebouncedSearch(value)
-          setPage(1)
-        }, 400)
-      }
-    })(),
-    [],
-  )
+  // Debounce search with proper cleanup on unmount
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => {
+    return () => clearTimeout(debounceRef.current)
+  }, [])
 
-  const handleSearchChange = (value: string) => {
+  const handleSearchChange = useCallback((value: string) => {
     setSearch(value)
-    debounceTimer(value)
-  }
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(value)
+      setPage(1)
+    }, 400)
+  }, [])
 
-  const filters: JobListFilters = {
+  const filters: JobListFilters = useMemo(() => ({
     ...(debouncedSearch && { search: debouncedSearch }),
     ...(jobType && { job_type: jobType }),
     ...(companyName && { company_name: companyName }),
+    ...(selectedJobYear && !Number.isNaN(Number.parseInt(selectedJobYear, 10)) && { passout_year: Number.parseInt(selectedJobYear, 10) }),
     sort_by: sortBy,
     sort_order: sortOrder,
     page,
     limit,
-  }
+  }), [debouncedSearch, jobType, companyName, selectedJobYear, sortBy, sortOrder, page, limit])
 
   const { jobs, pagination, isLoading, isFetching } = useJobList(filters)
 
-  const activeFilterCount = [jobType, debouncedSearch, companyName].filter(Boolean).length
+  const activeFilterCount = [jobType, debouncedSearch, companyName, selectedJobYear].filter(Boolean).length
 
   return (
     <AnimatedPage className="space-y-6 max-w-6xl mx-auto">
@@ -274,11 +286,7 @@ export default function JobBrowse() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">Browse Jobs</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {pagination.total > 0
-            ? `${pagination.total} jobs available`
-            : isLoading
-              ? "Loading jobs..."
-              : "No jobs found"}
+          {getSubtitleText(pagination.total, isLoading)}
         </p>
       </div>
 
@@ -293,6 +301,7 @@ export default function JobBrowse() {
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search jobs, companies..."
             aria-label="Search jobs"
+            maxLength={200}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 transition"
           />
           {search && (
@@ -367,6 +376,8 @@ export default function JobBrowse() {
             value={companyName}
             onChange={(e) => { setCompanyName(e.target.value); setPage(1) }}
             placeholder="Filter by company..."
+            aria-label="Filter by company name"
+            maxLength={200}
             className="px-3.5 py-1.5 rounded-full text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 w-44"
           />
           {JOB_TYPE_OPTIONS.map((opt) => (
@@ -385,6 +396,19 @@ export default function JobBrowse() {
               {opt.label}
             </button>
           ))}
+          {availableYears.length > 0 && (
+            <select
+              value={selectedJobYear}
+              onChange={(e) => { setSelectedJobYear(e.target.value); setPage(1) }}
+              aria-label="Filter by passout year"
+              className="px-3.5 py-1.5 rounded-full text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+            >
+              <option value="">All Years</option>
+              {availableYears.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          )}
           {activeFilterCount > 0 && (
             <button
               onClick={() => {
@@ -392,6 +416,7 @@ export default function JobBrowse() {
                 setSearch("")
                 setDebouncedSearch("")
                 setCompanyName("")
+                setSelectedJobYear("")
                 setPage(1)
               }}
               className="px-3.5 py-1.5 rounded-full text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition"
@@ -403,13 +428,14 @@ export default function JobBrowse() {
       )}
 
       {/* Job Grid */}
-      {isLoading ? (
+      {isLoading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <JobCardSkeleton key={i} />
+          {["skel-1", "skel-2", "skel-3", "skel-4", "skel-5", "skel-6"].map((id) => (
+            <JobCardSkeleton key={id} />
           ))}
         </div>
-      ) : jobs.length === 0 ? (
+      )}
+      {!isLoading && jobs.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="h-16 w-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
             <Briefcase className="h-8 w-8 text-gray-400 dark:text-gray-500" />
@@ -421,7 +447,8 @@ export default function JobBrowse() {
               : "No jobs are currently available. Check back soon!"}
           </p>
         </div>
-      ) : (
+      )}
+      {!isLoading && jobs.length > 0 && (
         <motion.div
           variants={shouldReduceMotion ? undefined : staggerContainer}
           initial="initial"
@@ -444,7 +471,7 @@ export default function JobBrowse() {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 px-3 py-2 min-w-[44px] min-h-[44px] rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="h-4 w-4" />
               Prev
@@ -452,7 +479,7 @@ export default function JobBrowse() {
             <button
               onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
               disabled={page === pagination.totalPages}
-              className="flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 px-3 py-2 min-w-[44px] min-h-[44px] rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Next
               <ChevronRight className="h-4 w-4" />

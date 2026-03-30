@@ -173,25 +173,25 @@ const AchievementsForm = () => {
 
                             <FloatingTextarea label="Description" name="achievement_description" value={formData.achievement_description} onChange={handleChange} error={errors.achievement_description} rows={3} placeholder="Brief description of the achievement" />
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingSelect label="Achievement Type" name="achievement_type" value={formData.achievement_type} onChange={handleChange} error={errors.achievement_type} options={VALID_ACHIEVEMENT_TYPES.map(t => ({ value: t, label: ACHIEVEMENT_TYPE_LABELS[t] }))} />
                                 <FloatingSelect label="Achievement Level" name="achievement_level" value={formData.achievement_level} onChange={handleChange} error={errors.achievement_level} options={VALID_ACHIEVEMENT_LEVELS.map(l => ({ value: l, label: ACHIEVEMENT_LEVEL_LABELS[l] }))} />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingInput label="Issuing Organization" name="issuing_organization" value={formData.issuing_organization} onChange={handleChange} placeholder="e.g. Ministry of Education" />
                                 <FloatingInput label="Event Name" name="event_name" value={formData.event_name} onChange={handleChange} placeholder="e.g. Smart India Hackathon 2024" />
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <FloatingInput label="Position / Rank" name="position_rank" value={formData.position_rank} onChange={handleChange} placeholder="e.g. 1st Place" />
-                                <FloatingInput label="Participants" name="participants_count" value={formData.participants_count} onChange={handleChange} error={errors.participants_count} type="number" placeholder="e.g. 5000" />
+                                <FloatingInput label="Participants" name="participants_count" value={formData.participants_count} onChange={handleChange} error={errors.participants_count} type="number" inputMode="numeric" placeholder="e.g. 5000" />
                                 <FloatingInput label="Date" name="achievement_date" value={formData.achievement_date} onChange={handleChange} error={errors.achievement_date} type="date" />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <FloatingInput label="Certificate URL" name="certificate_url" value={formData.certificate_url} onChange={handleChange} error={errors.certificate_url} placeholder="https://..." />
-                                <FloatingInput label="Proof URL" name="proof_url" value={formData.proof_url} onChange={handleChange} error={errors.proof_url} placeholder="https://..." />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FloatingInput label="Certificate URL" name="certificate_url" value={formData.certificate_url} onChange={handleChange} error={errors.certificate_url} placeholder="https://..." inputMode="url" />
+                                <FloatingInput label="Proof URL" name="proof_url" value={formData.proof_url} onChange={handleChange} error={errors.proof_url} placeholder="https://..." inputMode="url" />
                             </div>
 
                             {/* Featured + Display Order */}
@@ -204,7 +204,7 @@ const AchievementsForm = () => {
                                 <div className="flex items-center gap-2">
                                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Display Order</label>
                                     <input name="display_order" type="number" min="1" max="10" value={formData.display_order} onChange={handleChange}
-                                        placeholder="#"
+                                        placeholder="#" inputMode="numeric"
                                         className="w-16 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-center text-sm outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20" />
                                 </div>
                             </div>

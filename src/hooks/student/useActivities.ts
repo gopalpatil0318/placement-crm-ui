@@ -47,6 +47,7 @@ export const useActivities = () => {
             const response = await StudentActivityService.getAllActivities();
             return (response.data?.activities || response.activities || []) as ActivityData[];
         },
+        staleTime: 2 * 60 * 1000,
     });
 
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -152,14 +153,14 @@ export const useActivities = () => {
 
         const isEditing = !!editingId;
         saveMutation.mutate(payload, {
-            onSuccess: () => {
+            onSuccess: (response) => {
                 queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.activities() });
                 queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
                 closeForm();
                 showToast({
                     type: "success",
                     title: isEditing ? "Updated" : "Added",
-                    description: isEditing ? "Activity updated successfully" : "Activity added successfully",
+                    description: response.message || (isEditing ? "Activity updated successfully" : "Activity added successfully"),
                 });
             },
         });
@@ -167,10 +168,10 @@ export const useActivities = () => {
 
     const deleteMutation = useMutation({
         mutationFn: (id: string) => StudentActivityService.deleteActivity(id),
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.activities() });
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
-            showToast({ type: "success", title: "Deleted", description: "Activity removed" });
+            showToast({ type: "success", title: "Deleted", description: data.message || "Activity removed" });
         },
         onError: (error) => {
             showToast({

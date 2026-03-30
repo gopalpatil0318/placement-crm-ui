@@ -15,6 +15,19 @@ export const useUpdatePositionStatus = (jobId: string, onSuccess?: () => void) =
     const mutation = useMutation({
         mutationFn: ({ positionId, newStatus }: { positionId: string; newStatus: string }) =>
             CollegeAdminService.updatePositionStatus(positionId, newStatus),
+        onMutate: async ({ positionId, newStatus }) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.jobs.detail(jobId) });
+            const previousJob = queryClient.getQueryData(queryKeys.jobs.detail(jobId));
+            // Optimistically update position_status within the job's positions array
+            if (previousJob && typeof previousJob === "object" && "positions" in previousJob && Array.isArray((previousJob as Record<string, unknown>).positions)) {
+                const jobData = previousJob as Record<string, unknown>;
+                const positions = (jobData.positions as Array<Record<string, unknown>>).map((p) =>
+                    p.position_id === positionId ? { ...p, position_status: newStatus } : p
+                );
+                queryClient.setQueryData(queryKeys.jobs.detail(jobId), { ...jobData, positions });
+            }
+            return { previousJob };
+        },
         onSuccess: (response, { newStatus }) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.jobs.positions(jobId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) });
@@ -25,7 +38,10 @@ export const useUpdatePositionStatus = (jobId: string, onSuccess?: () => void) =
             });
             onSuccess?.();
         },
-        onError: (error: unknown) => {
+        onError: (error: unknown, _variables, context) => {
+            if (context?.previousJob) {
+                queryClient.setQueryData(queryKeys.jobs.detail(jobId), context.previousJob);
+            }
             const message = error instanceof ApiError ? error.message : "Failed to update status";
             showToast({ type: "error", title: "Status Change Failed", description: message });
         },

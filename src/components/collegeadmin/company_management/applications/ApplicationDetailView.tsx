@@ -214,10 +214,10 @@ const AcademicInfoCard = ({ info }: { info: AcademicInfo | null }) => {
     };
 
     const stats = [
-        { label: "CGPA", value: info.overall_cgpa !== null ? String(info.overall_cgpa) : "—", color: cgpaColor(info.overall_cgpa) },
-        { label: "Live KTs", value: info.live_kts !== null ? String(info.live_kts) : "—", color: ktColor(info.live_kts) },
-        { label: "10th %", value: info.tenth_percentage !== null ? `${info.tenth_percentage}%` : "—", color: percentColor(info.tenth_percentage) },
-        { label: "12th / Diploma %", value: info.twelfth_percentage !== null ? `${info.twelfth_percentage}%` : "—", color: percentColor(info.twelfth_percentage) },
+        { label: "CGPA", value: info.overall_cgpa === null ? "—" : String(info.overall_cgpa), color: cgpaColor(info.overall_cgpa) },
+        { label: "Live KTs", value: info.live_kts === null ? "—" : String(info.live_kts), color: ktColor(info.live_kts) },
+        { label: "10th %", value: info.tenth_percentage === null ? "—" : `${info.tenth_percentage}%`, color: percentColor(info.tenth_percentage) },
+        { label: "12th / Diploma %", value: info.twelfth_percentage === null ? "—" : `${info.twelfth_percentage}%`, color: percentColor(info.twelfth_percentage) },
     ];
 
     return (
@@ -261,7 +261,7 @@ const AnswersTab = ({ answers }: { answers: ApplicationAnswer[] }) => {
                 const typeLabel = QUESTION_TYPE_LABELS[answer.question_type] || answer.question_type;
 
                 return (
-                    <div key={idx} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden hover:shadow-sm transition-shadow">
+                    <div key={answer.answer_id || answer.question_id} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden hover:shadow-sm transition-shadow">
                         <div className="px-5 py-3 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <span className="h-6 w-6 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400">
@@ -275,25 +275,26 @@ const AnswersTab = ({ answers }: { answers: ApplicationAnswer[] }) => {
                             </span>
                         </div>
                         <div className="px-5 py-3">
-                            {/* MCQ answers — show selected option pills */}
-                            {(answer.question_type === "mcq_single" || answer.question_type === "mcq_multiple") && Array.isArray(answer.selected_options) && answer.selected_options.length > 0 ? (
-                                <div className="flex flex-wrap gap-2">
-                                    {answer.selected_options.map((opt, i) => (
-                                        <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-sm text-blue-700 dark:text-blue-400 font-medium">
-                                            {answer.question_type === "mcq_single" ? (
-                                                <CircleDot className="h-3.5 w-3.5" />
-                                            ) : (
-                                                <CheckSquare className="h-3.5 w-3.5" />
-                                            )}
-                                            {opt}
-                                        </span>
-                                    ))}
-                                </div>
-                            ) : answer.answer_text ? (
-                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{answer.answer_text}</p>
-                            ) : (
-                                <p className="text-sm text-gray-300 dark:text-gray-600 italic">Not answered</p>
-                            )}
+                            {(() => {
+                                const isMCQ = (answer.question_type === "mcq_single" || answer.question_type === "mcq_multiple") && Array.isArray(answer.selected_options) && answer.selected_options.length > 0;
+                                if (isMCQ) {
+                                    const MCQIcon = answer.question_type === "mcq_single" ? CircleDot : CheckSquare;
+                                    return (
+                                        <div className="flex flex-wrap gap-2">
+                                            {answer.selected_options!.map((opt) => (
+                                                <span key={opt} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-sm text-blue-700 dark:text-blue-400 font-medium">
+                                                    <MCQIcon className="h-3.5 w-3.5" />
+                                                    {opt}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    );
+                                }
+                                if (answer.answer_text) {
+                                    return <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{answer.answer_text}</p>;
+                                }
+                                return <p className="text-sm text-gray-300 dark:text-gray-600 italic">Not answered</p>;
+                            })()}
                         </div>
                     </div>
                 );
@@ -307,6 +308,11 @@ const AnswersTab = ({ answers }: { answers: ApplicationAnswer[] }) => {
 // ========================
 
 const RoundResultsTab = ({ results }: { results: ApplicationRoundResult[] }) => {
+    const sorted = useMemo(
+        () => [...results].sort((a, b) => a.round_number - b.round_number),
+        [results],
+    );
+
     if (results.length === 0) {
         return (
             <div className="text-center py-12">
@@ -318,11 +324,6 @@ const RoundResultsTab = ({ results }: { results: ApplicationRoundResult[] }) => 
         );
     }
 
-    const sorted = useMemo(
-        () => [...results].sort((a, b) => a.round_number - b.round_number),
-        [results],
-    );
-
     return (
         <div className="relative">
             {/* Timeline connector */}
@@ -331,19 +332,21 @@ const RoundResultsTab = ({ results }: { results: ApplicationRoundResult[] }) => 
             )}
 
             <div className="space-y-4">
-                {sorted.map((result, idx) => {
+                {sorted.map((result) => {
                     const statusColors = RESULT_STATUS_COLORS[result.result_status] || RESULT_STATUS_COLORS.pending;
                     const statusLabel = RESULT_STATUS_LABELS[result.result_status] || result.result_status;
 
+                    const TIMELINE_DOT_CLASSES: Record<string, string> = {
+                        passed: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800",
+                        failed: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
+                        absent: "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700",
+                    };
+                    const dotClass = TIMELINE_DOT_CLASSES[result.result_status] || "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800";
+
                     return (
-                        <div key={idx} className="relative flex gap-4 items-start">
+                        <div key={result.result_id || result.round_id} className="relative flex gap-4 items-start">
                             {/* Timeline dot */}
-                            <div className={`relative z-10 h-[46px] w-[46px] rounded-xl flex items-center justify-center flex-shrink-0 border-2 ${
-                                result.result_status === "passed" ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800" :
-                                result.result_status === "failed" ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800" :
-                                result.result_status === "absent" ? "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700" :
-                                "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
-                            }`}>
+                            <div className={`relative z-10 h-[46px] w-[46px] rounded-xl flex items-center justify-center flex-shrink-0 border-2 ${dotClass}`}>
                                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{result.round_number}</span>
                             </div>
 
@@ -478,8 +481,8 @@ const StatusActionModal = ({
     const config = STATUS_ACTION_CONFIG[targetStatus];
     const label = APPLICATION_STATUS_LABELS[targetStatus] || targetStatus;
 
-    const handleConfirm = async () => {
-        await handleSubmit(application.application_id);
+    const handleConfirm = () => {
+        handleSubmit(application.application_id);
     };
 
     const handleClose = () => {
@@ -509,7 +512,7 @@ const StatusActionModal = ({
                     <p className={`text-sm font-medium mb-2 ${config.boxText}`}>This action will:</p>
                     <ul className={`text-sm space-y-1 ${config.boxText}`}>
                         {config.consequences.map((c, i) => (
-                            <li key={i} className="flex items-start gap-2">
+                            <li key={`consequence-${String(i)}`} className="flex items-start gap-2">
                                 <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current flex-shrink-0" />
                                 {c}
                             </li>
@@ -518,10 +521,11 @@ const StatusActionModal = ({
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    <label htmlFor="status-remarks" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                         Remarks <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
                     </label>
                     <textarea
+                        id="status-remarks"
                         value={remarks}
                         onChange={(e) => setRemarks(e.target.value)}
                         placeholder="Add notes about this decision..."
@@ -584,7 +588,7 @@ const DetailSkeleton = () => (
             <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800"><div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-40" /></div>
             <div className="grid grid-cols-4 gap-px bg-gray-100 dark:bg-gray-800">
                 {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="bg-white dark:bg-gray-900 p-4 text-center">
+                    <div key={`acad-skel-${String(i)}`} className="bg-white dark:bg-gray-900 p-4 text-center">
                         <div className="h-7 bg-gray-100 dark:bg-gray-800 rounded w-12 mx-auto mb-2" />
                         <div className="h-3 bg-gray-50 dark:bg-gray-800 rounded w-16 mx-auto" />
                     </div>
@@ -600,7 +604,7 @@ const DetailSkeleton = () => (
             </div>
             <div className="space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="h-20 bg-gray-50 dark:bg-gray-800 rounded-xl" />
+                    <div key={`tab-skel-${String(i)}`} className="h-20 bg-gray-50 dark:bg-gray-800 rounded-xl" />
                 ))}
             </div>
         </div>
@@ -647,7 +651,7 @@ const ApplicationDetailView = ({ applicationId, jobId, onApplicationLoaded }: Ap
     }
 
     const app = application;
-    const avatarColor = AVATAR_COLORS[((app.student_name || "").charCodeAt(0) || 0) % AVATAR_COLORS.length];
+    const avatarColor = AVATAR_COLORS[((app.student_name || "").codePointAt(0) || 0) % AVATAR_COLORS.length];
     const avatarInitials = (app.student_name || "?")
         .split(" ")
         .filter((w) => w.length > 0)
@@ -740,10 +744,11 @@ const ApplicationDetailView = ({ applicationId, jobId, onApplicationLoaded }: Ap
                     {TABS.map((tab) => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.key;
-                        const badge =
-                            tab.key === "answers" ? app.answers.length :
-                            tab.key === "rounds" ? app.round_results.length :
-                            (VALID_TRANSITIONS[app.application_status] || []).length;
+
+                        let badge = 0;
+                        if (tab.key === "answers") badge = app.answers.length;
+                        else if (tab.key === "rounds") badge = app.round_results.length;
+                        else badge = (VALID_TRANSITIONS[app.application_status] || []).length;
 
                         return (
                             <button

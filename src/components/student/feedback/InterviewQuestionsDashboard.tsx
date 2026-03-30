@@ -1,4 +1,4 @@
-import { useState, useRef, memo, useMemo } from "react"
+import { useState, useEffect, memo, useMemo } from "react"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import {
   AlertCircle,
@@ -36,6 +36,14 @@ const TABS: { key: DashboardTab; label: string; icon: typeof BookOpen }[] = [
   { key: "share", label: "Share a Question", icon: Send },
 ]
 
+const SKELETON_CARD_KEYS = ["skel-q-1", "skel-q-2", "skel-q-3", "skel-q-4"] as const
+
+function getCharCountColor(count: number, dangerAt: number, warnAt: number): string {
+  if (count >= dangerAt) return "text-red-500"
+  if (count >= warnAt) return "text-amber-500"
+  return "text-gray-400 dark:text-gray-500"
+}
+
 // ─── Date Formatter ─────────────────────────────────────────────────────────────
 
 function formatDate(iso: string): string {
@@ -43,6 +51,7 @@ function formatDate(iso: string): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Kolkata",
   })
 }
 
@@ -53,7 +62,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void
 }
 
-function Pagination({ pagination, onPageChange }: PaginationProps) {
+function Pagination({ pagination, onPageChange }: Readonly<PaginationProps>) {
   const { page, total_pages, total, limit } = pagination
   if (total <= 0) return null
   const start = (page - 1) * limit + 1
@@ -70,20 +79,20 @@ function Pagination({ pagination, onPageChange }: PaginationProps) {
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
           aria-label="Previous page"
-          className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
+          className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
         >
           <ChevronLeft size={14} />
         </button>
         {Array.from({ length: total_pages }, (_, i) => i + 1)
           .filter((p) => p === 1 || p === total_pages || Math.abs(p - page) <= 1)
-          .reduce<(number | "dots")[]>((acc, p, i, arr) => {
-            if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("dots")
+          .reduce<(number | string)[]>((acc, p, i, arr) => {
+            if (i > 0 && p - arr[i - 1] > 1) acc.push(`dots-after-${arr[i - 1]}`)
             acc.push(p)
             return acc
           }, [])
-          .map((item, i) =>
-            item === "dots" ? (
-              <span key={`dots-${i}`} className="px-1 text-xs text-gray-400">…</span>
+          .map((item) =>
+            typeof item === "string" ? (
+              <span key={item} className="px-1 text-xs text-gray-400">…</span>
             ) : (
               <button
                 key={item}
@@ -104,7 +113,7 @@ function Pagination({ pagination, onPageChange }: PaginationProps) {
           onClick={() => onPageChange(page + 1)}
           disabled={page >= total_pages}
           aria-label="Next page"
-          className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
+          className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
         >
           <ChevronRight size={14} />
         </button>
@@ -118,10 +127,10 @@ function Pagination({ pagination, onPageChange }: PaginationProps) {
 const QuestionBrowseCard = memo(function QuestionBrowseCard({
   question,
   shouldReduceMotion,
-}: {
+}: Readonly<{
   question: BrowseInterviewQuestion
   shouldReduceMotion: boolean | null
-}) {
+}>) {
   const [showAnswer, setShowAnswer] = useState(false)
 
   return (
@@ -212,7 +221,7 @@ function CardSkeleton() {
 
 // ─── Browse Panel ───────────────────────────────────────────────────────────────
 
-function BrowsePanel({ enabled, onSwitchToShare }: { enabled: boolean; onSwitchToShare: () => void }) {
+function BrowsePanel({ enabled, onSwitchToShare }: Readonly<{ enabled: boolean; onSwitchToShare: () => void }>) {
   const shouldReduce = useReducedMotion()
   const {
     questions,
@@ -260,8 +269,8 @@ function BrowsePanel({ enabled, onSwitchToShare }: { enabled: boolean; onSwitchT
           <div className="h-9 w-40 rounded-lg bg-gray-200 dark:bg-gray-700" />
           <div className="h-9 w-32 rounded-lg bg-gray-200 dark:bg-gray-700" />
         </div>
-        {Array.from({ length: 4 }).map((_, i) => (
-          <CardSkeleton key={i} />
+        {SKELETON_CARD_KEYS.map((id) => (
+          <CardSkeleton key={id} />
         ))}
       </div>
     )
@@ -287,6 +296,8 @@ function BrowsePanel({ enabled, onSwitchToShare }: { enabled: boolean; onSwitchT
 
   const hasFilters = search || topicFilter || companyFilter
   const Container = shouldReduce ? "div" : motion.div
+  const containerMotionProps = shouldReduce ? {} : { variants: staggerContainer, initial: "hidden" as const, animate: "show" as const }
+  const itemMotionProps = shouldReduce ? {} : { variants: staggerItem }
 
   return (
     <div className="space-y-4">
@@ -321,7 +332,7 @@ function BrowsePanel({ enabled, onSwitchToShare }: { enabled: boolean; onSwitchT
           className="h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
         >
           {SORT_OPTIONS_QUESTIONS.map((opt, i) => (
-            <option key={i} value={i}>{opt.label}</option>
+            <option key={opt.label} value={i}>{opt.label}</option>
           ))}
         </select>
         {isFetching && (
@@ -376,13 +387,13 @@ function BrowsePanel({ enabled, onSwitchToShare }: { enabled: boolean; onSwitchT
         </div>
       ) : (
         <Container
-          {...(!shouldReduce ? { variants: staggerContainer, initial: "hidden", animate: "show" } : {})}
+          {...containerMotionProps}
           className="space-y-3"
         >
           {questions.map((q) => {
             const ItemWrapper = shouldReduce ? "div" : motion.div
             return (
-              <ItemWrapper key={q.question_id} {...(!shouldReduce ? { variants: staggerItem } : {})}>
+              <ItemWrapper key={q.question_id} {...itemMotionProps}>
                 <QuestionBrowseCard question={q} shouldReduceMotion={shouldReduce} />
               </ItemWrapper>
             )
@@ -406,7 +417,7 @@ function BrowsePanel({ enabled, onSwitchToShare }: { enabled: boolean; onSwitchT
 
 // ─── Share Panel ────────────────────────────────────────────────────────────────
 
-function SharePanel({ onSubmitSuccess }: { onSubmitSuccess: () => void }) {
+function SharePanel({ onSubmitSuccess }: Readonly<{ onSubmitSuccess: () => void }>) {
   const shouldReduce = useReducedMotion()
   const {
     companyId,
@@ -415,7 +426,7 @@ function SharePanel({ onSubmitSuccess }: { onSubmitSuccess: () => void }) {
     topic,
     sampleAnswer,
     errors,
-    setCompanyId,
+    setCompanyId: handleCompanyIdChange,
     handleJobChange,
     handleQuestionChange,
     handleTopicChange,
@@ -431,7 +442,10 @@ function SharePanel({ onSubmitSuccess }: { onSubmitSuccess: () => void }) {
     placeholderData: keepPreviousData,
   })
 
-  const allJobs: JobListItem[] = jobsData?.jobs ?? []
+  const allJobs: JobListItem[] = useMemo(
+    () => jobsData?.jobs ?? [],
+    [jobsData],
+  )
 
   // Extract unique companies
   const companies = useMemo(() => {
@@ -457,7 +471,7 @@ function SharePanel({ onSubmitSuccess }: { onSubmitSuccess: () => void }) {
 
   return (
     <Wrapper
-      {...(!shouldReduce ? { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.25 } } : {})}
+      {...(shouldReduce ? {} : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.25 } })}
       className="max-w-2xl mx-auto space-y-6"
     >
       {/* Info banner */}
@@ -469,15 +483,16 @@ function SharePanel({ onSubmitSuccess }: { onSubmitSuccess: () => void }) {
 
       {/* Company selector */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+        <label htmlFor="company-select-iq" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
           Company <span className="text-red-500">*</span>
         </label>
         {jobsLoading ? (
           <div className="h-11 rounded-xl bg-gray-100 dark:bg-gray-800 motion-safe:animate-pulse" />
         ) : (
           <select
+            id="company-select-iq"
             value={companyId}
-            onChange={(e) => setCompanyId(e.target.value)}
+            onChange={(e) => handleCompanyIdChange(e.target.value)}
             className={`w-full h-11 rounded-xl border bg-white dark:bg-gray-800 px-4 text-sm transition-colors cursor-pointer
               ${errors.company_id
                 ? "border-red-500 focus:ring-red-500"
@@ -495,10 +510,11 @@ function SharePanel({ onSubmitSuccess }: { onSubmitSuccess: () => void }) {
 
       {/* Job selector (filtered by company) */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+        <label htmlFor="job-select-iq" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
           Job <span className="text-red-500">*</span>
         </label>
         <select
+          id="job-select-iq"
           value={jobId}
           onChange={(e) => handleJobChange(e.target.value)}
           disabled={!companyId}
@@ -541,13 +557,7 @@ function SharePanel({ onSubmitSuccess }: { onSubmitSuccess: () => void }) {
             <span />
           )}
           <span
-            className={`text-xs ${
-              questionCharCount >= 1900
-                ? "text-red-500"
-                : questionCharCount >= 1600
-                  ? "text-amber-500"
-                  : "text-gray-400 dark:text-gray-500"
-            }`}
+            className={`text-xs ${getCharCountColor(questionCharCount, 1900, 1600)}`}
           >
             {questionCharCount} / 2000
           </span>
@@ -612,13 +622,7 @@ function SharePanel({ onSubmitSuccess }: { onSubmitSuccess: () => void }) {
             <span />
           )}
           <span
-            className={`text-xs ${
-              answerCharCount >= 2850
-                ? "text-red-500"
-                : answerCharCount >= 2400
-                  ? "text-amber-500"
-                  : "text-gray-400 dark:text-gray-500"
-            }`}
+            className={`text-xs ${getCharCountColor(answerCharCount, 2850, 2400)}`}
           >
             {answerCharCount} / 3000
           </span>
@@ -645,8 +649,14 @@ function SharePanel({ onSubmitSuccess }: { onSubmitSuccess: () => void }) {
 
 export default function InterviewQuestionsDashboard() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("browse")
-  const visitedTabs = useRef<Set<DashboardTab>>(new Set(["browse"]))
-  if (!visitedTabs.current.has(activeTab)) visitedTabs.current.add(activeTab)
+  const [visitedTabs, setVisitedTabs] = useState<Set<DashboardTab>>(new Set(["browse"]))
+
+  useEffect(() => {
+    if (!visitedTabs.has(activeTab)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- track visited tabs
+      setVisitedTabs(prev => new Set([...prev, activeTab]))
+    }
+  }, [activeTab, visitedTabs])
 
   return (
     <div className="space-y-6">
@@ -683,7 +693,7 @@ export default function InterviewQuestionsDashboard() {
       {/* Tab Panels */}
       <div role="tabpanel" id={`tabpanel-iq-${activeTab}`} aria-labelledby={`tab-iq-${activeTab}`}>
         {activeTab === "browse" ? (
-          <BrowsePanel enabled={visitedTabs.current.has("browse")} onSwitchToShare={() => setActiveTab("share")} />
+          <BrowsePanel enabled={visitedTabs.has("browse")} onSwitchToShare={() => setActiveTab("share")} />
         ) : (
           <SharePanel onSubmitSuccess={() => setActiveTab("browse")} />
         )}

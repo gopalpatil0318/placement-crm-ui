@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -32,6 +32,8 @@ interface Pagination {
 // ========================
 
 export const useViewDepartments = () => {
+    const queryClient = useQueryClient();
+
     // ── Local filter / pagination state ──
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
@@ -42,7 +44,7 @@ export const useViewDepartments = () => {
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // ── React Query ──
-    const queryFilters = {
+    const queryFilters = useMemo(() => ({
         page,
         limit,
         search: debouncedSearch || undefined,
@@ -52,7 +54,7 @@ export const useViewDepartments = () => {
                 : statusFilter === "false"
                     ? false
                     : undefined,
-    };
+    }), [page, limit, debouncedSearch, statusFilter]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.departments.all(queryFilters),
@@ -65,6 +67,17 @@ export const useViewDepartments = () => {
     const error = queryError
         ? (queryError instanceof Error ? queryError.message : "Failed to fetch departments")
         : null;
+
+    // ── Prefetch next page for smoother pagination ──
+    useEffect(() => {
+        if (pagination.totalPages > page) {
+            const nextFilters = { ...queryFilters, page: page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.departments.all(nextFilters),
+                queryFn: () => CollegeAdminService.getDepartments(nextFilters),
+            });
+        }
+    }, [page, pagination.totalPages, queryClient, queryFilters]);
 
     // ── Handlers (same API surface as before) ──
 

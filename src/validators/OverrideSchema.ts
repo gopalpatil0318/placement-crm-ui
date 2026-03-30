@@ -148,6 +148,9 @@ export interface OverrideEligibility {
   job_id: string;
   job_title: string;
   company_name: string;
+  passout_years: number[];
+  application_deadline: string;
+  job_status: string;
   year_eligible: boolean;
   criteria_eligible: boolean;
   is_fully_eligible: boolean;

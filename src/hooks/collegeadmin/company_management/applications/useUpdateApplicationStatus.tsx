@@ -3,9 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { showToast } from "@/utils/ToastUtils";
-import { updateApplicationStatusSchema } from "@/validators/ApplicationSchema";
-import { APPLICATION_STATUS_LABELS } from "@/validators/ApplicationSchema";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
+import { updateApplicationStatusSchema, APPLICATION_STATUS_LABELS } from "@/validators/ApplicationSchema";
 
 // ========================
 // HOOK
@@ -43,7 +42,7 @@ export const useUpdateApplicationStatus = (jobId: string, onSuccess?: () => void
 
             showToast({
                 type: "error",
-                title: apiStatus === 400 ? "Invalid Transition" : apiStatus === 404 ? "Not Found" : apiStatus === 409 ? "Conflict" : "Error",
+                title: getErrorTitle(apiStatus),
                 description: message,
             });
         },

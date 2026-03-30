@@ -1,5 +1,38 @@
 import { CheckCircle, CloudUpload, AlertTriangle, Download, Key } from "lucide-react";
 
+interface CSVStudentRow {
+  first_name?: string;
+  last_name?: string;
+  student_email?: string;
+  dept_name?: string;
+  student_passout_year?: string;
+  current_year?: string;
+  middle_name?: string;
+  [key: string]: string | undefined;
+}
+
+interface RegisteredStudent {
+  row: number;
+  student_id: string;
+  first_name: string;
+  last_name: string;
+  student_email: string;
+  dept_name: string;
+  default_password: string;
+}
+
+interface BulkRegisterError {
+  row?: number;
+  rowNumber?: number;
+  index?: number;
+  first_name?: string;
+  last_name?: string;
+  student_email?: string;
+  email?: string;
+  error?: string;
+  message?: string;
+}
+
 interface BulkResultSectionProps {
   result: {
     success: boolean;
@@ -8,12 +41,12 @@ interface BulkResultSectionProps {
       total: number;
       successful: number;
       failed: number;
-      errors?: any[];
-      [key: string]: any;
+      registered?: RegisteredStudent[];
+      errors?: BulkRegisterError[];
     };
   };
   onReset: () => void;
-  originalData: any[];
+  originalData: CSVStudentRow[];
   headers: string[];
 }
 
@@ -21,32 +54,31 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
   const isSuccess = result.data.failed === 0;
   const errorsList = result.data.errors || [];
 
-  const failedIndices = new Set();
-  let failedRecords: any[] = [];
-  let errorMessages: { [key: number]: string } = {};
+  const failedIndices = new Set<number>();
+  const failedRecords: CSVStudentRow[] = [];
 
-  errorsList.forEach((err: any) => {
+  errorsList.forEach((err) => {
     let recordIndex = -1;
     if (typeof err.rowNumber === "number") recordIndex = err.rowNumber - 1;
     else if (typeof err.index === "number") recordIndex = err.index;
     else if (typeof err.row === "number") recordIndex = err.row - 1;
     else {
-      const originalIdx = originalData.findIndex(r => r.student_email === err.student_email || r.email === err.email);
+      const originalIdx = originalData.findIndex(r => r.student_email === err.student_email || r.student_email === err.email);
       if (originalIdx !== -1) recordIndex = originalIdx;
     }
 
     if (recordIndex !== -1) {
       failedIndices.add(recordIndex);
-      errorMessages[recordIndex] = err.error || err.message || "Failed to register";
-      failedRecords.push({ ...originalData[recordIndex], "Error Reason": errorMessages[recordIndex] });
+      const errorReason = err.error || err.message || "Failed to register";
+      failedRecords.push({ ...originalData[recordIndex], "Error Reason": errorReason });
     } else {
-      failedRecords.push({ ...err });
+      failedRecords.push({ student_email: err.student_email || err.email, "Error Reason": err.error || err.message });
     }
   });
 
   const successfulRecords = originalData.filter((_, idx) => !failedIndices.has(idx));
 
-  const toCsvBlob = (data: any[], head: string[], isErrorCsv: boolean = false) => {
+  const toCsvBlob = (data: CSVStudentRow[], head: string[], isErrorCsv: boolean = false) => {
     if (data.length === 0) return null;
     let cols = Array.from(new Set([...head]));
     if (isErrorCsv) {
@@ -98,22 +130,17 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
     }
   };
 
-  // Download Credentials CSV — uses API response results
-  const credentialsList: any[] = result.data.results || result.data.credentials || [];
+  // Download Credentials CSV — uses API response registered array
+  const credentialsList: RegisteredStudent[] = result.data.registered || [];
   const hasCredentials = credentialsList.length > 0;
 
   const downloadCredentialsCsv = () => {
     if (!hasCredentials) return;
 
-    const credHeaders = "first_name,last_name,student_email,student_password";
-    const rows = credentialsList.map((r: any) => {
-      const firstName = r.first_name || r.name?.split(" ")[0] || "";
-      const lastName = r.last_name || r.name?.split(" ").slice(1).join(" ") || "";
-      const email = r.student_email || r.email || "";
-      const password = r.student_password || r.password || "";
-      return `"${firstName}","${lastName}","${email}","${password}"`;
+    const credHeaders = "first_name,last_name,student_email,default_password";
+    const rows = credentialsList.map((r) => {
+      return `"${r.first_name}","${r.last_name}","${r.student_email}","${r.default_password}"`;
     }).join("\n");
-
     const csvContent = credHeaders + "\n" + rows;
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -264,11 +291,11 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
               <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-gray-50/50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <tr>
                   {headers.slice(0, 3).map((h, i) => (
-                    <th key={i} className="px-6 py-3 font-semibold tracking-wider whitespace-nowrap">{h}</th>
+                    <th key={i} scope="col" className="px-6 py-3 font-semibold tracking-wider whitespace-nowrap">{h}</th>
                   ))}
-                  <th className="px-6 py-3 font-bold tracking-wider text-red-600 whitespace-nowrap">Error Column</th>
+                  <th scope="col" className="px-6 py-3 font-bold tracking-wider text-red-600 whitespace-nowrap">Error Column</th>
                   {headers.slice(3).map((h, i) => (
-                    <th key={i + 3} className="px-6 py-3 font-semibold tracking-wider whitespace-nowrap">{h}</th>
+                    <th key={i + 3} scope="col" className="px-6 py-3 font-semibold tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -311,7 +338,7 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
               <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-gray-50/50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <tr>
                   {headers.map((h, i) => (
-                    <th key={i} className="px-6 py-3 font-semibold tracking-wider">{h}</th>
+                    <th key={i} scope="col" className="px-6 py-3 font-semibold tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>

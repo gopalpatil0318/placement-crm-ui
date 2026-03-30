@@ -238,6 +238,7 @@ const UpdateJobForm = ({ jobId, onItemLoaded }: UpdateJobFormProps) => {
                                 label="Salary Min (₹)"
                                 name="salary_min"
                                 type="number"
+                                inputMode="numeric"
                                 value={String(formData.salary_min)}
                                 onChange={handleChange}
                                 placeholder="e.g. 700000"
@@ -246,6 +247,7 @@ const UpdateJobForm = ({ jobId, onItemLoaded }: UpdateJobFormProps) => {
                                 label="Salary Max (₹)"
                                 name="salary_max"
                                 type="number"
+                                inputMode="numeric"
                                 value={String(formData.salary_max)}
                                 onChange={handleChange}
                                 placeholder="e.g. 700000"

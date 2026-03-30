@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -31,6 +31,8 @@ interface Pagination {
 // ========================
 
 export const useViewCompanies = (config?: { limit?: number; status?: "" | "active" | "inactive" }) => {
+    const queryClient = useQueryClient();
+
     // ── Local filter / pagination state ──
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(config?.limit ?? 20);
@@ -44,7 +46,7 @@ export const useViewCompanies = (config?: { limit?: number; status?: "" | "activ
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // ── React Query ──
-    const queryFilters = {
+    const queryFilters = useMemo(() => ({
         page,
         limit,
         search: debouncedSearch || undefined,
@@ -52,7 +54,7 @@ export const useViewCompanies = (config?: { limit?: number; status?: "" | "activ
         industry: industryFilter || undefined,
         sort_by: sortBy || undefined,
         sort_order: sortOrder || undefined,
-    };
+    }), [page, limit, debouncedSearch, statusFilter, industryFilter, sortBy, sortOrder]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.companies.all(queryFilters),
@@ -64,6 +66,17 @@ export const useViewCompanies = (config?: { limit?: number; status?: "" | "activ
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
     const loading = isLoading || isFetching;
     const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch companies") : null;
+
+    // ── Prefetch next page for smoother pagination ──
+    useEffect(() => {
+        if (pagination.totalPages > page) {
+            const nextFilters = { ...queryFilters, page: page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.companies.all(nextFilters),
+                queryFn: () => CollegeAdminService.getAllCompanies(nextFilters),
+            });
+        }
+    }, [page, pagination.totalPages, queryClient, queryFilters]);
 
     // ── Handlers (same API surface as before) ──
 

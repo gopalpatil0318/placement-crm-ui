@@ -27,7 +27,8 @@ export default function ForgotPassword() {
             if (msg.toLowerCase().includes("too many")) {
                 setError("Too many requests. Please try again in 15 minutes.")
             } else {
-                setError(msg)
+                // Always show generic success for security — don't reveal if email exists
+                setIsSubmitted(true)
             }
         } finally {
             setIsSubmitting(false)
@@ -105,6 +106,7 @@ export default function ForgotPassword() {
                                     <Input
                                         id="email"
                                         type="email"
+                                        autoComplete="email"
                                         placeholder="admin@college.edu"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}

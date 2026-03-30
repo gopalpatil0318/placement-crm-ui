@@ -1,11 +1,10 @@
-import { useState, useCallback } from "react"
-import { useQuery, keepPreviousData } from "@tanstack/react-query"
+import { useState, useCallback, useMemo, useEffect } from "react"
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/queryKeys"
 import { FeedbackService } from "@/services/student/feedback.service"
 import {
   SORT_OPTIONS_FEEDBACK,
   type StudentFeedback,
-  type StudentFeedbackFilters,
 } from "@/validators/FeedbackSchema"
 
 // ─── Hook ───────────────────────────────────────────────────────────────────────
@@ -17,12 +16,12 @@ export function useMyFeedback(initialLimit = 10, enabled = true) {
 
   const sort = SORT_OPTIONS_FEEDBACK[sortIndex]
 
-  const queryFilters: StudentFeedbackFilters = {
+  const queryFilters = useMemo(() => ({
     sort_by: sort.sort_by,
     sort_order: sort.sort_order,
     page,
     limit,
-  }
+  }), [sort, page, limit])
 
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: queryKeys.studentPortal.myFeedback(queryFilters as Record<string, unknown>),
@@ -33,6 +32,18 @@ export function useMyFeedback(initialLimit = 10, enabled = true) {
 
   const feedback: StudentFeedback[] = data?.feedback ?? []
   const pagination = data?.pagination ?? { page: 1, limit: initialLimit, total: 0, totalPages: 0 }
+
+  // Next-page prefetch
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (pagination.page < pagination.totalPages) {
+      const nextFilters = { ...queryFilters, page: pagination.page + 1 }
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.studentPortal.myFeedback(nextFilters as Record<string, unknown>),
+        queryFn: () => FeedbackService.getMyFeedback(nextFilters),
+      })
+    }
+  }, [queryClient, queryFilters, pagination.page, pagination.totalPages])
 
   const handleSortChange = useCallback((index: number) => {
     setSortIndex(index)

@@ -63,6 +63,30 @@ export interface ReviewProfileData {
 // HOOK
 // ========================
 
+interface FullProfileResponse {
+    profile_summary?: {
+        profile_completion_percentage?: number;
+        profile_complete?: boolean;
+        section_status?: Record<string, unknown>;
+    };
+    personal_info?: Record<string, unknown> | null;
+    academic_info?: Record<string, unknown> | null;
+    semester_grades?: unknown[];
+    skills?: unknown[];
+    projects?: unknown[];
+    experience?: (Record<string, unknown> & VerificationMeta)[];
+    achievements?: (Record<string, unknown> & VerificationMeta)[];
+    certificates?: (Record<string, unknown> & VerificationMeta)[];
+    activities?: unknown[];
+    profile_links?: Record<string, unknown> | null;
+    verification_summary?: {
+        experience: { pending: number; rejected: number };
+        achievements: { pending: number; rejected: number };
+        certificates: { pending: number; rejected: number };
+    };
+    [key: string]: unknown;
+}
+
 /**
  * The backend returns a flat response (`...student` spread at top level)
  * with keys like `personal_info`, `academic_info`, `profile_summary`.
@@ -76,8 +100,7 @@ export function useStudentReviewProfile(studentId: string, enabled = true) {
         enabled: !!studentId && enabled,
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = data?.data as Record<string, any> | undefined;
+    const raw = data?.data as FullProfileResponse | undefined;
 
     const profileData: ReviewProfileData | null = raw
         ? (() => {

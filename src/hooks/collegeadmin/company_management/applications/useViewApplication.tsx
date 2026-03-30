@@ -14,6 +14,8 @@ export interface AcademicInfo {
 }
 
 export interface ApplicationAnswer {
+    answer_id: string;
+    question_id: string;
     question_text: string;
     question_type: string;
     answer_text: string | null;
@@ -21,6 +23,8 @@ export interface ApplicationAnswer {
 }
 
 export interface ApplicationRoundResult {
+    result_id: string;
+    round_id: string;
     round_name: string;
     round_number: number;
     result_status: string;

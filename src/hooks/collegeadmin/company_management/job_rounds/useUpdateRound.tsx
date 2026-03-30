@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
@@ -32,8 +32,27 @@ export const useUpdateRound = (jobId: string, onSuccess?: () => void) => {
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [roundId, setRoundId] = useState<string>("");
-    const originalData = useRef<UpdateRoundFormData | null>(null);
+    const [originalData, setOriginalData] = useState<UpdateRoundFormData | null>(null);
     const queryClient = useQueryClient();
+
+    const isDirty = useMemo(() => {
+        if (!originalData) return false;
+        const orig = originalData;
+        return (
+            formData.round_name !== orig.round_name ||
+            formData.round_description !== orig.round_description ||
+            formData.round_type !== orig.round_type ||
+            formData.round_date !== orig.round_date ||
+            formData.round_venue !== orig.round_venue
+        );
+    }, [formData, originalData]);
+
+    useEffect(() => {
+        if (!isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -61,7 +80,7 @@ export const useUpdateRound = (jobId: string, onSuccess?: () => void) => {
             round_venue: String(round.round_venue || ""),
         };
         setFormData(loaded);
-        originalData.current = { ...loaded };
+        setOriginalData({ ...loaded });
         setErrors({});
     }, []);
 
@@ -100,7 +119,7 @@ export const useUpdateRound = (jobId: string, onSuccess?: () => void) => {
             return;
         }
 
-        const orig = originalData.current;
+        const orig = originalData;
 
         // Build diff payload — only include changed fields
         const payload: Record<string, unknown> = {};
@@ -149,7 +168,7 @@ export const useUpdateRound = (jobId: string, onSuccess?: () => void) => {
 
         setErrors({});
         mutation.mutate({ roundId, payload });
-    }, [formData, roundId, mutation]);
+    }, [formData, originalData, roundId, mutation]);
 
     return {
         formData,
@@ -159,5 +178,6 @@ export const useUpdateRound = (jobId: string, onSuccess?: () => void) => {
         handleChange,
         handleSubmit,
         loadRound,
+        isDirty,
     };
 };

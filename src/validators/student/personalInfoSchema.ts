@@ -32,7 +32,7 @@ export const personalInfoSchema = z
             .string()
             .regex(/^\d{12}$/, { message: "Aadhaar must be exactly 12 digits" }),
         caste: z.string().min(1, { message: "Caste is required" }),
-        category: z.enum(["General", "OBC", "SC", "ST", "NT", "VJ", "SBC"], {
+        category: z.enum(["General", "OBC", "OBC-NCL", "SC", "ST", "EWS", "NT", "NT-A", "NT-B", "NT-C", "NT-D", "VJ", "VJ-A", "SBC", "SEBC", "DT/DNT", "Open"], {
             message: "Please select a valid category",
         }),
         nationality: z.string().min(1, { message: "Nationality is required" }),

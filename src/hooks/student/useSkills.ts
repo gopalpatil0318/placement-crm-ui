@@ -31,6 +31,7 @@ export const useSkills = () => {
             const res = await StudentSkillsService.getAllSkills();
             return (res.data || []) as CatalogSkill[];
         },
+        staleTime: 2 * 60 * 1000,
     });
 
     // Fetch student's skills
@@ -40,11 +41,13 @@ export const useSkills = () => {
             const res = await StudentSkillsService.getMySkills();
             return (res.data || []) as StudentSkill[];
         },
+        staleTime: 2 * 60 * 1000,
     });
 
     // Initialize selectedSkills from fetched data
     useEffect(() => {
         if (mySkillsQuery.data) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- data prefill from query
             setSelectedSkills(
                 mySkillsQuery.data.map((s) => ({
                     skill_id: s.skill_id,
@@ -165,13 +168,13 @@ export const useSkills = () => {
     const syncMutation = useMutation({
         mutationFn: (payload: SyncSkillItem[]) =>
             StudentSkillsService.syncMySkills(payload),
-        onSuccess: () => {
+        onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.mySkills() });
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
             showToast({
                 type: "success",
                 title: "Skills Saved",
-                description: "Your skills have been synced successfully",
+                description: response.message || "Your skills have been synced successfully",
             });
         },
         onError: (error) => {

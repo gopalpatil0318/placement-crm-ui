@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import {
   AlertCircle,
@@ -53,14 +53,20 @@ export default function TrainingDashboard() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("available")
 
   // Track whether each tab has been visited to enable lazy-loading
-  const visitedTabs = useRef<Set<DashboardTab>>(new Set(["available"]))
-  if (!visitedTabs.current.has(activeTab)) visitedTabs.current.add(activeTab)
+  const [visitedTabs, setVisitedTabs] = useState<Set<DashboardTab>>(() => new Set(["available"]))
+  if (!visitedTabs.has(activeTab)) {
+    setVisitedTabs(prev => {
+      const next = new Set(prev)
+      next.add(activeTab)
+      return next
+    })
+  }
 
   // ── Available Programs State ──
-  const available = useAvailableTrainings(10, visitedTabs.current.has("available"))
+  const available = useAvailableTrainings(10, visitedTabs.has("available"))
 
   // ── Enrolled Programs State ──
-  const enrolled = useMyEnrollments(10, visitedTabs.current.has("enrolled"))
+  const enrolled = useMyEnrollments(10, visitedTabs.has("enrolled"))
 
   // ── Enroll Mutation ──
   const { enroll, isEnrolling } = useEnrollInTraining()
@@ -88,7 +94,7 @@ export default function TrainingDashboard() {
   const getTabCount = (tab: EnrollmentStatusFilter): number => {
     if (tab === "all") return enrolled.summary.total_enrolled
     const key = `${tab}_count` as keyof typeof enrolled.summary
-    return (enrolled.summary[key] as number) ?? 0
+    return enrolled.summary[key] ?? 0
   }
 
   return (
@@ -180,6 +186,26 @@ interface AvailablePanelProps {
   onEnroll: (p: StudentAvailableProgram) => void
 }
 
+function AvailablePanelContent({ programs, pagination, handlePageChange, shouldReduce, onEnroll }: Readonly<Pick<AvailablePanelProps, "programs" | "pagination" | "handlePageChange" | "shouldReduce" | "onEnroll">>) {
+  return (
+    <>
+      <motion.div
+        variants={shouldReduce ? undefined : staggerContainer}
+        initial="initial"
+        animate="animate"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        {programs.map((p) => (
+          <AvailableProgramCard key={p.program_id} program={p} onEnroll={onEnroll} />
+        ))}
+      </motion.div>
+      {pagination.totalPages > 1 && (
+        <Pagination pagination={pagination} onPageChange={handlePageChange} />
+      )}
+    </>
+  )
+}
+
 function AvailablePanel({
   programs,
   pagination,
@@ -198,7 +224,7 @@ function AvailablePanel({
   handlePageChange,
   shouldReduce,
   onEnroll,
-}: AvailablePanelProps) {
+}: Readonly<AvailablePanelProps>) {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -251,7 +277,7 @@ function AvailablePanel({
             type="button"
             onClick={() => handleSortOrderChange(sortOrder === "desc" ? "asc" : "desc")}
             aria-label={`Sort ${sortOrder === "desc" ? "ascending" : "descending"}`}
-            className="p-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors cursor-pointer"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors cursor-pointer"
           >
             <ArrowUpDown size={16} className={sortOrder === "asc" ? "rotate-180" : ""} />
           </button>
@@ -259,10 +285,16 @@ function AvailablePanel({
       </div>
 
       {/* Content */}
-      {isLoading ? (
+      {renderAvailableContent()}
+    </div>
+  )
+
+  function renderAvailableContent() {
+    if (isLoading) {
+      return (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-5 motion-safe:animate-pulse">
+            <div key={`avail-skeleton-${String(i)}`} className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-5 motion-safe:animate-pulse">
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3" />
               <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4" />
               <div className="space-y-2">
@@ -273,7 +305,10 @@ function AvailablePanel({
             </div>
           ))}
         </div>
-      ) : isError ? (
+      )
+    }
+    if (isError) {
+      return (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <AlertCircle size={40} className="text-red-400 mb-3" />
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Failed to load training programs</p>
@@ -282,33 +317,19 @@ function AvailablePanel({
             Try Again
           </button>
         </div>
-      ) : programs.length === 0 ? (
+      )
+    }
+    if (programs.length === 0) {
+      return (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <BookOpen size={40} className="text-gray-300 dark:text-gray-600 mb-3" />
           <p className="text-sm text-gray-500 dark:text-gray-400">No training programs available</p>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Check back later for new programs</p>
         </div>
-      ) : (
-        <>
-          <motion.div
-            variants={shouldReduce ? undefined : staggerContainer}
-            initial="initial"
-            animate="animate"
-            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            {programs.map((p) => (
-              <AvailableProgramCard key={p.program_id} program={p} onEnroll={onEnroll} />
-            ))}
-          </motion.div>
-
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <Pagination pagination={pagination} onPageChange={handlePageChange} />
-          )}
-        </>
-      )}
-    </div>
-  )
+      )
+    }
+    return <AvailablePanelContent programs={programs} pagination={pagination} handlePageChange={handlePageChange} shouldReduce={shouldReduce} onEnroll={onEnroll} />
+  }
 }
 
 // ─── Enrolled Programs Panel ────────────────────────────────────────────────────
@@ -333,6 +354,53 @@ interface EnrolledPanelProps {
   getTabCount: (tab: EnrollmentStatusFilter) => number
 }
 
+function EnrolledEmptyState({ statusFilter, handleStatusFilterChange }: Readonly<Pick<EnrolledPanelProps, "statusFilter" | "handleStatusFilterChange">>) {
+  if (statusFilter === "all") {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <GraduationCap size={40} className="text-gray-300 dark:text-gray-600 mb-3" />
+        <p className="text-sm text-gray-500 dark:text-gray-400">No enrollments found</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Browse available programs to get started</p>
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <GraduationCap size={40} className="text-gray-300 dark:text-gray-600 mb-3" />
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        No {ENROLLMENT_STATUS_LABELS[statusFilter]?.toLowerCase()} enrollments
+      </p>
+      <button
+        type="button"
+        onClick={() => handleStatusFilterChange("all")}
+        className="mt-3 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+      >
+        View all enrollments
+      </button>
+    </div>
+  )
+}
+
+function EnrolledPanelContent({ enrollments, pagination, handlePageChange, shouldReduce, onFeedback }: Readonly<Pick<EnrolledPanelProps, "enrollments" | "pagination" | "handlePageChange" | "shouldReduce" | "onFeedback">>) {
+  return (
+    <>
+      <motion.div
+        variants={shouldReduce ? undefined : staggerContainer}
+        initial="initial"
+        animate="animate"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        {enrollments.map((e) => (
+          <EnrollmentCard key={e.enrollment_id} enrollment={e} onFeedback={onFeedback} />
+        ))}
+      </motion.div>
+      {pagination.totalPages > 1 && (
+        <Pagination pagination={pagination} onPageChange={handlePageChange} />
+      )}
+    </>
+  )
+}
+
 function EnrolledPanel({
   enrollments,
   summary,
@@ -351,7 +419,7 @@ function EnrolledPanel({
   shouldReduce,
   onFeedback,
   getTabCount,
-}: EnrolledPanelProps) {
+}: Readonly<EnrolledPanelProps>) {
   const summaryCards = [
     { label: "Total Enrolled", value: summary.total_enrolled, icon: Users, color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" },
     { label: "In Progress", value: summary.in_progress_count, icon: TrendingUp, color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20" },
@@ -366,7 +434,7 @@ function EnrolledPanel({
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {isLoading
             ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-4 motion-safe:animate-pulse">
+                <div key={`summary-skeleton-${String(i)}`} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-4 motion-safe:animate-pulse">
                   <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-lg mb-2" />
                   <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-12 mb-1" />
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20" />
@@ -389,7 +457,7 @@ function EnrolledPanel({
         <div className="flex gap-1 overflow-x-auto pb-1" role="tablist">
           {ENROLLMENT_STATUS_TABS.map((tab) => {
             const count = getTabCount(tab)
-            const label = tab === "all" ? "All" : ENROLLMENT_STATUS_LABELS[tab as keyof typeof ENROLLMENT_STATUS_LABELS]
+            const label = tab === "all" ? "All" : ENROLLMENT_STATUS_LABELS[tab]
             return (
               <button
                 key={tab}
@@ -438,16 +506,22 @@ function EnrolledPanel({
             type="button"
             onClick={() => handleSortOrderChange(sortOrder === "desc" ? "asc" : "desc")}
             aria-label={`Sort ${sortOrder === "desc" ? "ascending" : "descending"}`}
-            className="p-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors cursor-pointer"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors cursor-pointer"
           >
             <ArrowUpDown size={16} className={sortOrder === "asc" ? "rotate-180" : ""} />
           </button>
         </div>
       )}
-      {isLoading ? (
+      {renderEnrolledContent()}
+    </div>
+  )
+
+  function renderEnrolledContent() {
+    if (isLoading) {
+      return (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-5 motion-safe:animate-pulse">
+            <div key={`enrolled-skeleton-${String(i)}`} className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-5 motion-safe:animate-pulse">
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3" />
               <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4" />
               <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full w-full mb-2" />
@@ -455,7 +529,10 @@ function EnrolledPanel({
             </div>
           ))}
         </div>
-      ) : isError ? (
+      )
+    }
+    if (isError) {
+      return (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <AlertCircle size={40} className="text-red-400 mb-3" />
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Failed to load enrollments</p>
@@ -464,49 +541,13 @@ function EnrolledPanel({
             Try Again
           </button>
         </div>
-      ) : enrollments.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <GraduationCap size={40} className="text-gray-300 dark:text-gray-600 mb-3" />
-          {statusFilter !== "all" ? (
-            <>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                No {ENROLLMENT_STATUS_LABELS[statusFilter as keyof typeof ENROLLMENT_STATUS_LABELS]?.toLowerCase()} enrollments
-              </p>
-              <button
-                type="button"
-                onClick={() => handleStatusFilterChange("all")}
-                className="mt-3 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-              >
-                View all enrollments
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-gray-500 dark:text-gray-400">No enrollments found</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Browse available programs to get started</p>
-            </>
-          )}
-        </div>
-      ) : (
-        <>
-          <motion.div
-            variants={shouldReduce ? undefined : staggerContainer}
-            initial="initial"
-            animate="animate"
-            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            {enrollments.map((e) => (
-              <EnrollmentCard key={e.enrollment_id} enrollment={e} onFeedback={onFeedback} />
-            ))}
-          </motion.div>
-
-          {pagination.totalPages > 1 && (
-            <Pagination pagination={pagination} onPageChange={handlePageChange} />
-          )}
-        </>
-      )}
-    </div>
-  )
+      )
+    }
+    if (enrollments.length === 0) {
+      return <EnrolledEmptyState statusFilter={statusFilter} handleStatusFilterChange={handleStatusFilterChange} />
+    }
+    return <EnrolledPanelContent enrollments={enrollments} pagination={pagination} handlePageChange={handlePageChange} shouldReduce={shouldReduce} onFeedback={onFeedback} />
+  }
 }
 
 // ─── Pagination ─────────────────────────────────────────────────────────────────
@@ -514,10 +555,10 @@ function EnrolledPanel({
 function Pagination({
   pagination,
   onPageChange,
-}: {
+}: Readonly<{
   pagination: { page: number; totalPages: number; total: number }
   onPageChange: (p: number) => void
-}) {
+}>) {
   return (
     <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
       <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -528,7 +569,7 @@ function Pagination({
           type="button"
           onClick={() => onPageChange(pagination.page - 1)}
           disabled={pagination.page <= 1}
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           <ChevronLeft size={16} />
         </button>
@@ -536,7 +577,7 @@ function Pagination({
           type="button"
           onClick={() => onPageChange(pagination.page + 1)}
           disabled={pagination.page >= pagination.totalPages}
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           <ChevronRight size={16} />
         </button>

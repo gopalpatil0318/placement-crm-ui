@@ -19,15 +19,11 @@ import {
     PROGRAM_STATUS_LABELS,
     PROGRAM_TYPE_OPTIONS,
     PROGRAM_TYPE_LABELS,
-    type ProgramType,
 } from "@/validators/TrainingProgramSchema";
 
 // ========================
 // CONSTANTS
 // ========================
-
-const currentYear = new Date().getFullYear();
-const PASSOUT_YEARS = Array.from({ length: 7 }, (_, i) => currentYear - 2 + i);
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -53,14 +49,12 @@ const TrainingProgramGrid = () => {
         search,
         statusFilter,
         typeFilter,
-        passoutYearFilter,
         sortBy,
         sortOrder,
         handleSearchChange,
         handlePageChange,
         handleStatusFilterChange,
         handleTypeFilterChange,
-        handlePassoutYearFilterChange,
         handleSortFieldChange,
         handleSortOrderToggle,
         handleLimitChange,
@@ -68,12 +62,11 @@ const TrainingProgramGrid = () => {
 
     const [showFilters, setShowFilters] = useState(false);
 
-    const hasActiveFilters = statusFilter || typeFilter || passoutYearFilter;
+    const hasActiveFilters = statusFilter || typeFilter;
 
     const clearFilters = () => {
         handleStatusFilterChange("");
         handleTypeFilterChange("");
-        handlePassoutYearFilterChange("");
     };
 
     // ── Status Tabs ──
@@ -92,7 +85,7 @@ const TrainingProgramGrid = () => {
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Training Programs</h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                        {pagination.total} program{pagination.total !== 1 ? "s" : ""} total
+                        {pagination.total} program{pagination.total === 1 ? "" : "s"} total
                     </p>
                 </div>
                 <Link
@@ -111,7 +104,7 @@ const TrainingProgramGrid = () => {
                         type="button"
                         key={tab.value}
                         onClick={() => handleStatusFilterChange(tab.value)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${statusFilter === tab.value
+                        className={`px-3 py-2 min-h-[44px] rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${statusFilter === tab.value
                             ? "bg-blue-600 text-white"
                             : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                             }`}
@@ -131,6 +124,8 @@ const TrainingProgramGrid = () => {
                         placeholder="Search programs..."
                         value={search}
                         onChange={(e) => handleSearchChange(e.target.value)}
+                        aria-label="Search programs"
+                        maxLength={100}
                         className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition"
                     />
                 </div>
@@ -156,6 +151,7 @@ const TrainingProgramGrid = () => {
                     <select
                         value={sortBy}
                         onChange={(e) => handleSortFieldChange(e.target.value)}
+                        aria-label="Sort by field"
                         className="px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     >
                         {SORT_OPTIONS.map((opt) => (
@@ -179,6 +175,7 @@ const TrainingProgramGrid = () => {
                     <select
                         value={pagination.limit}
                         onChange={(e) => handleLimitChange(Number(e.target.value))}
+                        aria-label="Page size"
                         className="border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1.5 text-sm bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                     >
                         {PAGE_SIZE_OPTIONS.map((size) => (
@@ -211,17 +208,7 @@ const TrainingProgramGrid = () => {
                             onChange={(e) => handleTypeFilterChange(e.target.value)}
                             options={PROGRAM_TYPE_OPTIONS.map((t) => ({
                                 value: t,
-                                label: PROGRAM_TYPE_LABELS[t as ProgramType],
-                            }))}
-                        />
-                        <FloatingSelect
-                            label="Passout Year"
-                            name="passoutYearFilter"
-                            value={passoutYearFilter}
-                            onChange={(e) => handlePassoutYearFilterChange(e.target.value)}
-                            options={PASSOUT_YEARS.map((y) => ({
-                                value: String(y),
-                                label: String(y),
+                                label: PROGRAM_TYPE_LABELS[t],
                             }))}
                         />
                     </div>
@@ -232,7 +219,7 @@ const TrainingProgramGrid = () => {
             {loading && programs.length === 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 animate-pulse">
+                        <div key={`program-skeleton-${String(i)}`} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 animate-pulse">
                             <div className="p-5 space-y-3">
                                 <div className="flex justify-between">
                                     <div className="h-4 w-40 bg-gray-100 dark:bg-gray-800 rounded" />
@@ -292,11 +279,11 @@ const TrainingProgramGrid = () => {
                         <span className="font-medium text-gray-700 dark:text-gray-300">
                             {programs.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0}
                         </span>
-                        –
+                        {" "}
                         <span className="font-medium text-gray-700 dark:text-gray-300">
                             {Math.min(pagination.page * pagination.limit, pagination.total)}
-                        </span>{" "}
-                        of{" "}
+                        </span>
+                        {" of "}
                         <span className="font-medium text-gray-700 dark:text-gray-300">{pagination.total}</span>
                     </span>
 
@@ -348,38 +335,43 @@ const Pagination = ({
                 type="button"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1 || loading}
-                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Previous page"
             >
                 <ChevronLeft className="h-4 w-4" />
             </button>
 
-            {pages.map((p, idx) =>
-                p === "ellipsis" ? (
-                    <span key={`ellipsis-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
-                        ...
-                    </span>
-                ) : (
+            {pages.map((p, idx) => {
+                if (p === "ellipsis") {
+                    return (
+                        <span key={idx === 1 ? "ellipsis-start" : "ellipsis-end"} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
+                            ...
+                        </span>
+                    );
+                }
+                return (
                     <button
                         key={p}
                         type="button"
                         onClick={() => onPageChange(p)}
                         disabled={loading}
-                        className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition ${p === page
+                        aria-label={`Go to page ${String(p)}`}
+                        aria-current={p === page ? "page" : undefined}
+                        className={`min-w-[44px] min-h-[44px] rounded-md text-sm font-medium transition ${p === page
                             ? "bg-blue-600 text-white shadow-sm"
                             : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                             } disabled:cursor-not-allowed`}
                     >
                         {p}
                     </button>
-                )
-            )}
+                );
+            })}
 
             <button
                 type="button"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages || loading}
-                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Next page"
             >
                 <ChevronRight className="h-4 w-4" />

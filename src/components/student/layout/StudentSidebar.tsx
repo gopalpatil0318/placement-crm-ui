@@ -118,6 +118,7 @@ export default function StudentSidebar({ isOpen, onToggle }: SidebarProps) {
         item.subItems?.some((sub) => location.pathname === sub.path),
       )?.label
     if (active) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- navigation sync
       setExpandedItems((prev) =>
         prev.includes(active) ? prev : [...prev, active],
       )

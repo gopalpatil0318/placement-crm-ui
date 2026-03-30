@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ApiError } from "@/lib/api"
 import { queryKeys } from "@/lib/queryKeys"
-import { showToast } from "@/utils/ToastUtils"
+import { showToast, getErrorTitle } from "@/utils/ToastUtils"
 import { FeedbackService } from "@/services/student/feedback.service"
 import { submitInterviewQuestionSchema } from "@/validators/FeedbackSchema"
 
@@ -20,15 +20,27 @@ interface FormErrors {
 
 export function useSubmitInterviewQuestion(onSuccessCallback?: () => void) {
   const queryClient = useQueryClient()
-  const [companyId, setCompanyIdState] = useState("")
+  const [companyId, setCompanyId] = useState("")
   const [jobId, setJobId] = useState("")
   const [questionDescription, setQuestionDescription] = useState("")
   const [topic, setTopic] = useState("")
   const [sampleAnswer, setSampleAnswer] = useState("")
   const [errors, setErrors] = useState<FormErrors>({})
 
+  // Unsaved changes protection
+  const isDirty = useMemo(
+    () => questionDescription.trim().length > 0 || topic.trim().length > 0 || sampleAnswer.trim().length > 0,
+    [questionDescription, topic, sampleAnswer],
+  )
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    globalThis.addEventListener("beforeunload", handler)
+    return () => globalThis.removeEventListener("beforeunload", handler)
+  }, [isDirty])
+
   const resetForm = useCallback(() => {
-    setCompanyIdState("")
+    setCompanyId("")
     setJobId("")
     setQuestionDescription("")
     setTopic("")
@@ -37,8 +49,8 @@ export function useSubmitInterviewQuestion(onSuccessCallback?: () => void) {
   }, [])
 
   // When company changes, reset job (cascading dropdown)
-  const setCompanyId = useCallback((id: string) => {
-    setCompanyIdState(id)
+  const handleCompanyIdChange = useCallback((id: string) => {
+    setCompanyId(id)
     setJobId("")
     setErrors((prev) => {
       if (!prev.company_id) return prev
@@ -118,10 +130,7 @@ export function useSubmitInterviewQuestion(onSuccessCallback?: () => void) {
       if (error instanceof Error && error.message === "Validation failed") return
       const message = error instanceof ApiError ? error.message : "Failed to submit question"
       const status = error instanceof ApiError ? error.status : undefined
-      const title =
-        status === 404 ? "Not Found"
-        : status === 429 ? "Too Many Requests"
-        : "Error"
+      const title = getErrorTitle(status)
       showToast({ type: "error", title, description: message })
     },
   })
@@ -133,7 +142,7 @@ export function useSubmitInterviewQuestion(onSuccessCallback?: () => void) {
     topic,
     sampleAnswer,
     errors,
-    setCompanyId,
+    setCompanyId: handleCompanyIdChange,
     handleJobChange,
     handleQuestionChange,
     handleTopicChange,

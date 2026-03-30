@@ -15,6 +15,7 @@ interface FloatingInputProps {
   disabled?: boolean
   className?: string
   placeholder?: string
+  inputMode?: "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal" | "search"
 }
 
 /**
@@ -36,6 +37,7 @@ export default function FloatingInput({
   disabled,
   className = "",
   placeholder,
+  inputMode,
 }: FloatingInputProps) {
   const [focused, setFocused] = useState(false)
 
@@ -68,6 +70,7 @@ export default function FloatingInput({
         min={min}
         max={max}
         disabled={disabled}
+        inputMode={inputMode}
         placeholder={placeholder ?? label}
         aria-invalid={!!error}
         aria-describedby={error ? `${name}-error` : undefined}

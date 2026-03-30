@@ -35,6 +35,7 @@ export const useProjects = () => {
             const response = await StudentProjectsService.getAllProjects();
             return (response.data?.projects || response.projects || []) as ProjectData[];
         },
+        staleTime: 2 * 60 * 1000,
     });
 
     // Modal state
@@ -161,14 +162,14 @@ export const useProjects = () => {
 
         const isEditing = !!editingId;
         saveMutation.mutate(payload as Omit<ProjectData, "project_id">, {
-            onSuccess: () => {
+            onSuccess: (response) => {
                 queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.projects() });
                 queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
                 closeForm();
                 showToast({
                     type: "success",
                     title: isEditing ? "Updated" : "Added",
-                    description: isEditing ? "Project updated successfully" : "Project added successfully",
+                    description: response.message || (isEditing ? "Project updated successfully" : "Project added successfully"),
                 });
             },
         });
@@ -176,10 +177,10 @@ export const useProjects = () => {
 
     const deleteMutation = useMutation({
         mutationFn: (projectId: string) => StudentProjectsService.deleteProject(projectId),
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.projects() });
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
-            showToast({ type: "success", title: "Deleted", description: "Project removed successfully" });
+            showToast({ type: "success", title: "Deleted", description: data.message || "Project removed successfully" });
         },
         onError: (error) => {
             showToast({

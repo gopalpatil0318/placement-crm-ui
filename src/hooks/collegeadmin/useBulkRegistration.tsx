@@ -2,11 +2,17 @@ import { useState } from "react";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 
+interface RegisteredStudent {
+    student_email: string;
+    default_password?: string;
+    [key: string]: unknown;
+}
+
 interface BulkRegisterResponse {
     success: boolean;
     message: string;
     data: {
-        success: any[];
+        success: RegisteredStudent[];
         failed: { student_email: string; error: string }[];
     };
 }
@@ -16,7 +22,7 @@ export const useBulkRegistration = () => {
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<BulkRegisterResponse | null>(null);
 
-    const registerDefault = async (students: any[]) => {
+    const registerDefault = async (students: Record<string, string>[]) => {
         setLoading(true);
         setError(null);
         setResult(null);
@@ -30,13 +36,14 @@ export const useBulkRegistration = () => {
                 description: response.message || 'Bulk registration process finished',
             });
             return true;
-        } catch (err: any) {
-            const errorMessage = err.response?.data?.message || err.message || "Failed to upload file";
+        } catch (err: unknown) {
+            const axiosErr = err as { response?: { data?: { message?: string; data?: { success?: unknown; failed?: unknown } } }; message?: string };
+            const errorMessage = axiosErr.response?.data?.message || axiosErr.message || "Failed to upload file";
             setError(errorMessage);
 
             // If the error response contains the detailed data (e.g., partial failure), set the result
-            if (err.response?.data?.data && (err.response.data.data.success || err.response.data.data.failed)) {
-                setResult(err.response.data);
+            if (axiosErr.response?.data?.data && (axiosErr.response.data.data.success || axiosErr.response.data.data.failed)) {
+                setResult(axiosErr.response.data as unknown as BulkRegisterResponse);
             }
 
             showToast({

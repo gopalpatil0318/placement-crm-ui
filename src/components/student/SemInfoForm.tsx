@@ -4,6 +4,7 @@ import type { SemesterGradeData } from "@/services/student/semesterGrade.service
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingSelect from "@/components/ui/FloatingSelect";
+import { SEMESTER_STATUS_OPTIONS } from "@/constants/semesterGrades";
 
 const SemInfoForm = () => {
     const {
@@ -182,22 +183,17 @@ const SemInfoForm = () => {
 
                             <FloatingInput label="Academic Year" name="academic_year" value={formData.academic_year} onChange={handleChange} error={errors.academic_year} required placeholder="e.g. 2022-23" />
 
-                            <FloatingSelect label="Semester Status" name="semester_status" value={formData.semester_status} onChange={handleChange} error={errors.semester_status} required options={[
-                                { value: "in_progress", label: "In Progress" },
-                                { value: "completed", label: "Completed" },
-                                { value: "detained", label: "Detained" },
-                                { value: "failed", label: "Failed" },
-                            ]} />
+                            <FloatingSelect label="Semester Status" name="semester_status" value={formData.semester_status} onChange={handleChange} error={errors.semester_status} required options={SEMESTER_STATUS_OPTIONS} />
 
                             {/* SGPA, CGPA, Backlogs — only when NOT in_progress */}
                             {formData.semester_status !== "in_progress" && (
                                 <>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <FloatingInput label="SGPA" name="sgpa" value={formData.sgpa} onChange={handleChange} error={errors.sgpa} required type="number" placeholder="0.00 - 10.00" />
-                                        <FloatingInput label="CGPA" name="cgpa" value={formData.cgpa} onChange={handleChange} error={errors.cgpa} required type="number" placeholder="0.00 - 10.00" />
+                                        <FloatingInput label="SGPA" name="sgpa" value={formData.sgpa} onChange={handleChange} error={errors.sgpa} required type="number" inputMode="decimal" placeholder="0.00 - 10.00" />
+                                        <FloatingInput label="CGPA" name="cgpa" value={formData.cgpa} onChange={handleChange} error={errors.cgpa} required type="number" inputMode="decimal" placeholder="0.00 - 10.00" />
                                     </div>
 
-                                    <FloatingInput label="Backlogs in Semester" name="backlogs_in_semester" value={formData.backlogs_in_semester} onChange={handleChange} error={errors.backlogs_in_semester} type="number" />
+                                    <FloatingInput label="Backlogs in Semester" name="backlogs_in_semester" value={formData.backlogs_in_semester} onChange={handleChange} error={errors.backlogs_in_semester} type="number" inputMode="numeric" />
 
                                     {/* Backlog Subjects — only show if backlogs > 0 */}
                                     {Number(formData.backlogs_in_semester) > 0 && (
@@ -286,7 +282,7 @@ const GradeCard = ({
             type="button"
             onClick={onEdit}
             aria-label="Edit semester grade"
-            className="absolute top-3 right-3 p-2 rounded-full bg-gray-50 dark:bg-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+            className="absolute top-3 right-3 p-2 rounded-full bg-gray-50 dark:bg-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-400 hover:text-blue-600 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition cursor-pointer"
         >
             <Pencil className="h-4 w-4" />
         </button>

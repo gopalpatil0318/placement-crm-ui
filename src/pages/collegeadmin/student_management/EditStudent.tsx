@@ -1,11 +1,15 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AlertCircle } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
 import StudentForm from "@/components/collegeadmin/student_management/StudentForm";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { ApiError } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { showToast } from "@/utils/ToastUtils";
+import { useStudentDetail } from "@/hooks/collegeadmin/student_management/useStudentDetail";
 
 // ========================
 // SKELETON
@@ -36,15 +40,13 @@ const FormSkeleton = () => (
 export default function EditStudent() {
     const { studentId } = useParams<{ studentId: string }>();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
-    const [pageLoading, setPageLoading] = useState(true);
-    const [fetchError, setFetchError] = useState("");
-    const [saving, setSaving] = useState(false);
-    const [fetchedName, setFetchedName] = useState("");
+    // Fetch student via React Query (cached, retries, stale-while-revalidate)
+    const { student, loading: pageLoading, error: fetchError } = useStudentDetail(studentId || "");
 
-    // Original values (for partial update diff)
-    const [original, setOriginal] = useState<Record<string, unknown>>({});
-
+    // Build form data from fetched student — only recalc when student changes
+    const [original] = useState<Record<string, unknown>>(() => ({}));
     const [formData, setFormData] = useState({
         first_name: "",
         middle_name: "",
@@ -55,37 +57,59 @@ export default function EditStudent() {
         student_passout_year: new Date().getFullYear(),
         current_year: 1,
     });
+    const [formInitialized, setFormInitialized] = useState(false);
 
-    // Fetch student data
-    useEffect(() => {
-        const loadData = async () => {
-            setPageLoading(true);
-            setFetchError("");
-            try {
-                const res = await CollegeAdminService.getStudent(studentId || "");
-                const s = res.data || res;
-                const data = {
-                    first_name: s.first_name || "",
-                    middle_name: s.middle_name || "",
-                    last_name: s.last_name || "",
-                    student_email: s.student_email || "",
-                    student_password: "",
-                    dept_name: s.dept_name || "",
-                    student_passout_year: s.student_passout_year || new Date().getFullYear(),
-                    current_year: s.current_year || 1,
-                };
-                setFormData(data);
-                setOriginal(data);
-                setFetchedName([s.first_name, s.last_name].filter(Boolean).join(" "));
-            } catch (err: unknown) {
-                const msg = err instanceof Error ? err.message : "Failed to load student data";
-                setFetchError(msg);
-            } finally {
-                setPageLoading(false);
-            }
+    // Sync form data when student loads (only once per student load)
+    if (student && !formInitialized) {
+        const data = {
+            first_name: student.first_name || "",
+            middle_name: student.middle_name || "",
+            last_name: student.last_name || "",
+            student_email: student.student_email || "",
+            student_password: "",
+            dept_name: student.dept_name || "",
+            student_passout_year: student.student_passout_year || new Date().getFullYear(),
+            current_year: student.current_year || 1,
         };
-        loadData();
-    }, [studentId]);
+        setFormData(data);
+        // Store original for diff — mutate the ref-like state directly during render
+        Object.assign(original, data);
+        setFormInitialized(true);
+    }
+
+    const fetchedName = student ? [student.first_name, student.last_name].filter(Boolean).join(" ") : "";
+
+    // Unsaved changes warning
+    const isDirty = useMemo(() => {
+        if (!formInitialized) return false;
+        return Object.keys(formData).some(
+            (key) => key !== "student_password" && formData[key as keyof typeof formData] !== original[key]
+        );
+    }, [formData, original, formInitialized]);
+
+    useEffect(() => {
+        if (!isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
+
+    // Update mutation
+    const updateMutation = useMutation({
+        mutationFn: (changed: Record<string, unknown>) =>
+            CollegeAdminService.updateStudent(studentId!, changed),
+        onSuccess: (response) => {
+            const message = (response as { message?: string })?.message || "Student updated successfully";
+            showToast({ type: "success", title: "Updated", description: message });
+            queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(studentId!) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.students.all() });
+            navigate(`/college/student/${studentId}`);
+        },
+        onError: (error: unknown) => {
+            const msg = error instanceof ApiError ? error.message : "Failed to update student";
+            showToast({ type: "error", title: "Error", description: msg });
+        },
+    });
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -98,14 +122,14 @@ export default function EditStudent() {
         []
     );
 
-    const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!studentId) return;
 
         // Build partial update — only send changed fields
         const changed: Record<string, unknown> = {};
         for (const key of Object.keys(formData) as (keyof typeof formData)[]) {
-            if (key === "student_password") continue; // skip password in edit
+            if (key === "student_password") continue;
             if (formData[key] !== original[key]) {
                 changed[key] = formData[key];
             }
@@ -116,18 +140,8 @@ export default function EditStudent() {
             return;
         }
 
-        setSaving(true);
-        try {
-            const response = await CollegeAdminService.updateStudent(studentId, changed);
-            showToast({ type: "success", title: "Updated", description: response?.message || "Student updated successfully" });
-            navigate(`/college/student/${studentId}`);
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Failed to update student";
-            showToast({ type: "error", title: "Error", description: msg });
-        } finally {
-            setSaving(false);
-        }
-    }, [studentId, formData, original, navigate]);
+        updateMutation.mutate(changed);
+    }, [studentId, formData, original, updateMutation]);
 
     const breadcrumbs = useMemo(() => [
         { label: "Dashboard", path: "/college/dashboard" },
@@ -173,7 +187,7 @@ export default function EditStudent() {
                     mode="edit"
                     formData={formData}
                     errors={{}}
-                    loading={saving}
+                    loading={updateMutation.isPending}
                     fetchedStudentName={fetchedName}
                     handleChange={handleChange}
                     handleSubmit={handleSubmit}

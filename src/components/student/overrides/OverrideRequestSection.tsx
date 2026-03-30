@@ -22,12 +22,13 @@ function formatDate(d: string): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Kolkata",
   })
 }
 
 // ─── Sub-components for each override state ─────────────────────────────────────
 
-function PendingOverrideCard({ overrideRequest }: { overrideRequest: OverrideRequestInfo }) {
+function PendingOverrideCard({ overrideRequest }: Readonly<{ overrideRequest: OverrideRequestInfo }>) {
   return (
     <div className="rounded-xl p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
       <div className="flex items-start gap-3">
@@ -54,11 +55,11 @@ function ApprovedOverrideCard({
   overrideRequest,
   onApplyClick,
   deadlineExpired,
-}: {
+}: Readonly<{
   overrideRequest: OverrideRequestInfo
   onApplyClick: () => void
   deadlineExpired: boolean
-}) {
+}>) {
   return (
     <div className="rounded-xl p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50">
       <div className="flex items-start gap-3">
@@ -84,7 +85,7 @@ function ApprovedOverrideCard({
               <button
                 type="button"
                 onClick={onApplyClick}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 rounded-lg transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 min-h-[44px] text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 rounded-lg transition-colors cursor-pointer"
               >
                 <ExternalLink size={13} />
                 Apply Now
@@ -101,7 +102,7 @@ function ApprovedOverrideCard({
   )
 }
 
-function RejectedOverrideCard({ overrideRequest }: { overrideRequest: OverrideRequestInfo }) {
+function RejectedOverrideCard({ overrideRequest }: Readonly<{ overrideRequest: OverrideRequestInfo }>) {
   return (
     <div className="rounded-xl p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50">
       <div className="flex items-start gap-3">
@@ -170,6 +171,35 @@ function OverrideSectionSkeleton() {
   )
 }
 
+// ─── Override Status Renderer ───────────────────────────────────────────────────
+
+function OverrideStatusRenderer({
+  overrideRequest,
+  onApplyClick,
+  deadlineExpired,
+}: Readonly<{
+  overrideRequest: OverrideRequestInfo
+  onApplyClick: () => void
+  deadlineExpired: boolean
+}>) {
+  if (overrideRequest.override_status === "pending") {
+    return <PendingOverrideCard overrideRequest={overrideRequest} />
+  }
+  if (overrideRequest.override_status === "approved") {
+    return (
+      <ApprovedOverrideCard
+        overrideRequest={overrideRequest}
+        onApplyClick={onApplyClick}
+        deadlineExpired={deadlineExpired}
+      />
+    )
+  }
+  if (overrideRequest.override_status === "rejected") {
+    return <RejectedOverrideCard overrideRequest={overrideRequest} />
+  }
+  return null
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 interface OverrideRequestSectionProps {
@@ -203,22 +233,13 @@ export default memo(function OverrideRequestSection({
 
   // Existing override request — show status
   if (data.override_request) {
-    const { override_status } = data.override_request
-    if (override_status === "pending") {
-      return <PendingOverrideCard overrideRequest={data.override_request} />
-    }
-    if (override_status === "approved") {
-      return (
-        <ApprovedOverrideCard
-          overrideRequest={data.override_request}
-          onApplyClick={() => onSwitchToApplyTab?.()}
-          deadlineExpired={deadlineExpired}
-        />
-      )
-    }
-    if (override_status === "rejected") {
-      return <RejectedOverrideCard overrideRequest={data.override_request} />
-    }
+    return (
+      <OverrideStatusRenderer
+        overrideRequest={data.override_request}
+        onApplyClick={() => onSwitchToApplyTab?.()}
+        deadlineExpired={deadlineExpired}
+      />
+    )
   }
 
   // Can request override — show CTA
@@ -243,8 +264,8 @@ export default memo(function OverrideRequestSection({
               </p>
               {data.ineligibility_reasons.length > 0 && (
                 <div className="space-y-1 mt-1">
-                  {data.ineligibility_reasons.map((reason, i) => (
-                    <p key={i} className="text-xs text-indigo-600 dark:text-indigo-400/80 flex items-center gap-1.5">
+                  {data.ineligibility_reasons.map((reason) => (
+                    <p key={reason} className="text-xs text-indigo-600 dark:text-indigo-400/80 flex items-center gap-1.5">
                       <XCircle size={12} className="shrink-0 text-indigo-400 dark:text-indigo-500" />
                       {reason}
                     </p>
@@ -254,7 +275,7 @@ export default memo(function OverrideRequestSection({
               <button
                 type="button"
                 onClick={() => setShowModal(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-lg transition-colors cursor-pointer mt-1"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 min-h-[44px] text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-lg transition-colors cursor-pointer mt-1"
               >
                 <ShieldCheck size={13} />
                 Submit Override Request

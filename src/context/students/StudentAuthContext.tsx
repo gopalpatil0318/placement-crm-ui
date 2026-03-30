@@ -4,6 +4,7 @@ import { showToast } from "@/utils/ToastUtils";
 import { clearOtherSessions } from "@/lib/clearAllAuthSessions";
 import type { User, StudentAuthContextType } from "@/types/auth";
 
+// eslint-disable-next-line react-refresh/only-export-components -- context object co-exported with provider
 export const StudentAuthContext = createContext<StudentAuthContextType | null>(null);
 
 export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
@@ -49,6 +50,7 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
       deptName: studentData.dept_name,
       passoutYear: studentData.student_passout_year,
       currentYear: studentData.current_year,
+      defaultAcademicYear: studentData.default_academic_year,
       studentStatus: studentData.student_status,
       profileComplete: studentData.profile_complete ?? false,
       profileIsApproved: studentData.profile_is_approved ?? false,

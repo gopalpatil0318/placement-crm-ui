@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, type KeyboardEvent, type ReactNode } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import {
   AlertCircle,
@@ -29,6 +29,9 @@ import {
   type RestrictionSortField,
 } from "@/validators/RestrictionSchema"
 
+const SUMMARY_SKELETON_KEYS = ["sk-total", "sk-active", "sk-resolved", "sk-appeals"] as const
+const CONTENT_SKELETON_KEYS = ["sk-c1", "sk-c2", "sk-c3", "sk-c4", "sk-c5", "sk-c6"] as const
+
 // ─── Pagination ─────────────────────────────────────────────────────────────────
 
 interface PaginationProps {
@@ -36,7 +39,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void
 }
 
-function Pagination({ pagination, onPageChange }: PaginationProps) {
+function Pagination({ pagination, onPageChange }: Readonly<PaginationProps>) {
   const { page, totalPages, total, limit } = pagination
   const start = (page - 1) * limit + 1
   const end = Math.min(page * limit, total)
@@ -52,20 +55,20 @@ function Pagination({ pagination, onPageChange }: PaginationProps) {
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
           aria-label="Previous page"
-          className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
+          className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
         >
           <ChevronLeft size={14} />
         </button>
         {Array.from({ length: totalPages }, (_, i) => i + 1)
           .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-          .reduce<(number | "dots")[]>((acc, p, i, arr) => {
-            if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("dots")
+          .reduce<(number | string)[]>((acc, p, i, arr) => {
+            if (i > 0 && p - arr[i - 1] > 1) acc.push(`dots-${p}`)
             acc.push(p)
             return acc
           }, [])
-          .map((item, i) =>
-            item === "dots" ? (
-              <span key={`dots-${i}`} className="px-1 text-xs text-gray-400">
+          .map((item) =>
+            typeof item === "string" ? (
+              <span key={item} className="px-1 text-xs text-gray-400">
                 …
               </span>
             ) : (
@@ -87,7 +90,7 @@ function Pagination({ pagination, onPageChange }: PaginationProps) {
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
           aria-label="Next page"
-          className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
+          className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
         >
           <ChevronRight size={14} />
         </button>
@@ -151,6 +154,133 @@ export default function RestrictionDashboard() {
     ? "You're in good standing — keep it up!"
     : "Try adjusting your filters to see more results."
 
+  const handleTabKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return
+    e.preventDefault()
+    const idx = RESTRICTION_STATUS_TABS.indexOf(activeFilter)
+    const next =
+      e.key === "ArrowRight"
+        ? RESTRICTION_STATUS_TABS[(idx + 1) % RESTRICTION_STATUS_TABS.length]
+        : RESTRICTION_STATUS_TABS[(idx - 1 + RESTRICTION_STATUS_TABS.length) % RESTRICTION_STATUS_TABS.length]
+    handleActiveFilterChange(next)
+    const nextBtn = document.getElementById(`restriction-tab-${next}`)
+    nextBtn?.focus()
+  }, [activeFilter, handleActiveFilterChange])
+
+  const activeCountSuffix = summary.active_count > 1 ? "s" : ""
+  const appealsSuffix = summary.appeals_pending > 1 ? "s" : ""
+  const appealText = summary.appeals_pending > 0
+    ? ` ${summary.appeals_pending} appeal${appealsSuffix} pending review.`
+    : " You can submit an appeal for eligible restrictions."
+  const hasBlockingRestriction = restrictions.some(
+    (r) => r.is_active && (r.restriction_type === "bar_from_placements" || r.restriction_type === "temporary_suspension"),
+  )
+
+  let contentSection: ReactNode
+
+  if (isLoading) {
+    contentSection = (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {CONTENT_SKELETON_KEYS.map((key) => (
+          <div key={key} className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-5 motion-safe:animate-pulse">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-700" />
+                <div className="h-5 w-28 rounded-full bg-gray-200 dark:bg-gray-700" />
+              </div>
+              <div className="h-5 w-16 rounded-full bg-gray-200 dark:bg-gray-700" />
+            </div>
+            <div className="h-4 w-full rounded bg-gray-200 dark:bg-gray-700 mb-2" />
+            <div className="h-3 w-3/4 rounded bg-gray-100 dark:bg-gray-700/60 mb-4" />
+            <div className="space-y-1.5 mb-3">
+              <div className="h-3 w-48 rounded bg-gray-100 dark:bg-gray-700/60" />
+              <div className="h-3 w-32 rounded bg-gray-100 dark:bg-gray-700/60" />
+            </div>
+            <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+              <div className="h-7 w-24 rounded-lg bg-gray-200 dark:bg-gray-700" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  } else if (isError) {
+    contentSection = (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-3">
+          <AlertCircle size={24} className="text-red-400" />
+        </div>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Failed to load restrictions
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          Something went wrong. Please try again.
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-xl transition-colors cursor-pointer"
+        >
+          <RefreshCw size={14} />
+          Try Again
+        </button>
+      </div>
+    )
+  } else if (restrictions.length === 0) {
+    contentSection = (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-3">
+          <ShieldCheck size={24} className="text-emerald-400" />
+        </div>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {emptyMessage}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {emptySubtext}
+        </p>
+      </div>
+    )
+  } else {
+    contentSection = (
+      <>
+        {activeFilter === "all" && summary.active_count > 0 && (
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200/60 dark:border-red-800/30">
+            <ShieldAlert size={16} className="text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <p className="text-xs text-red-700 dark:text-red-300">
+                You have <span className="font-semibold">{summary.active_count} active restriction{activeCountSuffix}</span> on your record.
+                {appealText}
+              </p>
+              {hasBlockingRestriction && (
+                <p className="text-xs font-medium text-red-800 dark:text-red-200">
+                  ⚠ Active placement bar or suspension detected — you are currently blocked from applying to jobs.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <motion.div
+          variants={shouldReduce ? undefined : staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {restrictions.map((r) => (
+            <RestrictionCard
+              key={r.restriction_id}
+              restriction={r}
+              onAppeal={handleAppealClick}
+            />
+          ))}
+        </motion.div>
+
+        {pagination.totalPages > 1 && (
+          <Pagination pagination={pagination} onPageChange={handlePageChange} />
+        )}
+      </>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* ── Header ── */}
@@ -165,8 +295,8 @@ export default function RestrictionDashboard() {
       {!isError && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-4 motion-safe:animate-pulse">
+            SUMMARY_SKELETON_KEYS.map((key) => (
+              <div key={key} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-4 motion-safe:animate-pulse">
                 <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-700 mb-2" />
                 <div className="h-6 w-12 rounded bg-gray-200 dark:bg-gray-700 mb-1" />
                 <div className="h-3 w-20 rounded bg-gray-100 dark:bg-gray-700/60" />
@@ -192,19 +322,8 @@ export default function RestrictionDashboard() {
           className="flex gap-1 overflow-x-auto pb-1"
           role="tablist"
           aria-label="Filter by status"
-          onKeyDown={(e) => {
-            if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-              e.preventDefault()
-              const idx = RESTRICTION_STATUS_TABS.indexOf(activeFilter)
-              const next =
-                e.key === "ArrowRight"
-                  ? RESTRICTION_STATUS_TABS[(idx + 1) % RESTRICTION_STATUS_TABS.length]
-                  : RESTRICTION_STATUS_TABS[(idx - 1 + RESTRICTION_STATUS_TABS.length) % RESTRICTION_STATUS_TABS.length]
-              handleActiveFilterChange(next)
-              const nextBtn = document.getElementById(`restriction-tab-${next}`)
-              nextBtn?.focus()
-            }
-          }}
+          tabIndex={0}
+          onKeyDown={handleTabKeyDown}
         >          {RESTRICTION_STATUS_TABS.map((tab) => {
           const count = getTabCount(tab)
           return (
@@ -273,7 +392,7 @@ export default function RestrictionDashboard() {
             type="button"
             onClick={() => handleSortOrderChange(sortOrder === "desc" ? "asc" : "desc")}
             aria-label={`Sort ${sortOrder === "desc" ? "ascending" : "descending"}`}
-            className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+            className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
           >
             <ArrowUpDown size={14} className={`transition-transform ${sortOrder === "asc" ? "rotate-180" : ""}`} />
           </button>
@@ -281,106 +400,7 @@ export default function RestrictionDashboard() {
       </div>
 
       {/* ── Content Area ── */}
-      {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-5 motion-safe:animate-pulse">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-700" />
-                  <div className="h-5 w-28 rounded-full bg-gray-200 dark:bg-gray-700" />
-                </div>
-                <div className="h-5 w-16 rounded-full bg-gray-200 dark:bg-gray-700" />
-              </div>
-              <div className="h-4 w-full rounded bg-gray-200 dark:bg-gray-700 mb-2" />
-              <div className="h-3 w-3/4 rounded bg-gray-100 dark:bg-gray-700/60 mb-4" />
-              <div className="space-y-1.5 mb-3">
-                <div className="h-3 w-48 rounded bg-gray-100 dark:bg-gray-700/60" />
-                <div className="h-3 w-32 rounded bg-gray-100 dark:bg-gray-700/60" />
-              </div>
-              <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
-                <div className="h-7 w-24 rounded-lg bg-gray-200 dark:bg-gray-700" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : isError ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-3">
-            <AlertCircle size={24} className="text-red-400" />
-          </div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Failed to load restrictions
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-            Something went wrong. Please try again.
-          </p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-xl transition-colors cursor-pointer"
-          >
-            <RefreshCw size={14} />
-            Try Again
-          </button>
-        </div>
-      ) : restrictions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-3">
-            <ShieldCheck size={24} className="text-emerald-400" />
-          </div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {emptyMessage}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {emptySubtext}
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* Active restriction warning banner */}
-          {activeFilter === "all" && summary.active_count > 0 && (
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200/60 dark:border-red-800/30">
-              <ShieldAlert size={16} className="text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
-              <div className="space-y-1">
-                <p className="text-xs text-red-700 dark:text-red-300">
-                  You have <span className="font-semibold">{summary.active_count} active restriction{summary.active_count > 1 ? "s" : ""}</span> on your record.
-                  {summary.appeals_pending > 0
-                    ? ` ${summary.appeals_pending} appeal${summary.appeals_pending > 1 ? "s" : ""} pending review.`
-                    : " You can submit an appeal for eligible restrictions."
-                  }
-                </p>
-                {restrictions.some((r) => r.is_active && (r.restriction_type === "bar_from_placements" || r.restriction_type === "temporary_suspension")) && (
-                  <p className="text-xs font-medium text-red-800 dark:text-red-200">
-                    ⚠ Active placement bar or suspension detected — you are currently blocked from applying to jobs.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Cards Grid */}
-          <motion.div
-            variants={shouldReduce ? undefined : staggerContainer}
-            initial="initial"
-            animate="animate"
-            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            {restrictions.map((r) => (
-              <RestrictionCard
-                key={r.restriction_id}
-                restriction={r}
-                onAppeal={handleAppealClick}
-              />
-            ))}
-          </motion.div>
-
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <Pagination pagination={pagination} onPageChange={handlePageChange} />
-          )}
-        </>
-      )}
+      {contentSection}
 
       {/* ── Appeal Modal ── */}
       <AppealModal

@@ -12,6 +12,7 @@ export function useDenyJob(jobId: string) {
     mutationFn: (payload) => JobBrowsingService.denyJob(jobId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.jobDetail(jobId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.eligibility(jobId) })
       queryClient.invalidateQueries({ queryKey: ["studentPortal", "jobs"] })
     },
     onError: (error) => {

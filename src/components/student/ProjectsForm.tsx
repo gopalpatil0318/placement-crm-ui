@@ -159,7 +159,7 @@ const ProjectsForm = () => {
 
                             <FloatingTextarea label="Description" name="project_description" value={formData.project_description} onChange={handleChange} error={errors.project_description} required rows={3} />
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingSelect label="Project Type" name="project_type" value={formData.project_type} onChange={handleChange} error={errors.project_type} required options={VALID_PROJECT_TYPES.map(t => ({ value: t, label: PROJECT_TYPE_LABELS[t] }))} />
                                 <FloatingInput label="Your Role" name="role_in_project" value={formData.role_in_project} onChange={handleChange} error={errors.role_in_project} required placeholder="e.g. Full Stack Developer" />
                             </div>
@@ -197,7 +197,7 @@ const ProjectsForm = () => {
                                 {errors.technologies_used && <p className="text-xs text-red-500 mt-1">{errors.technologies_used}</p>}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingInput label="Start Date" name="start_date" value={formData.start_date} onChange={handleChange} error={errors.start_date} required type="date" />
                                 {!formData.is_ongoing && (
                                     <FloatingInput label="End Date" name="end_date" value={formData.end_date} onChange={handleChange} error={errors.end_date} required type="date" />
@@ -219,15 +219,15 @@ const ProjectsForm = () => {
                                 </label>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <FloatingInput label="Team Size" name="team_size" value={formData.team_size} onChange={handleChange} type="number" />
-                                <FloatingInput label="Display Order" name="display_order" value={formData.display_order} onChange={handleChange} type="number" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FloatingInput label="Team Size" name="team_size" value={formData.team_size} onChange={handleChange} type="number" inputMode="numeric" />
+                                <FloatingInput label="Display Order" name="display_order" value={formData.display_order} onChange={handleChange} type="number" inputMode="numeric" />
                             </div>
 
                             <div className="space-y-4">
-                                <FloatingInput label="Project URL" name="project_url" value={formData.project_url} onChange={handleChange} error={errors.project_url} placeholder="https://..." />
-                                <FloatingInput label="GitHub Link" name="github_link" value={formData.github_link} onChange={handleChange} error={errors.github_link} placeholder="https://github.com/..." />
-                                <FloatingInput label="Demo Link" name="demo_link" value={formData.demo_link} onChange={handleChange} error={errors.demo_link} placeholder="https://..." />
+                                <FloatingInput label="Project URL" name="project_url" value={formData.project_url} onChange={handleChange} error={errors.project_url} placeholder="https://..." inputMode="url" />
+                                <FloatingInput label="GitHub Link" name="github_link" value={formData.github_link} onChange={handleChange} error={errors.github_link} placeholder="https://github.com/..." inputMode="url" />
+                                <FloatingInput label="Demo Link" name="demo_link" value={formData.demo_link} onChange={handleChange} error={errors.demo_link} placeholder="https://..." inputMode="url" />
                             </div>
                         </div>
             </ModalWrapper>

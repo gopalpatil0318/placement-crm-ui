@@ -18,7 +18,7 @@ export default function ResolveRestrictionModal({
     restriction,
     onClose,
     onSuccess,
-}: ResolveRestrictionModalProps) {
+}: Readonly<ResolveRestrictionModalProps>) {
     const { loading, handleResolve } = useUpdateRestriction(onSuccess);
 
     if (!restriction) return null;

@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react"
-import { useQuery, keepPreviousData } from "@tanstack/react-query"
+import { useState, useCallback, useMemo, useEffect } from "react"
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/queryKeys"
 import { RestrictionsService } from "@/services/student/restrictions.service"
 import type {
@@ -14,6 +14,8 @@ import type {
 // ─── Hook ───────────────────────────────────────────────────────────────────────
 
 export function useMyRestrictions(initialLimit = 10, enabled = true) {
+  const queryClient = useQueryClient()
+
   // ── Filter State ──
   const [activeFilter, setActiveFilter] = useState<RestrictionStatusFilter>("all")
   const [typeFilter, setTypeFilter] = useState<RestrictionType | "all">("all")
@@ -22,16 +24,19 @@ export function useMyRestrictions(initialLimit = 10, enabled = true) {
   const [page, setPage] = useState(1)
   const [limit] = useState(initialLimit)
 
-  // ── Build query filters ──
-  const queryFilters: RestrictionFilters = {
-    ...(activeFilter === "active" ? { is_active: "true" } : {}),
-    ...(activeFilter === "resolved" ? { is_active: "false" } : {}),
-    ...(typeFilter !== "all" ? { restriction_type: typeFilter } : {}),
-    sort_by: sortBy,
-    sort_order: sortOrder,
-    page,
-    limit,
-  }
+  // ── Build query filters (memoized) ──
+  const queryFilters: RestrictionFilters = useMemo(() => {
+    const filters: RestrictionFilters = {
+      sort_by: sortBy,
+      sort_order: sortOrder,
+      page,
+      limit,
+    }
+    if (activeFilter === "active") filters.is_active = "true"
+    else if (activeFilter === "resolved") filters.is_active = "false"
+    if (typeFilter !== "all") filters.restriction_type = typeFilter
+    return filters
+  }, [activeFilter, typeFilter, sortBy, sortOrder, page, limit])
 
   // ── Query ──
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
@@ -43,14 +48,14 @@ export function useMyRestrictions(initialLimit = 10, enabled = true) {
 
   // ── Derived ──
   const restrictions: StudentRestriction[] = data?.restrictions ?? []
-  const summary: RestrictionSummary = data?.summary ?? {
+  const summary: RestrictionSummary = useMemo(() => data?.summary ?? {
     total_restrictions: 0,
     active_count: 0,
     resolved_count: 0,
     appeals_submitted: 0,
     appeals_resolved: 0,
     appeals_pending: 0,
-  }
+  }, [data?.summary])
   const pagination = data?.pagination ?? { page: 1, limit: initialLimit, total: 0, totalPages: 0 }
 
   // ── Handlers (all reset page to 1) ──
@@ -76,8 +81,19 @@ export function useMyRestrictions(initialLimit = 10, enabled = true) {
 
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    globalThis.scrollTo({ top: 0, behavior: "smooth" })
   }, [])
+
+  // ── Next-page prefetch ──
+  useEffect(() => {
+    if (pagination.page < pagination.totalPages) {
+      const nextFilters = { ...queryFilters, page: pagination.page + 1 }
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.studentPortal.myRestrictions(nextFilters as Record<string, unknown>),
+        queryFn: () => RestrictionsService.getMyRestrictions(nextFilters),
+      })
+    }
+  }, [pagination.page, pagination.totalPages, queryFilters, queryClient])
 
   // ── Tab Count Helper ──
   const getTabCount = useCallback((tab: RestrictionStatusFilter): number => {

@@ -10,7 +10,7 @@ export const ROUND_TYPE_OPTIONS = ["aptitude", "technical", "hr", "group_discuss
 
 export const QUESTION_TYPE_OPTIONS = ["text", "essay", "yes_no", "mcq_single", "mcq_multiple"] as const;
 
-export const GENDER_OPTIONS = ["male", "female", "other"] as const;
+export const GENDER_OPTIONS = ["Male", "Female", "Other"] as const;
 
 // ========================
 // NESTED SCHEMAS
@@ -62,8 +62,8 @@ export const jobCreateSchema = z.object({
     job_description: z.string().max(5000).optional().or(z.literal("")),
     job_location: z.string().min(2, "Location is required").max(300),
     salary_package: z.string().max(100).optional().or(z.literal("")),
-    salary_min: z.number().min(0).optional(),
-    salary_max: z.number().min(0).optional(),
+    salary_min: z.number().min(0).max(99999999, "Salary cannot exceed 9,99,99,999").optional(),
+    salary_max: z.number().min(0).max(99999999, "Salary cannot exceed 9,99,99,999").optional(),
     bond_duration: z.string().max(100).optional().or(z.literal("")),
     bond_details: z.string().max(1000).optional().or(z.literal("")),
     job_type: z.string().min(1, "Job type is required"),
@@ -86,8 +86,8 @@ export const jobUpdateSchema = z.object({
     job_description: z.string().max(5000).optional().or(z.literal("")),
     job_location: z.string().min(2, "Location must be at least 2 characters").max(300).optional(),
     salary_package: z.string().max(100).optional().or(z.literal("")),
-    salary_min: z.number().min(0).optional(),
-    salary_max: z.number().min(0).optional(),
+    salary_min: z.number().min(0).max(99999999, "Salary cannot exceed 9,99,99,999").optional(),
+    salary_max: z.number().min(0).max(99999999, "Salary cannot exceed 9,99,99,999").optional(),
     bond_duration: z.string().max(100).optional().or(z.literal("")),
     bond_details: z.string().max(1000).optional().or(z.literal("")),
     application_deadline: z.string().optional(),

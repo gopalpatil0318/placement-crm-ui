@@ -6,6 +6,47 @@ import { BulkResultSection } from "@/components/collegeadmin/student_management/
 import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
 
+// ========================
+// CSV Parsing Helper
+// ========================
+
+/**
+ * Parse a single CSV line respecting quoted fields.
+ * Handles commas inside double-quoted values and escaped quotes ("").
+ */
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++; // skip escaped quote
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ",") {
+        fields.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
 const STEPS = [
   { id: 1, label: "Upload CSV", icon: Upload },
   { id: 2, label: "Preview & Confirm", icon: Eye },
@@ -14,7 +55,7 @@ const STEPS = [
 
 const BulkRegistrationView = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [csvData, setCsvData] = useState<any[]>([]);
+  const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const { registerDefault, loading, error, result, reset } =
     useBulkRegistration();
@@ -38,11 +79,11 @@ const BulkRegistrationView = () => {
       const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
       if (lines.length === 0) return;
 
-      const parsedHeaders = lines[0].split(",").map((h) => h.trim());
+      const parsedHeaders = parseCSVLine(lines[0]);
       const parsedData = lines.slice(1).map((line) => {
-        const values = line.split(",").map((v) => v.trim());
-        const obj: any = {};
-        parsedHeaders.forEach((header, i) => { obj[header] = values[i]; });
+        const values = parseCSVLine(line);
+        const obj: Record<string, string> = {};
+        parsedHeaders.forEach((header, i) => { obj[header] = values[i] || ""; });
         return obj;
       });
       setHeaders(parsedHeaders);
@@ -71,12 +112,14 @@ const BulkRegistrationView = () => {
 
   const handleDownloadSample = useCallback(() => {
     const csvContent = [
-      "first_name,middle_name,last_name,student_email,student_password,dept_name,student_passout_year,current_year",
-      "Rohan,Suresh,Das,rohan.das@example.com,Password@123,Computer Engineering,2026,3",
-      "Sarah,,Jenkins,sarah.j@example.com,SecurePass!456,Mechanical Engineering,2027,2",
-      "Amit,Rajesh,Patel,amit.patel@example.com,AmitUser#789,Civil Engineering,2025,4",
-      "Emily,,Chen,emily.chen@example.com,MySecretPass2024,Electrical Engineering,2028,1",
-      "Michael,James,Brown,michael.b@example.com,TemporaryPass1!,Information Technology,2026,3",
+      "first_name,middle_name,last_name,student_email,dept_name,student_passout_year,current_year",
+      "Rohan,Suresh,Das,rohan.das@example.com,Computer Engineering,2026,3",
+      "Sarah,,Jenkins,sarah.j@example.com,Mechanical Engineering,2027,2",
+      "Amit,Rajesh,Patel,amit.patel@example.com,Civil Engineering,2025,4",
+      "Emily,,Chen,emily.chen@example.com,Electrical Engineering,2028,1",
+      "Michael,James,Brown,michael.b@example.com,Information Technology,2026,3",
+      "",
+      "# Passwords are auto-generated as firstname@passoutyear (e.g. rohan@2026)",
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });

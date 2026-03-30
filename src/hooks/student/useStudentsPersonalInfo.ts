@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { ApiError } from "@/lib/api";
@@ -46,6 +46,8 @@ export const usePersonalInfo = () => {
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState<PersonalInfoData>(initialFormData);
     const [errors, setErrors] = useState<FormErrors>({});
+    const baselineRef = useRef<string>("");
+    const [isDirty, setIsDirty] = useState(false);
 
     // Fetch existing personal info from API
     const { data: fetchedData, isLoading: fetching } = useQuery({
@@ -54,6 +56,7 @@ export const usePersonalInfo = () => {
             const response = await StudentPersonalInfoService.getPersonalInfo();
             return response.data ?? null;
         },
+        staleTime: 2 * 60 * 1000,
     });
 
     // Prefill from fetched data
@@ -63,14 +66,33 @@ export const usePersonalInfo = () => {
             if (typeof prefill.birth_date === "string") {
                 prefill.birth_date = prefill.birth_date.split("T")[0];
             }
-            setFormData((prev) => ({
-                ...prev,
+            const filled = {
+                ...initialFormData,
                 ...prefill,
                 father_annual_income: fetchedData.father_annual_income ?? "",
                 mother_annual_income: fetchedData.mother_annual_income ?? "",
-            }));
+            };
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- data prefill from query
+            setFormData(filled);
+            baselineRef.current = JSON.stringify(filled);
         }
     }, [fetchedData]);
+
+    // Track dirty state by comparing current form to baseline
+    useEffect(() => {
+        if (!baselineRef.current) return;
+        setIsDirty(JSON.stringify(formData) !== baselineRef.current);
+    }, [formData]);
+
+    // Warn on browser close/refresh when form is dirty
+    useEffect(() => {
+        const handler = (e: BeforeUnloadEvent) => {
+            if (!isDirty) return;
+            e.preventDefault();
+        };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     const handleChange = useCallback((
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -106,13 +128,15 @@ export const usePersonalInfo = () => {
     const saveMutation = useMutation({
         mutationFn: (payload: PersonalInfoData) =>
             StudentPersonalInfoService.savePersonalInfo(payload),
-        onSuccess: () => {
+        onSuccess: (response) => {
+            baselineRef.current = JSON.stringify(formData);
+            setIsDirty(false);
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.personalInfo() });
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
             showToast({
                 type: "success",
                 title: "Success",
-                description: "Personal info saved successfully",
+                description: response.message || "Personal info saved successfully",
             });
         },
         onError: (error) => {
@@ -177,6 +201,7 @@ export const usePersonalInfo = () => {
         errors,
         loading: saveMutation.isPending,
         fetching,
+        isDirty,
         handleChange,
         handleCheckboxChange,
         handleSubmit,

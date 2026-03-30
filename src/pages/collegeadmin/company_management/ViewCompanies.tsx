@@ -120,7 +120,7 @@ const Pagination = ({
                 type="button"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1 || loading}
-                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Previous page"
             >
                 <ChevronLeft className="h-4 w-4" />
@@ -137,7 +137,7 @@ const Pagination = ({
                         type="button"
                         onClick={() => onPageChange(p)}
                         disabled={loading}
-                        className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition ${
+                        className={`min-w-[44px] min-h-[44px] rounded-md text-sm font-medium transition ${
                             p === page
                                 ? "bg-blue-600 text-white shadow-sm"
                                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -152,7 +152,7 @@ const Pagination = ({
                 type="button"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages || loading}
-                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Next page"
             >
                 <ChevronRight className="h-4 w-4" />
@@ -286,6 +286,8 @@ const ViewCompanies = () => {
                                 placeholder="Search companies..."
                                 value={search}
                                 onChange={(e) => handleSearchChange(e.target.value)}
+                                aria-label="Search companies"
+                                maxLength={100}
                                 className="w-full border border-gray-300 dark:border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                             />
                         </div>
@@ -296,6 +298,7 @@ const ViewCompanies = () => {
                             onChange={(e) =>
                                 handleStatusFilterChange(e.target.value as "" | "active" | "inactive")
                             }
+                            aria-label="Filter by status"
                             className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
                             <option value="">All Status</option>
@@ -307,6 +310,7 @@ const ViewCompanies = () => {
                         <select
                             value={industryFilter}
                             onChange={(e) => handleIndustryFilterChange(e.target.value)}
+                            aria-label="Filter by industry"
                             className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
                             <option value="">All Industries</option>
@@ -321,6 +325,7 @@ const ViewCompanies = () => {
                             <select
                                 value={sortBy}
                                 onChange={(e) => handleSortChange(e.target.value)}
+                                aria-label="Sort by"
                                 className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                             >
                                 {SORT_OPTIONS.map((opt) => (
@@ -331,7 +336,7 @@ const ViewCompanies = () => {
                                 type="button"
                                 onClick={handleSortOrderToggle}
                                 className="p-2 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-                                title={sortOrder === "asc" ? "Ascending â€” click to reverse" : "Descending â€” click to reverse"}
+                                title={sortOrder === "asc" ? "Ascending — click to reverse" : "Descending — click to reverse"}
                             >
                                 <SortIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                             </button>
@@ -357,12 +362,12 @@ const ViewCompanies = () => {
                         <table className="w-full">
                             <thead>
                                 <tr className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-800">
-                                    <th className="px-4 py-3 w-12">#</th>
-                                    <th className="px-4 py-3">Company</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3 text-center">Contacts</th>
-                                    <th className="px-4 py-3 text-center">Jobs</th>
-                                    <th className="px-4 py-3">Created</th>
+                                    <th scope="col" className="px-4 py-3 w-12">#</th>
+                                    <th scope="col" className="px-4 py-3">Company</th>
+                                    <th scope="col" className="px-4 py-3">Status</th>
+                                    <th scope="col" className="px-4 py-3 text-center">Contacts</th>
+                                    <th scope="col" className="px-4 py-3 text-center">Jobs</th>
+                                    <th scope="col" className="px-4 py-3">Created</th>
                                 </tr>
                             </thead>
 

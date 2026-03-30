@@ -59,9 +59,10 @@ export default function ModalWrapper({
 
   // Use refs for values accessed inside event handlers to avoid effect re-runs
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
   const disabledRef = useRef(disabled)
-  disabledRef.current = disabled
+
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
+  useEffect(() => { disabledRef.current = disabled }, [disabled])
 
   // Focus trap, Escape key, body scroll lock, focus restore
   useEffect(() => {

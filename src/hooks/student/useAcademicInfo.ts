@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { ApiError } from "@/lib/api";
@@ -34,6 +34,8 @@ export const useAcademicInfo = () => {
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState(initialFormData);
     const [errors, setErrors] = useState<FormErrors>({});
+    const baselineRef = useRef<string>("");
+    const [isDirty, setIsDirty] = useState(false);
 
     // Fetch existing academic data
     const { data: fetchedData, isLoading: fetching } = useQuery({
@@ -42,13 +44,15 @@ export const useAcademicInfo = () => {
             const response = await StudentAcademicInfoService.getAcademicInfo();
             return response.data ?? null;
         },
+        staleTime: 2 * 60 * 1000,
     });
 
     // Prefill from fetched academic data
+    /* eslint-disable react-hooks/set-state-in-effect -- one-time form initialization from query data */
     useEffect(() => {
         if (fetchedData) {
-            setFormData((prev) => ({
-                ...prev,
+            const filled = {
+                ...initialFormData,
                 ...fetchedData,
                 twelfth_percentage: fetchedData.twelfth_percentage ?? "",
                 twelfth_board: fetchedData.twelfth_board ?? "",
@@ -58,9 +62,30 @@ export const useAcademicInfo = () => {
                 gap_reason: fetchedData.gap_reason ?? "",
                 total_live_kts: String(fetchedData.total_live_kts ?? "0"),
                 total_dead_kts: String(fetchedData.total_dead_kts ?? "0"),
-            }));
+            };
+            setFormData(filled);
+            baselineRef.current = JSON.stringify(filled);
+            setIsDirty(false);
         }
     }, [fetchedData]);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
+    // Track dirty state + beforeunload
+    useEffect(() => {
+        if (baselineRef.current) {
+            setIsDirty(JSON.stringify(formData) !== baselineRef.current);
+        }
+    }, [formData]);
+
+    useEffect(() => {
+        const handler = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+            }
+        };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     const handleChange = useCallback((
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -81,13 +106,15 @@ export const useAcademicInfo = () => {
     const saveMutation = useMutation({
         mutationFn: (payload: Record<string, unknown>) =>
             StudentAcademicInfoService.saveAcademicInfo(payload),
-        onSuccess: () => {
+        onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.academicInfo() });
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
+            baselineRef.current = JSON.stringify(formData);
+            setIsDirty(false);
             showToast({
                 type: "success",
                 title: "Success",
-                description: "Academic info saved successfully",
+                description: response.message || "Academic info saved successfully",
             });
         },
         onError: (error) => {
@@ -135,8 +162,8 @@ export const useAcademicInfo = () => {
             twelfth_or_diploma: formData.twelfth_or_diploma,
             twelfth_percentage: is12th ? Number(formData.twelfth_percentage) : null,
             twelfth_board: is12th ? formData.twelfth_board.trim() : null,
-            diploma_percentage: !is12th ? Number(formData.diploma_percentage) : null,
-            diploma_branch: !is12th ? formData.diploma_branch.trim() : null,
+            diploma_percentage: is12th ? null : Number(formData.diploma_percentage),
+            diploma_branch: is12th ? null : formData.diploma_branch.trim(),
             higher_education_passing_year: Number(formData.higher_education_passing_year),
             overall_cgpa: Number(formData.overall_cgpa),
             total_live_kts: Number(formData.total_live_kts),
@@ -154,6 +181,7 @@ export const useAcademicInfo = () => {
         errors,
         loading: saveMutation.isPending,
         fetching,
+        isDirty,
         handleChange,
         handleCheckboxChange,
         handleSubmit,

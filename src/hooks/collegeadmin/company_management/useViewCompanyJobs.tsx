@@ -63,9 +63,8 @@ export const useViewCompanyJobs = (companyId: string) => {
         enabled: !!companyId,
     });
 
-    const rawData = data?.data ?? data;
-    const jobs: JobItem[] = Array.isArray(rawData?.jobs) ? rawData.jobs : [];
-    const pagination: Pagination = rawData?.pagination ?? { page, limit, total: 0, totalPages: 0 };
+    const jobs: JobItem[] = Array.isArray(data?.data) ? data.data : [];
+    const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
     const loading = isLoading;
     const fetching = isFetching;
     const error = queryError

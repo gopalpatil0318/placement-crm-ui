@@ -34,7 +34,7 @@ import JobApplicationForm from "@/components/student/jobs/JobApplicationForm"
 import DenyJobModal from "@/components/student/jobs/DenyJobModal"
 import OverrideRequestSection from "@/components/student/overrides/OverrideRequestSection"
 import { toast } from "sonner"
-import type { ApplyPayload } from "@/services/student/jobBrowsing.service"
+import type { ApplyPayload, EligibilityResponse } from "@/services/student/jobBrowsing.service"
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -53,11 +53,48 @@ function formatDate(dateStr: string): string {
     year: "numeric",
     month: "short",
     day: "numeric",
+    timeZone: "Asia/Kolkata",
   })
+}
+
+function formatDateTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleString("en-IN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  }) + " IST"
 }
 
 const TABS = ["Overview", "Positions", "Eligibility", "Rounds", "Apply"] as const
 type Tab = (typeof TABS)[number]
+
+const JOB_TYPE_LABELS: Record<string, string> = {
+  "full-time": "Full-time",
+  internship: "Internship",
+  both: "Both",
+}
+
+function getCountdownClassName(countdown: { urgent: boolean; expired: boolean }): string {
+  if (countdown.expired) return "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+  if (countdown.urgent) return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+  return "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+}
+
+function getRoundStatusClassName(isCompleted: boolean, isScheduled: boolean): string {
+  if (isCompleted) return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+  if (isScheduled) return "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+  return "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+}
+
+function getRoundDotClassName(isCompleted: boolean, isScheduled: boolean): string {
+  if (isCompleted) return "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+  if (isScheduled) return "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+  return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+}
 
 const statusBadgeClass: Record<string, string> = {
   pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -84,8 +121,8 @@ function DetailSkeleton() {
           </div>
         </div>
         <div className="flex gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-8 w-24 rounded-full bg-gray-100 dark:bg-gray-800" />
+          {["chip-1", "chip-2", "chip-3", "chip-4"].map((id) => (
+            <div key={id} className="h-8 w-24 rounded-full bg-gray-100 dark:bg-gray-800" />
           ))}
         </div>
         <div className="space-y-2">
@@ -163,7 +200,7 @@ export default function JobDetail() {
   const handleApply = (payload: ApplyPayload) => {
     applyMutation.mutate(payload, {
       onSuccess: (res) => {
-        toast.success(`Applied for ${res.job_title} at ${res.company_name}!`)
+        toast.success(res.message || `Applied for ${res.job_title} at ${res.company_name}!`)
         navigate("/student/applications")
       },
       onError: (err) => {
@@ -175,7 +212,7 @@ export default function JobDetail() {
   const handleDeny = async (payload: { denial_reason: string; additional_comments?: string }) => {
     await denyMutation.mutateAsync(payload, {
       onSuccess: (res) => {
-        toast.success(`Opted out of ${res.job_title}`)
+        toast.success(res.message || `Opted out of ${res.job_title}`)
       },
     })
   }
@@ -195,10 +232,11 @@ export default function JobDetail() {
         <button
           type="button"
           onClick={() => {
-            navigator.clipboard.writeText(window.location.href)
+            navigator.clipboard.writeText(globalThis.location.href)
             toast.success("Link copied to clipboard!")
           }}
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+          aria-label="Share job link"
         >
           <Share2 className="h-4 w-4" />
           Share
@@ -238,13 +276,7 @@ export default function JobDetail() {
 
             {/* Deadline badge */}
             <span
-              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
-                countdown.expired
-                  ? "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
-                  : countdown.urgent
-                    ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                    : "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-              }`}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${getCountdownClassName(countdown)}`}
             >
               <Clock className="h-3.5 w-3.5" />
               {countdown.text}
@@ -259,7 +291,7 @@ export default function JobDetail() {
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-400">
               <Briefcase className="h-3.5 w-3.5" />
-              {job.job_type === "full-time" ? "Full-time" : job.job_type === "internship" ? "Internship" : "Both"}
+              {JOB_TYPE_LABELS[job.job_type] ?? "Both"}
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-400">
               <IndianRupee className="h-3.5 w-3.5" />
@@ -271,7 +303,7 @@ export default function JobDetail() {
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-400">
               <Calendar className="h-3.5 w-3.5" />
-              Posted {formatDate(job.posted_at)}
+              Posted {formatDateTime(job.posted_at)}
             </span>
           </div>
 
@@ -281,7 +313,7 @@ export default function JobDetail() {
               <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
               <div className="text-sm">
                 <p className="font-medium text-emerald-800 dark:text-emerald-300">
-                  You applied on {formatDate(student_status.applied_at!)}
+                  You applied on {formatDateTime(student_status.applied_at!)}
                 </p>
                 {student_status.application_status && (
                   <span
@@ -289,7 +321,7 @@ export default function JobDetail() {
                       statusBadgeClass[student_status.application_status] ?? "bg-gray-100 text-gray-500"
                     }`}
                   >
-                    {student_status.application_status.replace("_", " ")}
+                    {student_status.application_status.replaceAll("_", " ")}
                   </span>
                 )}
               </div>
@@ -310,7 +342,7 @@ export default function JobDetail() {
               <div className="text-sm">
                 <p className="font-medium text-gray-600 dark:text-gray-300">
                   You opted out of this job
-                  {student_status.denied_at && ` on ${formatDate(student_status.denied_at)}`}
+                  {student_status.denied_at && ` on ${formatDateTime(student_status.denied_at)}`}
                 </p>
                 {student_status.denial_reason && (
                   <p className="mt-0.5 text-gray-500 dark:text-gray-400">
@@ -524,13 +556,14 @@ export default function JobDetail() {
           {/* ─── Eligibility Tab ─── */}
           {activeTab === "Eligibility" && (
             <div className="space-y-4">
-              {eligibility.isLoading ? (
+              {eligibility.isLoading && (
                 <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-6 motion-safe:animate-pulse space-y-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="h-10 rounded-lg bg-gray-100 dark:bg-gray-800" />
+                  {["elig-1", "elig-2", "elig-3", "elig-4", "elig-5"].map((id) => (
+                    <div key={id} className="h-10 rounded-lg bg-gray-100 dark:bg-gray-800" />
                   ))}
                 </div>
-              ) : !eligibility.data ? (
+              )}
+              {!eligibility.isLoading && !eligibility.data && (
                 <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-8 text-center">
                   <Shield className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                   <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -544,7 +577,8 @@ export default function JobDetail() {
                     Retry
                   </button>
                 </div>
-              ) : (
+              )}
+              {!eligibility.isLoading && eligibility.data && (
                 <>
                   {/* Status banner */}
                   <div
@@ -579,8 +613,8 @@ export default function JobDetail() {
                         <AlertTriangle className="h-4 w-4" />
                         Blockers
                       </h4>
-                      {eligibility.data.blockers.map((b, i) => (
-                        <p key={i} className="text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
+                      {eligibility.data.blockers.map((b) => (
+                        <p key={b} className="text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
                           <XCircle className="h-3.5 w-3.5 shrink-0" /> {b}
                         </p>
                       ))}
@@ -595,26 +629,52 @@ export default function JobDetail() {
                           Eligibility Comparison
                         </h4>
                       </div>
-                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+
+                      {/* Desktop: semantic table */}
+                      <div className="hidden md:block">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-100 dark:border-gray-800">
+                              <th scope="col" className="px-5 py-2.5 text-left font-medium text-gray-500 dark:text-gray-400">Criteria</th>
+                              <th scope="col" className="px-5 py-2.5 text-center font-medium text-gray-500 dark:text-gray-400">Required</th>
+                              <th scope="col" className="px-5 py-2.5 text-center font-medium text-gray-500 dark:text-gray-400">Yours</th>
+                              <th scope="col" className="px-5 py-2.5 text-center font-medium text-gray-500 dark:text-gray-400">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {buildCriteriaRows(eligibility.data).map((row) => (
+                              <tr key={row.label}>
+                                <td className="px-5 py-3 text-gray-500 dark:text-gray-400">{row.label}</td>
+                                <td className="px-5 py-3 text-center text-gray-600 dark:text-gray-300">{row.required}</td>
+                                <td className="px-5 py-3 text-center font-medium text-gray-900 dark:text-gray-100">{row.yours}</td>
+                                <td className="px-5 py-3 text-center">
+                                  {row.pass ? (
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" />
+                                  ) : (
+                                    <XCircle className="h-4 w-4 text-red-500 mx-auto" />
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobile: card layout */}
+                      <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
                         {buildCriteriaRows(eligibility.data).map((row) => (
-                          <div
-                            key={row.label}
-                            className="flex items-center justify-between px-5 py-3 text-sm"
-                          >
-                            <span className="text-gray-500 dark:text-gray-400 flex-1">
-                              {row.label}
-                            </span>
-                            <span className="text-gray-600 dark:text-gray-300 flex-1 text-center">
-                              {row.required}
-                            </span>
-                            <span className="text-gray-900 dark:text-gray-100 flex-1 text-center font-medium">
-                              {row.yours}
-                            </span>
-                            <span className="flex-shrink-0 ml-2">
+                          <div key={row.label} className="px-5 py-3 flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{row.label}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                Required: {row.required} · Yours: {row.yours}
+                              </p>
+                            </div>
+                            <span className="ml-3 shrink-0">
                               {row.pass ? (
-                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                               ) : (
-                                <XCircle className="h-4 w-4 text-red-500" />
+                                <XCircle className="h-5 w-5 text-red-500" />
                               )}
                             </span>
                           </div>
@@ -630,8 +690,8 @@ export default function JobDetail() {
                         <AlertCircle className="h-4 w-4" />
                         Issues
                       </h4>
-                      {eligibility.data.eligibility.issues.map((issue, i) => (
-                        <p key={i} className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                      {eligibility.data.eligibility.issues.map((issue) => (
+                        <p key={issue} className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
                           <CircleDot className="h-3.5 w-3.5 shrink-0" /> {issue}
                         </p>
                       ))}
@@ -659,7 +719,7 @@ export default function JobDetail() {
                 <div className="absolute left-5 top-3 bottom-3 w-px bg-gray-200 dark:bg-gray-700" />
 
                 <motion.div variants={shouldReduceMotion ? undefined : staggerContainer} initial="initial" animate="animate" className="space-y-6">
-                  {rounds
+                  {[...rounds]
                     .sort((a, b) => a.round_number - b.round_number)
                     .map((round) => {
                       const isScheduled = round.round_status === "scheduled"
@@ -672,13 +732,7 @@ export default function JobDetail() {
                         >
                           {/* Dot */}
                           <div
-                            className={`relative z-10 flex items-center justify-center h-10 w-10 rounded-xl shrink-0 text-sm font-bold ${
-                              isCompleted
-                                ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
-                                : isScheduled
-                                  ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-                                  : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
-                            }`}
+                            className={`relative z-10 flex items-center justify-center h-10 w-10 rounded-xl shrink-0 text-sm font-bold ${getRoundStatusClassName(isCompleted, isScheduled)}`}
                           >
                             {round.round_number}
                           </div>
@@ -690,13 +744,7 @@ export default function JobDetail() {
                                 {round.round_name}
                               </h4>
                               <span
-                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  isCompleted
-                                    ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-                                    : isScheduled
-                                      ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                                      : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                                }`}
+                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${getRoundDotClassName(isCompleted, isScheduled)}`}
                               >
                                 {round.round_status}
                               </span>
@@ -707,7 +755,7 @@ export default function JobDetail() {
                               </p>
                             )}
                             <div className="mt-1.5 flex flex-wrap gap-3 text-xs text-gray-400 dark:text-gray-500">
-                              <span className="capitalize">{round.round_type.replace("_", " ")}</span>
+                              <span className="capitalize">{round.round_type.replaceAll("_", " ")}</span>
                               {round.round_date && (
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
@@ -767,13 +815,15 @@ export default function JobDetail() {
 
 // ─── Criteria comparison rows builder ────────────────────────────────────────
 
-import type { EligibilityResponse } from "@/services/student/jobBrowsing.service"
-
 interface CriteriaRow {
   label: string
   required: string
   yours: string
   pass: boolean
+}
+
+function formatPercentOrNA(value: number | null, suffix = "%"): string {
+  return value == null ? "N/A" : `${value}${suffix}`
 }
 
 function buildCriteriaRows(data: EligibilityResponse): CriteriaRow[] {
@@ -783,46 +833,32 @@ function buildCriteriaRows(data: EligibilityResponse): CriteriaRow[] {
 
   const rows: CriteriaRow[] = []
 
-  if (c.min_overall_cgpa != null) {
+  const numericChecks: Array<{
+    threshold: number | null
+    label: string
+    required: string
+    value: number | null
+    suffix?: string
+    compareFn?: (v: number, t: number) => boolean
+  }> = [
+    { threshold: c.min_overall_cgpa, label: "Min CGPA", required: String(c.min_overall_cgpa ?? ""), value: s.overall_cgpa, suffix: "" },
+    { threshold: c.max_live_kts, label: "Max Live KTs", required: String(c.max_live_kts ?? ""), value: s.total_live_kts, suffix: "", compareFn: (v, t) => v <= t },
+    { threshold: c.min_tenth_percentage, label: "Min 10th %", required: `${c.min_tenth_percentage}%`, value: s.tenth_percentage },
+    { threshold: c.min_twelfth_percentage, label: "Min 12th %", required: `${c.min_twelfth_percentage}%`, value: s.twelfth_percentage },
+    { threshold: c.min_diploma_percentage, label: "Min Diploma %", required: `${c.min_diploma_percentage}%`, value: s.diploma_percentage },
+  ]
+
+  for (const check of numericChecks) {
+    if (check.threshold == null) continue
+    const compare = check.compareFn ?? ((v: number, t: number) => v >= t)
     rows.push({
-      label: "Min CGPA",
-      required: String(c.min_overall_cgpa),
-      yours: s.overall_cgpa != null ? String(s.overall_cgpa) : "N/A",
-      pass: s.overall_cgpa != null && s.overall_cgpa >= c.min_overall_cgpa,
+      label: check.label,
+      required: check.required,
+      yours: formatPercentOrNA(check.value, check.suffix ?? "%"),
+      pass: check.value != null && compare(check.value, check.threshold),
     })
   }
-  if (c.max_live_kts != null) {
-    rows.push({
-      label: "Max Live KTs",
-      required: String(c.max_live_kts),
-      yours: String(s.total_live_kts),
-      pass: s.total_live_kts <= c.max_live_kts,
-    })
-  }
-  if (c.min_tenth_percentage != null) {
-    rows.push({
-      label: "Min 10th %",
-      required: `${c.min_tenth_percentage}%`,
-      yours: s.tenth_percentage != null ? `${s.tenth_percentage}%` : "N/A",
-      pass: s.tenth_percentage != null && s.tenth_percentage >= c.min_tenth_percentage,
-    })
-  }
-  if (c.min_twelfth_percentage != null) {
-    rows.push({
-      label: "Min 12th %",
-      required: `${c.min_twelfth_percentage}%`,
-      yours: s.twelfth_percentage != null ? `${s.twelfth_percentage}%` : "N/A",
-      pass: s.twelfth_percentage != null && s.twelfth_percentage >= c.min_twelfth_percentage,
-    })
-  }
-  if (c.min_diploma_percentage != null) {
-    rows.push({
-      label: "Min Diploma %",
-      required: `${c.min_diploma_percentage}%`,
-      yours: s.diploma_percentage != null ? `${s.diploma_percentage}%` : "N/A",
-      pass: s.diploma_percentage != null && s.diploma_percentage >= c.min_diploma_percentage,
-    })
-  }
+
   if (c.allowed_departments) {
     rows.push({
       label: "Department",

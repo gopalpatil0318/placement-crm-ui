@@ -1341,6 +1341,7 @@ const JobPlacementsTab = ({ jobId, jobStatus, onRefresh }: JobPlacementsTabProps
     );
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset expanded on data refresh
         setExpandedId(null);
     }, [placements]);
 

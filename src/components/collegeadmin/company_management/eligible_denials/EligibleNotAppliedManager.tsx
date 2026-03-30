@@ -166,15 +166,11 @@ const SortHeader = ({
             className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
         >
             {label}
-            {isActive ? (
-                currentOrder === "asc" ? (
-                    <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                ) : (
-                    <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 text-gray-300 group-hover:text-gray-400 dark:text-gray-600 dark:group-hover:text-gray-500" />
-            )}
+            {(() => {
+                if (isActive && currentOrder === "asc") return <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+                if (isActive) return <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+                return <ArrowUpDown className="h-3 w-3 text-gray-300 group-hover:text-gray-400 dark:text-gray-600 dark:group-hover:text-gray-500" />;
+            })()}
         </button>
     );
 };
@@ -498,13 +494,13 @@ const EligibleNotAppliedManager = ({ jobId, onRefresh }: EligibleNotAppliedManag
     // Unique departments — prefer criteria from API, fallback to current page
     const departments = useMemo(() => {
         if (criteria?.allowed_departments && criteria.allowed_departments.length > 0) {
-            return [...criteria.allowed_departments].sort();
+            return [...criteria.allowed_departments].sort((a, b) => a.localeCompare(b));
         }
         const depts = new Set<string>();
         students.forEach((s) => {
             if (s.dept_name) depts.add(s.dept_name);
         });
-        return Array.from(depts).sort();
+        return Array.from(depts).sort((a, b) => a.localeCompare(b));
     }, [criteria, students]);
 
     // Wrap page/limit handlers to clear selection
@@ -635,18 +631,22 @@ const EligibleNotAppliedManager = ({ jobId, onRefresh }: EligibleNotAppliedManag
                     <div className="relative flex-1 max-w-sm">
                         <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
+                            id="eligible-search"
                             type="text"
                             placeholder="Search by name or email..."
                             value={search}
                             onChange={(e) => handleSearchChange(e.target.value)}
+                            aria-label="Search students by name or email"
                             className="w-full border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-4 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                         />
                     </div>
 
                     {/* Department filter */}
                     <select
+                        id="eligible-dept-filter"
                         value={deptFilter}
                         onChange={(e) => handleDeptFilterChange(e.target.value)}
+                        aria-label="Filter by department"
                         className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors appearance-none"
                     >
                         <option value="">All Departments</option>
@@ -688,61 +688,61 @@ const EligibleNotAppliedManager = ({ jobId, onRefresh }: EligibleNotAppliedManag
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="bg-gray-50/70 dark:bg-gray-800/70 text-left text-gray-500 dark:text-gray-400">
-                            <th className="px-4 py-3 w-10">
+                            <th scope="col" className="px-4 py-3 w-10">
                                 <button
                                     type="button"
                                     onClick={toggleSelectAll}
                                     disabled={loading || students.length === 0}
-                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition disabled:opacity-30"
+                                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition disabled:opacity-30"
                                     aria-label="Select all"
                                 >
-                                    {allOnPageSelected ? (
-                                        <CheckSquare className="h-4 w-4 text-blue-600" />
-                                    ) : someOnPageSelected ? (
-                                        <Minus className="h-4 w-4 text-blue-400" />
-                                    ) : (
-                                        <Square className="h-4 w-4" />
-                                    )}
+                                    {(() => {
+                                        if (allOnPageSelected) return <CheckSquare className="h-4 w-4 text-blue-600" />;
+                                        if (someOnPageSelected) return <Minus className="h-4 w-4 text-blue-400" />;
+                                        return <Square className="h-4 w-4" />;
+                                    })()}
                                 </button>
                             </th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Student" field="student_name" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Department" field="dept_name" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="CGPA" field="overall_cgpa" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">KTs</th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">10th %</th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">KTs</th>
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">10th %</th>
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">
                                 12th / Dip %
                             </th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Gen</th>
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Gen</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? (
-                            <SkeletonTable />
-                        ) : students.length > 0 ? (
-                            students.map((student, index) => (
-                                <StudentRow
-                                    key={student.student_id}
-                                    student={student}
-                                    index={(pagination.page - 1) * pagination.limit + index + 1}
-                                    isSelected={selectedIds.has(student.student_id)}
-                                    onToggle={() => toggleSelect(student.student_id)}
-                                />
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan={9}>
-                                    <EmptyState hasFilters={hasFilters} />
-                                </td>
-                            </tr>
-                        )}
+                        {(() => {
+                            if (loading) return <SkeletonTable />;
+                            if (students.length > 0) {
+                                return students.map((student, index) => (
+                                    <StudentRow
+                                        key={student.student_id}
+                                        student={student}
+                                        index={(pagination.page - 1) * pagination.limit + index + 1}
+                                        isSelected={selectedIds.has(student.student_id)}
+                                        onToggle={() => toggleSelect(student.student_id)}
+                                    />
+                                ));
+                            }
+                            return (
+                                <tr>
+                                    <td colSpan={9}>
+                                        <EmptyState hasFilters={hasFilters} />
+                                    </td>
+                                </tr>
+                            );
+                        })()}
                     </tbody>
                 </table>
             </div>
@@ -877,12 +877,12 @@ const StudentRow = ({
 
             {/* 10th % */}
             <td className="px-4 py-3.5 text-sm text-gray-700 dark:text-gray-300">
-                {student.tenth_percentage != null ? `${student.tenth_percentage}%` : "—"}
+                {student.tenth_percentage == null ? "—" : `${student.tenth_percentage}%`}
             </td>
 
             {/* 12th / Diploma % */}
             <td className="px-4 py-3.5 text-sm text-gray-700 dark:text-gray-300">
-                {twelfthOrDiploma != null ? `${twelfthOrDiploma}%` : "—"}
+                {twelfthOrDiploma == null ? "—" : `${twelfthOrDiploma}%`}
             </td>
 
             {/* Gender */}

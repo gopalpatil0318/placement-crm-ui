@@ -82,6 +82,7 @@ const CompanyForm = ({
     const [logoLoadError, setLogoLoadError] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on prop change
         setLogoLoadError(false);
     }, [formData.companyLogo]);
 

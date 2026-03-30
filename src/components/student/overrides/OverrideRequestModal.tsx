@@ -21,7 +21,7 @@ export default function OverrideRequestModal({
   jobTitle,
   companyName,
   ineligibilityReasons,
-}: OverrideRequestModalProps) {
+}: Readonly<OverrideRequestModalProps>) {
   const {
     requestReason,
     errors,
@@ -61,13 +61,25 @@ export default function OverrideRequestModal({
   const charCount = requestReason.length
   const isValid = charCount >= 20 && charCount <= 2000
 
+  let submitButtonLabel = "Submit Override Request"
+  if (isSubmitting) submitButtonLabel = "Submitting\u2026"
+  else if (showConfirm) submitButtonLabel = "Yes, Submit Request"
+
+  const textareaBorderClass = errors.request_reason
+    ? "border-red-300 dark:border-red-700 focus:ring-red-500/30"
+    : "border-gray-200 dark:border-gray-700 focus:ring-indigo-500/30"
+
+  let countClass = "text-gray-400 dark:text-gray-500"
+  if (charCount > 2000) countClass = "text-red-500"
+  else if (charCount > 1800) countClass = "text-amber-500"
+
   const footer = (
     <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
       <button
         type="button"
         onClick={showConfirm ? () => setShowConfirm(false) : handleClose}
         disabled={isSubmitting}
-        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors disabled:opacity-40 cursor-pointer"
+        className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors disabled:opacity-40 cursor-pointer"
       >
         {showConfirm ? "Go Back" : "Cancel"}
       </button>
@@ -75,14 +87,14 @@ export default function OverrideRequestModal({
         type="button"
         onClick={handleConfirmClick}
         disabled={isSubmitting || !isValid}
-        className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-60 cursor-pointer"
+        className="inline-flex items-center gap-2 px-5 py-2 min-h-[44px] text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-60 cursor-pointer"
       >
         {isSubmitting ? (
           <Loader2 size={16} className="animate-spin" />
         ) : (
           <ShieldCheck size={16} />
         )}
-        {isSubmitting ? "Submitting…" : showConfirm ? "Yes, Submit Request" : "Submit Override Request"}
+        {submitButtonLabel}
       </button>
     </div>
   )
@@ -118,8 +130,8 @@ export default function OverrideRequestModal({
                   <p className="text-xs font-medium text-red-600 dark:text-red-400">
                     Ineligibility reasons:
                   </p>
-                  {ineligibilityReasons.map((reason, i) => (
-                    <p key={i} className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                  {ineligibilityReasons.map((reason) => (
+                    <p key={reason} className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5">
                       <XCircle size={12} className="shrink-0" />
                       {reason}
                     </p>
@@ -155,11 +167,7 @@ export default function OverrideRequestModal({
             rows={5}
             maxLength={2000}
             aria-required="true"
-            className={`w-full px-3.5 py-2.5 text-sm rounded-xl border ${
-              errors.request_reason
-                ? "border-red-300 dark:border-red-700 focus:ring-red-500/30"
-                : "border-gray-200 dark:border-gray-700 focus:ring-indigo-500/30"
-            } bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all resize-none`}
+            className={`w-full px-3.5 py-2.5 text-sm rounded-xl border ${textareaBorderClass} bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all resize-none`}
           />
           <div className="flex items-center justify-between">
             {errors.request_reason ? (
@@ -171,16 +179,7 @@ export default function OverrideRequestModal({
                 Minimum 20 characters
               </p>
             )}
-            <p
-              aria-live="polite"
-              className={`text-xs ${
-                charCount > 2000
-                  ? "text-red-500"
-                  : charCount > 1800
-                    ? "text-amber-500"
-                    : "text-gray-400 dark:text-gray-500"
-              }`}
-            >
+            <p aria-live="polite" className={`text-xs ${countClass}`}>
               {charCount}/2000
             </p>
           </div>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
@@ -37,7 +37,7 @@ export const useUpdateUser = (userId: string) => {
         deptId: null,
     });
 
-    const originalData = useRef<OriginalData | null>(null);
+    const [originalData, setOriginalData] = useState<OriginalData | null>(null);
     const [errors, setErrors] = useState<FormErrors>({});
     const [isCollegeAdmin, setIsCollegeAdmin] = useState(false);
     const [fetchedUserName, setFetchedUserName] = useState<string | undefined>();
@@ -70,20 +70,21 @@ export const useUpdateUser = (userId: string) => {
         if (!userData) return;
         const user = userData;
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- data prefill from query
         setFetchedUserName(user.user_name || "User");
 
         if (user.user_role === "collegeadmin") {
             setIsCollegeAdmin(true);
         }
 
-        originalData.current = {
+        setOriginalData({
             user_name: user.user_name || "",
             user_email: user.user_email || "",
             user_role: user.user_role || "",
             user_status: user.user_status || "",
             dept_id: user.dept_id || null,
             dept_name: user.dept_name || null,
-        };
+        });
 
         setFormData({
             userName: user.user_name || "",
@@ -151,7 +152,7 @@ export const useUpdateUser = (userId: string) => {
         }
 
         // Build partial update — only send changed fields
-        const orig = originalData.current;
+        const orig = originalData;
         const changedFields: Record<string, string | null> = {};
 
         if (orig) {
@@ -180,7 +181,7 @@ export const useUpdateUser = (userId: string) => {
 
         setErrors({});
         mutation.mutate(changedFields);
-    }, [formData, isCollegeAdmin, mutation]);
+    }, [formData, originalData, isCollegeAdmin, mutation]);
 
     const handleCancel = useCallback(() => {
         navigate("/college/view-users");
@@ -188,7 +189,7 @@ export const useUpdateUser = (userId: string) => {
 
     return {
         formData,
-        originalData: originalData.current,
+        originalData,
         errors,
         loading: mutation.isPending,
         fetching,

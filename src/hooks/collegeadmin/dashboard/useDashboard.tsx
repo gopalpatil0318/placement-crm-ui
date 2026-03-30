@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
 import { useAuth } from "@/hooks/collegeadmin/useAuth";
+import { useYearFilter } from "@/context/YearFilterContext";
 
 // ========================
 // TYPES
@@ -19,7 +20,7 @@ export type DashboardTab =
     | "training"
     | "yearComparison";
 
-export interface DashboardOverview {
+export type DashboardOverview = Readonly<{
     total_students: number;
     placed_count: number;
     placement_percentage: number;
@@ -31,18 +32,18 @@ export interface DashboardOverview {
     unplaced_count: number;
     total_companies: number;
     total_job_postings: number;
-}
+}>;
 
-export interface PackageSlabs {
+export type PackageSlabs = Readonly<{
     below_3l: number;
     "3l_to_5l": number;
     "5l_to_8l": number;
     "8l_to_12l": number;
     "12l_to_20l": number;
     above_20l: number;
-}
+}>;
 
-export interface OfferBreakdown {
+export type OfferBreakdown = Readonly<{
     fulltime_offers: number;
     internship_offers: number;
     pending_offers: number;
@@ -51,21 +52,21 @@ export interface OfferBreakdown {
     rejected_offers: number;
     cancelled_offers: number;
     students_with_multiple_offers: number;
-}
+}>;
 
-export interface InternshipStats {
+export type InternshipStats = Readonly<{
     highest_stipend: number;
     average_stipend: number;
     with_stipend_count: number;
-}
+}>;
 
-export interface PlacementStats {
+export type PlacementStats = Readonly<{
     package_slabs: PackageSlabs;
     offer_breakdown: OfferBreakdown;
     internship_stats: InternshipStats;
-}
+}>;
 
-export interface ApplicationFunnel {
+export type ApplicationFunnel = Readonly<{
     total_applications: number;
     unique_applicants: number;
     pending: number;
@@ -78,10 +79,10 @@ export interface ApplicationFunnel {
     selection_rate: number;
     applications_per_student: number;
     eligible_not_applied_count: number;
-}
+}>;
 
-export interface StudentReadiness {
-    student_status: {
+export type StudentReadiness = Readonly<{
+    student_status: Readonly<{
         total_students: number;
         active: number;
         inactive: number;
@@ -92,8 +93,8 @@ export interface StudentReadiness {
         profile_incomplete: number;
         profile_approved: number;
         profile_pending_approval: number;
-    };
-    restrictions: {
+    }>;
+    restrictions: Readonly<{
         total_active_restrictions: number;
         bar_from_placements: number;
         bar_from_company: number;
@@ -101,26 +102,26 @@ export interface StudentReadiness {
         warning: number;
         temporary_suspension: number;
         restricted_students: number;
-    };
-}
+    }>;
+}>;
 
-export interface DiversityStats {
-    gender_wise: {
+export type DiversityStats = Readonly<{
+    gender_wise: ReadonlyArray<Readonly<{
         gender: string;
         total: number;
         placed: number;
         placement_percentage: number;
-    }[];
-    category_wise: {
+    }>>;
+    category_wise: ReadonlyArray<Readonly<{
         category: string;
         total: number;
         placed: number;
         placement_percentage: number;
-    }[];
-}
+    }>>;
+}>;
 
-export interface TrainingStats {
-    training: {
+export type TrainingStats = Readonly<{
+    training: Readonly<{
         total_programs: number;
         upcoming: number;
         enrollment_open: number;
@@ -131,8 +132,8 @@ export interface TrainingStats {
         total_completed_enrollment: number;
         total_dropped: number;
         overall_avg_rating: number;
-    };
-    feedback: {
+    }>;
+    feedback: Readonly<{
         total_feedback: number;
         average_rating: number;
         five_star: number;
@@ -140,10 +141,10 @@ export interface TrainingStats {
         three_star: number;
         two_star: number;
         one_star: number;
-    };
-}
+    }>;
+}>;
 
-export interface DepartmentStat {
+export type DepartmentStat = Readonly<{
     dept_id: string;
     dept_name: string;
     total_students: number;
@@ -154,9 +155,9 @@ export interface DepartmentStat {
     average_package: number;
     avg_cgpa: number;
     profile_complete_count: number;
-}
+}>;
 
-export interface CompanyStat {
+export type CompanyStat = Readonly<{
     company_id: string;
     company_name: string;
     industry: string;
@@ -172,9 +173,9 @@ export interface CompanyStat {
     highest_package: number;
     feedback_avg_rating: number;
     feedback_count: number;
-}
+}>;
 
-export interface YearComparison {
+export type YearComparison = Readonly<{
     passout_year: number;
     total_students: number;
     placed_count: number;
@@ -188,7 +189,7 @@ export interface YearComparison {
     total_job_postings: number;
     total_applications: number;
     selection_rate: number;
-}
+}>;
 
 // ========================
 // HELPERS
@@ -221,11 +222,6 @@ export function getGrowthPercent(
     return Number(((c - p) / p * 100).toFixed(2));
 }
 
-export function getPassoutYearOptions(): number[] {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 6 }, (_, i) => currentYear + 1 - i);
-}
-
 export const SLAB_LABELS: Record<string, string> = {
     below_3l: "< ₹3 LPA",
     "3l_to_5l": "₹3-5 LPA",
@@ -244,21 +240,22 @@ const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 export function useDashboard() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
+    const { selectedYear } = useYearFilter();
 
-    const defaultYear = useMemo(() => new Date().getFullYear(), []);
-
-    const [passoutYear, setPassoutYearState] = useState<number>(defaultYear);
     const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
     const [comparisonYears, setComparisonYears] = useState<number[]>(() => {
-        const y = new Date().getFullYear();
+        const y = Number.parseInt(
+            new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata', year: 'numeric' }),
+            10,
+        );
         return [y, y - 1, y - 2];
     });
 
     // ── Overview (always fires) ──
     const overview = useQuery({
-        queryKey: queryKeys.dashboard.overview(passoutYear),
+        queryKey: queryKeys.dashboard.overview(selectedYear),
         queryFn: async () => {
-            const res = await CollegeAdminService.getDashboardOverview(passoutYear);
+            const res = await CollegeAdminService.getDashboardOverview(selectedYear);
             return res.data as DashboardOverview;
         },
         staleTime: STALE_TIME,
@@ -267,9 +264,9 @@ export function useDashboard() {
 
     // ── Tab queries (lazy — only fire when tab is active) ──
     const placement = useQuery({
-        queryKey: queryKeys.dashboard.placement(passoutYear),
+        queryKey: queryKeys.dashboard.placement(selectedYear),
         queryFn: async () => {
-            const res = await CollegeAdminService.getDashboardPlacementStats(passoutYear);
+            const res = await CollegeAdminService.getDashboardPlacementStats(selectedYear);
             return res.data as PlacementStats;
         },
         enabled: activeTab === "placement",
@@ -278,9 +275,9 @@ export function useDashboard() {
     });
 
     const funnel = useQuery({
-        queryKey: queryKeys.dashboard.funnel(passoutYear),
+        queryKey: queryKeys.dashboard.funnel(selectedYear),
         queryFn: async () => {
-            const res = await CollegeAdminService.getDashboardApplicationFunnel(passoutYear);
+            const res = await CollegeAdminService.getDashboardApplicationFunnel(selectedYear);
             return res.data as ApplicationFunnel;
         },
         enabled: activeTab === "funnel",
@@ -289,9 +286,9 @@ export function useDashboard() {
     });
 
     const students = useQuery({
-        queryKey: queryKeys.dashboard.students(passoutYear),
+        queryKey: queryKeys.dashboard.students(selectedYear),
         queryFn: async () => {
-            const res = await CollegeAdminService.getDashboardStudentReadiness(passoutYear);
+            const res = await CollegeAdminService.getDashboardStudentReadiness(selectedYear);
             return res.data as StudentReadiness;
         },
         enabled: activeTab === "students",
@@ -300,9 +297,9 @@ export function useDashboard() {
     });
 
     const diversity = useQuery({
-        queryKey: queryKeys.dashboard.diversity(passoutYear),
+        queryKey: queryKeys.dashboard.diversity(selectedYear),
         queryFn: async () => {
-            const res = await CollegeAdminService.getDashboardDiversityStats(passoutYear);
+            const res = await CollegeAdminService.getDashboardDiversityStats(selectedYear);
             return res.data as DiversityStats;
         },
         enabled: activeTab === "diversity",
@@ -311,9 +308,9 @@ export function useDashboard() {
     });
 
     const training = useQuery({
-        queryKey: queryKeys.dashboard.training(passoutYear),
+        queryKey: queryKeys.dashboard.training(selectedYear),
         queryFn: async () => {
-            const res = await CollegeAdminService.getDashboardTrainingStats(passoutYear);
+            const res = await CollegeAdminService.getDashboardTrainingStats(selectedYear);
             return res.data as TrainingStats;
         },
         enabled: activeTab === "training",
@@ -322,9 +319,9 @@ export function useDashboard() {
     });
 
     const departments = useQuery({
-        queryKey: queryKeys.dashboard.departments(passoutYear),
+        queryKey: queryKeys.dashboard.departments(selectedYear),
         queryFn: async () => {
-            const res = await CollegeAdminService.getDashboardDepartmentWise(passoutYear);
+            const res = await CollegeAdminService.getDashboardDepartmentWise(selectedYear);
             return res.data as DepartmentStat[];
         },
         enabled: activeTab === "departments",
@@ -333,9 +330,9 @@ export function useDashboard() {
     });
 
     const companies = useQuery({
-        queryKey: queryKeys.dashboard.companies(passoutYear),
+        queryKey: queryKeys.dashboard.companies(selectedYear),
         queryFn: async () => {
-            const res = await CollegeAdminService.getDashboardCompanyWise(passoutYear);
+            const res = await CollegeAdminService.getDashboardCompanyWise(selectedYear);
             return res.data as CompanyStat[];
         },
         enabled: activeTab === "companies",
@@ -354,14 +351,6 @@ export function useDashboard() {
         refetchOnWindowFocus: false,
     });
 
-    // ── Year change (new year = new queryKey, React Query auto-fetches) ──
-    const changeYear = useCallback(
-        (newYear: number) => {
-            setPassoutYearState(newYear);
-        },
-        [],
-    );
-
     // ── Manual refresh ──
     const refresh = useCallback(() => {
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.root() });
@@ -369,8 +358,7 @@ export function useDashboard() {
 
     return {
         collegeName: user?.collegeName ?? "",
-        passoutYear,
-        changeYear,
+        selectedYear,
         activeTab,
         setActiveTab,
         comparisonYears,

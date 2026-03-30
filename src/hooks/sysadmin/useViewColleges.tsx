@@ -50,7 +50,7 @@ export const useViewColleges = () => {
     return f
   }, [page, limit, debouncedSearch, statusFilter, typeFilter])
 
-  const { data, isLoading, isFetching, error } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: queryKeys.colleges.all(queryFilters),
     queryFn: () => {
       const params: CollegeListParams = { page, limit }
@@ -108,6 +108,7 @@ export const useViewColleges = () => {
     loading: isLoading,
     isFetching,
     error: error instanceof ApiError ? error.message : error ? "Failed to fetch colleges" : null,
+    refresh: refetch,
     search,
     page,
     limit,

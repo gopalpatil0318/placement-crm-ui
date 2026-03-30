@@ -110,7 +110,7 @@ export default function NotificationCenter() {
           type="button"
           onClick={() => markAllRead()}
           disabled={unreadCount === 0 || isMarkingAllRead}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-xl text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           {isMarkingAllRead ? (
             <Loader2 size={15} className="animate-spin" />
@@ -161,7 +161,8 @@ export default function NotificationCenter() {
                   (e.target.value as NotificationType) || "",
                 )
               }
-              className="text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 cursor-pointer"
+              aria-label="Filter by notification type"
+              className="text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl px-3 py-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-indigo-500/30 cursor-pointer"
             >
               <option value="">All types</option>
               {NOTIFICATION_TYPES.map((type) => (
@@ -192,13 +193,12 @@ export default function NotificationCenter() {
 
         {/* ── Notification List ── */}
         <div id="notif-tabpanel" role="tabpanel" aria-labelledby={`notif-tab-${readFilter}`} className="border-t border-gray-100 dark:border-gray-800">
-          {isLoading ? (
-            <SkeletonList />
-          ) : isError ? (
-            <ErrorState onRetry={() => refetch()} />
-          ) : notifications.length === 0 ? (
+          {isLoading && <SkeletonList />}
+          {!isLoading && isError && <ErrorState onRetry={() => refetch()} />}
+          {!isLoading && !isError && notifications.length === 0 && (
             <EmptyState hasFilters={readFilter !== "all" || typeFilter !== ""} />
-          ) : (
+          )}
+          {!isLoading && !isError && notifications.length > 0 && (
             <Wrapper {...wrapperProps}>
               {notifications.map((notification) => {
                 const ItemWrapper = shouldReduce ? "div" : motion.div
@@ -231,7 +231,7 @@ export default function NotificationCenter() {
                 type="button"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Previous page"
               >
                 <ChevronLeft size={16} className="text-gray-500" />
@@ -239,7 +239,7 @@ export default function NotificationCenter() {
               {pageNumbers.map((p, idx) =>
                 p === "..." ? (
                   <span
-                    key={`ellipsis-${idx}`}
+                    key={`ellipsis-${p}-${idx}`}
                     className="px-1 text-xs text-gray-400"
                   >
                     …
@@ -263,7 +263,7 @@ export default function NotificationCenter() {
                 type="button"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= pagination.totalPages}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Next page"
               >
                 <ChevronRight size={16} className="text-gray-500" />
@@ -281,11 +281,11 @@ export default function NotificationCenter() {
 function NotificationRow({
   notification,
   onClick,
-}: {
+}: Readonly<{
   notification: StudentNotification
   onClick: (n: StudentNotification) => void
-}) {
-  const type = notification.notification_type as NotificationType
+}>) {
+  const { notification_type: type } = notification
   const Icon = NOTIFICATION_TYPE_ICONS[type] ?? Bell
   const colors = NOTIFICATION_TYPE_COLORS[type] ?? NOTIFICATION_TYPE_COLORS.general
 
@@ -294,9 +294,9 @@ function NotificationRow({
       type="button"
       onClick={() => onClick(notification)}
       className={`w-full flex items-start gap-4 px-5 py-4 text-left transition-colors cursor-pointer group hover:bg-gray-50 dark:hover:bg-gray-800/40 border-b border-gray-50 dark:border-gray-800/50 last:border-b-0 ${
-        !notification.is_read
-          ? "bg-indigo-50/30 dark:bg-indigo-950/15"
-          : ""
+        notification.is_read
+          ? ""
+          : "bg-indigo-50/30 dark:bg-indigo-950/15"
       }`}
     >
       {/* Icon */}
@@ -311,9 +311,9 @@ function NotificationRow({
         <div className="flex items-start justify-between gap-3">
           <p
             className={`text-sm leading-snug ${
-              !notification.is_read
-                ? "font-semibold text-gray-900 dark:text-gray-100"
-                : "font-normal text-gray-700 dark:text-gray-300"
+              notification.is_read
+                ? "font-normal text-gray-700 dark:text-gray-300"
+                : "font-semibold text-gray-900 dark:text-gray-100"
             }`}
           >
             {notification.title}
@@ -334,7 +334,6 @@ function NotificationRow({
         )}
         {/* Type badge */}
         <span
-          role="status"
           className={`inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[11px] font-medium ${colors.bg} ${colors.text}`}
         >
           <span className={`h-1.5 w-1.5 rounded-full ${colors.dot}`} />
@@ -347,12 +346,14 @@ function NotificationRow({
 
 // ─── Skeleton List ──────────────────────────────────────────────────────────────
 
+const SKELETON_KEYS_6 = ["sk-c-1", "sk-c-2", "sk-c-3", "sk-c-4", "sk-c-5", "sk-c-6"] as const;
+
 function SkeletonList() {
   return (
     <div>
-      {Array.from({ length: 6 }).map((_, i) => (
+      {SKELETON_KEYS_6.map((key) => (
         <div
-          key={i}
+          key={key}
           className="flex items-start gap-4 px-5 py-4 motion-safe:animate-pulse border-b border-gray-50 dark:border-gray-800/50 last:border-b-0"
         >
           <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
@@ -372,7 +373,7 @@ function SkeletonList() {
 
 // ─── Error State ────────────────────────────────────────────────────────────────
 
-function ErrorState({ onRetry }: { onRetry: () => void }) {
+function ErrorState({ onRetry }: Readonly<{ onRetry: () => void }>) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6">
       <div className="h-14 w-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
@@ -398,7 +399,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 
 // ─── Empty States ───────────────────────────────────────────────────────────────
 
-function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+function EmptyState({ hasFilters }: Readonly<{ hasFilters: boolean }>) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6">
       <div className="h-14 w-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">

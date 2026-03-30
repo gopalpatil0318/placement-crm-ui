@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
@@ -105,6 +105,25 @@ export const useViewRoundResults = (roundId: string) => {
     const statusSummary: StatusSummary | null = rawData?.status_summary || null;
     const pagination: Pagination = response?.pagination || { page, limit, total: 0, totalPages: 0 };
     const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch round results") : null;
+
+    // Prefetch next page
+    useEffect(() => {
+        if (pagination.page < pagination.totalPages) {
+            const nextFilters = { ...queryFilters, page: pagination.page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.jobs.roundResults(roundId, nextFilters),
+                queryFn: () => CollegeAdminService.getRoundResults(roundId, {
+                    page: pagination.page + 1,
+                    limit,
+                    search: debouncedSearch || undefined,
+                    result_status: statusFilter || undefined,
+                    attended: attendedFilter || undefined,
+                    sort_by: sortBy || undefined,
+                    sort_order: sortOrder || undefined,
+                }),
+            });
+        }
+    }, [pagination.page, pagination.totalPages, queryFilters, roundId, queryClient, limit, debouncedSearch, statusFilter, attendedFilter, sortBy, sortOrder]);
 
     const handleSearchChange = useCallback(
         (value: string) => {
