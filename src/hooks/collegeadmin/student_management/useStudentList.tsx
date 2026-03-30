@@ -161,7 +161,7 @@ export const useStudentList = (options?: UseStudentListOptions) => {
         totalPages: 0,
     };
     const deptData = departmentsQuery.data;
-    let departments: unknown[];
+    let departments: { dept_id: string; dept_name: string; [key: string]: unknown }[];
     if (Array.isArray(deptData?.data)) {
         departments = deptData.data;
     } else if (Array.isArray(deptData)) {
