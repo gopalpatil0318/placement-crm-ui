@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, LayoutGroup, useReducedMotion } from "framer-motion";
 import {
@@ -17,6 +17,7 @@ import {
     UserCheck,
     Loader2,
 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
 import AnimatedTabContent from "@/components/ui/AnimatedTabContent";
@@ -25,6 +26,7 @@ import { useViewCompany, type CompanyDetail as CompanyDetailType } from "@/hooks
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
+import { queryKeys } from "@/lib/queryKeys";
 import ContactsTab from "@/components/collegeadmin/company_management/ContactsTab";
 import CompanyJobsTab from "@/components/collegeadmin/company_management/CompanyJobsTab";
 
@@ -278,10 +280,29 @@ const CompanyDetail = () => {
     const { companyId } = useParams<{ companyId: string }>();
     const navigate = useNavigate();
     const shouldReduce = useReducedMotion();
+    const queryClient = useQueryClient();
     const { company, loading, error, refresh } = useViewCompany(companyId);
     const [activeTab, setActiveTab] = useState<TabKey>("overview");
-    const [toggling, setToggling] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+
+    const toggleMutation = useMutation({
+        mutationFn: ({ id, status }: { id: string; status: string }) =>
+            CollegeAdminService.toggleCompanyStatus(id, status),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.companies.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.companies.detail(companyId!) });
+            showToast({
+                type: "success",
+                title: "Status Updated",
+                description: response?.message || `Company status updated successfully.`,
+            });
+            setShowConfirm(false);
+        },
+        onError: (err: unknown) => {
+            const msg = err instanceof ApiError ? err.message : "Failed to toggle status";
+            showToast({ type: "error", title: "Error", description: msg });
+        },
+    });
 
     const breadcrumbs = useMemo(
         () => [
@@ -293,32 +314,14 @@ const CompanyDetail = () => {
     );
 
     const handleCloseConfirm = useCallback(() => {
-        if (!toggling) setShowConfirm(false);
-    }, [toggling]);
+        if (!toggleMutation.isPending) setShowConfirm(false);
+    }, [toggleMutation.isPending]);
 
-    // â”€â”€ Status toggle â”€â”€
-    const handleToggleStatus = useCallback(async () => {
+    const handleToggleStatus = useCallback(() => {
         if (!company) return;
-
         const newStatus = company.company_status === "active" ? "inactive" : "active";
-
-        setToggling(true);
-        try {
-            await CollegeAdminService.toggleCompanyStatus(company.company_id, newStatus);
-            showToast({
-                type: "success",
-                title: "Status Updated",
-                description: `${company.company_name} is now ${newStatus}.`,
-            });
-            refresh();
-        } catch (err: unknown) {
-            const msg = err instanceof ApiError ? err.message : "Failed to toggle status";
-            showToast({ type: "error", title: "Error", description: msg });
-        } finally {
-            setToggling(false);
-            setShowConfirm(false);
-        }
-    }, [company, refresh]);
+        toggleMutation.mutate({ id: company.company_id, status: newStatus });
+    }, [company, toggleMutation]);
 
     // â”€â”€ Loading â”€â”€
     if (loading) {
@@ -533,7 +536,7 @@ const CompanyDetail = () => {
             <ModalWrapper
                 isOpen={showConfirm}
                 onClose={handleCloseConfirm}
-                disabled={toggling}
+                disabled={toggleMutation.isPending}
                 title={isActive ? "Deactivate Company" : "Activate Company"}
                 titleIcon={
                     <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${
@@ -588,7 +591,7 @@ const CompanyDetail = () => {
                     <button
                         type="button"
                         onClick={handleCloseConfirm}
-                        disabled={toggling}
+                        disabled={toggleMutation.isPending}
                         className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40"
                     >
                         Cancel
@@ -596,15 +599,15 @@ const CompanyDetail = () => {
                     <button
                         type="button"
                         onClick={handleToggleStatus}
-                        disabled={toggling}
+                        disabled={toggleMutation.isPending}
                         className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed ${
                             isActive
                                 ? "bg-red-600 hover:bg-red-700"
                                 : "bg-emerald-600 hover:bg-emerald-700"
                         }`}
                     >
-                        {toggling && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {toggling ? "Updating..." : isActive ? "Deactivate" : "Activate"}
+                        {toggleMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {toggleMutation.isPending ? "Updating..." : isActive ? "Deactivate" : "Activate"}
                     </button>
                 </div>
             </ModalWrapper>

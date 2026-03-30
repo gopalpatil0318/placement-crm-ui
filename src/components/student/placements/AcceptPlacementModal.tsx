@@ -20,13 +20,14 @@ export default function AcceptPlacementModal({
   placement,
   isOpen,
   onClose,
-}: AcceptPlacementModalProps) {
+}: Readonly<AcceptPlacementModalProps>) {
   const { acceptPlacement, isAccepting } = useAcceptPlacement()
   const [accepted, setAccepted] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   // Reset state when opening for a different placement
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on modal open
     if (isOpen) setAccepted(false)
   }, [isOpen, placement?.placement_id])
 
@@ -191,11 +192,11 @@ function DetailRow({
   label,
   value,
   highlight = false,
-}: {
+}: Readonly<{
   label: string
   value: string
   highlight?: boolean
-}) {
+}>) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-gray-500 dark:text-gray-400">{label}</span>

@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from "react"
-import { useQuery, keepPreviousData } from "@tanstack/react-query"
+import { useState, useCallback, useRef, useEffect, useMemo } from "react"
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/queryKeys"
 import { TrainingProgramsService } from "@/services/student/trainingPrograms.service"
 import type {
@@ -11,6 +11,8 @@ import type {
 // ─── Hook ───────────────────────────────────────────────────────────────────────
 
 export function useAvailableTrainings(initialLimit = 10, enabled = true) {
+  const queryClient = useQueryClient()
+
   // ── Filter State ──
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
@@ -27,15 +29,15 @@ export function useAvailableTrainings(initialLimit = 10, enabled = true) {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [search])
 
-  // ── Build query filters ──
-  const queryFilters: StudentTrainingFilters = {
-    ...(typeFilter !== "all" ? { program_type: typeFilter } : {}),
+  // ── Build query filters (memoized) ──
+  const queryFilters: StudentTrainingFilters = useMemo(() => ({
+    ...(typeFilter === "all" ? {} : { program_type: typeFilter }),
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
     sort_by: sortBy,
     sort_order: sortOrder,
     page,
     limit,
-  }
+  }), [typeFilter, debouncedSearch, sortBy, sortOrder, page, limit])
 
   // ── Query ──
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
@@ -48,6 +50,17 @@ export function useAvailableTrainings(initialLimit = 10, enabled = true) {
   // ── Derived ──
   const programs: StudentAvailableProgram[] = data?.programs ?? []
   const pagination = data?.pagination ?? { page: 1, limit: initialLimit, total: 0, totalPages: 0 }
+
+  // ── Next-page prefetch ──
+  useEffect(() => {
+    if (pagination.page < pagination.totalPages) {
+      const nextFilters = { ...queryFilters, page: pagination.page + 1 }
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.studentPortal.availableTrainings(nextFilters as Record<string, unknown>),
+        queryFn: () => TrainingProgramsService.getAvailableTraining(nextFilters),
+      })
+    }
+  }, [queryClient, queryFilters, pagination.page, pagination.totalPages])
 
   // ── Handlers ──
   const handleSearchChange = useCallback((value: string) => {

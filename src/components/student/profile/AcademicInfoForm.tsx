@@ -90,7 +90,7 @@ export default function AcademicInfoForm({
                     <Field label="Total Dead KTs" value={academicInfo.total_dead_kts} />
                     <Field
                         label="Education Gap"
-                        value={academicInfo.any_gap_during_education ? `Yes (${academicInfo.gap_years} year${academicInfo.gap_years > 1 ? "s" : ""})` : "No"}
+                        value={academicInfo.any_gap_during_education ? `Yes (${academicInfo.gap_years ?? 0} year${(academicInfo.gap_years ?? 0) > 1 ? "s" : ""})` : "No"}
                     />
                     {academicInfo.any_gap_during_education && (
                         <div className="sm:col-span-2">

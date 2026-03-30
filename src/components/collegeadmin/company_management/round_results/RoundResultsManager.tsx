@@ -97,7 +97,8 @@ const formatDateTime = (iso: string | null) => {
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-    });
+        hour12: true,
+    }) + " IST";
 };
 
 const getScoreColor = (score: number | null): string => {
@@ -173,17 +174,18 @@ const StatusPills = ({
                 type="button"
                 onClick={() => onFilter("")}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    !activeFilter
-                        ? "bg-gray-900 text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                    activeFilter
+                        ? "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                        : "bg-gray-900 text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
                 }`}
             >
                 All
+                {" "}
                 <span
                     className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                        !activeFilter
-                            ? "bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900"
-                            : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                        activeFilter
+                            ? "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                            : "bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900"
                     }`}
                 >
                     {summary.total}
@@ -296,7 +298,7 @@ const SummaryStatsBar = ({ summary, loading }: { summary: StatusSummary | null; 
             border: "border-purple-100 dark:border-purple-800",
             iconBg: "bg-purple-100 dark:bg-purple-900/40",
             iconColor: "text-purple-600 dark:text-purple-400",
-            value: summary.avg_score !== null ? Number(summary.avg_score).toFixed(1) : "—",
+            value: summary.avg_score === null ? "—" : Number(summary.avg_score).toFixed(1),
             label: "Avg Score",
             Icon: BarChart3,
         },
@@ -322,7 +324,7 @@ const SummaryStatsBar = ({ summary, loading }: { summary: StatusSummary | null; 
 const SkeletonStats = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 animate-pulse">
         {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3.5 flex items-center gap-3">
+            <div key={`stat-skel-${i}`} className="rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3.5 flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-gray-100 dark:bg-gray-700" />
                 <div className="space-y-1.5">
                     <div className="h-5 w-12 bg-gray-100 dark:bg-gray-700 rounded" />
@@ -383,7 +385,7 @@ const RoundInfoHeader = ({
                                 roundStatusColors[roundInfo.round_status] || "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
                             }`}
                         >
-                            {roundInfo.round_status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                            {roundInfo.round_status.replaceAll("_", " ").replaceAll(/\b\w/g, (c) => c.toUpperCase())}
                         </span>
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
@@ -413,6 +415,14 @@ const SortHeader = ({
     onSort: (field: string) => void;
 }) => {
     const isActive = currentSort === field;
+    let sortIcon;
+    if (!isActive) {
+        sortIcon = <ArrowUpDown className="h-3 w-3 text-gray-300 group-hover:text-gray-400 dark:text-gray-600 dark:group-hover:text-gray-500" />;
+    } else if (currentOrder === "asc") {
+        sortIcon = <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+    } else {
+        sortIcon = <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+    }
     return (
         <button
             type="button"
@@ -420,15 +430,7 @@ const SortHeader = ({
             className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
         >
             {label}
-            {isActive ? (
-                currentOrder === "asc" ? (
-                    <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                ) : (
-                    <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 text-gray-300 group-hover:text-gray-400 dark:text-gray-600 dark:group-hover:text-gray-500" />
-            )}
+            {sortIcon}
         </button>
     );
 };
@@ -467,7 +469,7 @@ const PaginationControls = ({
                 type="button"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1 || loading}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
                 aria-label="Previous page"
             >
                 <ChevronLeft className="h-4 w-4" />
@@ -484,7 +486,7 @@ const PaginationControls = ({
                         onClick={() => onPageChange(p)}
                         disabled={loading}
                         aria-current={p === page ? "page" : undefined}
-                        className={`min-w-[32px] h-8 rounded-lg text-sm font-medium transition ${
+                        className={`min-w-[44px] min-h-[44px] rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                             p === page
                                 ? "bg-blue-600 text-white shadow-sm"
                                 : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
@@ -498,7 +500,7 @@ const PaginationControls = ({
                 type="button"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages || loading}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
                 aria-label="Next page"
             >
                 <ChevronRight className="h-4 w-4" />
@@ -628,9 +630,9 @@ const ApplicationPickerDropdown = ({
     if (selectedApp) {
         return (
             <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <span className="block text-sm font-medium text-gray-700 dark:text-gray-300" id="student-label">
                     Student <span className="text-red-500">*</span>
-                </label>
+                </span>
                 <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
                     <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
                         <span className="text-sm font-bold text-blue-700 dark:text-blue-400">
@@ -646,7 +648,7 @@ const ApplicationPickerDropdown = ({
                         </p>
                     </div>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium ${APP_STATUS_COLORS[selectedApp.application_status] || "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}>
-                        {selectedApp.application_status.replace(/_/g, " ")}
+                        {selectedApp.application_status.replaceAll("_", " ")}
                     </span>
                     {!disabled && (
                         <button
@@ -665,12 +667,13 @@ const ApplicationPickerDropdown = ({
 
     return (
         <div className="space-y-1.5 relative">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="student-search" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Select Student <span className="text-red-500">*</span>
             </label>
             <div className="relative">
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                 <input
+                    id="student-search"
                     type="text"
                     value={search}
                     onChange={(e) => {
@@ -690,25 +693,36 @@ const ApplicationPickerDropdown = ({
             {/* Dropdown */}
             {isOpen && (
                 <>
-                    <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+                    <button
+                        type="button"
+                        className="fixed inset-0 z-10 cursor-default bg-transparent border-none p-0"
+                        aria-label="Close dropdown"
+                        onClick={() => setIsOpen(false)}
+                    />
                     <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg max-h-60 overflow-y-auto">
-                        {loading ? (
-                            <div className="px-4 py-6 text-center">
-                                <Loader2 className="h-5 w-5 animate-spin text-blue-500 mx-auto mb-2" />
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Loading applications...</p>
-                            </div>
-                        ) : applications.length === 0 ? (
-                            <div className="px-4 py-6 text-center">
-                                <Users className="h-6 w-6 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                                    {search ? "No students match your search" : "No eligible applications"}
-                                </p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                                    {search ? "Try a different name or enrollment number" : "Students must be shortlisted or above"}
-                                </p>
-                            </div>
-                        ) : (
-                            applications.map((app) => (
+                        {(() => {
+                            if (loading) {
+                                return (
+                                    <div className="px-4 py-6 text-center">
+                                        <Loader2 className="h-5 w-5 animate-spin text-blue-500 mx-auto mb-2" />
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">Loading applications...</p>
+                                    </div>
+                                );
+                            }
+                            if (applications.length === 0) {
+                                return (
+                                    <div className="px-4 py-6 text-center">
+                                        <Users className="h-6 w-6 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                                            {search ? "No students match your search" : "No eligible applications"}
+                                        </p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                            {search ? "Try a different name or enrollment number" : "Students must be shortlisted or above"}
+                                        </p>
+                                    </div>
+                                );
+                            }
+                            return applications.map((app) => (
                                 <button
                                     key={app.application_id}
                                     type="button"
@@ -732,11 +746,11 @@ const ApplicationPickerDropdown = ({
                                         </p>
                                     </div>
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-medium flex-shrink-0 ${APP_STATUS_COLORS[app.application_status] || "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}>
-                                        {app.application_status.replace(/_/g, " ")}
+                                        {app.application_status.replaceAll("_", " ")}
                                     </span>
                                 </button>
-                            ))
-                        )}
+                            ));
+                        })()}
                     </div>
                 </>
             )}
@@ -800,7 +814,7 @@ const AddResultModal = ({
                 />
 
                 {/* Status + Score row */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FloatingSelect
                         label="Status"
                         name="result_status"
@@ -813,10 +827,11 @@ const AddResultModal = ({
                         }))}
                     />
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        <label htmlFor="add-score" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                             Score
                         </label>
                         <input
+                            id="add-score"
                             type="number"
                             name="score"
                             value={formData.score}
@@ -825,6 +840,7 @@ const AddResultModal = ({
                             min={0}
                             max={100000}
                             step="0.01"
+                            inputMode="decimal"
                             disabled={loading}
                             className={`w-full rounded-xl border px-4 py-2.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50 ${
                                 errors.score
@@ -866,12 +882,13 @@ const AddResultModal = ({
                 />
 
                 {/* Schedule dates */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        <label htmlFor="add-scheduled-at" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                             Scheduled At
                         </label>
                         <input
+                            id="add-scheduled-at"
                             type="datetime-local"
                             name="scheduled_at"
                             value={formData.scheduled_at}
@@ -881,10 +898,11 @@ const AddResultModal = ({
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        <label htmlFor="add-completed-at" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                             Completed At
                         </label>
                         <input
+                            id="add-completed-at"
                             type="datetime-local"
                             name="completed_at"
                             value={formData.completed_at}
@@ -984,7 +1002,7 @@ const EditResultModal = ({
                 </div>
 
                 {/* Status + Score row */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FloatingSelect
                         label="Status"
                         name="result_status"
@@ -997,10 +1015,11 @@ const EditResultModal = ({
                         }))}
                     />
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        <label htmlFor="edit-score" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                             Score
                         </label>
                         <input
+                            id="edit-score"
                             type="number"
                             name="score"
                             value={formData.score}
@@ -1009,6 +1028,7 @@ const EditResultModal = ({
                             min={0}
                             max={100000}
                             step="0.01"
+                            inputMode="decimal"
                             disabled={loading}
                             className={`w-full rounded-xl border px-4 py-2.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50 ${
                                 errors.score
@@ -1050,12 +1070,13 @@ const EditResultModal = ({
                 />
 
                 {/* Schedule dates */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        <label htmlFor="edit-scheduled-at" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                             Scheduled At
                         </label>
                         <input
+                            id="edit-scheduled-at"
                             type="datetime-local"
                             name="scheduled_at"
                             value={formData.scheduled_at}
@@ -1065,10 +1086,11 @@ const EditResultModal = ({
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        <label htmlFor="edit-completed-at" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                             Completed At
                         </label>
                         <input
+                            id="edit-completed-at"
                             type="datetime-local"
                             name="completed_at"
                             value={formData.completed_at}
@@ -1153,7 +1175,6 @@ const BulkEntryPanel = ({
     const [step, setStep] = useState<"select" | "fill">("select");
     const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set());
     const [rows, setRows] = useState<BulkEntryRow[]>([]);
-    const [showResultModal, setShowResultModal] = useState(false);
 
     // Toggle individual selection
     const toggleApp = useCallback((appId: string) => {
@@ -1216,28 +1237,23 @@ const BulkEntryPanel = ({
         setRows((prev) => prev.map((r) => ({ ...r, attended })));
     }, []);
 
-    useEffect(() => {
-        if (bulkResult) setShowResultModal(true);
-    }, [bulkResult]);
-
-    const handleBulkSubmit = useCallback(async () => {
+    const handleBulkSubmit = useCallback(() => {
         if (rows.length === 0) return;
 
         const items: BulkResultItem[] = rows.map((r) => ({
             application_id: r.application_id,
             result_status: r.result_status || undefined,
-            score: r.score !== "" ? Number(r.score) : undefined,
+            score: r.score === "" ? undefined : Number(r.score),
             attended: r.attended,
             remarks: r.remarks?.trim() || undefined,
             scheduled_at: r.scheduled_at || undefined,
             completed_at: r.completed_at || undefined,
         }));
 
-        await handleSubmit(items);
+        handleSubmit(items);
     }, [rows, handleSubmit]);
 
     const handleCloseResult = () => {
-        setShowResultModal(false);
         resetResult();
         onClose();
     };
@@ -1268,6 +1284,7 @@ const BulkEntryPanel = ({
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Search by name or enrollment..."
+                                aria-label="Search students by name or enrollment number"
                                 className="w-full border border-gray-200 dark:border-gray-600 rounded-xl pl-10 pr-4 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-500 transition-colors"
                             />
                         </div>
@@ -1293,25 +1310,31 @@ const BulkEntryPanel = ({
 
                         {/* Student list */}
                         <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden max-h-80 overflow-y-auto">
-                            {pickerLoading ? (
-                                <div className="px-4 py-10 text-center">
-                                    <Loader2 className="h-5 w-5 animate-spin text-purple-500 mx-auto mb-2" />
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Loading eligible applications...</p>
-                                </div>
-                            ) : applications.length === 0 ? (
-                                <div className="px-4 py-10 text-center">
-                                    <Users className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                                        {search ? "No students match your search" : "No eligible applications found"}
-                                    </p>
-                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                                        {search
-                                            ? "Try a different name or enrollment number"
-                                            : "All applications already have results for this round"}
-                                    </p>
-                                </div>
-                            ) : (
-                                applications.map((app) => {
+                            {(() => {
+                                if (pickerLoading) {
+                                    return (
+                                        <div className="px-4 py-10 text-center">
+                                            <Loader2 className="h-5 w-5 animate-spin text-purple-500 mx-auto mb-2" />
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">Loading eligible applications...</p>
+                                        </div>
+                                    );
+                                }
+                                if (applications.length === 0) {
+                                    return (
+                                        <div className="px-4 py-10 text-center">
+                                            <Users className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                                                {search ? "No students match your search" : "No eligible applications found"}
+                                            </p>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                                {search
+                                                    ? "Try a different name or enrollment number"
+                                                    : "All applications already have results for this round"}
+                                            </p>
+                                        </div>
+                                    );
+                                }
+                                return applications.map((app) => {
                                     const isChecked = selectedApps.has(app.application_id);
                                     return (
                                         <button
@@ -1343,12 +1366,12 @@ const BulkEntryPanel = ({
                                                 </p>
                                             </div>
                                             <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-medium flex-shrink-0 ${APP_STATUS_COLORS[app.application_status] || "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}>
-                                                {app.application_status.replace(/_/g, " ")}
+                                                {app.application_status.replaceAll("_", " ")}
                                             </span>
                                         </button>
                                     );
                                 })
-                            )}
+                            })()}
                         </div>
 
                         {/* Actions */}
@@ -1366,7 +1389,7 @@ const BulkEntryPanel = ({
                                 disabled={selectedApps.size === 0}
                                 className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-purple-600 rounded-xl hover:bg-purple-700 transition disabled:opacity-50 inline-flex items-center justify-center gap-2"
                             >
-                                Continue with {selectedApps.size} Student{selectedApps.size !== 1 ? "s" : ""}
+                                Continue with {selectedApps.size} Student{selectedApps.size === 1 ? "" : "s"}
                                 <ChevronRight className="h-4 w-4" />
                             </button>
                         </div>
@@ -1385,7 +1408,7 @@ const BulkEntryPanel = ({
                                 Back to selection
                             </button>
                             <span className="text-xs text-gray-400 dark:text-gray-500">
-                                {rows.length} student{rows.length !== 1 ? "s" : ""}
+                                {rows.length} student{rows.length === 1 ? "" : "s"}
                             </span>
                         </div>
 
@@ -1421,8 +1444,9 @@ const BulkEntryPanel = ({
                                 None Attended
                             </button>
                             <div className="flex items-center gap-1.5">
-                                <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Scheduled:</label>
+                                <label htmlFor="bulk-scheduled" className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Scheduled:</label>
                                 <input
+                                    id="bulk-scheduled"
                                     type="datetime-local"
                                     onChange={(e) => {
                                         if (e.target.value) setRows((prev) => prev.map((r) => ({ ...r, scheduled_at: e.target.value })));
@@ -1431,8 +1455,9 @@ const BulkEntryPanel = ({
                                 />
                             </div>
                             <div className="flex items-center gap-1.5">
-                                <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Completed:</label>
+                                <label htmlFor="bulk-completed" className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Completed:</label>
                                 <input
+                                    id="bulk-completed"
                                     type="datetime-local"
                                     onChange={(e) => {
                                         if (e.target.value) setRows((prev) => prev.map((r) => ({ ...r, completed_at: e.target.value })));
@@ -1448,31 +1473,31 @@ const BulkEntryPanel = ({
                                 <table className="w-full border-collapse text-sm">
                                     <thead>
                                         <tr className="bg-gray-50 dark:bg-gray-700/50 text-left text-gray-500 dark:text-gray-400">
-                                            <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider w-10">
+                                            <th scope="col" className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider w-10">
                                                 #
                                             </th>
-                                            <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[200px]">
+                                            <th scope="col" className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[200px]">
                                                 Student
                                             </th>
-                                            <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[140px]">
+                                            <th scope="col" className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[140px]">
                                                 Status
                                             </th>
-                                            <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[100px]">
+                                            <th scope="col" className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[100px]">
                                                 Score
                                             </th>
-                                            <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-center w-20">
+                                            <th scope="col" className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-center w-20">
                                                 Attended
                                             </th>
-                                            <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[160px]">
+                                            <th scope="col" className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[160px]">
                                                 Remarks
                                             </th>
-                                            <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[180px]">
+                                            <th scope="col" className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[180px]">
                                                 Scheduled At
                                             </th>
-                                            <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[180px]">
+                                            <th scope="col" className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider min-w-[180px]">
                                                 Completed At
                                             </th>
-                                            <th className="px-3 py-2.5 w-10" />
+                                            <th scope="col" className="px-3 py-2.5 w-10" />
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1521,6 +1546,7 @@ const BulkEntryPanel = ({
                                                         min={0}
                                                         max={100000}
                                                         step="0.01"
+                                                        inputMode="decimal"
                                                         disabled={loading}
                                                         className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition"
                                                     />
@@ -1609,11 +1635,16 @@ const BulkEntryPanel = ({
                                 onClick={handleBulkSubmit}
                                 disabled={loading || rows.length === 0}
                                 className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-purple-600 rounded-xl hover:bg-purple-700 transition disabled:opacity-50 inline-flex items-center justify-center gap-2"
-                            >
-                                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {loading
-                                    ? "Submitting..."
-                                    : `Submit ${rows.length} Result${rows.length !== 1 ? "s" : ""}`}
+                            >{(() => {
+                                const suffix = rows.length === 1 ? "" : "s";
+                                const label = loading ? "Submitting..." : `Submit ${rows.length} Result${suffix}`;
+                                return (
+                                    <>
+                                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                                        {label}
+                                    </>
+                                );
+                            })()}
                             </button>
                         </div>
                     </div>
@@ -1622,7 +1653,7 @@ const BulkEntryPanel = ({
             </ModalWrapper>
 
             {/* Bulk result modal */}
-            {showResultModal && bulkResult && (
+            {bulkResult && (
                 <BulkResultModal result={bulkResult} onClose={handleCloseResult} />
             )}
         </>
@@ -1723,7 +1754,7 @@ const BulkResultModal = ({
                     </div>
                     <div className="divide-y divide-red-100 dark:divide-red-800 max-h-40 overflow-y-auto">
                         {result.errors.map((e, i) => (
-                            <div key={i} className="px-4 py-2.5">
+                            <div key={`err-${i}`} className="px-4 py-2.5">
                                 <p className="text-sm text-red-600 dark:text-red-400">{e.error}</p>
                             </div>
                         ))}
@@ -1740,142 +1771,6 @@ const BulkResultModal = ({
             </button>
         </div>
     </ModalWrapper>
-);
-
-// ========================
-// RESULT ROW (extracted component)
-// ========================
-
-const ResultRow = ({
-    result,
-    index,
-    isSelected,
-    isExpanded,
-    isCancelled,
-    onToggleSelect,
-    onToggleExpand,
-    onEdit,
-}: {
-    result: RoundResult;
-    index: number;
-    isSelected: boolean;
-    isExpanded: boolean;
-    isCancelled: boolean;
-    onToggleSelect: (id: string) => void;
-    onToggleExpand: (id: string) => void;
-    onEdit: (result: RoundResult) => void;
-}) => (
-    <>
-        <tr
-            className={`group border-b border-gray-50 dark:border-gray-800 transition-colors cursor-pointer ${
-                isSelected
-                    ? "bg-blue-50/60 dark:bg-blue-900/20"
-                    : isExpanded
-                      ? "bg-gray-50/50 dark:bg-gray-800/50"
-                      : "hover:bg-blue-50/40 dark:hover:bg-blue-900/10"
-            }`}
-            onClick={() => onToggleExpand(result.result_id)}
-        >
-            {/* Checkbox */}
-            <td className="px-4 py-3.5 w-10" onClick={(e) => e.stopPropagation()}>
-                <button
-                    type="button"
-                    onClick={() => onToggleSelect(result.result_id)}
-                    className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
-                    aria-label={`Select ${result.student_name}`}
-                >
-                    {isSelected ? (
-                        <CheckSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    ) : (
-                        <Square className="h-4 w-4" />
-                    )}
-                </button>
-            </td>
-
-            {/* Row number */}
-            <td className="px-4 py-3.5 text-gray-400 dark:text-gray-500 text-sm w-10">{index}</td>
-
-            {/* Student + email + dept */}
-            <td className="px-4 py-3.5">
-                <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        {result.student_name}
-                    </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                        {result.student_email}
-                    </p>
-                </div>
-            </td>
-
-            {/* Department */}
-            <td className="px-4 py-3.5">
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                    {result.dept_name}
-                </span>
-            </td>
-
-            {/* Score */}
-            <td className="px-4 py-3.5">
-                {result.score !== null && result.score !== undefined ? (
-                    <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold ${getScoreColor(result.score)} ${getScoreBg(result.score)}`}
-                    >
-                        {result.score}
-                    </span>
-                ) : (
-                    <span className="text-sm text-gray-300 dark:text-gray-600">—</span>
-                )}
-            </td>
-
-            {/* Status */}
-            <td className="px-4 py-3.5">
-                <StatusBadge status={result.result_status} />
-            </td>
-
-            {/* Attended */}
-            <td className="px-4 py-3.5">
-                <AttendedBadge attended={result.attended} />
-            </td>
-
-            {/* Date */}
-            <td className="px-4 py-3.5">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(result.created_at)}
-                </span>
-            </td>
-
-            {/* Actions + expand */}
-            <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center gap-1.5">
-                    {!isCancelled && (
-                        <button
-                            type="button"
-                            onClick={() => onEdit(result)}
-                            className="p-1.5 rounded-lg text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 dark:hover:text-amber-400 transition-all"
-                            aria-label={`Edit ${result.student_name}`}
-                        >
-                            <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                    )}
-                    <button
-                        type="button"
-                        onClick={() => onToggleExpand(result.result_id)}
-                        className="p-1 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition"
-                        aria-label={isExpanded ? "Collapse details" : "Expand details"}
-                    >
-                        {isExpanded ? (
-                            <ChevronUp className="h-4 w-4" />
-                        ) : (
-                            <ChevronDown className="h-4 w-4" />
-                        )}
-                    </button>
-                </div>
-            </td>
-        </tr>
-
-        {/* Expanded detail panel */}
-        {isExpanded && <ResultDetailPanel result={result} />}
-    </>
 );
 
 // ========================
@@ -1981,6 +1876,146 @@ const ResultDetailPanel = ({ result }: { result: RoundResult }) => (
 );
 
 // ========================
+// RESULT ROW (extracted component)
+// ========================
+
+const ResultRow = ({
+    result,
+    index,
+    isSelected,
+    isExpanded,
+    isCancelled,
+    onToggleSelect,
+    onToggleExpand,
+    onEdit,
+}: {
+    result: RoundResult;
+    index: number;
+    isSelected: boolean;
+    isExpanded: boolean;
+    isCancelled: boolean;
+    onToggleSelect: (id: string) => void;
+    onToggleExpand: (id: string) => void;
+    onEdit: (result: RoundResult) => void;
+}) => {
+    let rowBg;
+    if (isSelected) {
+        rowBg = "bg-blue-50/60 dark:bg-blue-900/20";
+    } else if (isExpanded) {
+        rowBg = "bg-gray-50/50 dark:bg-gray-800/50";
+    } else {
+        rowBg = "hover:bg-blue-50/40 dark:hover:bg-blue-900/10";
+    }
+    return (
+    <>
+        <tr
+            className={`group border-b border-gray-50 dark:border-gray-800 transition-colors cursor-pointer ${rowBg}`}
+            onClick={() => onToggleExpand(result.result_id)}
+        >
+            {/* Checkbox */}
+            <td className="px-4 py-3.5 w-10" onClick={(e) => e.stopPropagation()}>
+                <button
+                    type="button"
+                    onClick={() => onToggleSelect(result.result_id)}
+                    className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
+                    aria-label={`Select ${result.student_name}`}
+                >
+                    {isSelected ? (
+                        <CheckSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    ) : (
+                        <Square className="h-4 w-4" />
+                    )}
+                </button>
+            </td>
+
+            {/* Row number */}
+            <td className="px-4 py-3.5 text-gray-400 dark:text-gray-500 text-sm w-10">{index}</td>
+
+            {/* Student + email + dept */}
+            <td className="px-4 py-3.5">
+                <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {result.student_name}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        {result.student_email}
+                    </p>
+                </div>
+            </td>
+
+            {/* Department */}
+            <td className="px-4 py-3.5">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    {result.dept_name}
+                </span>
+            </td>
+
+            {/* Score */}
+            <td className="px-4 py-3.5">
+                {result.score !== null && result.score !== undefined ? (
+                    <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold ${getScoreColor(result.score)} ${getScoreBg(result.score)}`}
+                    >
+                        {result.score}
+                    </span>
+                ) : (
+                    <span className="text-sm text-gray-300 dark:text-gray-600">—</span>
+                )}
+            </td>
+
+            {/* Status */}
+            <td className="px-4 py-3.5">
+                <StatusBadge status={result.result_status} />
+            </td>
+
+            {/* Attended */}
+            <td className="px-4 py-3.5">
+                <AttendedBadge attended={result.attended} />
+            </td>
+
+            {/* Date */}
+            <td className="px-4 py-3.5">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {formatDate(result.created_at)}
+                </span>
+            </td>
+
+            {/* Actions + expand */}
+            <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-1.5">
+                    {!isCancelled && (
+                        <button
+                            type="button"
+                            onClick={() => onEdit(result)}
+                            className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 dark:hover:text-amber-400 transition-all"
+                            aria-label={`Edit ${result.student_name}`}
+                        >
+                            <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => onToggleExpand(result.result_id)}
+                        className="p-1 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition"
+                        aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                    >
+                        {isExpanded ? (
+                            <ChevronUp className="h-4 w-4" />
+                        ) : (
+                            <ChevronDown className="h-4 w-4" />
+                        )}
+                    </button>
+                </div>
+            </td>
+        </tr>
+
+        {/* Expanded detail panel */}
+        {isExpanded && <ResultDetailPanel result={result} />}
+    </>
+);
+};
+
+// ========================
 // MAIN COMPONENT
 // ========================
 
@@ -2013,6 +2048,8 @@ const RoundResultsManager = ({
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    // Derive effective expanded ID: auto-clear when result no longer exists
+    const effectiveExpandedId = expandedId && results.some(r => r.result_id === expandedId) ? expandedId : null;
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingResult, setEditingResult] = useState<RoundResult | null>(null);
     const [showBulkEntry, setShowBulkEntry] = useState(false);
@@ -2029,11 +2066,6 @@ const RoundResultsManager = ({
             onResultLoaded(roundInfo.round_name, roundInfo.job_title);
         }
     }, [roundInfo, onResultLoaded]);
-
-    // Reset expanded state when data changes
-    useEffect(() => {
-        setExpandedId(null);
-    }, [results]);
 
     // Clear selection on page/filter changes
     const wrappedPageChange = useCallback(
@@ -2215,10 +2247,10 @@ const RoundResultsManager = ({
                                 placeholder="Search students..."
                                 value={search}
                                 onChange={(e) => handleSearchChange(e.target.value)}
+                                aria-label="Search round results by student name or email"
                                 className="w-full border border-gray-200 dark:border-gray-600 rounded-xl pl-10 pr-4 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-500 transition-colors"
                             />
                         </div>
-
                         {/* Attended filter */}
                         <select
                             value={attendedFilter}
@@ -2234,7 +2266,7 @@ const RoundResultsManager = ({
 
                         {/* Page size */}
                         <div className="text-sm text-gray-600 dark:text-gray-400 font-medium flex items-center gap-2 ml-auto">
-                            Show
+                            {"Show "}
                             <select
                                 value={pagination.limit}
                                 onChange={(e) =>
@@ -2264,32 +2296,29 @@ const RoundResultsManager = ({
                     </div>
                 </div>
 
-                {/* Table */}
-                <div className="overflow-x-auto">
+                {/* Table (desktop) */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-gray-50/70 dark:bg-gray-800/70 text-left text-gray-500 dark:text-gray-400">
-                                <th className="px-4 py-3 w-10">
+                                <th scope="col" className="px-4 py-3 w-10">
                                     <button
                                         type="button"
                                         onClick={toggleSelectAll}
                                         disabled={loading || results.length === 0}
                                         className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition disabled:opacity-30"
                                         aria-label="Select all"
-                                    >
-                                        {allSelected ? (
-                                            <CheckSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                        ) : someSelected ? (
-                                            <Minus className="h-4 w-4 text-blue-400" />
-                                        ) : (
-                                            <Square className="h-4 w-4" />
-                                        )}
+                                    >{(() => {
+                                        if (allSelected) return <CheckSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />;
+                                        if (someSelected) return <Minus className="h-4 w-4 text-blue-400" />;
+                                        return <Square className="h-4 w-4" />;
+                                    })()}
                                     </button>
                                 </th>
-                                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">
+                                <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">
                                     #
                                 </th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader
                                         label="Student"
                                         field="student_name"
@@ -2298,10 +2327,10 @@ const RoundResultsManager = ({
                                         onSort={handleSortChange}
                                     />
                                 </th>
-                                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">
+                                <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">
                                     Dept
                                 </th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader
                                         label="Score"
                                         field="score"
@@ -2310,7 +2339,7 @@ const RoundResultsManager = ({
                                         onSort={handleSortChange}
                                     />
                                 </th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader
                                         label="Status"
                                         field="result_status"
@@ -2319,10 +2348,10 @@ const RoundResultsManager = ({
                                         onSort={handleSortChange}
                                     />
                                 </th>
-                                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">
+                                <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">
                                     Attended
                                 </th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader
                                         label="Date"
                                         field="created_at"
@@ -2331,42 +2360,123 @@ const RoundResultsManager = ({
                                         onSort={handleSortChange}
                                     />
                                 </th>
-                                <th className="px-4 py-3 w-16" />
+                                <th scope="col" className="px-4 py-3 w-16" />
                             </tr>
                         </thead>
                         <tbody>
-                            {loading ? (
-                                <SkeletonTable />
-                            ) : results.length > 0 ? (
-                                results.map((result, index) => (
-                                    <ResultRow
-                                        key={result.result_id}
-                                        result={result}
-                                        index={
-                                            (pagination.page - 1) * pagination.limit +
-                                            index +
-                                            1
-                                        }
-                                        isSelected={selectedIds.has(result.result_id)}
-                                        isExpanded={expandedId === result.result_id}
-                                        isCancelled={!!isCancelled}
-                                        onToggleSelect={toggleSelect}
-                                        onToggleExpand={toggleExpand}
-                                        onEdit={handleEditResult}
-                                    />
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={9}>
-                                        <EmptyState
-                                            hasFilters={hasFilters}
+                            {(() => {
+                                if (loading) return <SkeletonTable />;
+                                if (results.length > 0) {
+                                    return results.map((result, index) => (
+                                        <ResultRow
+                                            key={result.result_id}
+                                            result={result}
+                                            index={
+                                                (pagination.page - 1) * pagination.limit +
+                                                index +
+                                                1
+                                            }
+                                            isSelected={selectedIds.has(result.result_id)}
+                                            isExpanded={effectiveExpandedId === result.result_id}
+                                            isCancelled={!!isCancelled}
+                                            onToggleSelect={toggleSelect}
+                                            onToggleExpand={toggleExpand}
+                                            onEdit={handleEditResult}
+                                        />
+                                    ));
+                                }
+                                return (
+                                    <tr>
+                                        <td colSpan={9}>
+                                            <EmptyState
+                                                hasFilters={hasFilters}
                                             roundStatus={roundInfo?.round_status}
                                         />
                                     </td>
                                 </tr>
-                            )}
+                                );
+                            })()}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                    {(() => {
+                        if (loading) {
+                            return Array.from({ length: 5 }).map((_, i) => (
+                                <div key={`card-skel-${i}`} className="p-4 space-y-3 animate-pulse">
+                                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
+                                <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/3" />
+                                <div className="flex gap-2">
+                                    <div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-full w-16" />
+                                    <div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-full w-12" />
+                                </div>
+                            </div>
+                        ));
+                        }
+                        if (results.length > 0) {
+                            return results.map((result, index) => (
+                            <div
+                                key={result.result_id}
+                                className="p-4 space-y-3"
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                            <span className="text-gray-400 dark:text-gray-500 mr-1.5">
+                                                {(pagination.page - 1) * pagination.limit + index + 1}.
+                                            </span>
+                                            {result.student_name}
+                                        </p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+                                            {result.student_email}
+                                        </p>
+                                    </div>
+                                    <StatusBadge status={result.result_status} />
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                                        {result.dept_name}
+                                    </span>
+                                    {result.score !== null && result.score !== undefined && (
+                                        <span
+                                            className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${getScoreColor(result.score)} ${getScoreBg(result.score)}`}
+                                        >
+                                            Score: {result.score}
+                                        </span>
+                                    )}
+                                    <AttendedBadge attended={result.attended} />
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                                        {formatDate(result.created_at)}
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                        {!isCancelled && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleEditResult(result)}
+                                                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
+                                                aria-label={`Edit ${result.student_name}`}
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ));
+                        }
+                        return (
+                            <EmptyState
+                                hasFilters={hasFilters}
+                                roundStatus={roundInfo?.round_status}
+                            />
+                        );
+                    })()}
                 </div>
 
                 {/* Pagination footer */}
@@ -2405,7 +2515,7 @@ const RoundResultsManager = ({
                                     </span>
                                 </div>
                                 <span className="text-gray-600 dark:text-gray-400 font-medium">
-                                    result{selectedIds.size !== 1 ? "s" : ""} selected
+                                    result{selectedIds.size === 1 ? "" : "s"} selected
                                 </span>
                                 <button
                                     type="button"

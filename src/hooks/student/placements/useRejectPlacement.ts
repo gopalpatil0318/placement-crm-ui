@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ApiError } from "@/lib/api"
-import { showToast } from "@/utils/ToastUtils"
+import { showToast, getErrorTitle } from "@/utils/ToastUtils"
 import { PlacementService } from "@/services/student/placement.service"
 import {
   rejectPlacementSchema,
@@ -64,12 +64,7 @@ export function useRejectPlacement() {
     onError: (error: unknown) => {
       const message = error instanceof ApiError ? error.message : "Failed to reject placement"
       const status = error instanceof ApiError ? error.status : undefined
-      const title =
-        status === 409 ? "Already Processed"
-        : status === 404 ? "Not Found"
-        : status === 400 ? "Invalid Request"
-        : status === 429 ? "Too Many Requests"
-        : "Error"
+      const title = getErrorTitle(status)
       const description = status === 429 ? "You're acting too quickly. Please wait a moment." : message
       showToast({ type: "error", title, description })
     },
@@ -84,11 +79,6 @@ export function useRejectPlacement() {
         if (!fieldErrors[field]) fieldErrors[field] = issue.message
       }
       setErrors(fieldErrors)
-      showToast({
-        type: "warning",
-        title: "Validation Failed",
-        description: result.error.issues[0].message,
-      })
       return null
     }
     setErrors({})

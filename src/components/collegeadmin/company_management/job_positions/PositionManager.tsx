@@ -240,80 +240,150 @@ const PositionManager = ({ jobId, jobStatus, positions, onRefresh }: PositionMan
             {positions.length === 0 ? (
                 <EmptyState isCancelled={isCancelled} onAdd={() => setShowAddModal(true)} />
             ) : (
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-800">
-                                <th className="px-4 py-3 w-10">#</th>
-                                <th className="px-4 py-3">Position</th>
-                                <th className="px-4 py-3">Description</th>
-                                <th className="px-4 py-3">Vacancies</th>
-                                <th className="px-4 py-3">Status</th>
-                                {!isCancelled && <th className="px-4 py-3 text-center">Actions</th>}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                            {positions.map((p, i) => {
-                                const badge = STATUS_BADGE[p.position_status] || STATUS_BADGE.active;
-                                const actions = getStatusActions(p.position_status);
-                                return (
-                                    <tr key={p.position_id} className="group hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors text-sm">
-                                        <td className="px-4 py-3.5 text-gray-400 dark:text-gray-500 text-xs">{i + 1}</td>
-                                        <td className="px-4 py-3.5">
-                                            <span className="font-medium text-gray-800 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                                {p.position_name}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3.5 text-gray-500 dark:text-gray-400 max-w-xs truncate" title={p.position_description || undefined}>
-                                            {p.position_description || <span className="text-gray-300 dark:text-gray-600">—</span>}
-                                        </td>
-                                        <td className="px-4 py-3.5">
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                                                <Users className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                                                {p.vacancies}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3.5">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
-                                                <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
-                                                {p.position_status.charAt(0).toUpperCase() + p.position_status.slice(1)}
-                                            </span>
-                                        </td>
-                                        {!isCancelled && (
-                                            <td className="px-4 py-3.5 text-center">
-                                                <div className="inline-flex items-center gap-1">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setEditingPosition(p)}
-                                                        className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
-                                                        aria-label={`Edit ${p.position_name}`}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </button>
-                                                    {actions.map((action) => {
-                                                        const Icon = action.icon;
-                                                        return (
-                                                            <button
-                                                                key={action.key}
-                                                                type="button"
-                                                                onClick={() => setStatusChange({ position: p, newStatus: action.key })}
-                                                                className={`p-1.5 rounded-md text-gray-400 transition ${action.hoverBg} ${action.hoverText}`}
-                                                                aria-label={`${action.label} ${p.position_name}`}
-                                                                title={action.label}
-                                                            >
-                                                                <Icon className="h-4 w-4" />
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
+                <>
+                    {/* Desktop table */}
+                    <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-800">
+                                    <th scope="col" className="px-4 py-3 w-10">#</th>
+                                    <th scope="col" className="px-4 py-3">Position</th>
+                                    <th scope="col" className="px-4 py-3">Description</th>
+                                    <th scope="col" className="px-4 py-3">Vacancies</th>
+                                    <th scope="col" className="px-4 py-3">Status</th>
+                                    {!isCancelled && <th scope="col" className="px-4 py-3 text-center">Actions</th>}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                                {positions.map((p, i) => {
+                                    const badge = STATUS_BADGE[p.position_status] || STATUS_BADGE.active;
+                                    const actions = getStatusActions(p.position_status);
+                                    return (
+                                        <tr key={p.position_id} className="group hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors text-sm">
+                                            <td className="px-4 py-3.5 text-gray-400 dark:text-gray-500 text-xs">{i + 1}</td>
+                                            <td className="px-4 py-3.5">
+                                                <span className="font-medium text-gray-800 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                                    {p.position_name}
+                                                </span>
                                             </td>
+                                            <td className="px-4 py-3.5 text-gray-500 dark:text-gray-400 max-w-xs truncate" title={p.position_description || undefined}>
+                                                {p.position_description || <span className="text-gray-300 dark:text-gray-600">—</span>}
+                                            </td>
+                                            <td className="px-4 py-3.5">
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                                    <Users className="h-3 w-3 text-gray-400 dark:text-gray-500" />
+                                                    {p.vacancies}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3.5">
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
+                                                    <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
+                                                    {p.position_status.charAt(0).toUpperCase() + p.position_status.slice(1)}
+                                                </span>
+                                            </td>
+                                            {!isCancelled && (
+                                                <td className="px-4 py-3.5 text-center">
+                                                    <div className="inline-flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditingPosition(p)}
+                                                            className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
+                                                            aria-label={`Edit ${p.position_name}`}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </button>
+                                                        {actions.map((action) => {
+                                                            const Icon = action.icon;
+                                                            return (
+                                                                <button
+                                                                    key={action.key}
+                                                                    type="button"
+                                                                    onClick={() => setStatusChange({ position: p, newStatus: action.key })}
+                                                                    className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md text-gray-400 transition ${action.hoverBg} ${action.hoverText}`}
+                                                                    aria-label={`${action.label} ${p.position_name}`}
+                                                                    title={action.label}
+                                                                >
+                                                                    <Icon className="h-4 w-4" />
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </td>
+                                            )}
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Mobile cards */}
+                    <div className="md:hidden space-y-3">
+                        {positions.map((p, i) => {
+                            const badge = STATUS_BADGE[p.position_status] || STATUS_BADGE.active;
+                            const actions = getStatusActions(p.position_status);
+                            return (
+                                <div
+                                    key={p.position_id}
+                                    className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-3"
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                                                <span className="text-gray-400 dark:text-gray-500 mr-1.5">{i + 1}.</span>
+                                                {p.position_name}
+                                            </p>
+                                            {p.position_description && (
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                                                    {p.position_description}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${badge.bg} ${badge.text}`}>
+                                            <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
+                                            {p.position_status.charAt(0).toUpperCase() + p.position_status.slice(1)}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                            <Users className="h-3 w-3 text-gray-400 dark:text-gray-500" />
+                                            {p.vacancies} vacancies
+                                        </span>
+
+                                        {!isCancelled && (
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditingPosition(p)}
+                                                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
+                                                    aria-label={`Edit ${p.position_name}`}
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </button>
+                                                {actions.map((action) => {
+                                                    const Icon = action.icon;
+                                                    return (
+                                                        <button
+                                                            key={action.key}
+                                                            type="button"
+                                                            onClick={() => setStatusChange({ position: p, newStatus: action.key })}
+                                                            className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md text-gray-400 transition ${action.hoverBg} ${action.hoverText}`}
+                                                            aria-label={`${action.label} ${p.position_name}`}
+                                                            title={action.label}
+                                                        >
+                                                            <Icon className="h-4 w-4" />
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         )}
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
             )}
 
             {/* Add Position Modal */}
@@ -524,6 +594,7 @@ const AddPositionModal = ({
                         placeholder="e.g. 10"
                         min={1}
                         max={9999}
+                        inputMode="numeric"
                         className={`w-full rounded-xl border px-4 py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 transition ${
                             errors.vacancies
                                 ? "border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/20 focus:ring-red-500"
@@ -628,6 +699,7 @@ const EditPositionModal = ({
                         placeholder="e.g. 10"
                         min={1}
                         max={9999}
+                        inputMode="numeric"
                         className={`w-full rounded-xl border px-4 py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 transition ${
                             errors.vacancies
                                 ? "border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/20 focus:ring-red-500"

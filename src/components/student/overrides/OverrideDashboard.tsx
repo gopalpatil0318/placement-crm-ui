@@ -19,15 +19,30 @@ import {
 // ─── Pagination ─────────────────────────────────────────────────────────────────
 
 interface PaginationProps {
-  pagination: { page: number; total_pages: number; total: number; limit: number }
+  pagination: { page: number; totalPages: number; total: number; limit: number }
   onPageChange: (page: number) => void
 }
 
-function Pagination({ pagination, onPageChange }: PaginationProps) {
-  const { page, total_pages, total, limit } = pagination
-  if (total_pages <= 1) return null
+function Pagination({ pagination, onPageChange }: Readonly<PaginationProps>) {
+  const { page, totalPages, total, limit } = pagination
+  if (totalPages <= 1) return null
   const start = (page - 1) * limit + 1
   const end = Math.min(page * limit, total)
+
+  // Build page items with stable keys: { type: "page", value } or { type: "dots", after }
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+
+  const items: { type: "page" | "dots"; value: number }[] = []
+  for (const p of pageNumbers) {
+    if (items.length > 0) {
+      const prev = items.at(-1)
+      if (prev?.type === "page" && p - prev.value > 1) {
+        items.push({ type: "dots", value: p })
+      }
+    }
+    items.push({ type: "page", value: p })
+  }
 
   return (
     <div className="flex items-center justify-between pt-4">
@@ -40,40 +55,33 @@ function Pagination({ pagination, onPageChange }: PaginationProps) {
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
           aria-label="Previous page"
-          className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
         >
           <ChevronLeft size={14} />
         </button>
-        {Array.from({ length: total_pages }, (_, i) => i + 1)
-          .filter((p) => p === 1 || p === total_pages || Math.abs(p - page) <= 1)
-          .reduce<(number | "dots")[]>((acc, p, i, arr) => {
-            if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("dots")
-            acc.push(p)
-            return acc
-          }, [])
-          .map((item, i) =>
-            item === "dots" ? (
-              <span key={`dots-${i}`} className="px-1 text-xs text-gray-400">
-                …
-              </span>
-            ) : (
-              <button
-                key={item}
-                type="button"
-                onClick={() => onPageChange(item)}
-                className={`min-w-[28px] h-7 text-xs font-medium rounded-lg transition-colors cursor-pointer ${page === item
-                    ? "bg-indigo-600 text-white"
-                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`}
-              >
-                {item}
-              </button>
-            ),
-          )}
+        {items.map((item) =>
+          item.type === "dots" ? (
+            <span key={`dots-before-${item.value}`} className="px-1 text-xs text-gray-400">
+              …
+            </span>
+          ) : (
+            <button
+              key={`page-${item.value}`}
+              type="button"
+              onClick={() => onPageChange(item.value)}
+              className={`min-w-[44px] min-h-[44px] flex items-center justify-center text-xs font-medium rounded-lg transition-colors cursor-pointer ${page === item.value
+                  ? "bg-indigo-600 text-white"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                }`}
+            >
+              {item.value}
+            </button>
+          ),
+        )}
         <button
           type="button"
           onClick={() => onPageChange(page + 1)}
-          disabled={page >= total_pages}
+          disabled={page >= totalPages}
           aria-label="Next page"
           className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors cursor-pointer"
         >
@@ -83,6 +91,8 @@ function Pagination({ pagination, onPageChange }: PaginationProps) {
     </div>
   )
 }
+
+const SKELETON_IDS = ["sk-1", "sk-2", "sk-3", "sk-4", "sk-5", "sk-6"] as const
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
@@ -166,10 +176,10 @@ export default function OverrideDashboard() {
 
       {/* ── Content Area ── */}
       <div id="override-tabpanel" role="tabpanel" aria-labelledby={`override-tab-${statusFilter}`}>
-        {isLoading ? (
+        {isLoading && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 overflow-hidden motion-safe:animate-pulse">
+            {SKELETON_IDS.map((skId) => (
+              <div key={skId} className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 overflow-hidden motion-safe:animate-pulse">
                 <div className="h-1 bg-gray-200 dark:bg-gray-700" />
                 <div className="p-5 space-y-3">
                   <div className="flex items-start justify-between gap-3">
@@ -193,7 +203,9 @@ export default function OverrideDashboard() {
               </div>
             ))}
           </div>
-        ) : isError ? (
+        )}
+
+        {!isLoading && isError && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-3">
               <AlertCircle size={24} className="text-red-400" />
@@ -213,7 +225,9 @@ export default function OverrideDashboard() {
               Try Again
             </button>
           </div>
-        ) : overrides.length === 0 ? (
+        )}
+
+        {!isLoading && !isError && overrides.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="h-14 w-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
               <ShieldCheck size={28} className="text-gray-300 dark:text-gray-600" />
@@ -225,7 +239,9 @@ export default function OverrideDashboard() {
               {emptySubtext}
             </p>
           </div>
-        ) : (
+        )}
+
+        {!isLoading && !isError && overrides.length > 0 && (
           <>
             {/* Cards Grid */}
             {shouldReduce ? (

@@ -13,7 +13,8 @@ export interface ActivityData {
     hours_contributed?: number | null;
     certificate_url?: string | null;
     proof_urls?: string[];
-    is_verified?: boolean;
+    created_at?: string | null;
+    updated_at?: string | null;
 }
 
 export const StudentActivityService = {

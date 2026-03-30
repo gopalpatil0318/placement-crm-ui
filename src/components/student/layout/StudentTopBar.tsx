@@ -12,7 +12,7 @@ interface TopBarProps {
   isMobile: boolean
 }
 
-export default function StudentTopBar({ onMenuClick, isMobile }: TopBarProps) {
+export default function StudentTopBar({ onMenuClick, isMobile }: Readonly<TopBarProps>) {
   const { theme, setTheme } = useTheme()
   const { user } = useStudentAuth()
   const { unreadCount, badgeLabel } = useUnreadCount()
@@ -25,6 +25,7 @@ export default function StudentTopBar({ onMenuClick, isMobile }: TopBarProps) {
 
   // Auto-close dropdown on route change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- route change sync
     setIsNotifOpen(false)
   }, [location.pathname])
 
@@ -109,7 +110,7 @@ export default function StudentTopBar({ onMenuClick, isMobile }: TopBarProps) {
             type="button"
             onClick={toggleNotifDropdown}
             aria-label="Notifications"
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors cursor-pointer relative"
+            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors cursor-pointer relative"
             {...btnMotion}
           >
             <Bell size={18} />

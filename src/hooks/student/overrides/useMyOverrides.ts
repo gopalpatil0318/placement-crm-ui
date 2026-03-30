@@ -3,7 +3,7 @@ import { useQuery, keepPreviousData } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/queryKeys"
 import { OverridesService } from "@/services/student/overrides.service"
 import type { MyOverridesResponse } from "@/services/student/overrides.service"
-import type { OverrideStatus, OverrideStatusFilter } from "@/validators/OverrideSchema"
+import type { OverrideStatusFilter } from "@/validators/OverrideSchema"
 
 const LIMIT = 10
 
@@ -22,7 +22,7 @@ export function useMyOverrides() {
     queryKey: queryKeys.studentPortal.myOverrides(queryFilters),
     queryFn: () =>
       OverridesService.getMyOverrides({
-        ...(statusFilter !== "all" && { status: statusFilter as OverrideStatus }),
+        ...(statusFilter !== "all" && { status: statusFilter }),
         sort_order: sortOrder,
         page,
         limit: LIMIT,
@@ -47,7 +47,7 @@ export function useMyOverrides() {
 
   return {
     overrides: query.data?.overrides ?? [],
-    pagination: query.data?.pagination ?? { total: 0, page: 1, limit: LIMIT, total_pages: 0 },
+    pagination: query.data?.pagination ?? { total: 0, page: 1, limit: LIMIT, totalPages: 0 },
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,

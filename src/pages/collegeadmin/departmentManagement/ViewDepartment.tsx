@@ -45,9 +45,10 @@ const getInitials = (name: string) => {
 
 const formatDate = (dateStr: string | undefined | null) => {
     if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("en-IN", {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-IN", {
         day: "2-digit",
-        month: "short",
+        month: "2-digit",
         year: "numeric",
     });
 };
@@ -282,6 +283,7 @@ const ViewDepartment = () => {
                                     <button
                                         type="button"
                                         onClick={() => navigate(`/college/update-department/${department.dept_id}`)}
+                                        aria-label="Edit department"
                                         className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm"
                                     >
                                         <Pencil className="h-4 w-4" />
@@ -291,6 +293,7 @@ const ViewDepartment = () => {
                                     <button
                                         type="button"
                                         onClick={() => setShowConfirm(true)}
+                                        aria-label={isActive ? "Deactivate department" : "Activate department"}
                                         className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition shadow-sm ${
                                             isActive
                                                 ? "bg-red-600 hover:bg-red-700 text-white"

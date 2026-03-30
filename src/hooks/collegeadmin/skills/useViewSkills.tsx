@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
@@ -42,14 +42,14 @@ export const useViewSkills = () => {
 
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const queryFilters = {
+    const queryFilters = useMemo(() => ({
         page,
         limit,
         search: debouncedSearch || undefined,
         skill_category: categoryFilter || undefined,
         sort_by: sortBy || undefined,
         sort_order: sortOrder || undefined,
-    };
+    }), [page, limit, debouncedSearch, categoryFilter, sortBy, sortOrder]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.skills.all(queryFilters),
@@ -61,7 +61,11 @@ export const useViewSkills = () => {
     const categories: SkillCategory[] = Array.isArray(data?.data?.categories) ? data.data.categories : [];
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
     const loading = isLoading;
-    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch skills") : null;
+
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch skills";
+    }
 
     const handleSearchChange = useCallback((value: string) => {
         setSearch(value);

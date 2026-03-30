@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
 import { queryKeys } from "@/lib/queryKeys";
+import { useYearFilter } from "@/context/YearFilterContext";
 
 // ========================
 // TYPES
@@ -41,28 +42,29 @@ interface Pagination {
 // ========================
 
 export const useViewTrainingPrograms = (config?: { limit?: number }) => {
+    const { selectedYear } = useYearFilter();
+    const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(config?.limit ?? 12);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [typeFilter, setTypeFilter] = useState("");
-    const [passoutYearFilter, setPassoutYearFilter] = useState("");
     const [sortBy, setSortBy] = useState<string>("created_at");
     const [sortOrder, setSortOrder] = useState<string>("desc");
 
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const queryFilters = {
+    const queryFilters = useMemo(() => ({
         page,
         limit,
         search: debouncedSearch || undefined,
         program_status: statusFilter || undefined,
         program_type: typeFilter || undefined,
-        target_passout_year: passoutYearFilter ? Number(passoutYearFilter) : undefined,
+        target_passout_year: selectedYear,
         sort_by: sortBy || undefined,
         sort_order: sortOrder || undefined,
-    };
+    }), [page, limit, debouncedSearch, statusFilter, typeFilter, selectedYear, sortBy, sortOrder]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.trainingPrograms.all(queryFilters),
@@ -73,11 +75,25 @@ export const useViewTrainingPrograms = (config?: { limit?: number }) => {
     const programs: TrainingProgram[] = Array.isArray(data?.data) ? data.data : [];
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
     const loading = isLoading || isFetching;
-    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch training programs") : null;
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch training programs";
+    }
 
     useEffect(() => {
         if (error) showToast({ type: "error", title: "Fetch Error", description: error });
     }, [error]);
+
+    // ── Prefetch next page for smoother pagination ──
+    useEffect(() => {
+        if (pagination.totalPages > page) {
+            const nextFilters = { ...queryFilters, page: page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.trainingPrograms.all(nextFilters),
+                queryFn: () => CollegeAdminService.getAllTrainingPrograms(nextFilters),
+            });
+        }
+    }, [page, pagination.totalPages, queryClient, queryFilters]);
 
     const handleSearchChange = useCallback((value: string) => {
         setSearch(value);
@@ -104,11 +120,6 @@ export const useViewTrainingPrograms = (config?: { limit?: number }) => {
 
     const handleTypeFilterChange = useCallback((value: string) => {
         setTypeFilter(value);
-        setPage(1);
-    }, []);
-
-    const handlePassoutYearFilterChange = useCallback((value: string) => {
-        setPassoutYearFilter(value);
         setPage(1);
     }, []);
 
@@ -143,7 +154,6 @@ export const useViewTrainingPrograms = (config?: { limit?: number }) => {
         search,
         statusFilter,
         typeFilter,
-        passoutYearFilter,
         sortBy,
         sortOrder,
         handleSearchChange,
@@ -151,7 +161,6 @@ export const useViewTrainingPrograms = (config?: { limit?: number }) => {
         handleLimitChange,
         handleStatusFilterChange,
         handleTypeFilterChange,
-        handlePassoutYearFilterChange,
         handleSortChange,
         handleSortFieldChange,
         handleSortOrderToggle,

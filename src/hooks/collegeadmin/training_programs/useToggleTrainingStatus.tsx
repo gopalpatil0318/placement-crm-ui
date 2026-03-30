@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import { queryKeys } from "@/lib/queryKeys";
 import { PROGRAM_STATUS_TRANSITIONS, PROGRAM_STATUS_LABELS, type ProgramStatus } from "@/validators/TrainingProgramSchema";
 
@@ -20,6 +20,20 @@ export const useToggleTrainingStatus = (programId: string, currentStatus: string
     const mutation = useMutation({
         mutationFn: (newStatus: string) =>
             CollegeAdminService.toggleTrainingStatus(programId, newStatus),
+        onMutate: async (newStatus: string) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.trainingPrograms.detail(programId) });
+
+            const previousDetail = queryClient.getQueryData(queryKeys.trainingPrograms.detail(programId));
+
+            queryClient.setQueryData(queryKeys.trainingPrograms.detail(programId), (old: unknown) => {
+                if (!old || typeof old !== "object") return old;
+                const d = old as { data?: { program_status?: string } };
+                if (!d.data) return old;
+                return { ...d, data: { ...d.data, program_status: newStatus } };
+            });
+
+            return { previousDetail };
+        },
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.trainingPrograms.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.trainingPrograms.detail(programId) });
@@ -31,9 +45,13 @@ export const useToggleTrainingStatus = (programId: string, currentStatus: string
             setShowConfirm(false);
             setSelectedStatus("");
         },
-        onError: (error: unknown) => {
+        onError: (error: unknown, _newStatus, context) => {
+            if (context?.previousDetail) {
+                queryClient.setQueryData(queryKeys.trainingPrograms.detail(programId), context.previousDetail);
+            }
             const message = error instanceof ApiError ? error.message : "Failed to update status";
-            showToast({ type: "error", title: "Error", description: message });
+            const status = error instanceof ApiError ? error.status : undefined;
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
         },
     });
 

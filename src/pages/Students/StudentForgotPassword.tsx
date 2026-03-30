@@ -106,6 +106,7 @@ export default function StudentForgotPassword() {
                                     <Input
                                         id="email"
                                         type="email"
+                                        autoComplete="email"
                                         placeholder="student@college.ac.in"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}

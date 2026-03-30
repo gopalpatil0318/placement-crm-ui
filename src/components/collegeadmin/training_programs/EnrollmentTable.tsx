@@ -31,7 +31,7 @@ interface EnrollmentTableProps {
     onProgramLoaded?: (name: string, totalSessions?: number) => void;
 }
 
-const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: EnrollmentTableProps) => {
+const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Readonly<EnrollmentTableProps>) => {
     const {
         enrollments,
         summary,
@@ -102,7 +102,7 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Enrol
                         type="button"
                         key={tab.value}
                         onClick={() => handleStatusFilterChange(tab.value)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${statusFilter === tab.value
+                        className={`px-3 py-2 min-h-[44px] rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${statusFilter === tab.value
                                 ? "bg-blue-600 text-white"
                                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                             }`}
@@ -124,6 +124,8 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Enrol
                         placeholder="Search students..."
                         value={search}
                         onChange={(e) => handleSearchChange(e.target.value)}
+                        aria-label="Search students"
+                        maxLength={100}
                         className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition"
                     />
                 </div>
@@ -131,6 +133,7 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Enrol
                     <select
                         value={sortBy}
                         onChange={(e) => handleSortFieldChange(e.target.value)}
+                        aria-label="Sort by field"
                         className="px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                     >
                         <option value="enrolled_at">Date Enrolled</option>
@@ -156,6 +159,7 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Enrol
                     <select
                         value={pagination.limit}
                         onChange={(e) => handleLimitChange(Number(e.target.value))}
+                        aria-label="Page size"
                         className="border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1.5 text-sm bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                     >
                         {PAGE_SIZE_OPTIONS.map((size) => (
@@ -169,7 +173,7 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Enrol
             {loading && enrollments.length === 0 && (
                 <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 animate-pulse">
                     {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                        <div key={`enrollment-skeleton-${String(i)}`} className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 last:border-0">
                             <div className="flex items-center gap-4">
                                 <div className="h-4 w-32 bg-gray-100 dark:bg-gray-800 rounded" />
                                 <div className="h-4 w-24 bg-gray-100 dark:bg-gray-800 rounded" />
@@ -193,21 +197,21 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Enrol
                 </div>
             )}
 
-            {/* ── Table ── */}
+            {/* ── Table (desktop) ── */}
             {enrollments.length > 0 && (
-                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <div className="hidden md:block bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                                    <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student</th>
-                                    <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Department</th>
-                                    <th className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sessions</th>
-                                    <th className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Completion</th>
-                                    <th className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                    <th className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Certificate</th>
-                                    <th className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rating</th>
-                                    <th className="text-right px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                                    <th scope="col" className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student</th>
+                                    <th scope="col" className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Department</th>
+                                    <th scope="col" className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sessions</th>
+                                    <th scope="col" className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Completion</th>
+                                    <th scope="col" className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                    <th scope="col" className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Certificate</th>
+                                    <th scope="col" className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rating</th>
+                                    <th scope="col" className="text-right px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <AnimatedTableBody>
@@ -260,39 +264,39 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Enrol
                                                 )}
                                             </td>
                                             <td className="px-5 py-3.5 text-center">
-                                                {enrollment.certificate_issued ? (
-                                                    enrollment.certificate_url ? (
-                                                        <a
-                                                            href={enrollment.certificate_url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                                                        >
-                                                            <Award className="h-3.5 w-3.5" /> View
-                                                            <ExternalLink className="h-3 w-3" />
-                                                        </a>
-                                                    ) : (
-                                                        <Award className="h-4 w-4 text-emerald-500 mx-auto" />
-                                                    )
-                                                ) : (
+                                                {!enrollment.certificate_issued && (
                                                     <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
+                                                )}
+                                                {enrollment.certificate_issued && enrollment.certificate_url && (
+                                                    <a
+                                                        href={enrollment.certificate_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                                    >
+                                                        <Award className="h-3.5 w-3.5" /> View
+                                                        <ExternalLink className="h-3 w-3" />
+                                                    </a>
+                                                )}
+                                                {enrollment.certificate_issued && !enrollment.certificate_url && (
+                                                    <Award className="h-4 w-4 text-emerald-500 mx-auto" />
                                                 )}
                                             </td>
                                             <td className="px-5 py-3.5 text-center">
-                                                {enrollment.student_rating != null ? (
+                                                {enrollment.student_rating == null ? (
+                                                    <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
+                                                ) : (
                                                     <span className="inline-flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300">
                                                         <Star className="h-3 w-3 text-amber-500" />
                                                         {enrollment.student_rating}
                                                     </span>
-                                                ) : (
-                                                    <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
                                                 )}
                                             </td>
                                             <td className="px-5 py-3.5 text-right">
                                                 <button
                                                     type="button"
                                                     onClick={() => onEditEnrollment(enrollment, totalSessions || undefined)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                                                 >
                                                     <Edit2 className="h-3.5 w-3.5" /> Update
                                                 </button>
@@ -306,6 +310,59 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Enrol
                 </div>
             )}
 
+            {/* ── Mobile Cards ── */}
+            {enrollments.length > 0 && (
+                <div className="md:hidden space-y-3">
+                    {enrollments.map((enrollment) => {
+                        const statusColors = ENROLLMENT_STATUS_COLORS[enrollment.completion_status as EnrollmentStatus];
+                        const statusLabel = ENROLLMENT_STATUS_LABELS[enrollment.completion_status as EnrollmentStatus] ?? enrollment.completion_status;
+                        return (
+                            <div key={`mobile-${enrollment.enrollment_id}`} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 space-y-3">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                        <p className="font-medium text-sm text-gray-900 dark:text-gray-100">{enrollment.student_name}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{enrollment.dept_name} · Batch {enrollment.passout_year}</p>
+                                    </div>
+                                    {statusColors && (
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${statusColors.bg} ${statusColors.text}`}>
+                                            <span className={`h-1.5 w-1.5 rounded-full ${statusColors.dot}`} />
+                                            {statusLabel}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-3 gap-3 text-center">
+                                    <div>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400">Sessions</p>
+                                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{enrollment.sessions_attended}{totalSessions ? ` / ${totalSessions}` : ""}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400">Completion</p>
+                                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">{enrollment.completion_percentage}%</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400">Rating</p>
+                                        <p className="text-xs text-gray-700 dark:text-gray-300">
+                                            {enrollment.student_rating == null ? (
+                                                "—"
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 text-amber-500" />{enrollment.student_rating}</span>
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => onEditEnrollment(enrollment, totalSessions || undefined)}
+                                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                                >
+                                    <Edit2 className="h-3.5 w-3.5" /> Update Enrollment
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
             {/* ── Pagination ── */}
             {!loading && enrollments.length > 0 && (
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -314,11 +371,11 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Enrol
                         <span className="font-medium text-gray-700 dark:text-gray-300">
                             {enrollments.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0}
                         </span>
-                        –
+                        {" "}
                         <span className="font-medium text-gray-700 dark:text-gray-300">
                             {Math.min(pagination.page * pagination.limit, pagination.total)}
-                        </span>{" "}
-                        of{" "}
+                        </span>
+                        {" of "}
                         <span className="font-medium text-gray-700 dark:text-gray-300">{pagination.total}</span>
                     </span>
 
@@ -370,38 +427,43 @@ const Pagination = ({
                 type="button"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1 || loading}
-                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Previous page"
             >
                 <ChevronLeft className="h-4 w-4" />
             </button>
 
-            {pages.map((p, idx) =>
-                p === "ellipsis" ? (
-                    <span key={`ellipsis-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
-                        ...
-                    </span>
-                ) : (
+            {pages.map((p, idx) => {
+                if (p === "ellipsis") {
+                    return (
+                        <span key={idx === 1 ? "ellipsis-start" : "ellipsis-end"} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
+                            ...
+                        </span>
+                    );
+                }
+                return (
                     <button
                         key={p}
                         type="button"
                         onClick={() => onPageChange(p)}
                         disabled={loading}
-                        className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition ${p === page
+                        aria-label={`Go to page ${String(p)}`}
+                        aria-current={p === page ? "page" : undefined}
+                        className={`min-w-[44px] min-h-[44px] rounded-md text-sm font-medium transition ${p === page
                                 ? "bg-blue-600 text-white shadow-sm"
                                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                             } disabled:cursor-not-allowed`}
                     >
                         {p}
                     </button>
-                )
-            )}
+                );
+            })}
 
             <button
                 type="button"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages || loading}
-                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Next page"
             >
                 <ChevronRight className="h-4 w-4" />
@@ -417,7 +479,7 @@ interface SummaryCardProps {
     iconClassName?: string;
 }
 
-const SummaryCard = ({ label, value, Icon, iconClassName }: SummaryCardProps) => (
+const SummaryCard = ({ label, value, Icon, iconClassName }: Readonly<SummaryCardProps>) => (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-3 text-center">
         <div className="flex items-center justify-center gap-1 mb-0.5">
             {Icon && <Icon className={iconClassName} />}

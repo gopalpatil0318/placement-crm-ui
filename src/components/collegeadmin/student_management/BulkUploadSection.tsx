@@ -7,7 +7,7 @@ interface BulkUploadSectionProps {
   onDownloadSample: () => void;
   onBackToUpload: () => void;
   selectedFile: File | null;
-  csvData: any[];
+  csvData: Record<string, string>[];
   headers: string[];
   loading: boolean;
   onClearFile: () => void;
@@ -15,7 +15,7 @@ interface BulkUploadSectionProps {
 
 const REQUIRED_COLUMNS = [
   "first_name", "last_name", "student_email",
-  "student_password", "dept_name", "student_passout_year", "current_year",
+  "dept_name", "student_passout_year", "current_year",
 ];
 
 export const BulkUploadSection = ({
@@ -83,9 +83,9 @@ export const BulkUploadSection = ({
             <table className="w-full text-sm text-left">
               <thead className="text-[11px] text-gray-500 dark:text-gray-400 uppercase bg-gray-50/80 dark:bg-gray-800/50 sticky top-0 z-10 border-b border-gray-100 dark:border-gray-800">
                 <tr>
-                  <th className="px-4 py-2.5 font-semibold tracking-wider text-gray-400 dark:text-gray-500 w-12">#</th>
+                  <th scope="col" className="px-4 py-2.5 font-semibold tracking-wider text-gray-400 dark:text-gray-500 w-12">#</th>
                   {headers.map((header, index) => (
-                    <th key={index} className="px-4 py-2.5 font-semibold tracking-wider whitespace-nowrap">
+                    <th key={index} scope="col" className="px-4 py-2.5 font-semibold tracking-wider whitespace-nowrap">
                       {header}
                       {REQUIRED_COLUMNS.includes(header) && (
                         <span className="text-red-400 ml-0.5">*</span>
@@ -196,6 +196,7 @@ export const BulkUploadSection = ({
           type="file"
           className="hidden"
           accept=".csv"
+          aria-label="Upload CSV file"
           onChange={(e) => e.target.files?.[0] && onFileChange(e.target.files[0])}
         />
       </label>

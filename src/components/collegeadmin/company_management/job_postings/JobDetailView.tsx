@@ -350,7 +350,7 @@ const JobDetailView = ({ jobId, onJobLoaded }: JobDetailViewProps) => {
         if (job && onJobLoaded) {
             onJobLoaded(job.job_title);
         }
-    }, [job?.job_title, onJobLoaded]);
+    }, [job, onJobLoaded]);
 
     // ========================
     // LOADING / ERROR
@@ -437,6 +437,7 @@ const JobDetailView = ({ jobId, onJobLoaded }: JobDetailViewProps) => {
                                 <button
                                     type="button"
                                     onClick={() => navigate(`/college/job/${job.job_id}/edit`)}
+                                    aria-label="Edit job posting"
                                     className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl shadow-sm hover:bg-blue-700 transition-all active:scale-[0.98]"
                                 >
                                     <Pencil size={15} /> Edit
@@ -450,6 +451,7 @@ const JobDetailView = ({ jobId, onJobLoaded }: JobDetailViewProps) => {
                                         type="button"
                                         onClick={() => setConfirmAction(action)}
                                         disabled={statusLoading}
+                                        aria-label={action.label}
                                         className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl shadow-sm transition-all active:scale-[0.98] disabled:opacity-40 ${action.btnClass}`}
                                     >
                                         <ActionIcon className="h-4 w-4" /> {action.label}
@@ -669,7 +671,7 @@ const InfoTab = ({ job }: { job: JobDetail }) => (
             <InfoRow label="Salary Package" value={job.salary_package || "—"} />
             <InfoRow label="Salary Range" value={
                 job.salary_min && job.salary_max
-                    ? `₹${Number(job.salary_min).toLocaleString()} — ₹${Number(job.salary_max).toLocaleString()}`
+                    ? `₹${Number(job.salary_min).toLocaleString('en-IN')} — ₹${Number(job.salary_max).toLocaleString('en-IN')}`
                     : "—"
             } />
             <InfoRow label="Bond Duration" value={job.bond_duration || "—"} />
@@ -981,6 +983,7 @@ const EligibleStudentsPreview = ({
                         value={search}
                         onChange={(e) => handleSearchChange(e.target.value)}
                         placeholder="Search students by name or email..."
+                        aria-label="Search eligible students by name or email"
                         className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                     />
                 </div>
@@ -988,6 +991,7 @@ const EligibleStudentsPreview = ({
                     <select
                         value={deptFilter}
                         onChange={(e) => handleDeptFilterChange(e.target.value)}
+                        aria-label="Filter by department"
                         className="px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition min-w-[180px] [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-800"
                     >
                         <option value="">All Departments</option>
@@ -1023,18 +1027,18 @@ const EligibleStudentsPreview = ({
                 </div>
             ) : (
                 <>
-                    <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
+                    <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 dark:bg-gray-800/60 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    <th className="px-4 py-3 rounded-tl-xl">#</th>
-                                    <th className="px-4 py-3">Student</th>
-                                    <th className="px-4 py-3">Department</th>
-                                    <th className="px-4 py-3">CGPA</th>
-                                    <th className="px-4 py-3">KTs</th>
-                                    <th className="px-4 py-3">10th %</th>
-                                    <th className="px-4 py-3">12th / Diploma %</th>
-                                    <th className="px-4 py-3 rounded-tr-xl">Gender</th>
+                                    <th scope="col" className="px-4 py-3 rounded-tl-xl">#</th>
+                                    <th scope="col" className="px-4 py-3">Student</th>
+                                    <th scope="col" className="px-4 py-3">Department</th>
+                                    <th scope="col" className="px-4 py-3">CGPA</th>
+                                    <th scope="col" className="px-4 py-3">KTs</th>
+                                    <th scope="col" className="px-4 py-3">10th %</th>
+                                    <th scope="col" className="px-4 py-3">12th / Diploma %</th>
+                                    <th scope="col" className="px-4 py-3 rounded-tr-xl">Gender</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1095,6 +1099,66 @@ const EligibleStudentsPreview = ({
                         </table>
                     </div>
 
+                    {/* Mobile Cards */}
+                    <div className="md:hidden space-y-3">
+                        {students.map((s, idx) => {
+                            const cgpaColor =
+                                s.overall_cgpa >= 8
+                                    ? "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20"
+                                    : s.overall_cgpa >= 6
+                                    ? "text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20"
+                                    : "text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/20";
+                            const ktsColor =
+                                s.total_live_kts === 0
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/40"
+                                    : "bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/40";
+                            const twelfthDiplomaVal =
+                                s.twelfth_percentage != null
+                                    ? `${s.twelfth_percentage}% (12th)`
+                                    : s.diploma_percentage != null
+                                    ? `${s.diploma_percentage}% (Dip)`
+                                    : "—";
+                            return (
+                                <div key={s.student_id} className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 space-y-3">
+                                    <div className="flex items-start justify-between">
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-sm text-gray-800 dark:text-gray-200 truncate">{s.student_name}</p>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{s.student_email}</p>
+                                        </div>
+                                        <span className="text-xs text-gray-400 dark:text-gray-500 font-medium flex-shrink-0 ml-2">
+                                            #{(pagination.page - 1) * pagination.limit + idx + 1}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 border border-purple-100 dark:border-purple-900/40">
+                                            {s.dept_name}
+                                        </span>
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold ${cgpaColor}`}>
+                                            CGPA: {s.overall_cgpa?.toFixed(2) ?? "—"}
+                                        </span>
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${ktsColor}`}>
+                                            KTs: {s.total_live_kts}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                        <div>
+                                            <p className="text-gray-400 dark:text-gray-500">10th</p>
+                                            <p className="font-medium">{s.tenth_percentage ?? "—"}%</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-400 dark:text-gray-500">12th/Dip</p>
+                                            <p className="font-medium">{twelfthDiplomaVal}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-400 dark:text-gray-500">Gender</p>
+                                            <p className="font-medium capitalize">{s.gender}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
                     {/* Pagination */}
                     {pagination.totalPages > 1 && (
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
@@ -1107,7 +1171,7 @@ const EligibleStudentsPreview = ({
                                         key={p}
                                         type="button"
                                         onClick={() => handlePageChange(p)}
-                                        className={`h-8 min-w-[32px] px-2 rounded-lg text-xs font-semibold transition-colors ${
+                                        className={`min-h-[44px] min-w-[44px] px-2 rounded-lg text-xs font-semibold transition-colors ${
                                             p === pagination.page
                                                 ? "bg-blue-600 text-white"
                                                 : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"

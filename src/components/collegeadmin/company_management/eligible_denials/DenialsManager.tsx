@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
     Search,
     ChevronLeft,
@@ -47,15 +47,11 @@ const SortHeader = ({
             className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
         >
             {label}
-            {isActive ? (
-                currentOrder === "asc" ? (
-                    <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                ) : (
-                    <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
-            )}
+            {(() => {
+                if (isActive && currentOrder === "asc") return <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+                if (isActive) return <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+                return <ArrowUpDown className="h-3 w-3 text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />;
+            })()}
         </button>
     );
 };
@@ -96,7 +92,7 @@ const PaginationControls = ({
                 type="button"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1 || loading}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Previous page"
             >
                 <ChevronLeft className="h-4 w-4" />
@@ -127,7 +123,7 @@ const PaginationControls = ({
                 type="button"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages || loading}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Next page"
             >
                 <ChevronRight className="h-4 w-4" />
@@ -302,10 +298,10 @@ const DenialsManager = ({ jobId }: DenialsManagerProps) => {
 
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    // Reset expanded row when denials list changes (filter/search/sort)
-    useEffect(() => {
-        setExpandedId(null);
-    }, [denials]);
+    // Collapse expanded row if it's no longer in the current denials list
+    const validExpandedId = expandedId && denials.some((d) => d.denial_id === expandedId)
+        ? expandedId
+        : null;
 
     const toggleExpand = useCallback((id: string) => {
         setExpandedId((prev) => (prev === id ? null : id));
@@ -400,39 +396,41 @@ const DenialsManager = ({ jobId }: DenialsManagerProps) => {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="bg-gray-50/70 dark:bg-gray-800/50 text-left text-gray-500 dark:text-gray-400">
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Student" field="student_name" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Department</th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Department</th>
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Reason" field="denial_reason" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Denied" field="denied_at" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? (
-                            <SkeletonTable />
-                        ) : denials.length > 0 ? (
-                            denials.map((denial, index) => (
-                                <DenialRow
-                                    key={denial.denial_id}
-                                    denial={denial}
-                                    index={(pagination.page - 1) * pagination.limit + index + 1}
-                                    isExpanded={expandedId === denial.denial_id}
-                                    onToggle={() => toggleExpand(denial.denial_id)}
-                                />
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan={5}>
-                                    <EmptyState hasFilters={hasFilters} />
-                                </td>
-                            </tr>
-                        )}
+                        {(() => {
+                            if (loading) return <SkeletonTable />;
+                            if (denials.length > 0) {
+                                return denials.map((denial, index) => (
+                                    <DenialRow
+                                        key={denial.denial_id}
+                                        denial={denial}
+                                        index={(pagination.page - 1) * pagination.limit + index + 1}
+                                        isExpanded={validExpandedId === denial.denial_id}
+                                        onToggle={() => toggleExpand(denial.denial_id)}
+                                    />
+                                ));
+                            }
+                            return (
+                                <tr>
+                                    <td colSpan={5}>
+                                        <EmptyState hasFilters={hasFilters} />
+                                    </td>
+                                </tr>
+                            );
+                        })()}
                     </tbody>
                 </table>
             </div>

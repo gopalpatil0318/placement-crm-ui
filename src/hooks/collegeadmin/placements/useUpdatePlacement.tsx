@@ -1,9 +1,9 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { type ChangeEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import { updatePlacementSchema } from "@/validators/PlacementSchema";
 import { queryKeys } from "@/lib/queryKeys";
 import { type PlacementListItem } from "./useViewPlacements";
@@ -37,6 +37,46 @@ const INITIAL_FORM: UpdatePlacementForm = {
 };
 
 // ========================
+// HELPERS
+// ========================
+
+function buildDiffPayload(
+    formData: UpdatePlacementForm,
+    orig: UpdatePlacementForm | null,
+): Record<string, unknown> {
+    const payload: Record<string, unknown> = {};
+
+    if (orig?.placement_type !== formData.placement_type && formData.placement_type) {
+        payload.placement_type = formData.placement_type;
+    }
+    if (orig?.fulltime_package !== formData.fulltime_package) {
+        payload.fulltime_package =
+            formData.fulltime_package !== "" ? Number(formData.fulltime_package) : null;
+    }
+    if (orig?.fulltime_designation.trim() !== formData.fulltime_designation.trim()) {
+        payload.fulltime_designation = formData.fulltime_designation.trim() || null;
+    }
+    if (orig?.fulltime_joining_date !== formData.fulltime_joining_date) {
+        payload.fulltime_joining_date = formData.fulltime_joining_date || null;
+    }
+    if (orig?.internship_stipend !== formData.internship_stipend) {
+        payload.internship_stipend =
+            formData.internship_stipend !== "" ? Number(formData.internship_stipend) : null;
+    }
+    if (orig?.internship_duration.trim() !== formData.internship_duration.trim()) {
+        payload.internship_duration = formData.internship_duration.trim() || null;
+    }
+    if (orig?.internship_start_date !== formData.internship_start_date) {
+        payload.internship_start_date = formData.internship_start_date || null;
+    }
+    if (orig?.offer_letter_url.trim() !== formData.offer_letter_url.trim()) {
+        payload.offer_letter_url = formData.offer_letter_url.trim() || null;
+    }
+
+    return payload;
+}
+
+// ========================
 // HOOK
 // ========================
 
@@ -45,7 +85,7 @@ export const useUpdatePlacement = (onSuccess: () => void) => {
     const [formData, setFormData] = useState<UpdatePlacementForm>(INITIAL_FORM);
     const [errors, setErrors] = useState<FormErrors>({});
     const [placementId, setPlacementId] = useState<string | null>(null);
-    const originalData = useRef<UpdatePlacementForm | null>(null);
+    const [originalData, setOriginalData] = useState<UpdatePlacementForm | null>(null);
 
     const mutation = useMutation({
         mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
@@ -69,20 +109,11 @@ export const useUpdatePlacement = (onSuccess: () => void) => {
                     ? err.message
                     : "Something went wrong";
             const status = err instanceof ApiError ? err.status : undefined;
-
-            if (status === 400 || status === 422) {
-                showToast({
-                    type: "error",
-                    title: "Invalid Action",
-                    description: message,
-                });
-            } else {
-                showToast({
-                    type: "error",
-                    title: "Error",
-                    description: message,
-                });
-            }
+            showToast({
+                type: "error",
+                title: getErrorTitle(status),
+                description: message,
+            });
         },
     });
 
@@ -125,7 +156,7 @@ export const useUpdatePlacement = (onSuccess: () => void) => {
             offer_letter_url: placement.offer_letter_url || "",
         };
         setFormData(form);
-        originalData.current = { ...form };
+        setOriginalData({ ...form });
         setErrors({});
     }, []);
 
@@ -133,80 +164,28 @@ export const useUpdatePlacement = (onSuccess: () => void) => {
         setFormData(INITIAL_FORM);
         setErrors({});
         setPlacementId(null);
-        originalData.current = null;
+        setOriginalData(null);
     }, []);
+
+    // ── Unsaved-changes guard ──
+    const isDirty = useMemo(() => {
+        if (!originalData) return false;
+        return (Object.keys(INITIAL_FORM) as (keyof UpdatePlacementForm)[]).some(
+            (key) => formData[key] !== originalData[key],
+        );
+    }, [formData, originalData]);
+
+    useEffect(() => {
+        if (!isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     const handleSubmit = useCallback(async () => {
         if (mutation.isPending || !placementId) return;
 
-        const orig = originalData.current;
-
-        // Diff check
-        const payload: Record<string, unknown> = {};
-
-        if (
-            !orig ||
-            formData.placement_type !== orig.placement_type
-        ) {
-            if (formData.placement_type)
-                payload.placement_type = formData.placement_type;
-        }
-        if (
-            !orig ||
-            formData.fulltime_package !== orig.fulltime_package
-        ) {
-            payload.fulltime_package =
-                formData.fulltime_package !== ""
-                    ? Number(formData.fulltime_package)
-                    : null;
-        }
-        if (
-            !orig ||
-            formData.fulltime_designation.trim() !==
-                (orig.fulltime_designation || "").trim()
-        ) {
-            payload.fulltime_designation =
-                formData.fulltime_designation.trim() || null;
-        }
-        if (
-            !orig ||
-            formData.fulltime_joining_date !== orig.fulltime_joining_date
-        ) {
-            payload.fulltime_joining_date =
-                formData.fulltime_joining_date || null;
-        }
-        if (
-            !orig ||
-            formData.internship_stipend !== orig.internship_stipend
-        ) {
-            payload.internship_stipend =
-                formData.internship_stipend !== ""
-                    ? Number(formData.internship_stipend)
-                    : null;
-        }
-        if (
-            !orig ||
-            formData.internship_duration.trim() !==
-                (orig.internship_duration || "").trim()
-        ) {
-            payload.internship_duration =
-                formData.internship_duration.trim() || null;
-        }
-        if (
-            !orig ||
-            formData.internship_start_date !== orig.internship_start_date
-        ) {
-            payload.internship_start_date =
-                formData.internship_start_date || null;
-        }
-        if (
-            !orig ||
-            formData.offer_letter_url.trim() !==
-                (orig.offer_letter_url || "").trim()
-        ) {
-            payload.offer_letter_url =
-                formData.offer_letter_url.trim() || null;
-        }
+        const payload = buildDiffPayload(formData, originalData);
 
         if (Object.keys(payload).length === 0) {
             showToast({
@@ -243,11 +222,12 @@ export const useUpdatePlacement = (onSuccess: () => void) => {
         setErrors({});
 
         mutation.mutate({ id: placementId, payload });
-    }, [formData, placementId, mutation]);
+    }, [formData, placementId, mutation, originalData]);
 
     return {
         formData,
         errors,
+        isDirty,
         loading: mutation.isPending,
         handleChange,
         handleSubmit,

@@ -39,7 +39,7 @@ function getSeverityIcon(type: CollegeRestrictionListItem["restriction_type"]) {
     return { Icon: AlertTriangle, color: "text-yellow-500 dark:text-yellow-400" };
 }
 
-export default function RestrictionDetailModal({ restriction, onClose }: RestrictionDetailModalProps) {
+export default function RestrictionDetailModal({ restriction, onClose }: Readonly<RestrictionDetailModalProps>) {
     const navigate = useNavigate();
     const [showResolve, setShowResolve] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
@@ -74,13 +74,13 @@ export default function RestrictionDetailModal({ restriction, onClose }: Restric
                         </div>
                         {restriction.is_active ? (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                Active
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                <span>Active</span>
                             </span>
                         ) : (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                Resolved
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                <span>Resolved</span>
                             </span>
                         )}
                     </div>

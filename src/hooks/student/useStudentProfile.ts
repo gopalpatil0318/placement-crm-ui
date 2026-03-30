@@ -11,6 +11,7 @@ export const useStudentProfile = () => {
     const { data, isLoading, error, refetch } = useQuery<FullProfileResponse>({
         queryKey: queryKeys.studentPortal.fullProfile(),
         queryFn: () => StudentProfileService.getFullProfile(),
+        staleTime: 5 * 60 * 1000,
     });
 
     const errorMessage = error

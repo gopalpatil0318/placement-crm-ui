@@ -10,6 +10,9 @@ import {
     ArrowUp,
     ArrowDown,
     SlidersHorizontal,
+    MapPin,
+    Calendar,
+    Users,
 } from "lucide-react";
 import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
@@ -33,9 +36,6 @@ const STATUS_BADGE: Record<string, { bg: string; text: string; dot: string }> = 
     closed:    { bg: "bg-blue-50 dark:bg-blue-900/20",         text: "text-blue-700 dark:text-blue-400",       dot: "bg-blue-500" },
     cancelled: { bg: "bg-red-50 dark:bg-red-900/20",           text: "text-red-600 dark:text-red-400",         dot: "bg-red-400" },
 };
-
-const currentYear = new Date().getFullYear();
-const PASSOUT_YEARS = Array.from({ length: 10 }, (_, i) => currentYear - 3 + i);
 
 // ========================
 // COMPANY AVATAR
@@ -168,7 +168,7 @@ const Pagination = ({
                         type="button"
                         onClick={() => onPageChange(p)}
                         disabled={loading}
-                        className={`min-w-[32px] h-8 rounded-lg text-sm font-medium transition ${
+                        className={`min-w-[44px] min-h-[44px] rounded-lg text-sm font-medium transition ${
                             p === page
                                 ? "bg-blue-600 text-white shadow-sm"
                                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -275,7 +275,6 @@ const ViewJobs = () => {
         search,
         statusFilter,
         jobTypeFilter,
-        passoutYearFilter,
         companyFilter,
         sortBy,
         sortOrder,
@@ -284,14 +283,13 @@ const ViewJobs = () => {
         handleLimitChange,
         handleStatusFilterChange,
         handleJobTypeFilterChange,
-        handlePassoutYearFilterChange,
         handleCompanyFilterChange,
         handleSortChange,
     } = useViewJobs();
 
     const { companies: activeCompanies, loading: companiesLoading } = useViewCompanies({ limit: 100, status: "active" });
 
-    const hasFilters = !!(search || statusFilter || jobTypeFilter || passoutYearFilter || companyFilter);
+    const hasFilters = !!(search || statusFilter || jobTypeFilter || companyFilter);
     const startEntry = jobs.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
     const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
 
@@ -338,12 +336,14 @@ const ViewJobs = () => {
                                     placeholder="Search by title, company, location..."
                                     value={search}
                                     onChange={(e) => handleSearchChange(e.target.value)}
+                                    maxLength={100}
+                                    aria-label="Search jobs"
                                     className="w-full border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-4 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                                 />
                             </div>
 
                             {/* Status */}
-                            <select value={statusFilter} onChange={(e) => handleStatusFilterChange(e.target.value)} className={selectClass}>
+                            <select value={statusFilter} onChange={(e) => handleStatusFilterChange(e.target.value)} aria-label="Filter by status" className={selectClass}>
                                 <option value="">All Status</option>
                                 <option value="draft">Draft</option>
                                 <option value="published">Published</option>
@@ -352,7 +352,7 @@ const ViewJobs = () => {
                             </select>
 
                             {/* Job Type */}
-                            <select value={jobTypeFilter} onChange={(e) => handleJobTypeFilterChange(e.target.value)} className={selectClass}>
+                            <select value={jobTypeFilter} onChange={(e) => handleJobTypeFilterChange(e.target.value)} aria-label="Filter by job type" className={selectClass}>
                                 <option value="">All Types</option>
                                 <option value="full-time">Full-time</option>
                                 <option value="internship">Internship</option>
@@ -360,18 +360,10 @@ const ViewJobs = () => {
                             </select>
 
                             {/* Company */}
-                            <select value={companyFilter} onChange={(e) => handleCompanyFilterChange(e.target.value)} disabled={companiesLoading} className={selectClass}>
+                            <select value={companyFilter} onChange={(e) => handleCompanyFilterChange(e.target.value)} disabled={companiesLoading} aria-label="Filter by company" className={selectClass}>
                                 <option value="">{companiesLoading ? "Loading..." : "All Companies"}</option>
                                 {activeCompanies.map((c) => (
                                     <option key={c.company_id} value={c.company_id}>{c.company_name}</option>
-                                ))}
-                            </select>
-
-                            {/* Passout Year */}
-                            <select value={passoutYearFilter} onChange={(e) => handlePassoutYearFilterChange(e.target.value)} className={selectClass}>
-                                <option value="">All Years</option>
-                                {PASSOUT_YEARS.map((y) => (
-                                    <option key={y} value={y}>{y}</option>
                                 ))}
                             </select>
 
@@ -391,27 +383,100 @@ const ViewJobs = () => {
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="overflow-x-auto">
+                    {/* Mobile card layout */}
+                    <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                        {loading ? (
+                            Array.from({ length: 4 }).map((_, i) => (
+                                <div key={`mob-skel-${i}`} className="px-4 py-4 animate-pulse space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-xl bg-gray-100 dark:bg-gray-800" />
+                                        <div className="flex-1 space-y-1.5">
+                                            <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-3/4" />
+                                            <div className="h-3 bg-gray-50 dark:bg-gray-800/50 rounded w-1/2" />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <div className="h-5 bg-gray-50 dark:bg-gray-800/50 rounded-full w-16" />
+                                        <div className="h-5 bg-gray-50 dark:bg-gray-800/50 rounded-full w-16" />
+                                    </div>
+                                </div>
+                            ))
+                        ) : jobs.length > 0 ? (
+                            jobs.map((job) => {
+                                const badge = STATUS_BADGE[job.job_status] || STATUS_BADGE.draft;
+                                const colorIdx = job.company_name.charCodeAt(0) % AVATAR_COLORS.length;
+                                const initials = job.company_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+                                return (
+                                    <button
+                                        key={job.job_id}
+                                        type="button"
+                                        onClick={() => navigate(`/college/job/${job.job_id}`)}
+                                        className="w-full text-left px-4 py-4 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            {job.company_logo ? (
+                                                <img src={job.company_logo} alt={job.company_name} className="h-10 w-10 rounded-xl object-cover border border-gray-100 dark:border-gray-700 flex-shrink-0" />
+                                            ) : (
+                                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 ${AVATAR_COLORS[colorIdx]}`}>
+                                                    {initials}
+                                                </div>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{job.job_title}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{job.company_name}</p>
+                                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
+                                                        {job.job_status.charAt(0).toUpperCase() + job.job_status.slice(1)}
+                                                    </span>
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400">
+                                                        {job.job_type}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
+                                                    <span className="inline-flex items-center gap-1">
+                                                        <MapPin className="h-3 w-3" /> {job.job_location}
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-1">
+                                                        <Users className="h-3 w-3" /> {job.positions_count ?? 0} pos.
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-1">
+                                                        <Calendar className="h-3 w-3" />
+                                                        {new Date(job.application_deadline).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600 flex-shrink-0 mt-1" />
+                                        </div>
+                                    </button>
+                                );
+                            })
+                        ) : (
+                            <EmptyState hasFilters={hasFilters} onCreateJob={handleCreateJob} />
+                        )}
+                    </div>
+
+                    {/* Desktop table layout */}
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-gray-50/70 dark:bg-gray-800/50 text-left text-gray-500 dark:text-gray-400">
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-12">#</th>
-                                    <th className="px-4 py-3">
+                                    <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-12">#</th>
+                                    <th scope="col" className="px-4 py-3">
                                         <SortHeader label="Job Title" field="job_title" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                     </th>
-                                    <th className="px-4 py-3">
+                                    <th scope="col" className="px-4 py-3">
                                         <SortHeader label="Company" field="company_name" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Type</th>
-                                    <th className="px-4 py-3">
+                                    <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Type</th>
+                                    <th scope="col" className="px-4 py-3">
                                         <SortHeader label="Status" field="job_status" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Positions</th>
-                                    <th className="px-4 py-3">
+                                    <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Positions</th>
+                                    <th scope="col" className="px-4 py-3">
                                         <SortHeader label="Deadline" field="application_deadline" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                     </th>
-                                    <th className="px-4 py-3">
+                                    <th scope="col" className="px-4 py-3">
                                         <SortHeader label="Created" field="created_at" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                     </th>
                                 </tr>

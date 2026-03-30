@@ -17,7 +17,6 @@ import FloatingSelect from "@/components/ui/FloatingSelect";
 import {
     PROGRAM_TYPE_OPTIONS,
     PROGRAM_TYPE_LABELS,
-    type ProgramType,
     type CreateTrainingProgramInput,
 } from "@/validators/TrainingProgramSchema";
 
@@ -52,7 +51,7 @@ const TYPE_SELECT_OPTIONS = [
     { value: "", label: "" },
     ...PROGRAM_TYPE_OPTIONS.map((t) => ({
         value: t,
-        label: PROGRAM_TYPE_LABELS[t as ProgramType],
+        label: PROGRAM_TYPE_LABELS[t],
     })),
 ];
 
@@ -68,6 +67,21 @@ const STEPS = [
 ];
 
 // ========================
+// HELPERS — extracted for cognitive complexity
+// ========================
+
+function getStepIndicatorClass(currentStep: number, stepNumber: number): string {
+    if (currentStep === stepNumber) return "bg-blue-600 text-white";
+    if (currentStep > stepNumber) return "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400";
+    return "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400";
+}
+
+function getButtonText(mode: "create" | "edit", isLoading: boolean): string {
+    if (isLoading) return mode === "create" ? "Creating..." : "Saving...";
+    return mode === "create" ? "Create Program" : "Save Changes";
+}
+
+// ========================
 // SUB-COMPONENTS
 // ========================
 
@@ -77,7 +91,7 @@ interface SectionHeaderProps {
     subtitle: string;
 }
 
-const SectionHeader = ({ icon: Icon, title, subtitle }: SectionHeaderProps) => (
+const SectionHeader = ({ icon: Icon, title, subtitle }: Readonly<SectionHeaderProps>) => (
     <div className="flex items-center gap-3 mb-6">
         <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
             <Icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -88,6 +102,34 @@ const SectionHeader = ({ icon: Icon, title, subtitle }: SectionHeaderProps) => (
         </div>
     </div>
 );
+
+interface SubmitButtonProps {
+    loading: boolean;
+    mode: "create" | "edit";
+    shouldReduce: boolean | null;
+    onClick: () => void;
+}
+
+const SubmitButton = ({ loading, mode, shouldReduce, onClick }: Readonly<SubmitButtonProps>) => {
+    const text = getButtonText(mode, loading);
+    const btnClass = "inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 min-h-[44px] rounded-xl text-sm font-medium transition shadow-sm shadow-blue-200 dark:shadow-none disabled:opacity-60 disabled:cursor-not-allowed";
+
+    if (shouldReduce) {
+        return (
+            <button type="button" onClick={onClick} disabled={loading} className={btnClass}>
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {text}
+            </button>
+        );
+    }
+
+    return (
+        <motion.button type="button" onClick={onClick} disabled={loading} whileTap={{ scale: 0.97 }} className={btnClass}>
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {text}
+        </motion.button>
+    );
+};
 
 // ========================
 // COMPONENT
@@ -105,7 +147,7 @@ const TrainingForm = ({
     handleBack,
     handleSubmit,
     handleCancel,
-}: TrainingFormProps) => {
+}: Readonly<TrainingFormProps>) => {
     const shouldReduce = useReducedMotion();
 
     // Fetch departments for multi-select
@@ -153,13 +195,7 @@ const TrainingForm = ({
                 <div className="flex items-center gap-2">
                     {STEPS.map((s, i) => (
                         <div key={s.number} className="flex items-center gap-2">
-                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                                step === s.number
-                                    ? "bg-blue-600 text-white"
-                                    : step > s.number
-                                        ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
-                                        : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-                            }`}>
+                            <div className={`flex items-center gap-2 px-3 py-1.5 min-h-[44px] rounded-lg text-xs font-medium transition-colors ${getStepIndicatorClass(step, s.number)}`}>
                                 {step > s.number ? (
                                     <Check className="h-3 w-3" />
                                 ) : (
@@ -316,9 +352,9 @@ const TrainingForm = ({
                         {/* Department Multi-select */}
                         {departments.length > 0 && (
                             <div>
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                                     Target Departments
-                                </label>
+                                </span>
                                 <div className="flex flex-wrap gap-2">
                                     {departments.map((dept) => {
                                         const selected = (formData.target_dept_ids ?? []).includes(dept.dept_id);
@@ -327,7 +363,7 @@ const TrainingForm = ({
                                                 key={dept.dept_id}
                                                 type="button"
                                                 onClick={() => onDeptToggle(dept.dept_id)}
-                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                                                className={`inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg text-xs font-medium border transition-colors ${
                                                     selected
                                                         ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400"
                                                         : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -354,7 +390,7 @@ const TrainingForm = ({
                             <button
                                 type="button"
                                 onClick={handleBack}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                                className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
                             >
                                 <ChevronLeft className="h-4 w-4" />
                                 Back
@@ -366,7 +402,7 @@ const TrainingForm = ({
                             type="button"
                             onClick={handleCancel}
                             disabled={loading}
-                            className="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition disabled:opacity-40"
+                            className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition disabled:opacity-40"
                         >
                             Cancel
                         </button>
@@ -374,36 +410,13 @@ const TrainingForm = ({
                             <button
                                 type="button"
                                 onClick={handleNext}
-                                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition shadow-sm shadow-blue-200 dark:shadow-none"
+                                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 min-h-[44px] rounded-xl text-sm font-medium transition shadow-sm shadow-blue-200 dark:shadow-none"
                             >
                                 Next
                                 <ChevronRight className="h-4 w-4" />
                             </button>
-                        ) : shouldReduce ? (
-                            <button
-                                type="button"
-                                onClick={handleSubmit}
-                                disabled={loading}
-                                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl text-sm font-medium transition shadow-sm shadow-blue-200 dark:shadow-none disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
-                                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {loading
-                                    ? mode === "create" ? "Creating..." : "Saving..."
-                                    : mode === "create" ? "Create Program" : "Save Changes"}
-                            </button>
                         ) : (
-                            <motion.button
-                                type="button"
-                                onClick={handleSubmit}
-                                disabled={loading}
-                                whileTap={{ scale: 0.97 }}
-                                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl text-sm font-medium transition shadow-sm shadow-blue-200 dark:shadow-none disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
-                                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {loading
-                                    ? mode === "create" ? "Creating..." : "Saving..."
-                                    : mode === "create" ? "Create Program" : "Save Changes"}
-                            </motion.button>
+                            <SubmitButton loading={loading} mode={mode} shouldReduce={shouldReduce} onClick={handleSubmit} />
                         )}
                     </div>
                 </div>

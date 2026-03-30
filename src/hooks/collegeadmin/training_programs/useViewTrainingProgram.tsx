@@ -54,9 +54,10 @@ export const useViewTrainingProgram = (programId: string | undefined) => {
 
     const program: TrainingProgramDetail | null = data?.data ?? null;
     const loading = isLoading;
-    const error = queryError
-        ? (queryError instanceof Error ? queryError.message : "Failed to fetch training program")
-        : null;
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch training program";
+    }
 
     useEffect(() => {
         if (error) showToast({ type: "error", title: "Fetch Error", description: error });

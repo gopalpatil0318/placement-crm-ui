@@ -111,7 +111,7 @@ export interface JobRound {
 export interface JobQuestion {
   question_id: string
   question_text: string
-  question_type: "text" | "single_choice" | "multiple_choice" | "boolean"
+  question_type: "text" | "essay" | "mcq_single" | "mcq_multiple" | "yes_no"
   question_options: string[] | null
   is_required: boolean
   question_order: number
@@ -195,6 +195,7 @@ export interface ApplyResponse {
   answers_submitted: number
   job_title: string
   company_name: string
+  message?: string
 }
 
 // ─── Deny ───────────────────────────────────────────────────────────────────────
@@ -212,6 +213,7 @@ export interface DenyResponse {
   denied_at: string
   job_title: string
   company_name: string
+  message?: string
 }
 
 // ─── Applications List ──────────────────────────────────────────────────────────
@@ -345,11 +347,18 @@ export interface WithdrawResponse {
   last_updated_at: string
   job_title: string
   company_name: string
+  message?: string
 }
 
 // ─── Service ────────────────────────────────────────────────────────────────────
 
 export const JobBrowsingService = {
+  /** Get distinct years with active published jobs */
+  getAvailableJobYears: async (): Promise<number[]> => {
+    const response = await api.get("/student/get_available_job_years")
+    return response.data.data.years
+  },
+
   /** API #151 — List available jobs with search/filter/pagination */
   getAvailableJobs: async (filters: JobListFilters = {}): Promise<JobListResponse> => {
     const response = await api.get("/student/get_available_jobs", { params: filters })
@@ -374,13 +383,13 @@ export const JobBrowsingService = {
   /** API #154 — Apply for a job */
   applyForJob: async (jobId: string, payload: ApplyPayload): Promise<ApplyResponse> => {
     const response = await api.post(`/student/apply_for_job/${jobId}`, payload)
-    return response.data.data
+    return { ...response.data.data, message: response.data.message }
   },
 
   /** API #155 — Deny/opt-out of a job */
   denyJob: async (jobId: string, payload: DenyPayload): Promise<DenyResponse> => {
     const response = await api.post(`/student/deny_job/${jobId}`, payload)
-    return response.data.data
+    return { ...response.data.data, message: response.data.message }
   },
 
   /** API #156 — List my applications */
@@ -402,6 +411,6 @@ export const JobBrowsingService = {
   /** API #158 — Withdraw application */
   withdrawApplication: async (applicationId: string, payload: WithdrawPayload = {}): Promise<WithdrawResponse> => {
     const response = await api.patch(`/student/withdraw_application/${applicationId}`, payload)
-    return response.data.data
+    return { ...response.data.data, message: response.data.message }
   },
 }

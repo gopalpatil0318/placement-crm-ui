@@ -149,13 +149,13 @@ const ActivitiesForm = () => {
 
                             <FloatingTextarea label="Description" name="activity_description" value={formData.activity_description} onChange={handleChange} error={errors.activity_description} rows={3} placeholder="Brief description of the activity" />
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <FloatingSelect label="Activity Type" name="activity_type" value={formData.activity_type} onChange={handleChange} error={errors.activity_type} options={VALID_ACTIVITY_TYPES.map(t => ({ value: t, label: ACTIVITY_TYPE_LABELS[t] }))} />
                                 <FloatingInput label="Organizing Body" name="organizing_body" value={formData.organizing_body} onChange={handleChange} placeholder="e.g. NSS Unit, IEEE" />
                                 <FloatingInput label="Role / Position" name="role_position" value={formData.role_position} onChange={handleChange} placeholder="e.g. Volunteer, Captain" />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingInput label="Start Date" name="start_date" value={formData.start_date} onChange={handleChange} type="date" />
                                 {!formData.is_ongoing && (
                                     <FloatingInput label="End Date" name="end_date" value={formData.end_date} onChange={handleChange} error={errors.end_date} type="date" />
@@ -168,9 +168,9 @@ const ActivitiesForm = () => {
                                 <span className="text-sm text-gray-700 dark:text-gray-300">This activity is ongoing</span>
                             </label>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <FloatingInput label="Hours Contributed" name="hours_contributed" value={formData.hours_contributed} onChange={handleChange} error={errors.hours_contributed} type="number" placeholder="e.g. 120" />
-                                <FloatingInput label="Certificate URL" name="certificate_url" value={formData.certificate_url} onChange={handleChange} error={errors.certificate_url} placeholder="https://..." />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FloatingInput label="Hours Contributed" name="hours_contributed" value={formData.hours_contributed} onChange={handleChange} error={errors.hours_contributed} type="number" inputMode="numeric" placeholder="e.g. 120" />
+                                <FloatingInput label="Certificate URL" name="certificate_url" value={formData.certificate_url} onChange={handleChange} error={errors.certificate_url} inputMode="url" placeholder="https://..." />
                             </div>
 
                             {/* Proof URLs */}
@@ -179,6 +179,7 @@ const ActivitiesForm = () => {
                                 <div className="flex gap-2">
                                     <input value={proofInput} onChange={(e) => setProofInput(e.target.value)}
                                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addProofUrl(); } }}
+                                        inputMode="url"
                                         placeholder="Paste URL & press Enter"
                                         className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-4 py-2.5 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20" />
                                     <button type="button" onClick={addProofUrl}
@@ -186,8 +187,8 @@ const ActivitiesForm = () => {
                                 </div>
                                 {formData.proof_urls.length > 0 && (
                                     <ul className="mt-2 space-y-1">
-                                        {formData.proof_urls.map((url, i) => (
-                                            <li key={i} className="flex items-center justify-between text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg">
+                                        {formData.proof_urls.map((url) => (
+                                            <li key={url} className="flex items-center justify-between text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg">
                                                 <span className="truncate mr-2"><LinkIcon size={12} className="inline -mt-0.5 mr-1" />{url}</span>
                                                 <button type="button" onClick={() => removeProofUrl(url)} className="text-red-400 hover:text-red-600 cursor-pointer flex-shrink-0"><X className="h-3 w-3" /></button>
                                             </li>
@@ -308,16 +309,16 @@ const ActivityCard = memo(function ActivityCard({
                             <ExternalLink className="h-3.5 w-3.5" /> Certificate
                         </a>
                     )}
-                    {visibleProofs.map((url: string, i: number) => (
-                        <a key={i} href={url} target="_blank" rel="noreferrer"
+                    {visibleProofs.map((url: string, idx: number) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer"
                             className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <LinkIcon className="h-3.5 w-3.5" /> Proof {i + 1}
+                            <LinkIcon className="h-3.5 w-3.5" /> Proof {idx + 1}
                         </a>
                     ))}
                     {hiddenProofCount > 0 && (
                         <span className="text-xs text-gray-400 dark:text-gray-500">+{hiddenProofCount} more</span>
                     )}
-                    {act.is_verified && (
+                    {(act as ActivityData & { is_verified?: boolean }).is_verified && (
                         <span role="status" className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
                             <CheckCircle className="h-3.5 w-3.5" /> Verified
                         </span>

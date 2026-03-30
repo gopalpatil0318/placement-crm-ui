@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
+import { useYearFilter } from "@/context/YearFilterContext";
 
 // ========================
 // TYPES
@@ -60,12 +61,12 @@ export interface PlacementStats {
 // ========================
 
 export const useViewPlacements = (jobId?: string) => {
+    const { selectedYear } = useYearFilter();
     // ── Local filter / pagination state ──
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [passoutYear, setPassoutYear] = useState("");
     const [companyId, setCompanyId] = useState("");
     const [placementStatus, setPlacementStatus] = useState("");
     const [placementType, setPlacementType] = useState("");
@@ -77,11 +78,12 @@ export const useViewPlacements = (jobId?: string) => {
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // ── React Query ──
-    const queryFilters = {
+    const queryClient = useQueryClient();
+    const queryFilters = useMemo(() => ({
         page,
         limit,
         search: debouncedSearch || undefined,
-        passout_year: passoutYear ? Number(passoutYear) : undefined,
+        passout_year: selectedYear,
         company_id: companyId || undefined,
         job_id: jobId || undefined,
         placement_status: placementStatus || undefined,
@@ -90,7 +92,7 @@ export const useViewPlacements = (jobId?: string) => {
         offer_letter_verified: offerLetterVerified || undefined,
         sort_by: sortBy,
         sort_order: sortOrder,
-    };
+    }), [page, limit, debouncedSearch, selectedYear, companyId, jobId, placementStatus, placementType, acceptanceStatus, offerLetterVerified, sortBy, sortOrder]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.placements.all(queryFilters),
@@ -109,9 +111,21 @@ export const useViewPlacements = (jobId?: string) => {
         totalPages: 0,
     };
     const loading = isLoading || isFetching;
-    const error = queryError
-        ? (queryError instanceof Error ? queryError.message : "Failed to load placements")
-        : null;
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to load placements";
+    }
+
+    // ── Next-page prefetching ──
+    useEffect(() => {
+        if (pagination.page < pagination.totalPages) {
+            const nextFilters = { ...queryFilters, page: pagination.page + 1 };
+            void queryClient.prefetchQuery({
+                queryKey: queryKeys.placements.all(nextFilters),
+                queryFn: () => CollegeAdminService.getAllPlacements(nextFilters),
+            });
+        }
+    }, [pagination.page, pagination.totalPages, queryFilters, queryClient]);
 
     // ── Handlers ──
 
@@ -155,11 +169,6 @@ export const useViewPlacements = (jobId?: string) => {
         setPage(1);
     }, []);
 
-    const handlePassoutYearChange = useCallback((year: string) => {
-        setPassoutYear(year);
-        setPage(1);
-    }, []);
-
     const handleAcceptanceFilterChange = useCallback((status: string) => {
         setAcceptanceStatus(status);
         setPage(1);
@@ -173,7 +182,6 @@ export const useViewPlacements = (jobId?: string) => {
     const clearFilters = useCallback(() => {
         setSearch("");
         setDebouncedSearch("");
-        setPassoutYear("");
         setCompanyId("");
         setPlacementStatus("");
         setPlacementType("");
@@ -191,7 +199,6 @@ export const useViewPlacements = (jobId?: string) => {
         error,
         pagination,
         search,
-        passoutYear,
         companyId,
         placementStatus,
         placementType,
@@ -205,7 +212,6 @@ export const useViewPlacements = (jobId?: string) => {
         handleSortChange,
         handleStatusFilterChange,
         handleTypeFilterChange,
-        handlePassoutYearChange,
         handleAcceptanceFilterChange,
         handleVerifiedFilterChange,
         clearFilters,

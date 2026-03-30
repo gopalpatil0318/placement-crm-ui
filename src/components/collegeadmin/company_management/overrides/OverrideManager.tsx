@@ -129,15 +129,14 @@ const StatusPills = ({
             <button
                 type="button"
                 onClick={() => onFilter("")}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    !activeFilter
-                        ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-sm"
-                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${activeFilter
+                        ? "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        : "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-sm"
                 }`}
             >
                 All
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                    !activeFilter ? "bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900" : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                {" "}
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeFilter ? "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300" : "bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900"
                 }`}>
                     {total}
                 </span>
@@ -191,6 +190,11 @@ const SortHeader = ({
     onSort: (field: string) => void;
 }) => {
     const isActive = currentSort === field;
+    let SortIcon = ArrowUpDown;
+    let iconClass = "h-3 w-3 text-gray-300 group-hover:text-gray-400";
+    if (isActive && currentOrder === "asc") { SortIcon = ArrowUp; iconClass = "h-3 w-3 text-blue-600"; }
+    else if (isActive) { SortIcon = ArrowDown; iconClass = "h-3 w-3 text-blue-600"; }
+
     return (
         <button
             type="button"
@@ -198,15 +202,7 @@ const SortHeader = ({
             className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider hover:text-blue-600 transition-colors group"
         >
             {label}
-            {isActive ? (
-                currentOrder === "asc" ? (
-                    <ArrowUp className="h-3 w-3 text-blue-600" />
-                ) : (
-                    <ArrowDown className="h-3 w-3 text-blue-600" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 text-gray-300 group-hover:text-gray-400" />
-            )}
+            <SortIcon className={iconClass} />
         </button>
     );
 };
@@ -245,14 +241,15 @@ const PaginationControls = ({
                 type="button"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1 || loading}
-                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Previous page"
             >
                 <ChevronLeft className="h-4 w-4" />
             </button>
-            {pages.map((p, idx) =>
-                p === "ellipsis" ? (
-                    <span key={`ellipsis-${idx}`} className="px-1.5 text-gray-400 text-sm select-none">...</span>
+            {pages.map((p, idx) => {
+                const ellipsisKey = idx < pages.indexOf(page) ? "ellipsis-before" : "ellipsis-after";
+                return p === "ellipsis" ? (
+                    <span key={ellipsisKey} className="px-1.5 text-gray-400 text-sm select-none">...</span>
                 ) : (
                     <button
                         key={p}
@@ -260,19 +257,19 @@ const PaginationControls = ({
                         onClick={() => onPageChange(p)}
                         disabled={loading}
                         aria-current={p === page ? "page" : undefined}
-                        className={`min-w-[32px] h-8 rounded-lg text-sm font-medium transition ${
+                        className={`min-w-[44px] min-h-[44px] rounded-lg text-sm font-medium transition ${
                             p === page ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 hover:bg-gray-100"
                         } disabled:cursor-not-allowed`}
                     >
                         {p}
                     </button>
-                ),
-            )}
+                );
+            })}
             <button
                 type="button"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages || loading}
-                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Next page"
             >
                 <ChevronRight className="h-4 w-4" />
@@ -308,10 +305,11 @@ const EmptyState = ({ hasFilters }: { hasFilters: boolean }) =>
 // SKELETON TABLE
 // ========================
 
+const SKELETON_ROW_IDS = ["s1","s2","s3","s4","s5","s6","s7","s8"] as const;
 const SkeletonTable = () => (
     <>
-        {Array.from({ length: 8 }).map((_, i) => (
-            <tr key={`skel-${i}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
+        {SKELETON_ROW_IDS.map((id) => (
+            <tr key={id} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
                 <td className="px-4 py-3.5 w-10"><div className="h-4 w-4 bg-gray-100 dark:bg-gray-700 rounded" /></td>
                 <td className="px-4 py-3.5 w-10"><div className="h-4 bg-gray-100 dark:bg-gray-700 rounded w-5" /></td>
                 <td className="px-4 py-3.5">
@@ -343,7 +341,7 @@ const StudentAcademicCard = ({ req }: { req: OverrideRequest }) => (
         </div>
         <div className="p-4 grid grid-cols-3 gap-3">
             <div className="text-center p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
-                <p className={`text-lg font-bold ${parseFloat(req.overall_cgpa) < 7 ? "text-amber-600 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"}`}>
+                <p className={`text-lg font-bold ${Number.parseFloat(req.overall_cgpa) < 7 ? "text-amber-600 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"}`}>
                     {req.overall_cgpa}
                 </p>
                 <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">CGPA</p>
@@ -399,8 +397,8 @@ const ReviewModal = ({
         handleActionChange(initialAction);
     }, [initialAction, handleActionChange]);
 
-    const handleConfirm = async () => {
-        await handleSubmit(request.override_id);
+    const handleConfirm = () => {
+        handleSubmit(request.override_id);
     };
 
     const handleClose = () => {
@@ -408,7 +406,7 @@ const ReviewModal = ({
         onClose();
     };
 
-    const config = action ? REVIEW_MODAL_CONFIG[action as "approve" | "reject"] : null;
+    const config = action ? REVIEW_MODAL_CONFIG[action] : null;
     const actionLabel = action === "approve" ? "Approve" : "Reject";
     const ActionIcon = action === "approve" ? CheckCircle2 : XCircle;
 
@@ -458,8 +456,8 @@ const ReviewModal = ({
 
                 {/* Action toggle */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Action</label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Action</p>
+                    <fieldset className="grid grid-cols-2 gap-2" aria-label="Review action">
                         <button
                             type="button"
                             onClick={() => handleActionChange("approve")}
@@ -484,7 +482,7 @@ const ReviewModal = ({
                             <XCircle className="h-4 w-4 inline mr-1.5 -mt-0.5" />
                             Reject
                         </button>
-                    </div>
+                    </fieldset>
                     {errors.action && <p className="text-xs text-red-500 mt-1">{errors.action}</p>}
                 </div>
 
@@ -522,8 +520,8 @@ const ReviewModal = ({
                     <div className={`rounded-xl border p-4 ${config.boxBg} ${config.boxBorder}`}>
                         <p className={`text-sm font-medium mb-2 ${config.boxText}`}>This action will:</p>
                         <ul className={`text-sm space-y-1 ${config.boxText}`}>
-                            {config.consequences.map((c, i) => (
-                                <li key={i} className="flex items-start gap-2">
+                            {config.consequences.map((c) => (
+                                <li key={c} className="flex items-start gap-2">
                                     <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current flex-shrink-0" />
                                     {c}
                                 </li>
@@ -590,6 +588,7 @@ const BulkActionBar = ({
     const [showResultModal, setShowResultModal] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- show modal when bulk result arrives
         if (bulkResult) setShowResultModal(true);
     }, [bulkResult]);
 
@@ -597,6 +596,7 @@ const BulkActionBar = ({
     useEffect(() => {
         if (initialAction) {
             handleActionChange(initialAction);
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- prop-triggered modal open
             setShowConfirmModal(true);
             onInitialActionConsumed?.();
         }
@@ -607,9 +607,9 @@ const BulkActionBar = ({
         setShowConfirmModal(true);
     };
 
-    const handleConfirmBulk = async () => {
+    const handleConfirmBulk = () => {
         setShowConfirmModal(false);
-        await handleSubmit(Array.from(selectedIds));
+        handleSubmit(Array.from(selectedIds));
     };
 
     const handleCloseResult = () => {
@@ -618,7 +618,7 @@ const BulkActionBar = ({
         onDeselectAll();
     };
 
-    const config = action ? REVIEW_MODAL_CONFIG[action as "approve" | "reject"] : null;
+    const config = action ? REVIEW_MODAL_CONFIG[action] : null;
 
     return (
         <>
@@ -629,7 +629,7 @@ const BulkActionBar = ({
                             <span className="text-xs font-bold text-blue-700 dark:text-blue-400">{selectedIds.size}</span>
                         </div>
                         <span className="text-gray-600 dark:text-gray-400 font-medium">
-                            request{selectedIds.size !== 1 ? "s" : ""} selected
+                            {selectedIds.size === 1 ? "request" : "requests"} selected
                         </span>
                         <button type="button" onClick={onDeselectAll} className="text-gray-400 hover:text-gray-600 transition p-1">
                             <X className="h-4 w-4" />
@@ -707,14 +707,14 @@ const BulkActionBar = ({
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                             You are about to <span className="font-semibold text-gray-800 dark:text-gray-200">{action}</span>{" "}
                             <span className="font-semibold text-gray-800 dark:text-gray-200">{selectedIds.size}</span>{" "}
-                            override request{selectedIds.size !== 1 ? "s" : ""}.
+                            {selectedIds.size === 1 ? "override request" : "override requests"}.
                         </p>
 
                         <div className={`rounded-xl border p-4 ${config.boxBg} ${config.boxBorder}`}>
                             <p className={`text-sm font-medium mb-2 ${config.boxText}`}>This action will:</p>
                             <ul className={`text-sm space-y-1 ${config.boxText}`}>
-                                {config.consequences.map((c, i) => (
-                                    <li key={i} className="flex items-start gap-2">
+                                {config.consequences.map((c) => (
+                                    <li key={c} className="flex items-start gap-2">
                                         <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current flex-shrink-0" />
                                         {c}
                                     </li>
@@ -752,7 +752,12 @@ const BulkActionBar = ({
                                 className={`flex-1 px-4 py-2.5 text-sm font-semibold text-white rounded-xl transition disabled:opacity-50 inline-flex items-center justify-center gap-2 ${config.confirmBg}`}
                             >
                                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {loading ? "Processing..." : `${action === "approve" ? "Approve" : "Reject"} ${selectedIds.size} Request${selectedIds.size !== 1 ? "s" : ""}`}
+                                {(() => {
+                                    if (loading) return "Processing...";
+                                    const verb = action === "approve" ? "Approve" : "Reject";
+                                    const noun = selectedIds.size === 1 ? "Request" : "Requests";
+                                    return `${verb} ${selectedIds.size} ${noun}`;
+                                })()}
                             </button>
                         </div>
                     </div>
@@ -841,7 +846,7 @@ const RequestDetailPanel = ({ req, onReview }: { req: OverrideRequest; onReview?
                 <div className="flex flex-wrap gap-4">
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400">CGPA</span>
-                        <span className={`text-sm font-bold ${parseFloat(req.overall_cgpa) < 7 ? "text-amber-600 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"}`}>
+                        <span className={`text-sm font-bold ${Number.parseFloat(req.overall_cgpa) < 7 ? "text-amber-600 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"}`}>
                             {req.overall_cgpa}
                         </span>
                     </div>
@@ -887,7 +892,7 @@ const RequestDetailPanel = ({ req, onReview }: { req: OverrideRequest; onReview?
                                     Date:{" "}
                                     <span className="font-medium">
                                         {new Date(req.reviewed_at).toLocaleDateString("en-IN", {
-                                            day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+                                            day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata",
                                         })}
                                     </span>
                                 </p>
@@ -960,6 +965,7 @@ const OverrideManager = ({ jobId, onRefresh }: OverrideManagerProps) => {
 
     // Reset expanded and selection when data changes
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on data refresh
         setExpandedId(null);
     }, [overrides]);
 
@@ -1088,7 +1094,7 @@ const OverrideManager = ({ jobId, onRefresh }: OverrideManagerProps) => {
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Override Requests</h2>
                             {!loading && summary && (
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    {summary.pending + summary.approved + summary.rejected} total request{(summary.pending + summary.approved + summary.rejected) !== 1 ? "s" : ""}
+                                    {summary.pending + summary.approved + summary.rejected} total {(summary.pending + summary.approved + summary.rejected) === 1 ? "request" : "requests"}
                                     {summary.pending > 0 && (
                                         <span className="ml-1 text-amber-600 dark:text-amber-400 font-medium">· {summary.pending} pending</span>
                                     )}
@@ -1133,6 +1139,7 @@ const OverrideManager = ({ jobId, onRefresh }: OverrideManagerProps) => {
                             placeholder="Search by name, enrollment..."
                             value={search}
                             onChange={(e) => handleSearchChange(e.target.value)}
+                            aria-label="Search override requests"
                             className="w-full border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-4 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                         />
                     </div>
@@ -1140,9 +1147,9 @@ const OverrideManager = ({ jobId, onRefresh }: OverrideManagerProps) => {
                     <select
                         value={deptFilter}
                         onChange={(e) => wrappedDeptFilterChange(e.target.value)}
+                        aria-label="Filter by department"
                         className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors appearance-none"
                     >
-
                         <option value="">All Departments</option>
                         {departments.map((d) => (
                             <option key={d} value={d}>{d}</option>
@@ -1150,10 +1157,11 @@ const OverrideManager = ({ jobId, onRefresh }: OverrideManagerProps) => {
                     </select>
 
                     <div className="text-sm text-gray-600 dark:text-gray-400 font-medium flex items-center gap-2 ml-auto">
-                        Show
+                        <span>Show</span>
                         <select
                             value={pagination.limit}
                             onChange={(e) => wrappedLimitChange(Number(e.target.value))}
+                            aria-label="Results per page"
                             className="border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             {PAGE_SIZE_OPTIONS.map((size) => (
@@ -1180,7 +1188,7 @@ const OverrideManager = ({ jobId, onRefresh }: OverrideManagerProps) => {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="bg-gray-50/70 dark:bg-gray-800/70 text-left text-gray-500 dark:text-gray-400">
-                            <th className="px-4 py-3 w-10">
+                            <th scope="col" className="px-4 py-3 w-10">
                                 <button
                                     type="button"
                                     onClick={toggleSelectAll}
@@ -1188,57 +1196,53 @@ const OverrideManager = ({ jobId, onRefresh }: OverrideManagerProps) => {
                                     className="text-gray-400 hover:text-gray-600 transition disabled:opacity-30"
                                     aria-label="Select all pending"
                                 >
-                                    {allPendingSelected ? (
-                                        <CheckSquare className="h-4 w-4 text-blue-600" />
-                                    ) : somePendingSelected ? (
-                                        <Minus className="h-4 w-4 text-blue-400" />
-                                    ) : (
-                                        <Square className="h-4 w-4" />
-                                    )}
+                                    {(() => {
+                                        if (allPendingSelected) return <CheckSquare className="h-4 w-4 text-blue-600" />;
+                                        if (somePendingSelected) return <Minus className="h-4 w-4 text-blue-400" />;
+                                        return <Square className="h-4 w-4" />;
+                                    })()}
                                 </button>
                             </th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Student" field="student_name" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Dept" field="dept_name" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">CGPA</th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">KTs</th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">CGPA</th>
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">KTs</th>
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Status" field="override_status" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
-                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Reason</th>
-                            <th className="px-4 py-3">
+                            <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Reason</th>
+                            <th scope="col" className="px-4 py-3">
                                 <SortHeader label="Requested" field="requested_at" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                             </th>
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? (
-                            <SkeletonTable />
-                        ) : overrides.length > 0 ? (
-                            overrides.map((req, index) => {
-                                const isSelected = selectedIds.has(req.override_id);
-                                const isPending = req.override_status === "pending";
-                                const isExpanded = expandedId === req.override_id;
+                        {loading && <SkeletonTable />}
+                        {!loading && overrides.length > 0 && overrides.map((req, index) => {
+                            const isSelected = selectedIds.has(req.override_id);
+                            const isPending = req.override_status === "pending";
+                            const isExpanded = expandedId === req.override_id;
 
-                                return (
-                                    <OverrideRow
-                                        key={req.override_id}
-                                        req={req}
-                                        index={(pagination.page - 1) * pagination.limit + index + 1}
-                                        isSelected={isSelected}
-                                        isPending={isPending}
-                                        isExpanded={isExpanded}
-                                        onToggleSelect={toggleSelect}
-                                        onToggleExpand={toggleExpand}
-                                        onReview={handleReviewAction}
-                                    />
-                                );
-                            })
-                        ) : (
+                            return (
+                                <OverrideRow
+                                    key={req.override_id}
+                                    req={req}
+                                    index={(pagination.page - 1) * pagination.limit + index + 1}
+                                    isSelected={isSelected}
+                                    isPending={isPending}
+                                    isExpanded={isExpanded}
+                                    onToggleSelect={toggleSelect}
+                                    onToggleExpand={toggleExpand}
+                                    onReview={handleReviewAction}
+                                />
+                            );
+                        })}
+                        {!loading && overrides.length === 0 && (
                             <tr>
                                 <td colSpan={9}>
                                     <EmptyState hasFilters={hasFilters} />
@@ -1316,12 +1320,15 @@ const OverrideRow = ({
     onToggleSelect: (id: string) => void;
     onToggleExpand: (id: string) => void;
     onReview: (req: OverrideRequest, action: "approve" | "reject") => void;
-}) => (
+}) => {
+    let rowBg = "hover:bg-blue-50/40 dark:hover:bg-blue-900/10";
+    if (isSelected) rowBg = "bg-blue-50/60 dark:bg-blue-900/20";
+    else if (isExpanded) rowBg = "bg-gray-50/50 dark:bg-gray-800/50";
+
+    return (
     <>
         <tr
-            className={`group border-b border-gray-50 dark:border-gray-800 transition-colors cursor-pointer ${
-                isSelected ? "bg-blue-50/60 dark:bg-blue-900/20" : isExpanded ? "bg-gray-50/50 dark:bg-gray-800/50" : "hover:bg-blue-50/40 dark:hover:bg-blue-900/10"
-            }`}
+            className={`group border-b border-gray-50 dark:border-gray-800 transition-colors cursor-pointer ${rowBg}`}
             onClick={() => onToggleExpand(req.override_id)}
         >
             {/* Checkbox */}
@@ -1366,7 +1373,7 @@ const OverrideRow = ({
 
             {/* CGPA */}
             <td className="px-4 py-3.5">
-                <span className={`text-sm font-semibold ${parseFloat(req.overall_cgpa) < 7 ? "text-amber-600 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"}`}>
+                <span className={`text-sm font-semibold ${Number.parseFloat(req.overall_cgpa) < 7 ? "text-amber-600 dark:text-amber-400" : "text-gray-800 dark:text-gray-200"}`}>
                     {req.overall_cgpa}
                 </span>
             </td>
@@ -1422,7 +1429,7 @@ const OverrideRow = ({
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-500 dark:text-gray-400">
                         {new Date(req.requested_at).toLocaleDateString("en-IN", {
-                            day: "2-digit", month: "short",
+                            day: "2-digit", month: "short", timeZone: "Asia/Kolkata",
                         })}
                     </span>
                     <span className="text-gray-300 ml-auto">
@@ -1435,6 +1442,7 @@ const OverrideRow = ({
         {/* Expanded detail panel */}
         {isExpanded && <RequestDetailPanel req={req} onReview={onReview} />}
     </>
-);
+    );
+};
 
 export default OverrideManager;

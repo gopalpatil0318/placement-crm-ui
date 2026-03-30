@@ -14,19 +14,22 @@ import {
     Trash2,
     X,
     AlertCircle,
+    AlertTriangle,
     ArrowUpDown,
     ArrowUp,
     ArrowDown,
     RefreshCw,
 } from "lucide-react";
 import { staggerContainer, staggerItem } from "@/lib/animations";
-import { useViewSkills, type SkillCategory } from "@/hooks/collegeadmin/skills/useViewSkills";
+import { useViewSkills, type Skill, type SkillCategory } from "@/hooks/collegeadmin/skills/useViewSkills";
 import { useCreateSkill } from "@/hooks/collegeadmin/skills/useCreateSkill";
+import { useDeleteSkill } from "@/hooks/collegeadmin/skills/useDeleteSkill";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 
 const LIMIT_OPTIONS = [25, 50, 100];
+const SKELETON_KEYS = ["sk-1", "sk-2", "sk-3", "sk-4", "sk-5", "sk-6", "sk-7", "sk-8"] as const;
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
     Frontend: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300" },
@@ -46,9 +49,9 @@ const DEFAULT_CATEGORY_COLOR = { bg: "bg-gray-50 dark:bg-gray-800", text: "text-
 function SkillsTableSkeleton() {
     return (
         <div className="space-y-3">
-            {Array.from({ length: 8 }).map((_, i) => (
+            {SKELETON_KEYS.map((key) => (
                 <div
-                    key={i}
+                    key={key}
                     className="flex items-center gap-4 rounded-lg bg-white px-4 py-3 dark:bg-gray-800"
                 >
                     <div className="h-4 w-6 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
@@ -63,7 +66,7 @@ function SkillsTableSkeleton() {
     );
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState({ onAdd }: Readonly<{ onAdd: () => void }>) {
     return (
         <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-900/20">
@@ -88,7 +91,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
     );
 }
 
-function CategoryBadge({ category }: { category: string | null }) {
+function CategoryBadge({ category }: Readonly<{ category: string | null }>) {
     if (!category) {
         return (
             <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-gray-400 dark:text-gray-500">
@@ -109,7 +112,7 @@ function CategoryBadge({ category }: { category: string | null }) {
     );
 }
 
-function SortIcon({ field, sortBy, sortOrder }: { field: string; sortBy: string; sortOrder: string }) {
+function SortIcon({ field, sortBy, sortOrder }: Readonly<{ field: string; sortBy: string; sortOrder: string }>) {
     if (sortBy !== field) return <ArrowUpDown size={14} className="text-gray-400" />;
     return sortOrder === "asc"
         ? <ArrowUp size={14} className="text-blue-600 dark:text-blue-400" />
@@ -118,7 +121,7 @@ function SortIcon({ field, sortBy, sortOrder }: { field: string; sortBy: string;
 
 function formatDate(dateStr: string) {
     const d = new Date(dateStr);
-    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 }
 
 // ─── Add Skill Modal ────────────────────────────────────────────────────────────
@@ -129,7 +132,7 @@ interface AddSkillModalProps {
     categories: SkillCategory[];
 }
 
-function AddSkillModal({ isOpen, onClose, categories }: AddSkillModalProps) {
+function AddSkillModal({ isOpen, onClose, categories }: Readonly<AddSkillModalProps>) {
     const { formData, errors, loading, handleChange, handleSubmit, resetForm } =
         useCreateSkill(() => {
             onClose();
@@ -262,6 +265,118 @@ function AddSkillModal({ isOpen, onClose, categories }: AddSkillModalProps) {
     );
 }
 
+// ─── Delete Confirmation Modal ──────────────────────────────────────────────────
+
+interface DeleteSkillModalProps {
+    skill: Skill | null;
+    onClose: () => void;
+    onConfirm: (skillId: string) => void;
+    loading: boolean;
+}
+
+function DeleteSkillModal({ skill, onClose, onConfirm, loading }: Readonly<DeleteSkillModalProps>) {
+    const handleConfirm = useCallback(() => {
+        if (skill) onConfirm(skill.skill_id);
+    }, [skill, onConfirm]);
+
+    return (
+        <ModalWrapper
+            isOpen={skill !== null}
+            onClose={onClose}
+            disabled={loading}
+            size="sm"
+            title="Delete Skill"
+            titleIcon={<AlertTriangle size={18} className="text-red-500" />}
+        >
+            <div className="px-6 py-5">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                    {"Are you sure you want to delete "}
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                        {skill?.skill_name}
+                    </span>
+                    {"?"}
+                </p>
+                {(skill?.student_count ?? 0) > 0 && (
+                    <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-900/20">
+                        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                        <p className="text-xs text-amber-800 dark:text-amber-300">
+                            This skill is used by{" "}
+                            <span className="font-semibold">{skill?.student_count}</span>{" "}
+                            student{skill?.student_count === 1 ? "" : "s"}. Deleting it will
+                            also remove it from their profiles.
+                        </p>
+                    </div>
+                )}
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={loading}
+                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    onClick={handleConfirm}
+                    disabled={loading}
+                    className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                >
+                    {loading && <Loader2 size={14} className="animate-spin" />}
+                    {loading ? "Deleting…" : "Delete"}
+                </button>
+            </div>
+        </ModalWrapper>
+    );
+}
+
+// ─── Mobile Skill Card ──────────────────────────────────────────────────────────
+
+interface MobileSkillCardProps {
+    skill: Skill;
+    rowNum: number;
+    onDelete: (skill: Skill) => void;
+}
+
+function MobileSkillCard({ skill, rowNum, onDelete }: Readonly<MobileSkillCardProps>) {
+    return (
+        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800/50">
+            <div className="flex items-start justify-between">
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-gray-400 dark:text-gray-500">
+                            #{rowNum}
+                        </span>
+                        <h3 className="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                            {skill.skill_name}
+                        </h3>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <CategoryBadge category={skill.skill_category} />
+                        <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                            <Users size={12} />
+                            {skill.student_count} student{skill.student_count === 1 ? "" : "s"}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                            <Calendar size={12} />
+                            {formatDate(skill.created_at)}
+                        </span>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => onDelete(skill)}
+                    aria-label={`Delete skill ${skill.skill_name}`}
+                    className="ml-2 inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                >
+                    <Trash2 size={14} />
+                </button>
+            </div>
+        </div>
+    );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 export default function SkillsManager() {
@@ -289,6 +404,11 @@ export default function SkillsManager() {
     } = useViewSkills();
 
     const [showAddModal, setShowAddModal] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<Skill | null>(null);
+
+    const { deleteSkill, loading: deleteLoading } = useDeleteSkill(() => {
+        setDeleteTarget(null);
+    });
 
     const Wrapper = shouldReduce ? "div" : motion.div;
     const wrapperProps = shouldReduce
@@ -296,6 +416,11 @@ export default function SkillsManager() {
         : { variants: staggerContainer, initial: "hidden", animate: "show" };
 
     // ── Header ──
+    const plural = pagination.total === 1 ? "" : "s";
+    const skillCountLabel = pagination.total > 0
+        ? `${pagination.total} skill${plural} in catalog`
+        : "Manage your college's skill catalog";
+
     const header = (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
@@ -307,9 +432,7 @@ export default function SkillsManager() {
                         Skills Master
                     </h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {pagination.total > 0
-                            ? `${pagination.total} skill${pagination.total !== 1 ? "s" : ""} in catalog`
-                            : "Manage your college's skill catalog"}
+                        {skillCountLabel}
                     </p>
                 </div>
             </div>
@@ -339,12 +462,15 @@ export default function SkillsManager() {
                     value={search}
                     onChange={(e) => handleSearchChange(e.target.value)}
                     placeholder="Search skills…"
+                    maxLength={100}
+                    aria-label="Search skills"
                     className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-9 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500"
                 />
                 {search && (
                     <button
                         type="button"
                         onClick={() => handleSearchChange("")}
+                        aria-label="Clear search"
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                         <X size={14} />
@@ -356,6 +482,7 @@ export default function SkillsManager() {
             <select
                 value={categoryFilter}
                 onChange={(e) => handleCategoryFilterChange(e.target.value)}
+                aria-label="Filter by category"
                 className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 outline-none transition-colors focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
             >
                 <option value="">All Categories</option>
@@ -370,6 +497,7 @@ export default function SkillsManager() {
             <select
                 value={limit}
                 onChange={(e) => handleLimitChange(Number(e.target.value))}
+                aria-label="Items per page"
                 className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 outline-none transition-colors focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
             >
                 {LIMIT_OPTIONS.map((opt) => (
@@ -422,18 +550,18 @@ export default function SkillsManager() {
             <table className="w-full text-left text-sm">
                 <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
-                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-12">
+                        <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-12">
                             #
                         </th>
-                        <th className="px-4 py-3">{sortableHeader("Skill Name", "skill_name")}</th>
-                        <th className="px-4 py-3">{sortableHeader("Category", "skill_category")}</th>
-                        <th className="px-4 py-3 text-center">
+                        <th scope="col" className="px-4 py-3">{sortableHeader("Skill Name", "skill_name")}</th>
+                        <th scope="col" className="px-4 py-3">{sortableHeader("Category", "skill_category")}</th>
+                        <th scope="col" className="px-4 py-3 text-center">
                             <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                                 Students
                             </span>
                         </th>
-                        <th className="px-4 py-3">{sortableHeader("Added", "created_at")}</th>
-                        <th className="px-4 py-3 text-center">
+                        <th scope="col" className="px-4 py-3">{sortableHeader("Added", "created_at")}</th>
+                        <th scope="col" className="px-4 py-3 text-center">
                             <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                                 Actions
                             </span>
@@ -480,9 +608,9 @@ export default function SkillsManager() {
                                 <td className="px-4 py-3 text-center">
                                     <button
                                         type="button"
-                                        disabled
-                                        title="Delete — coming soon"
-                                        className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                        onClick={() => setDeleteTarget(skill)}
+                                        aria-label={`Delete skill ${skill.skill_name}`}
+                                        className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -509,15 +637,15 @@ export default function SkillsManager() {
     const paginationBar = pagination.totalPages > 0 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-                Showing{" "}
+                {"Showing "}
                 <span className="font-medium text-gray-900 dark:text-white">
                     {(pagination.page - 1) * pagination.limit + 1}
                 </span>
-                –
+                {"–"}
                 <span className="font-medium text-gray-900 dark:text-white">
                     {Math.min(pagination.page * pagination.limit, pagination.total)}
-                </span>{" "}
-                of{" "}
+                </span>
+                {" of "}
                 <span className="font-medium text-gray-900 dark:text-white">
                     {pagination.total}
                 </span>
@@ -549,26 +677,54 @@ export default function SkillsManager() {
     );
 
     // ── Render ──
+    const skillCards = skills.map((skill, idx) => {
+        const rowNum = (pagination.page - 1) * pagination.limit + idx + 1;
+        return (
+            <MobileSkillCard
+                key={skill.skill_id}
+                skill={skill}
+                rowNum={rowNum}
+                onDelete={setDeleteTarget}
+            />
+        );
+    });
+
+    let content: React.ReactNode;
+    if (loading) {
+        content = <SkillsTableSkeleton />;
+    } else if (skills.length === 0) {
+        content = <EmptyState onAdd={() => setShowAddModal(true)} />;
+    } else {
+        content = (
+            <>
+                {/* Desktop table */}
+                <div className="hidden md:block">{table}</div>
+
+                {/* Mobile cards */}
+                <div className="space-y-3 md:hidden">{skillCards}</div>
+
+                {paginationBar}
+            </>
+        );
+    }
+
     return (
         <Wrapper {...wrapperProps} className="space-y-5 p-4 lg:p-6">
             {header}
             {filterBar}
 
-            {loading ? (
-                <SkillsTableSkeleton />
-            ) : skills.length === 0 ? (
-                <EmptyState onAdd={() => setShowAddModal(true)} />
-            ) : (
-                <>
-                    {table}
-                    {paginationBar}
-                </>
-            )}
+            {content}
 
             <AddSkillModal
                 isOpen={showAddModal}
                 onClose={() => setShowAddModal(false)}
                 categories={categories}
+            />
+            <DeleteSkillModal
+                skill={deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={deleteSkill}
+                loading={deleteLoading}
             />
         </Wrapper>
     );

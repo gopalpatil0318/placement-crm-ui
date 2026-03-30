@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
@@ -35,7 +35,7 @@ export const useUpdateDepartment = (deptId: string) => {
         programDurationYears: 4,
         totalSemesters: 8,
     });
-    const originalDataRef = useRef<UpdateDepartmentForm | null>(null);
+    const [originalData, setOriginalData] = useState<UpdateDepartmentForm | null>(null);
     const [errors, setErrors] = useState<DepartmentFormErrors>({});
     const [fetchedDeptName, setFetchedDeptName] = useState("");
 
@@ -53,7 +53,7 @@ export const useUpdateDepartment = (deptId: string) => {
     // Sync fetched data into form state (runs once when query resolves)
     useEffect(() => {
         const dept = queryData?.data ?? queryData;
-        if (dept && !originalDataRef.current) {
+        if (dept && !originalData) {
             const loaded: UpdateDepartmentForm = {
                 deptName: dept?.dept_name || "",
                 deptCode: dept?.dept_code || "",
@@ -61,11 +61,12 @@ export const useUpdateDepartment = (deptId: string) => {
                 programDurationYears: dept?.program_duration_years ?? 4,
                 totalSemesters: dept?.total_semesters ?? 8,
             };
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- data prefill from query
             setFormData(loaded);
-            originalDataRef.current = loaded;
+            setOriginalData(loaded);
             setFetchedDeptName(dept?.dept_name || "");
         }
-    }, [queryData]);
+    }, [queryData, originalData]);
 
     // ── Update mutation ──
     const mutation = useMutation({
@@ -124,9 +125,9 @@ export const useUpdateDepartment = (deptId: string) => {
         async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
             e.preventDefault();
 
-            if (!originalDataRef.current) return;
+            if (!originalData) return;
 
-            const orig = originalDataRef.current;
+            const orig = originalData;
 
             // Build changed-fields object for Zod validation
             const changed: Record<string, unknown> = {};
@@ -168,8 +169,31 @@ export const useUpdateDepartment = (deptId: string) => {
             setErrors({});
             mutation.mutate(payload);
         },
-        [formData, mutation]
+        [formData, originalData, mutation]
     );
+
+    // ── Unsaved changes warning ──
+    const isDirty = useMemo(() => {
+        if (!originalData) return false;
+        const orig = originalData;
+        return (
+            formData.deptName.trim() !== orig.deptName.trim() ||
+            formData.deptCode !== orig.deptCode ||
+            formData.deptType !== orig.deptType ||
+            formData.programDurationYears !== orig.programDurationYears ||
+            formData.totalSemesters !== orig.totalSemesters
+        );
+    }, [formData, originalData]);
+
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [isDirty]);
 
     const handleCancel = useCallback(() => {
         navigate(`/college/department/${deptId}`);

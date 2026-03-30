@@ -56,6 +56,7 @@ const PasswordField = ({
     error,
     placeholder,
     ariaLabel,
+    autoComplete,
 }: {
     label: string;
     value: string;
@@ -66,6 +67,7 @@ const PasswordField = ({
     error?: string;
     placeholder: string;
     ariaLabel: string;
+    autoComplete?: string;
 }) => (
     <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -78,6 +80,7 @@ const PasswordField = ({
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
+                autoComplete={autoComplete}
                 required
                 disabled={disabled}
                 className={`w-full pl-10 pr-10 rounded-lg border py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -205,6 +208,7 @@ export default function ChangePasswordForm({ onSubmit }: ChangePasswordFormProps
                         error={currentPasswordError}
                         placeholder="Enter current password"
                         ariaLabel={showCurrent ? "Hide current password" : "Show current password"}
+                        autoComplete="current-password"
                     />
 
                     {/* New Password */}
@@ -218,6 +222,7 @@ export default function ChangePasswordForm({ onSubmit }: ChangePasswordFormProps
                             disabled={loading}
                             placeholder="Enter new password"
                             ariaLabel={showNew ? "Hide new password" : "Show new password"}
+                            autoComplete="new-password"
                         />
 
                         {/* Strength bar */}
@@ -278,6 +283,7 @@ export default function ChangePasswordForm({ onSubmit }: ChangePasswordFormProps
                             disabled={loading}
                             placeholder="Confirm new password"
                             ariaLabel={showConfirm ? "Hide confirm password" : "Show confirm password"}
+                            autoComplete="new-password"
                         />
                         {passwordsMismatch && (
                             <p className="text-xs text-red-500 dark:text-red-400 mt-1">

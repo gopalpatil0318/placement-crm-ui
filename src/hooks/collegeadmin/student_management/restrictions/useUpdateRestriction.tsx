@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import { queryKeys } from "@/lib/queryKeys";
 import { updateRestrictionSchema, type StudentRestriction } from "@/validators/RestrictionSchema";
 
@@ -46,7 +46,7 @@ export const useUpdateRestriction = (onSuccess?: () => void) => {
                 setErrors({ valid_until: message });
             }
 
-            showToast({ type: "error", title: "Error", description: message });
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
         },
     });
 
@@ -113,13 +113,13 @@ export const useUpdateRestriction = (onSuccess?: () => void) => {
             const orig = originalData.current;
             const payload: Record<string, unknown> = {};
 
-            if (!orig || formData.reason.trim() !== orig.reason.trim()) {
+            if (formData.reason.trim() !== orig?.reason.trim()) {
                 payload.reason = formData.reason.trim();
             }
-            if (!orig || formData.details.trim() !== (orig.details || "").trim()) {
+            if (formData.details.trim() !== (orig?.details || "").trim()) {
                 payload.details = formData.details.trim() || undefined;
             }
-            if (!orig || formData.valid_until !== orig.valid_until) {
+            if (formData.valid_until !== orig?.valid_until) {
                 payload.valid_until = formData.valid_until || undefined;
             }
 

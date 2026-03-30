@@ -36,6 +36,7 @@ export default function StudentLayout() {
 
   // Auto-close sidebar on mobile, auto-open on desktop
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- responsive layout sync
     setIsSidebarOpen(!isMobile)
   }, [isMobile])
 

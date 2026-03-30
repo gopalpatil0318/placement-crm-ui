@@ -104,9 +104,9 @@ const ProfileLinksForm = () => {
                 <div>
                     <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">🔗 Portfolio & Resume</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FloatingInput label="Portfolio" name="personal_portfolio_url" value={formData.personal_portfolio_url} onChange={handleChange} error={errors.personal_portfolio_url} placeholder="https://yoursite.dev" />
-                        <FloatingInput label="Resume" name="resume_url" value={formData.resume_url} onChange={handleChange} error={errors.resume_url} placeholder="https://drive.google.com/..." />
-                        <FloatingInput label="Profile Image URL" name="profile_image_url" value={formData.profile_image_url} onChange={handleChange} error={errors.profile_image_url} placeholder="https://drive.google.com/..." />
+                        <FloatingInput label="Portfolio" name="personal_portfolio_url" value={formData.personal_portfolio_url} onChange={handleChange} error={errors.personal_portfolio_url} inputMode="url" placeholder="https://yoursite.dev" />
+                        <FloatingInput label="Resume" name="resume_url" value={formData.resume_url} onChange={handleChange} error={errors.resume_url} inputMode="url" placeholder="https://drive.google.com/..." />
+                        <FloatingInput label="Profile Image URL" name="profile_image_url" value={formData.profile_image_url} onChange={handleChange} error={errors.profile_image_url} inputMode="url" placeholder="https://drive.google.com/..." />
                     </div>
                 </div>
 
@@ -114,8 +114,8 @@ const ProfileLinksForm = () => {
                 <div>
                     <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">💼 Professional Profiles</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FloatingInput label="GitHub" name="github_url" value={formData.github_url} onChange={handleChange} error={errors.github_url} placeholder="https://github.com/username" />
-                        <FloatingInput label="LinkedIn" name="linkedin_url" value={formData.linkedin_url} onChange={handleChange} error={errors.linkedin_url} placeholder="https://linkedin.com/in/username" />
+                        <FloatingInput label="GitHub" name="github_url" value={formData.github_url} onChange={handleChange} error={errors.github_url} inputMode="url" placeholder="https://github.com/username" />
+                        <FloatingInput label="LinkedIn" name="linkedin_url" value={formData.linkedin_url} onChange={handleChange} error={errors.linkedin_url} inputMode="url" placeholder="https://linkedin.com/in/username" />
                     </div>
                 </div>
 
@@ -123,22 +123,22 @@ const ProfileLinksForm = () => {
                 <div>
                     <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">💻 Competitive Programming & Blog</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FloatingInput label="LeetCode" name="leetcode_url" value={formData.leetcode_url} onChange={handleChange} error={errors.leetcode_url} placeholder="https://leetcode.com/username" />
-                        <FloatingInput label="CodeChef" name="codechef_url" value={formData.codechef_url} onChange={handleChange} error={errors.codechef_url} placeholder="https://codechef.com/users/username" />
-                        <FloatingInput label="Codeforces" name="codeforces_url" value={formData.codeforces_url} onChange={handleChange} error={errors.codeforces_url} placeholder="https://codeforces.com/profile/username" />
-                        <FloatingInput label="HackerRank" name="hackerrank_url" value={formData.hackerrank_url} onChange={handleChange} error={errors.hackerrank_url} placeholder="https://hackerrank.com/username" />
-                        <FloatingInput label="GeeksforGeeks" name="geeksforgeeks_url" value={formData.geeksforgeeks_url} onChange={handleChange} error={errors.geeksforgeeks_url} placeholder="https://auth.geeksforgeeks.org/user/username" />
-                        <FloatingInput label="Medium" name="medium_url" value={formData.medium_url} onChange={handleChange} error={errors.medium_url} placeholder="https://medium.com/@username" />
+                        <FloatingInput label="LeetCode" name="leetcode_url" value={formData.leetcode_url} onChange={handleChange} error={errors.leetcode_url} inputMode="url" placeholder="https://leetcode.com/username" />
+                        <FloatingInput label="CodeChef" name="codechef_url" value={formData.codechef_url} onChange={handleChange} error={errors.codechef_url} inputMode="url" placeholder="https://codechef.com/users/username" />
+                        <FloatingInput label="Codeforces" name="codeforces_url" value={formData.codeforces_url} onChange={handleChange} error={errors.codeforces_url} inputMode="url" placeholder="https://codeforces.com/profile/username" />
+                        <FloatingInput label="HackerRank" name="hackerrank_url" value={formData.hackerrank_url} onChange={handleChange} error={errors.hackerrank_url} inputMode="url" placeholder="https://hackerrank.com/username" />
+                        <FloatingInput label="GeeksforGeeks" name="geeksforgeeks_url" value={formData.geeksforgeeks_url} onChange={handleChange} error={errors.geeksforgeeks_url} inputMode="url" placeholder="https://auth.geeksforgeeks.org/user/username" />
+                        <FloatingInput label="Medium" name="medium_url" value={formData.medium_url} onChange={handleChange} error={errors.medium_url} inputMode="url" placeholder="https://medium.com/@username" />
                     </div>
                 </div>
 
                 {/* ================= Save Button (bottom) ================= */}
-                <div className="flex justify-end pt-4">
+                <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t dark:border-gray-700 pt-4 pb-2 -mx-6 px-6 md:static md:border-0 md:mx-0 md:px-0 md:bg-transparent dark:md:bg-transparent flex justify-end">
                     <button
                         type="button"
                         onClick={handleSubmit}
                         disabled={saving}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-medium transition cursor-pointer disabled:opacity-50"
+                        className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-medium transition cursor-pointer disabled:opacity-50"
                     >
                         {saving ? "Saving..." : "Save"}
                     </button>

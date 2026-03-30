@@ -47,11 +47,13 @@ const NOTIFICATION_TYPE_TO_ENTITY: Partial<Record<NotificationType, RelatedEntit
 };
 import { useNavigate } from "react-router-dom";
 
+const BULK_WARNING_THRESHOLD = 50;
+
 // ========================
 // SUB-COMPONENTS
 // ========================
 
-function StepIndicator({ currentStep }: { currentStep: number }) {
+function StepIndicator({ currentStep }: Readonly<{ currentStep: number }>) {
     const steps = [
         { num: 1, label: "Content" },
         { num: 2, label: "Recipients" },
@@ -63,6 +65,12 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
             {steps.map((s, i) => {
                 const isActive = currentStep === s.num;
                 const isComplete = currentStep > s.num;
+                let indicatorClass = "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500";
+                if (isComplete) {
+                    indicatorClass = "bg-blue-500 text-white";
+                } else if (isActive) {
+                    indicatorClass = "bg-blue-100 text-blue-700 ring-2 ring-blue-500 dark:bg-blue-900/30 dark:text-blue-400";
+                }
                 return (
                     <div key={s.num} className="flex items-center gap-2">
                         {i > 0 && (
@@ -70,13 +78,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
                         )}
                         <div className="flex items-center gap-2">
                             <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                                    isComplete
-                                        ? "bg-blue-500 text-white"
-                                        : isActive
-                                          ? "bg-blue-100 text-blue-700 ring-2 ring-blue-500 dark:bg-blue-900/30 dark:text-blue-400"
-                                          : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500"
-                                }`}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors min-h-[44px] min-w-[44px] ${indicatorClass}`}
                             >
                                 {isComplete ? <Check size={14} /> : s.num}
                             </div>
@@ -97,19 +99,19 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
 
 // ─── Step 1: Type & Content ──────────────────────────────────────────────────
 
-function Step1_TypeAndContent({
+function StepTypeAndContent({
     formData,
     errors,
     onFormChange,
     onApplyTemplate,
     onNext,
-}: {
+}: Readonly<{
     formData: ReturnType<typeof useSendNotification>["formData"];
     errors: Record<string, string>;
     onFormChange: (field: keyof ReturnType<typeof useSendNotification>["formData"], value: string) => void;
     onApplyTemplate: ReturnType<typeof useSendNotification>["applyTemplate"];
     onNext: () => void;
-}) {
+}>) {
     const shouldReduce = useReducedMotion();
     const motionProps = shouldReduce ? {} : fadeInUp;
 
@@ -129,7 +131,7 @@ function Step1_TypeAndContent({
                                 key={t.name}
                                 type="button"
                                 onClick={() => onApplyTemplate(t)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${colors.bg} ${colors.text} border-transparent hover:ring-1 hover:ring-current`}
+                                className={`px-3 py-2.5 min-h-[44px] rounded-full text-xs font-medium transition-colors border ${colors.bg} ${colors.text} border-transparent hover:ring-1 hover:ring-current`}
                             >
                                 {t.name}
                             </button>
@@ -294,7 +296,7 @@ function Step1_TypeAndContent({
 
 // ─── Step 2: Recipients ──────────────────────────────────────────────────────
 
-function Step2_Recipients({
+function StepRecipients({
     sendMode,
     onSendModeChange,
     targetedData,
@@ -308,7 +310,7 @@ function Step2_Recipients({
     onRecipientSearchChange,
     onNext,
     onBack,
-}: {
+}: Readonly<{
     sendMode: SendMode;
     onSendModeChange: (mode: SendMode) => void;
     targetedData: ReturnType<typeof useSendNotification>["targetedData"];
@@ -322,7 +324,7 @@ function Step2_Recipients({
     onRecipientSearchChange: (value: string) => void;
     onNext: () => void;
     onBack: () => void;
-}) {
+}>) {
     const shouldReduce = useReducedMotion();
     const motionProps = shouldReduce ? {} : fadeInUp;
     const [searchOpen, setSearchOpen] = useState(false);
@@ -391,9 +393,12 @@ function Step2_Recipients({
 
             {/* Recipient Type Selector */}
             <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recipient Type</label>
+                <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recipient Type</span>
                 <div className="flex gap-3">
-                    {(["student", "user"] as const).map((t) => (
+                    {(["student", "user"] as const).map((t) => {
+                        const currentRecipientType = sendMode === "targeted" ? targetedData.recipient_type : bulkData.recipient_type;
+                        const isActive = currentRecipientType === t;
+                        return (
                         <button
                             key={t}
                             type="button"
@@ -405,14 +410,15 @@ function Step2_Recipients({
                                 }
                             }}
                             className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                                (sendMode === "targeted" ? targetedData.recipient_type : bulkData.recipient_type) === t
+                                isActive
                                     ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-600"
                                     : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
                             }`}
                         >
                             {RECIPIENT_TYPE_LABELS[t]}
                         </button>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
@@ -436,14 +442,16 @@ function Step2_Recipients({
                         {/* Autocomplete Dropdown */}
                         {searchOpen && recipientSearch.length >= 2 && (
                             <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                {searchingStudents ? (
+                                {searchingStudents && (
                                     <div className="flex items-center justify-center py-4 text-gray-400">
                                         <Loader2 size={16} className="animate-spin mr-2" />
                                         Searching...
                                     </div>
-                                ) : searchResults.length === 0 ? (
+                                )}
+                                {!searchingStudents && searchResults.length === 0 && (
                                     <div className="py-4 text-center text-sm text-gray-400">No results found</div>
-                                ) : (
+                                )}
+                                {!searchingStudents && searchResults.length > 0 && (
                                     searchResults.map((r) => {
                                         const isSelected = targetedData.recipient_ids.includes(r.id);
                                         return (
@@ -478,7 +486,7 @@ function Step2_Recipients({
                     {targetedData.recipient_ids.length > 0 && (
                         <div>
                             <p className="text-xs text-gray-500 mb-2">
-                                {targetedData.recipient_ids.length} recipient{targetedData.recipient_ids.length !== 1 ? "s" : ""} selected
+                                {targetedData.recipient_ids.length} recipient{targetedData.recipient_ids.length === 1 ? "" : "s"} selected
                             </p>
                             <div className="flex flex-wrap gap-2">
                                 {targetedData.recipient_ids.map((id) => (
@@ -519,7 +527,7 @@ function Step2_Recipients({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {/* Departments */}
                             <div>
-                                <label className="block text-xs text-gray-500 mb-1">Departments</label>
+                                <span className="block text-xs text-gray-500 mb-1">Departments</span>
                                 <div className="space-y-1 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-2">
                                     {departments.length === 0 ? (
                                         <p className="text-xs text-gray-400 py-1">Loading...</p>
@@ -546,7 +554,7 @@ function Step2_Recipients({
 
                             {/* Passout Years */}
                             <div>
-                                <label className="block text-xs text-gray-500 mb-1">Passout Years</label>
+                                <span className="block text-xs text-gray-500 mb-1">Passout Years</span>
                                 <div className="flex flex-wrap gap-2">
                                     {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
                                         <button
@@ -558,7 +566,7 @@ function Step2_Recipients({
                                                     : [...bulkData.passout_years, year];
                                                 onBulkChange("passout_years", next);
                                             }}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                                            className={`px-3 py-2.5 min-h-[44px] rounded-lg text-xs font-medium border transition-colors ${
                                                 bulkData.passout_years.includes(year)
                                                     ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                                                     : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
@@ -662,7 +670,7 @@ function Step2_Recipients({
                     ) : (
                         /* User filters */
                         <div>
-                            <label className="block text-xs text-gray-500 mb-1">User Roles</label>
+                            <span className="block text-xs text-gray-500 mb-1">User Roles</span>
                             <div className="flex flex-wrap gap-2">
                                 {USER_ROLE_OPTIONS.map((role) => (
                                     <button
@@ -714,7 +722,7 @@ function Step2_Recipients({
 
 // ─── Step 3: Preview & Send ──────────────────────────────────────────────────
 
-function Step3_Preview({
+function StepPreview({
     formData,
     sendMode,
     targetedData,
@@ -722,7 +730,7 @@ function Step3_Preview({
     isSending,
     onSubmit,
     onBack,
-}: {
+}: Readonly<{
     formData: ReturnType<typeof useSendNotification>["formData"];
     sendMode: SendMode;
     targetedData: ReturnType<typeof useSendNotification>["targetedData"];
@@ -730,27 +738,27 @@ function Step3_Preview({
     isSending: boolean;
     onSubmit: () => void;
     onBack: () => void;
-}) {
+}>) {
     const shouldReduce = useReducedMotion();
     const motionProps = shouldReduce ? {} : fadeInUp;
-    const typeColors = formData.notification_type ? NOTIFICATION_TYPE_COLORS[formData.notification_type as NotificationType] : null;
-    const typeLabel = formData.notification_type ? NOTIFICATION_TYPE_LABELS[formData.notification_type as NotificationType] : "—";
+    const typeColors = formData.notification_type ? NOTIFICATION_TYPE_COLORS[formData.notification_type] : null;
+    const typeLabel = formData.notification_type ? NOTIFICATION_TYPE_LABELS[formData.notification_type] : "—";
 
     const recipientSummary = useMemo(() => {
         if (sendMode === "targeted") {
-            return `${targetedData.recipient_ids.length} specific ${targetedData.recipient_type}${targetedData.recipient_ids.length !== 1 ? "s" : ""}`;
+            return `${targetedData.recipient_ids.length} specific ${targetedData.recipient_type}${targetedData.recipient_ids.length === 1 ? "" : "s"}`;
         }
         const parts: string[] = [];
         if (bulkData.student_status) parts.push(`${bulkData.student_status} status`);
         if (bulkData.passout_years.length > 0) parts.push(`${bulkData.passout_years.join(", ")} batch`);
-        if (bulkData.dept_ids.length > 0) parts.push(`${bulkData.dept_ids.length} department${bulkData.dept_ids.length !== 1 ? "s" : ""}`);
+        if (bulkData.dept_ids.length > 0) parts.push(`${bulkData.dept_ids.length} department${bulkData.dept_ids.length === 1 ? "" : "s"}`);
         if (bulkData.profile_status) parts.push(`${bulkData.profile_status} profile`);
         if (bulkData.user_roles.length > 0) parts.push(`roles: ${bulkData.user_roles.join(", ")}`);
         const filterDesc = parts.length > 0 ? parts.join(", ") : "all";
         return `${bulkData.recipient_type === "student" ? "Students" : "Users"} matching: ${filterDesc}`;
     }, [sendMode, targetedData, bulkData]);
 
-    const showBulkWarning = sendMode === "targeted" && targetedData.recipient_ids.length > 50;
+    const showBulkWarning = sendMode === "targeted" && targetedData.recipient_ids.length > BULK_WARNING_THRESHOLD;
 
     return (
         <motion.div {...motionProps} className="space-y-6">
@@ -813,7 +821,7 @@ function Step3_Preview({
                     type="button"
                     onClick={onBack}
                     disabled={isSending}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[44px] rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
                     <ChevronLeft size={16} />
                     Back
@@ -822,7 +830,7 @@ function Step3_Preview({
                     type="button"
                     onClick={onSubmit}
                     disabled={isSending}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-70"
+                    className="inline-flex items-center gap-2 px-6 py-2.5 min-h-[44px] rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-70"
                 >
                     {isSending ? (
                         <>
@@ -846,17 +854,15 @@ function Step3_Preview({
 function SuccessState({
     sendResult,
     onReset,
-}: {
+}: Readonly<{
     sendResult: SendNotificationResponse | BulkNotificationResponse | null;
     onReset: () => void;
-}) {
+}>) {
     const navigate = useNavigate();
     const shouldReduce = useReducedMotion();
     const motionProps = shouldReduce ? {} : fadeInUp;
 
     if (!sendResult) return null;
-
-    const isBulk = "total_eligible" in sendResult;
 
     return (
         <motion.div {...motionProps} className="flex flex-col items-center text-center py-12 space-y-6">
@@ -869,19 +875,19 @@ function SuccessState({
                     Notification Sent Successfully!
                 </h3>
                 <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                    <p>Sent to <strong>{sendResult.sent_count}</strong> recipient{sendResult.sent_count !== 1 ? "s" : ""}</p>
-                    {!isBulk && (sendResult as SendNotificationResponse).invalid_count > 0 && (
+                    <p>Sent to <strong>{sendResult.sent_count}</strong> recipient{sendResult.sent_count === 1 ? "" : "s"}</p>
+                    {"invalid_count" in sendResult && sendResult.invalid_count > 0 && (
                         <p className="text-amber-600 dark:text-amber-400">
-                            {(sendResult as SendNotificationResponse).invalid_count} invalid ID{(sendResult as SendNotificationResponse).invalid_count !== 1 ? "s" : ""} skipped
+                            {sendResult.invalid_count} invalid ID{sendResult.invalid_count === 1 ? "" : "s"} skipped
                         </p>
                     )}
-                    {isBulk && (sendResult as BulkNotificationResponse).skipped_count > 0 && (
+                    {"skipped_count" in sendResult && sendResult.skipped_count > 0 && (
                         <p className="text-amber-600 dark:text-amber-400">
-                            {(sendResult as BulkNotificationResponse).skipped_count} skipped (duplicates)
+                            {sendResult.skipped_count} skipped (duplicates)
                         </p>
                     )}
-                    {isBulk && (
-                        <p>Total eligible: {(sendResult as BulkNotificationResponse).total_eligible}</p>
+                    {"total_eligible" in sendResult && (
+                        <p>Total eligible: {sendResult.total_eligible}</p>
                     )}
                 </div>
             </div>
@@ -890,14 +896,14 @@ function SuccessState({
                 <button
                     type="button"
                     onClick={onReset}
-                    className="px-5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    className="px-5 py-2.5 min-h-[44px] rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                     Send Another
                 </button>
                 <button
                     type="button"
                     onClick={() => navigate("/college/notification-history")}
-                    className="px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                    className="px-5 py-2.5 min-h-[44px] rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
                     View Sent History
                 </button>
@@ -927,7 +933,7 @@ export default function ComposeNotification() {
             <StepIndicator currentStep={hook.step} />
 
             {hook.step === 1 && (
-                <Step1_TypeAndContent
+                <StepTypeAndContent
                     formData={hook.formData}
                     errors={hook.errors}
                     onFormChange={hook.handleFormChange}
@@ -937,7 +943,7 @@ export default function ComposeNotification() {
             )}
 
             {hook.step === 2 && (
-                <Step2_Recipients
+                <StepRecipients
                     sendMode={hook.sendMode}
                     onSendModeChange={hook.setSendMode}
                     targetedData={hook.targetedData}
@@ -955,7 +961,7 @@ export default function ComposeNotification() {
             )}
 
             {hook.step === 3 && (
-                <Step3_Preview
+                <StepPreview
                     formData={hook.formData}
                     sendMode={hook.sendMode}
                     targetedData={hook.targetedData}

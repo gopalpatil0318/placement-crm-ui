@@ -15,7 +15,14 @@ export interface AchievementData {
     proof_url?: string | null;
     is_featured?: boolean;
     is_verified?: boolean;
+    verification_status?: string;
+    verified_by?: string | null;
+    verified_at?: string | null;
+    rejection_reason?: string | null;
+    rejected_at?: string | null;
     display_order?: number | null;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export const StudentAchievementService = {

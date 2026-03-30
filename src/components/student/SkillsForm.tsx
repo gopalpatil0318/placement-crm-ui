@@ -66,12 +66,12 @@ const SkillsForm = () => {
                     <div className="h-9 w-24 rounded-full bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
                 </div>
                 <div className="space-y-5">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i}>
+                    {[3, 4, 5].map((count, i) => (
+                        <div key={`skeleton-group-${String(count)}`}>
                             <div className="h-4 w-28 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse mb-3" />
                             <div className="flex flex-wrap gap-2">
-                                {Array.from({ length: 4 + i }).map((_, j) => (
-                                    <div key={j} className="h-8 rounded-lg bg-gray-200 dark:bg-gray-700/60 animate-pulse" style={{ width: `${60 + (j % 3) * 20}px` }} />
+                                {Array.from({ length: count }).map((_, j) => (
+                                    <div key={`skeleton-chip-${String(i)}-${String(j)}`} className="h-8 rounded-lg bg-gray-200 dark:bg-gray-700/60 animate-pulse" style={{ width: `${60 + (j % 3) * 20}px` }} />
                                 ))}
                             </div>
                         </div>
@@ -91,7 +91,7 @@ const SkillsForm = () => {
                 <div>
                     <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Skills</h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        {selectedSkills.length} skill{selectedSkills.length !== 1 ? "s" : ""} selected
+                        {selectedSkills.length} skill{selectedSkills.length === 1 ? "" : "s"} selected
                     </p>
                 </div>
                 <button
@@ -123,7 +123,7 @@ const SkillsForm = () => {
                                 <select
                                     value={skill.proficiency_level}
                                     onChange={(e) => updateProficiency(skill.skill_id, e.target.value)}
-                                    className="text-xs border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 mx-1"
+                                    className="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 mx-1"
                                 >
                                     {VALID_PROFICIENCY_LEVELS.map((level) => (
                                         <option key={level} value={level}>
@@ -135,7 +135,7 @@ const SkillsForm = () => {
                                     type="button"
                                     onClick={() => toggleSkill(skill)}
                                     aria-label={`Remove ${skill.skill_name}`}
-                                    className="p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full text-red-400 hover:text-red-600 transition cursor-pointer"
+                                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full text-red-400 hover:text-red-600 transition cursor-pointer"
                                     title="Remove"
                                 >
                                     <X className="h-4 w-4" />
@@ -174,6 +174,7 @@ const SkillsForm = () => {
             <div className="mb-6">
                 <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">
                     Available Skills
+                    {" "}
                     <span className="text-gray-400 dark:text-gray-500 font-normal ml-2">({filteredSkills.length})</span>
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -219,12 +220,12 @@ const SkillsForm = () => {
             </div>
 
             {/* ================= Save Button ================= */}
-            <div className="flex justify-end pt-4 border-t dark:border-gray-700">
+            <div className="sticky bottom-0 bg-white dark:bg-gray-900 py-3 border-t border-gray-200 dark:border-gray-700 -mx-8 px-8 md:static md:border-0 md:mx-0 md:px-0 md:bg-transparent md:dark:bg-transparent flex justify-end pt-4">
                 <button
                     type="button"
                     onClick={handleSave}
                     disabled={saving}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-medium transition cursor-pointer disabled:opacity-50"
+                    className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-medium transition cursor-pointer disabled:opacity-50"
                 >
                     {saving ? "Saving..." : "Save Skills"}
                 </button>

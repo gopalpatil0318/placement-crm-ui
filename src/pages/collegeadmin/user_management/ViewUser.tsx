@@ -335,8 +335,8 @@ const ViewUsers = () => {
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="overflow-x-auto">
+                    {/* Table (desktop) */}
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 dark:bg-gray-800/60 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -427,6 +427,76 @@ const ViewUsers = () => {
                                 </AnimatedTableBody>
                             )}
                         </table>
+                    </div>
+
+                    {/* Mobile Cards */}
+                    <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                        {loading ? (
+                            Array.from({ length: 6 }).map((_, i) => (
+                                <div key={i} className="p-4 space-y-3 animate-pulse">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700" />
+                                        <div className="flex-1 space-y-1.5">
+                                            <div className="h-3.5 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+                                            <div className="h-3 w-44 bg-gray-100 dark:bg-gray-800 rounded" />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                                        <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                                    </div>
+                                </div>
+                            ))
+                        ) : users.length === 0 ? (
+                            <EmptyState
+                                hasFilters={hasActiveFilters}
+                                onReset={clearFilters}
+                                onAdd={() => navigate("/college/create-user")}
+                            />
+                        ) : (
+                            users.map((user) => {
+                                const roleBadge = ROLE_BADGE_MAP[user.user_role] || ROLE_BADGE_MAP.teacher;
+                                const isActive = user.user_status === "active";
+                                return (
+                                    <div
+                                        key={user.user_id}
+                                        onClick={() => navigate(`/college/user/${user.user_id}`)}
+                                        className={`p-4 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors active:bg-blue-50 dark:active:bg-blue-900/20 ${
+                                            isFetching ? "opacity-60" : ""
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <UserAvatar user={user} />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-medium text-gray-900 dark:text-gray-100 truncate text-sm">
+                                                    {user.user_name}
+                                                </p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                    {user.user_email}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleBadge.color}`}>
+                                                {roleBadge.label}
+                                            </span>
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                                isActive
+                                                    ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
+                                                    : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
+                                            }`}>
+                                                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-red-500"}`} />
+                                                {isActive ? "Active" : "Inactive"}
+                                            </span>
+                                            {user.dept_name && (
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">{user.dept_name}</span>
+                                            )}
+                                            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{formatDate(user.created_at)}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
 
                     {/* Pagination Footer */}

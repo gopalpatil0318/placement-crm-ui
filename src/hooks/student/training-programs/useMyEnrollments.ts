@@ -1,18 +1,19 @@
-import { useState, useCallback } from "react"
-import { useQuery, keepPreviousData } from "@tanstack/react-query"
+import { useState, useCallback, useMemo, useEffect } from "react"
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/queryKeys"
 import { TrainingProgramsService } from "@/services/student/trainingPrograms.service"
 import type {
   StudentEnrollment,
   StudentEnrollmentSummary,
   StudentEnrollmentFilters,
-  EnrollmentStatus,
   EnrollmentStatusFilter,
 } from "@/validators/TrainingProgramSchema"
 
 // ─── Hook ───────────────────────────────────────────────────────────────────────
 
 export function useMyEnrollments(initialLimit = 10, enabled = true) {
+  const queryClient = useQueryClient()
+
   // ── Filter State ──
   const [statusFilter, setStatusFilter] = useState<EnrollmentStatusFilter>("all")
   const [sortBy, setSortBy] = useState<StudentEnrollmentFilters["sort_by"]>("enrolled_at")
@@ -20,14 +21,14 @@ export function useMyEnrollments(initialLimit = 10, enabled = true) {
   const [page, setPage] = useState(1)
   const [limit] = useState(initialLimit)
 
-  // ── Build query filters ──
-  const queryFilters: StudentEnrollmentFilters = {
-    ...(statusFilter !== "all" ? { completion_status: statusFilter as EnrollmentStatus } : {}),
+  // ── Build query filters (memoized) ──
+  const queryFilters: StudentEnrollmentFilters = useMemo(() => ({
+    ...(statusFilter === "all" ? {} : { completion_status: statusFilter }),
     sort_by: sortBy,
     sort_order: sortOrder,
     page,
     limit,
-  }
+  }), [statusFilter, sortBy, sortOrder, page, limit])
 
   // ── Query ──
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
@@ -49,6 +50,17 @@ export function useMyEnrollments(initialLimit = 10, enabled = true) {
     certificates_earned: 0,
   }
   const pagination = data?.pagination ?? { page: 1, limit: initialLimit, total: 0, totalPages: 0 }
+
+  // ── Next-page prefetch ──
+  useEffect(() => {
+    if (pagination.page < pagination.totalPages) {
+      const nextFilters = { ...queryFilters, page: pagination.page + 1 }
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.studentPortal.myEnrollments(nextFilters as Record<string, unknown>),
+        queryFn: () => TrainingProgramsService.getEnrolledTraining(nextFilters),
+      })
+    }
+  }, [queryClient, queryFilters, pagination.page, pagination.totalPages])
 
   // ── Handlers ──
   const handleStatusFilterChange = useCallback((filter: EnrollmentStatusFilter) => {

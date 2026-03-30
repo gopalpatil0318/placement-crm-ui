@@ -31,15 +31,18 @@ const TOPIC_SUGGESTIONS = [
     "OOPs", "Web Dev",
 ] as const;
 
+const SKELETON_IDS = ["s1", "s2", "s3", "s4", "s5"] as const;
+
 // ========================
 // HELPERS
 // ========================
 
 function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
         month: "short",
         day: "numeric",
         year: "numeric",
+        timeZone: "Asia/Kolkata",
     });
 }
 
@@ -51,11 +54,11 @@ function StatsBar({
     total,
     pending,
     approved,
-}: {
+}: Readonly<{
     total: number;
     pending: number;
     approved: number;
-}) {
+}>) {
     return (
         <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
@@ -73,7 +76,7 @@ function StatsBar({
     );
 }
 
-function StatusBadge({ isApproved }: { isApproved: boolean }) {
+function StatusBadge({ isApproved }: Readonly<{ isApproved: boolean }>) {
     const status = isApproved ? "approved" : "pending";
     const colors = APPROVAL_STATUS_COLORS[status];
     return (
@@ -84,7 +87,7 @@ function StatusBadge({ isApproved }: { isApproved: boolean }) {
     );
 }
 
-function TopicBadge({ topic }: { topic: string | null }) {
+function TopicBadge({ topic }: Readonly<{ topic: string | null }>) {
     if (!topic) return null;
     return (
         <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">
@@ -116,7 +119,7 @@ function CardSkeleton() {
     );
 }
 
-function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+function EmptyState({ hasFilters }: Readonly<{ hasFilters: boolean }>) {
     if (hasFilters) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -155,14 +158,14 @@ function QuestionCard({
     onApprove,
     onReject,
     isProcessing,
-}: {
+}: Readonly<{
     item: InterviewQuestion;
     isSelected: boolean;
     onToggleSelect: (id: string) => void;
     onApprove: (id: string) => void;
     onReject: (id: string) => void;
     isProcessing: boolean;
-}) {
+}>) {
     const [answerExpanded, setAnswerExpanded] = useState(false);
     const shouldReduce = useReducedMotion();
     const hasSampleAnswer = !!item.sample_answer;
@@ -285,14 +288,14 @@ function BulkActionBar({
     onClearSelection,
     bulkProcessing,
     bulkProgress,
-}: {
+}: Readonly<{
     selectedCount: number;
     onBulkApprove: () => void;
     onBulkReject: () => void;
     onClearSelection: () => void;
     bulkProcessing: boolean;
     bulkProgress: { done: number; total: number };
-}) {
+}>) {
     const shouldReduce = useReducedMotion();
     const Wrapper = shouldReduce ? "div" : motion.div;
 
@@ -353,14 +356,14 @@ function PaginationBar({
     limit,
     onPageChange,
     onLimitChange,
-}: {
+}: Readonly<{
     page: number;
     totalPages: number;
     total: number;
     limit: number;
     onPageChange: (p: number) => void;
     onLimitChange: (l: number) => void;
-}) {
+}>) {
     const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
     const endItem = Math.min(page * limit, total);
 
@@ -402,7 +405,7 @@ function PaginationBar({
                 <div className="flex items-center gap-1">
                     {pageNumbers.map((p, i) =>
                         p === "..." ? (
-                            <span key={`e${i}`} className="px-1 text-xs text-gray-400">
+                            <span key={`ellipsis-${i === 1 ? 'start' : 'end'}`} className="px-1 text-xs text-gray-400">
                                 ...
                             </span>
                         ) : (
@@ -611,8 +614,8 @@ export default function InterviewQuestionManager() {
                     onChange={(e) => handleSortChange(Number(e.target.value))}
                     className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                 >
-                    {SORT_OPTIONS_QUESTIONS.map((opt, i) => (
-                        <option key={i} value={i}>
+                    {SORT_OPTIONS_QUESTIONS.map((opt) => (
+                        <option key={opt.label} value={SORT_OPTIONS_QUESTIONS.indexOf(opt)}>
                             {opt.label}
                         </option>
                     ))}
@@ -633,13 +636,15 @@ export default function InterviewQuestionManager() {
                         onClick={toggleSelectAll}
                         className="text-gray-400 hover:text-blue-600 transition-colors"
                     >
-                        {selectedIds.size === questions.length && questions.length > 0 ? (
-                            <CheckSquare className="h-4.5 w-4.5 text-blue-600" />
-                        ) : selectedIds.size > 0 ? (
-                            <Minus className="h-4.5 w-4.5 text-blue-500" />
-                        ) : (
-                            <Square className="h-4.5 w-4.5" />
-                        )}
+                        {(() => {
+                            if (selectedIds.size === questions.length && questions.length > 0) {
+                                return <CheckSquare className="h-4.5 w-4.5 text-blue-600" />;
+                            }
+                            if (selectedIds.size > 0) {
+                                return <Minus className="h-4.5 w-4.5 text-blue-500" />;
+                            }
+                            return <Square className="h-4.5 w-4.5" />;
+                        })()}
                     </button>
                     <span>
                         {selectedIds.size > 0
@@ -650,29 +655,35 @@ export default function InterviewQuestionManager() {
             )}
 
             {/* Content */}
-            {isLoading ? (
-                <div className="space-y-4">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <CardSkeleton key={i} />
-                    ))}
-                </div>
-            ) : questions.length === 0 ? (
-                <EmptyState hasFilters={hasFilters} />
-            ) : (
-                <div className="space-y-3">
-                    {questions.map((item) => (
-                        <QuestionCard
-                            key={item.question_id}
-                            item={item}
-                            isSelected={selectedIds.has(item.question_id)}
-                            onToggleSelect={toggleSelect}
-                            onApprove={approve}
-                            onReject={reject}
-                            isProcessing={processingId === item.question_id}
-                        />
-                    ))}
-                </div>
-            )}
+            {(() => {
+                if (isLoading) {
+                    return (
+                        <div className="space-y-4">
+                            {SKELETON_IDS.map((id) => (
+                                <CardSkeleton key={id} />
+                            ))}
+                        </div>
+                    );
+                }
+                if (questions.length === 0) {
+                    return <EmptyState hasFilters={hasFilters} />;
+                }
+                return (
+                    <div className="space-y-3">
+                        {questions.map((item) => (
+                            <QuestionCard
+                                key={item.question_id}
+                                item={item}
+                                isSelected={selectedIds.has(item.question_id)}
+                                onToggleSelect={toggleSelect}
+                                onApprove={approve}
+                                onReject={reject}
+                                isProcessing={processingId === item.question_id}
+                            />
+                        ))}
+                    </div>
+                );
+            })()}
 
             {/* Pagination */}
             <PaginationBar

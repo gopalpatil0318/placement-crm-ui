@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 
 // ========================
 // HOOK
@@ -31,13 +31,7 @@ export function useApproveFeedback() {
         onError: (error: unknown) => {
             const message = error instanceof ApiError ? error.message : "Something went wrong";
             const status = error instanceof ApiError ? error.status : undefined;
-            if (status === 404) {
-                showToast({ type: "error", title: "Not Found", description: message });
-            } else if (status === 429) {
-                showToast({ type: "error", title: "Rate Limited", description: "Too many requests, please slow down" });
-            } else {
-                showToast({ type: "error", title: "Error", description: message });
-            }
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
             setProcessingId(null);
         },
     });
@@ -76,7 +70,7 @@ export function useApproveFeedback() {
             showToast({
                 type: "success",
                 title: "Bulk Update Complete",
-                description: `${successCount} feedback item${successCount !== 1 ? "s" : ""} ${is_approved ? "approved" : "rejected"}`,
+                description: `${successCount} ${successCount === 1 ? "feedback item" : "feedback items"} ${is_approved ? "approved" : "rejected"}`,
             });
         } else {
             showToast({

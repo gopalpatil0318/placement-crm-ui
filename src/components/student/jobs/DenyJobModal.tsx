@@ -1,14 +1,13 @@
 import { useState } from "react"
 import { AlertTriangle, Ban } from "lucide-react"
 import ModalWrapper from "@/components/ui/ModalWrapper"
-import { toast } from "sonner"
 
 interface DenyJobModalProps {
-  isOpen: boolean
-  onClose: () => void
-  jobTitle: string
-  companyName: string
-  onConfirm: (data: { denial_reason: string; additional_comments?: string }) => Promise<void>
+  readonly isOpen: boolean
+  readonly onClose: () => void
+  readonly jobTitle: string
+  readonly companyName: string
+  readonly onConfirm: (data: { denial_reason: string; additional_comments?: string }) => Promise<void>
 }
 
 export default function DenyJobModal({
@@ -35,8 +34,6 @@ export default function DenyJobModal({
       setReason("")
       setComments("")
       onClose()
-    } catch {
-      toast.error("Failed to opt out. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -73,10 +70,11 @@ export default function DenyJobModal({
 
         {/* Reason */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          <label htmlFor="deny-reason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
             Reason for opting out <span className="text-red-500">*</span>
           </label>
           <textarea
+            id="deny-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Why are you not interested in this position?"
@@ -91,10 +89,11 @@ export default function DenyJobModal({
 
         {/* Additional comments */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          <label htmlFor="deny-comments" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
             Additional comments <span className="text-gray-400 text-xs font-normal">(optional)</span>
           </label>
           <textarea
+            id="deny-comments"
             value={comments}
             onChange={(e) => setComments(e.target.value)}
             placeholder="Any additional feedback..."
@@ -109,14 +108,14 @@ export default function DenyJobModal({
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50"
+            className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 min-h-[44px] text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!isValid || isSubmitting}
-            className="flex-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 min-h-[44px] text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Submitting..." : "Confirm Opt Out"}
           </button>

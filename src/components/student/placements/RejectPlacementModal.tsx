@@ -15,7 +15,7 @@ export default function RejectPlacementModal({
   placement,
   isOpen,
   onClose,
-}: RejectPlacementModalProps) {
+}: Readonly<RejectPlacementModalProps>) {
   const { formData, errors, handleChange, validate, rejectPlacement, resetForm, isRejecting } =
     useRejectPlacement()
 
@@ -44,6 +44,10 @@ export default function RejectPlacementModal({
 
   const charCount = formData.rejection_reason.length
   const isValid = charCount >= 3 && charCount <= 1000
+
+  let charCountColor = "text-gray-400 dark:text-gray-500"
+  if (charCount > 1000) charCountColor = "text-red-500"
+  else if (charCount > 900) charCountColor = "text-amber-500"
 
   const footer = (
     <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
@@ -130,13 +134,7 @@ export default function RejectPlacementModal({
               <span />
             )}
             <p
-              className={`text-xs ${
-                charCount > 1000
-                  ? "text-red-500"
-                  : charCount > 900
-                    ? "text-amber-500"
-                    : "text-gray-400 dark:text-gray-500"
-              }`}
+              className={`text-xs ${charCountColor}`}
             >
               {charCount}/1000
             </p>

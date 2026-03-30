@@ -14,6 +14,8 @@ export interface ProfileLinksData {
     medium_url?: string | null;
     bio?: string | null;
     area_of_interest?: string[];
+    created_at?: string | null;
+    updated_at?: string | null;
 }
 
 export const StudentProfileLinksService = {

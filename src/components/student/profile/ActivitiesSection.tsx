@@ -91,7 +91,7 @@ export default function ActivitiesSection({ activities }: ActivitiesSectionProps
                                             <span className="text-xs text-gray-400 dark:text-gray-500">
                                                 {formatDateRange(act.start_date, act.end_date, act.is_ongoing)}
                                             </span>
-                                            {act.hours_contributed > 0 && (
+                                            {(act.hours_contributed ?? 0) > 0 && (
                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
                                                     <Clock className="h-2.5 w-2.5" />
                                                     {act.hours_contributed}h

@@ -46,6 +46,7 @@ export const useCertificates = () => {
             const response = await StudentCertificateService.getAllCertificates();
             return (response.data?.certificates || response.certificates || []) as CertificateData[];
         },
+        staleTime: 2 * 60 * 1000,
     });
 
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -153,14 +154,14 @@ export const useCertificates = () => {
 
         const isEditing = !!editingId;
         saveMutation.mutate(payload, {
-            onSuccess: () => {
+            onSuccess: (response) => {
                 queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.certificates() });
                 queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
                 closeForm();
                 showToast({
                     type: "success",
                     title: isEditing ? "Updated" : "Added",
-                    description: isEditing ? "Certificate updated successfully" : "Certificate added successfully",
+                    description: response.message || (isEditing ? "Certificate updated successfully" : "Certificate added successfully"),
                 });
             },
         });
@@ -168,10 +169,10 @@ export const useCertificates = () => {
 
     const deleteMutation = useMutation({
         mutationFn: (id: string) => StudentCertificateService.deleteCertificate(id),
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.certificates() });
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
-            showToast({ type: "success", title: "Deleted", description: "Certificate removed" });
+            showToast({ type: "success", title: "Deleted", description: data.message || "Certificate removed" });
         },
         onError: (error) => {
             showToast({

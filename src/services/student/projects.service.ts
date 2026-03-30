@@ -17,6 +17,8 @@ export interface ProjectData {
     display_order: number;
     is_featured: boolean;
     is_verified?: boolean;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export const StudentProjectsService = {

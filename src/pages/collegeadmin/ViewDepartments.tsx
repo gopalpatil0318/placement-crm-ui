@@ -8,6 +8,9 @@ import {
     Building2,
     AlertCircle,
     RefreshCw,
+    Users,
+    GraduationCap,
+    Clock,
 } from "lucide-react";
 import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
@@ -80,7 +83,7 @@ const PaginationNav = ({
                 type="button"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1 || loading}
-                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="min-w-[44px] h-11 rounded-md flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Previous page"
             >
                 <ChevronLeft className="h-4 w-4" />
@@ -94,7 +97,7 @@ const PaginationNav = ({
                         type="button"
                         onClick={() => onPageChange(p)}
                         disabled={loading}
-                        className={`min-w-[32px] h-8 rounded-md text-sm font-medium transition ${
+                        className={`min-w-[44px] h-11 rounded-md text-sm font-medium transition ${
                             p === page
                                 ? "bg-blue-600 text-white shadow-sm"
                                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -108,7 +111,7 @@ const PaginationNav = ({
                 type="button"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages || loading}
-                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                className="min-w-[44px] h-11 rounded-md flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
                 aria-label="Next page"
             >
                 <ChevronRight className="h-4 w-4" />
@@ -257,6 +260,7 @@ const ViewDepartments = () => {
                                 placeholder="Search by name or code..."
                                 value={search}
                                 onChange={(e) => handleSearchChange(e.target.value)}
+                                aria-label="Search departments by name or code"
                                 className="w-full border border-gray-300 dark:border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                             />
                         </div>
@@ -265,6 +269,7 @@ const ViewDepartments = () => {
                         <select
                             value={statusFilter}
                             onChange={(e) => handleStatusFilterChange(e.target.value as "" | "true" | "false")}
+                            aria-label="Filter by department status"
                             className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
                             <option value="">All Status</option>
@@ -287,18 +292,18 @@ const ViewDepartments = () => {
                         </div>
                     </div>
 
-                    {/* ── Table ── */}
-                    <div className="overflow-x-auto">
+                    {/* ── Table (desktop md+) ── */}
+                    <div className="overflow-x-auto hidden md:block">
                         <table className="w-full">
                             <thead>
                                 <tr className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-800">
-                                    <th className="px-4 py-3 w-12">#</th>
-                                    <th className="px-4 py-3">Department</th>
-                                    <th className="px-4 py-3">Type</th>
-                                    <th className="px-4 py-3">Duration</th>
-                                    <th className="px-4 py-3 text-center">Users</th>
-                                    <th className="px-4 py-3 text-center">Students</th>
-                                    <th className="px-4 py-3">Status</th>
+                                    <th scope="col" className="px-4 py-3 w-12">#</th>
+                                    <th scope="col" className="px-4 py-3">Department</th>
+                                    <th scope="col" className="px-4 py-3">Type</th>
+                                    <th scope="col" className="px-4 py-3">Duration</th>
+                                    <th scope="col" className="px-4 py-3 text-center">Users</th>
+                                    <th scope="col" className="px-4 py-3 text-center">Students</th>
+                                    <th scope="col" className="px-4 py-3">Status</th>
                                 </tr>
                             </thead>
 
@@ -391,6 +396,84 @@ const ViewDepartments = () => {
                                 </tbody>
                             )}
                         </table>
+                    </div>
+
+                    {/* ── Mobile Card Layout (<md) ── */}
+                    <div className="md:hidden">
+                        {loading ? (
+                            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                    <div key={`skel-m-${i}`} className="px-4 py-4 animate-pulse space-y-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800" />
+                                            <div className="flex-1 space-y-1.5">
+                                                <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-40" />
+                                                <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-16" />
+                                            </div>
+                                            <div className="h-5 w-14 bg-gray-100 dark:bg-gray-800 rounded-full" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : departments.length > 0 ? (
+                            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                {departments.map((dept) => (
+                                    <button
+                                        key={dept.dept_id}
+                                        type="button"
+                                        onClick={() => navigate(`/college/department/${dept.dept_id}`)}
+                                        className="w-full px-4 py-4 flex items-start gap-3 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors text-left"
+                                    >
+                                        <DeptAvatar dept={dept} />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-2 mb-1">
+                                                <span className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                                                    {dept.dept_name}
+                                                </span>
+                                                <span
+                                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0 ${
+                                                        dept.is_active
+                                                            ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                                                            : "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
+                                                    }`}
+                                                >
+                                                    <span className={`h-1.5 w-1.5 rounded-full ${dept.is_active ? "bg-emerald-500" : "bg-red-400"}`} />
+                                                    {dept.is_active ? "Active" : "Inactive"}
+                                                </span>
+                                            </div>
+
+                                            {dept.dept_code && (
+                                                <p className="text-xs text-gray-400 dark:text-gray-500 font-mono uppercase mb-1.5">
+                                                    {dept.dept_code}
+                                                    {dept.dept_type && <span className="font-sans normal-case capitalize"> · {dept.dept_type}</span>}
+                                                </p>
+                                            )}
+
+                                            <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                                <span className="inline-flex items-center gap-1">
+                                                    <Users className="h-3 w-3" />
+                                                    {dept.user_count ?? 0}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1">
+                                                    <GraduationCap className="h-3 w-3" />
+                                                    {dept.student_count ?? 0}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1">
+                                                    <Clock className="h-3 w-3" />
+                                                    {dept.program_duration_years}Y / {dept.total_semesters}S
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600 flex-shrink-0 mt-1" />
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <EmptyState
+                                hasFilters={hasFilters}
+                                onAdd={() => navigate("/college/create-department")}
+                            />
+                        )}
                     </div>
 
                     {/* ── Pagination footer ── */}

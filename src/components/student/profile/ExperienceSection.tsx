@@ -79,7 +79,7 @@ export default function ExperienceSection({ experiences }: ExperienceSectionProp
                                                     <span className="text-xs text-gray-400 dark:text-gray-500">
                                                         {formatDateRange(exp.start_date, exp.end_date, exp.is_current)}
                                                     </span>
-                                                    {exp.duration_months > 0 && (
+                                                    {(exp.duration_months ?? 0) > 0 && (
                                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
                                                             <Clock className="h-2.5 w-2.5" />
                                                             {exp.duration_months}mo

@@ -1,11 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from "react"
-import { useQuery, keepPreviousData } from "@tanstack/react-query"
+import { useState, useCallback, useRef, useEffect, useMemo } from "react"
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/queryKeys"
 import { FeedbackService } from "@/services/student/feedback.service"
 import {
   SORT_OPTIONS_QUESTIONS,
   type BrowseInterviewQuestion,
-  type BrowseQuestionsFilters,
 } from "@/validators/FeedbackSchema"
 
 // ─── Hook ───────────────────────────────────────────────────────────────────────
@@ -28,7 +27,7 @@ export function useBrowseQuestions(initialLimit = 10, enabled = true) {
 
   const sort = SORT_OPTIONS_QUESTIONS[sortIndex]
 
-  const queryFilters: BrowseQuestionsFilters = {
+  const queryFilters = useMemo(() => ({
     ...(companyFilter ? { company_id: companyFilter } : {}),
     ...(topicFilter ? { topic: topicFilter } : {}),
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
@@ -36,7 +35,7 @@ export function useBrowseQuestions(initialLimit = 10, enabled = true) {
     sort_order: sort.sort_order,
     page,
     limit,
-  }
+  }), [companyFilter, topicFilter, debouncedSearch, sort, page, limit])
 
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: queryKeys.studentPortal.browseQuestions(queryFilters as Record<string, unknown>),
@@ -47,6 +46,18 @@ export function useBrowseQuestions(initialLimit = 10, enabled = true) {
 
   const questions: BrowseInterviewQuestion[] = data?.questions ?? []
   const pagination = data?.pagination ?? { page: 1, limit: initialLimit, total: 0, totalPages: 0 }
+
+  // Next-page prefetch
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (pagination.page < pagination.totalPages) {
+      const nextFilters = { ...queryFilters, page: pagination.page + 1 }
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.studentPortal.browseQuestions(nextFilters as Record<string, unknown>),
+        queryFn: () => FeedbackService.browseInterviewQuestions(nextFilters),
+      })
+    }
+  }, [queryClient, queryFilters, pagination.page, pagination.totalPages])
 
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value)

@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { useCertificates, VALID_CERTIFICATE_TYPES, CERTIFICATE_TYPE_LABELS } from "@/hooks/student/useCertificates";
 import type { CertificateData } from "@/services/student/certificate.service";
-import { Plus, X, Pencil, Trash2, Award, CheckCircle, ExternalLink, Link as LinkIcon, AlertCircle, Calendar, Infinity, ChevronDown } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Award, CheckCircle, ExternalLink, Link as LinkIcon, AlertCircle, Calendar, Infinity as InfinityIcon, ChevronDown } from "lucide-react";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
@@ -26,7 +26,7 @@ function getDaysUntilExpiry(expiryDate: string | null | undefined): string | nul
     return `${days} days left`;
 }
 
-function ExpandableDescription({ text }: { text: string }) {
+function ExpandableDescription({ text }: Readonly<{ text: string }>) {
     const [expanded, setExpanded] = useState(false);
     const [isClamped, setIsClamped] = useState(false);
     const ref = useRef<HTMLParagraphElement>(null);
@@ -78,7 +78,7 @@ const CertificatesForm = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {Array.from({ length: 2 }).map((_, i) => (
-                        <div key={i} className="p-5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
+                        <div key={`cert-skeleton-${String(i)}`} className="p-5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
                             <div className="h-4 w-40 rounded bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
                             <div className="flex gap-2">
                                 <div className="h-5 w-16 rounded-full bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
@@ -148,30 +148,33 @@ const CertificatesForm = () => {
                     </button>
                     <button type="button" onClick={handleSubmit} disabled={saving}
                         className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium transition cursor-pointer disabled:opacity-50">
-                        {saving ? "Saving..." : editingId ? "Update" : "Add Certificate"}
+                        {(() => {
+                            if (saving) return "Saving...";
+                            return editingId ? "Update" : "Add Certificate";
+                        })()}
                     </button>
                 </div>
             }>
                         {/* Body */}
                         <div className="p-6 space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingInput label="Certificate Name" name="certificate_name" value={formData.certificate_name} onChange={handleChange} error={errors.certificate_name} required placeholder="e.g. Google Cloud Professional Architect" />
                                 <FloatingInput label="Issuing Organization" name="issuing_organization" value={formData.issuing_organization} onChange={handleChange} error={errors.issuing_organization} required placeholder="e.g. Google, Coursera" />
                             </div>
 
                             <FloatingTextarea label="Description" name="certificate_description" value={formData.certificate_description} onChange={handleChange} error={errors.certificate_description} rows={3} placeholder="Brief description of the certificate" />
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingSelect label="Certificate Type" name="certificate_type" value={formData.certificate_type} onChange={handleChange} error={errors.certificate_type} options={VALID_CERTIFICATE_TYPES.map(t => ({ value: t, label: CERTIFICATE_TYPE_LABELS[t] }))} />
                                 <FloatingInput label="Issuing Platform" name="issuing_platform" value={formData.issuing_platform} onChange={handleChange} placeholder="e.g. Coursera, Udemy, NPTEL" />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingInput label="Credential ID" name="credential_id" value={formData.credential_id} onChange={handleChange} placeholder="e.g. UC-abc123" />
-                                <FloatingInput label="Credential URL" name="credential_url" value={formData.credential_url} onChange={handleChange} error={errors.credential_url} placeholder="https://..." />
+                                <FloatingInput label="Credential URL" name="credential_url" value={formData.credential_url} onChange={handleChange} error={errors.credential_url} inputMode="url" placeholder="https://..." />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingInput label="Issue Date" name="issue_date" value={formData.issue_date} onChange={handleChange} error={errors.issue_date} type="date" />
                                 {!formData.does_not_expire && (
                                     <FloatingInput label="Expiry Date" name="expiry_date" value={formData.expiry_date} onChange={handleChange} error={errors.expiry_date} type="date" />
@@ -181,14 +184,14 @@ const CertificatesForm = () => {
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input type="checkbox" name="does_not_expire" checked={formData.does_not_expire} onChange={handleChange}
                                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300"><Infinity size={14} className="inline -mt-0.5 mr-1" />This certificate does not expire</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300"><InfinityIcon size={14} className="inline -mt-0.5 mr-1" />This certificate does not expire</span>
                             </label>
 
                             {/* Skills Covered */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Skills Covered</label>
+                                <label htmlFor="cert-skill-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Skills Covered</label>
                                 <div className="flex gap-2">
-                                    <input value={skillInput} onChange={(e) => setSkillInput(e.target.value)}
+                                    <input id="cert-skill-input" value={skillInput} onChange={(e) => setSkillInput(e.target.value)}
                                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }}
                                         placeholder="Type a skill & press Enter"
                                         className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-4 py-2.5 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20" />
@@ -208,7 +211,7 @@ const CertificatesForm = () => {
                                 {errors.skills_covered && <p className="text-xs text-red-500 mt-1">{errors.skills_covered}</p>}
                             </div>
 
-                            <FloatingInput label="Certificate File URL" name="certificate_url" value={formData.certificate_url} onChange={handleChange} error={errors.certificate_url} placeholder="https://drive.google.com/..." />
+                            <FloatingInput label="Certificate File URL" name="certificate_url" value={formData.certificate_url} onChange={handleChange} error={errors.certificate_url} inputMode="url" placeholder="https://drive.google.com/..." />
                         </div>
             </ModalWrapper>
 
@@ -239,7 +242,7 @@ const CertificateCard = memo(function CertificateCard({
 }) {
     const visibleSkills = cert.skills_covered?.slice(0, MAX_VISIBLE_CHIPS) ?? [];
     const hiddenSkillCount = (cert.skills_covered?.length ?? 0) - MAX_VISIBLE_CHIPS;
-    const expiryLabel = !cert.does_not_expire ? getDaysUntilExpiry(cert.expiry_date) : null;
+    const expiryLabel = cert.does_not_expire ? null : getDaysUntilExpiry(cert.expiry_date);
     const isExpired = expiryLabel === "Expired";
 
     return (
@@ -281,9 +284,9 @@ const CertificateCard = memo(function CertificateCard({
                 {/* Badges row */}
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
                     {cert.certificate_type && (
-                        <span role="status" className="text-xs px-2.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full font-medium">
+                        <output className="text-xs px-2.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full font-medium">
                             {CERTIFICATE_TYPE_LABELS[cert.certificate_type] || cert.certificate_type}
-                        </span>
+                        </output>
                     )}
                     {cert.issuing_platform && cert.issuing_platform !== cert.issuing_organization && (
                         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{cert.issuing_platform}</span>
@@ -296,9 +299,10 @@ const CertificateCard = memo(function CertificateCard({
                         <Calendar size={13} className="shrink-0 text-gray-400 dark:text-gray-500" />
                         <span>
                             {cert.issue_date ? `Issued: ${formatDate(cert.issue_date)}` : ""}
-                            {cert.does_not_expire
-                                ? <span className="ml-1 inline-flex items-center gap-1"><Infinity size={12} className="inline" /> No Expiry</span>
-                                : cert.expiry_date ? ` · Expires: ${formatDate(cert.expiry_date)}` : ""}
+                            {(() => {
+                                if (cert.does_not_expire) return <span className="ml-1 inline-flex items-center gap-1"><InfinityIcon size={12} className="inline" /> No Expiry</span>;
+                                return cert.expiry_date ? ` · Expires: ${formatDate(cert.expiry_date)}` : "";
+                            })()}
                         </span>
                     </div>
                     {expiryLabel && (
@@ -348,14 +352,14 @@ const CertificateCard = memo(function CertificateCard({
                         </a>
                     )}
                     {cert.is_verified && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                        <output className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
                             <CheckCircle className="h-3.5 w-3.5" /> Verified
-                        </span>
+                        </output>
                     )}
                     {cert.is_verified === false && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 font-medium">
+                        <output className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 font-medium">
                             <AlertCircle className="h-3.5 w-3.5" /> Pending verification
-                        </span>
+                        </output>
                     )}
                 </div>
             </div>

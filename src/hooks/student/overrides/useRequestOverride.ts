@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api"
 import { showToast } from "@/utils/ToastUtils"
 import { queryKeys } from "@/lib/queryKeys"
 import { OverridesService } from "@/services/student/overrides.service"
+import type { RequestOverrideApiResponse } from "@/services/student/overrides.service"
 import {
   requestOverrideSchema,
   type RequestOverrideInput,
@@ -50,11 +51,11 @@ export function useRequestOverride(jobId: string) {
   const mutation = useMutation({
     mutationFn: (data: RequestOverrideInput) =>
       OverridesService.requestOverride(jobId, data),
-    onSuccess: () => {
+    onSuccess: (response: RequestOverrideApiResponse) => {
       showToast({
         type: "success",
         title: "Override Requested",
-        description: "Your override request has been submitted. College staff will review it shortly.",
+        description: response.message,
       })
       resetForm()
       queryClient.invalidateQueries({
@@ -74,11 +75,13 @@ export function useRequestOverride(jobId: string) {
       const message = error instanceof ApiError ? error.message : "Failed to submit override request"
       const status = error instanceof ApiError ? error.status : undefined
 
-      let title = "Error"
-      if (status === 409) title = "Already Requested"
-      else if (status === 400) title = "Cannot Request Override"
-      else if (status === 404) title = "Job Not Found"
-      else if (status === 429) title = "Too Many Requests"
+      const titleMap: Record<number, string> = {
+        400: "Cannot Request Override",
+        404: "Job Not Found",
+        409: "Already Requested",
+        429: "Too Many Requests",
+      }
+      const title = (status && titleMap[status]) || "Error"
 
       const description =
         status === 429

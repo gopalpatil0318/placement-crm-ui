@@ -28,16 +28,21 @@ export default function SuperAdminLogin() {
       await login(email, password)
       navigate("/sysadmin/dashboard")
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        const msg = err.message.toLowerCase()
-        if (msg.includes("too many") || msg.includes("rate limit")) {
-          setFormError("Too many login attempts. Please try again in 15 minutes.")
-        } else {
-          setFormError(err.message || "Invalid credentials")
+      // Extract error message — handle both ApiError and raw axios errors
+      let errorMessage = "Invalid credentials"
+      if (err && typeof err === "object" && "response" in err) {
+        const axiosErr = err as { response?: { data?: { error?: string; message?: string }; status?: number } }
+        const status = axiosErr.response?.status
+        const apiMsg = axiosErr.response?.data?.error || axiosErr.response?.data?.message
+        if (status === 429) {
+          errorMessage = "Too many login attempts. Please try again in 15 minutes."
+        } else if (apiMsg) {
+          errorMessage = apiMsg
         }
-      } else {
-        setFormError("An unexpected error occurred")
+      } else if (err instanceof Error) {
+        errorMessage = err.message
       }
+      setFormError(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -89,6 +94,7 @@ export default function SuperAdminLogin() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="admin@pcrm.in"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -105,6 +111,7 @@ export default function SuperAdminLogin() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

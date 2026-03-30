@@ -59,16 +59,19 @@ interface StudentRestrictionsTabProps {
 // SUB-COMPONENTS
 // ========================
 
+const SUMMARY_SKELETON_KEYS = ["sum-1", "sum-2", "sum-3"];
+const CARD_SKELETON_KEYS = ["card-1", "card-2", "card-3"];
+
 function TabSkeleton() {
     return (
         <div className="space-y-4 animate-pulse">
             <div className="flex gap-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="h-16 flex-1 rounded-xl bg-gray-100 dark:bg-gray-800" />
+                {SUMMARY_SKELETON_KEYS.map((id) => (
+                    <div key={id} className="h-16 flex-1 rounded-xl bg-gray-100 dark:bg-gray-800" />
                 ))}
             </div>
-            {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-32 rounded-xl bg-gray-100 dark:bg-gray-800" />
+            {CARD_SKELETON_KEYS.map((id) => (
+                <div key={id} className="h-32 rounded-xl bg-gray-100 dark:bg-gray-800" />
             ))}
         </div>
     );
@@ -210,12 +213,16 @@ const RestrictionCardItem = memo(function RestrictionCardItem({
 // MAIN COMPONENT
 // ========================
 
-export default function StudentRestrictionsTab({ studentId, studentName }: StudentRestrictionsTabProps) {
+export default function StudentRestrictionsTab({ studentId, studentName }: Readonly<StudentRestrictionsTabProps>) {
     const shouldReduce = useReducedMotion();
     const [statusFilter, setStatusFilter] = useState<RestrictionStatusFilter>("all");
 
-    const isActiveParam =
-        statusFilter === "active" ? "true" : statusFilter === "resolved" ? "false" : undefined;
+    let isActiveParam: string | undefined;
+    if (statusFilter === "active") {
+        isActiveParam = "true";
+    } else if (statusFilter === "resolved") {
+        isActiveParam = "false";
+    }
 
     const { restrictions, totalRestrictions, activeRestrictions, loading, error, refresh } =
         useViewStudentRestrictions(studentId, isActiveParam);
@@ -259,6 +266,67 @@ export default function StudentRestrictionsTab({ studentId, studentName }: Stude
         );
     }
 
+    let restrictionContent: React.ReactNode;
+    if (restrictions.length === 0) {
+        restrictionContent = (
+            <div className="flex flex-col items-center justify-center py-12">
+                <div className="h-14 w-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+                    <ShieldCheck className="h-6 w-6 text-emerald-400 dark:text-emerald-500" />
+                </div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                    {statusFilter === "all" ? "No restrictions" : `No ${statusFilter} restrictions`}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {statusFilter === "all"
+                        ? "This student has no restrictions on record"
+                        : `No ${statusFilter} restrictions found`}
+                </p>
+                {statusFilter === "all" && (
+                    <button
+                        type="button"
+                        onClick={() => setShowAddModal(true)}
+                        className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition shadow-sm cursor-pointer"
+                    >
+                        <ShieldAlert className="h-4 w-4" />
+                        Add Restriction
+                    </button>
+                )}
+            </div>
+        );
+    } else if (shouldReduce) {
+        restrictionContent = (
+            <div className="space-y-4">
+                {restrictions.map((r) => (
+                    <RestrictionCardItem
+                        key={r.restriction_id}
+                        restriction={r}
+                        onResolve={setResolveTarget}
+                        onEdit={setEditTarget}
+                    />
+                ))}
+            </div>
+        );
+    } else {
+        restrictionContent = (
+            <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+                className="space-y-4"
+            >
+                {restrictions.map((r) => (
+                    <motion.div key={r.restriction_id} variants={staggerItem}>
+                        <RestrictionCardItem
+                            restriction={r}
+                            onResolve={setResolveTarget}
+                            onEdit={setEditTarget}
+                        />
+                    </motion.div>
+                ))}
+            </motion.div>
+        );
+    }
+
     return (
         <>
             <div className="space-y-5">
@@ -293,11 +361,14 @@ export default function StudentRestrictionsTab({ studentId, studentName }: Stude
                 </div>
 
                 {/* Status Filter */}
-                <div className="flex gap-1.5">
+                <div className="flex gap-1.5" role="tablist" aria-label="Restriction status filter">
                     {RESTRICTION_STATUS_TABS.map((tab) => (
                         <button
                             key={tab}
                             type="button"
+                            role="tab"
+                            aria-selected={statusFilter === tab}
+                            tabIndex={statusFilter === tab ? 0 : -1}
                             onClick={() => setStatusFilter(tab)}
                             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                                 statusFilter === tab
@@ -311,59 +382,7 @@ export default function StudentRestrictionsTab({ studentId, studentName }: Stude
                 </div>
 
                 {/* Content */}
-                {restrictions.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                        <div className="h-14 w-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
-                            <ShieldCheck className="h-6 w-6 text-emerald-400 dark:text-emerald-500" />
-                        </div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                            {statusFilter === "all" ? "No restrictions" : `No ${statusFilter} restrictions`}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {statusFilter === "all"
-                                ? "This student has no restrictions on record"
-                                : `No ${statusFilter} restrictions found`}
-                        </p>
-                        {statusFilter === "all" && (
-                            <button
-                                type="button"
-                                onClick={() => setShowAddModal(true)}
-                                className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition shadow-sm cursor-pointer"
-                            >
-                                <ShieldAlert className="h-4 w-4" />
-                                Add Restriction
-                            </button>
-                        )}
-                    </div>
-                ) : shouldReduce ? (
-                    <div className="space-y-4">
-                        {restrictions.map((r) => (
-                            <RestrictionCardItem
-                                key={r.restriction_id}
-                                restriction={r}
-                                onResolve={setResolveTarget}
-                                onEdit={setEditTarget}
-                            />
-                        ))}
-                    </div>
-                ) : (
-                    <motion.div
-                        variants={staggerContainer}
-                        initial="hidden"
-                        animate="visible"
-                        className="space-y-4"
-                    >
-                        {restrictions.map((r) => (
-                            <motion.div key={r.restriction_id} variants={staggerItem}>
-                                <RestrictionCardItem
-                                    restriction={r}
-                                    onResolve={setResolveTarget}
-                                    onEdit={setEditTarget}
-                                />
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                )}
+                {restrictionContent}
             </div>
 
             {/* Add Restriction Modal */}

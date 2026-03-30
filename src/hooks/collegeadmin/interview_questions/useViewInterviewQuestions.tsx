@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
@@ -33,38 +33,46 @@ export const useViewInterviewQuestions = () => {
 
     const currentSort = SORT_MAP[sortIndex] ?? SORT_MAP[0];
 
-    const queryFilters: Record<string, unknown> = {
+    let isApprovedFilter: boolean | undefined;
+    if (approvalFilter === "pending") isApprovedFilter = false;
+    else if (approvalFilter === "approved") isApprovedFilter = true;
+
+    const queryFilters = useMemo(() => ({
         page,
         limit,
         search: debouncedSearch || undefined,
-        is_approved: approvalFilter === "pending" ? false : approvalFilter === "approved" ? true : undefined,
+        is_approved: isApprovedFilter,
         company_id: companyFilter || undefined,
         topic: debouncedTopic || undefined,
         sort_by: currentSort.sort_by,
         sort_order: currentSort.sort_order,
-    };
+    }), [page, limit, debouncedSearch, isApprovedFilter, companyFilter, debouncedTopic, currentSort]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.interviewQuestions.all(queryFilters),
-        queryFn: () => CollegeAdminService.getAllInterviewQuestions({
-            ...queryFilters,
-            is_approved: queryFilters.is_approved as boolean | undefined,
-            company_id: queryFilters.company_id as string | undefined,
-            topic: queryFilters.topic as string | undefined,
-            search: queryFilters.search as string | undefined,
-            sort_by: queryFilters.sort_by as string | undefined,
-            sort_order: queryFilters.sort_order as string | undefined,
-            page: queryFilters.page as number | undefined,
-            limit: queryFilters.limit as number | undefined,
-        }),
+        queryFn: () => CollegeAdminService.getAllInterviewQuestions(queryFilters),
         placeholderData: keepPreviousData,
     });
 
     const questions: InterviewQuestion[] = Array.isArray(data?.data) ? data.data : [];
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
-    const error = queryError
-        ? (queryError instanceof ApiError ? queryError.message : "Failed to fetch interview questions")
-        : null;
+
+    // Next-page prefetch
+    const queryClient = useQueryClient();
+    useEffect(() => {
+        if (pagination.page < pagination.totalPages) {
+            const nextFilters = { ...queryFilters, page: pagination.page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.interviewQuestions.all(nextFilters),
+                queryFn: () => CollegeAdminService.getAllInterviewQuestions(nextFilters),
+            });
+        }
+    }, [queryClient, queryFilters, pagination.page, pagination.totalPages]);
+
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof ApiError ? queryError.message : "Failed to fetch interview questions";
+    }
     const errorStatus = queryError instanceof ApiError ? queryError.status : undefined;
 
     useEffect(() => {

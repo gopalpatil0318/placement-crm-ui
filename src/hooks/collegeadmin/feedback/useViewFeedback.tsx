@@ -1,16 +1,18 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { queryKeys } from "@/lib/queryKeys";
 import { type Feedback, type Pagination } from "@/validators/FeedbackSchema";
+import { useYearFilter } from "@/context/YearFilterContext";
 
 // ========================
 // HOOK
 // ========================
 
 export const useViewFeedback = () => {
+    const { selectedYear } = useYearFilter();
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
     const [search, setSearch] = useState("");
@@ -32,40 +34,48 @@ export const useViewFeedback = () => {
 
     const currentSort = SORT_MAP[sortIndex] ?? SORT_MAP[0];
 
-    const queryFilters: Record<string, unknown> = {
+    let isApprovedFilter: boolean | undefined;
+    if (approvalFilter === "pending") isApprovedFilter = false;
+    else if (approvalFilter === "approved") isApprovedFilter = true;
+
+    const queryFilters = useMemo(() => ({
         page,
         limit,
         search: debouncedSearch || undefined,
-        is_approved: approvalFilter === "pending" ? false : approvalFilter === "approved" ? true : undefined,
+        is_approved: isApprovedFilter,
         company_id: companyFilter || undefined,
         job_id: jobFilter || undefined,
         rating: ratingFilter ? Number(ratingFilter) : undefined,
+        passout_year: selectedYear,
         sort_by: currentSort.sort_by,
         sort_order: currentSort.sort_order,
-    };
+    }), [page, limit, debouncedSearch, isApprovedFilter, companyFilter, jobFilter, ratingFilter, selectedYear, currentSort]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.feedback.all(queryFilters),
-        queryFn: () => CollegeAdminService.getAllFeedback({
-            ...queryFilters,
-            is_approved: queryFilters.is_approved as boolean | undefined,
-            company_id: queryFilters.company_id as string | undefined,
-            job_id: queryFilters.job_id as string | undefined,
-            rating: queryFilters.rating as number | undefined,
-            search: queryFilters.search as string | undefined,
-            sort_by: queryFilters.sort_by as string | undefined,
-            sort_order: queryFilters.sort_order as string | undefined,
-            page: queryFilters.page as number | undefined,
-            limit: queryFilters.limit as number | undefined,
-        }),
+        queryFn: () => CollegeAdminService.getAllFeedback(queryFilters),
         placeholderData: keepPreviousData,
     });
 
     const feedback: Feedback[] = Array.isArray(data?.data) ? data.data : [];
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
-    const error = queryError
-        ? (queryError instanceof ApiError ? queryError.message : "Failed to fetch feedback")
-        : null;
+
+    // Next-page prefetch
+    const queryClient = useQueryClient();
+    useEffect(() => {
+        if (pagination.page < pagination.totalPages) {
+            const nextFilters = { ...queryFilters, page: pagination.page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.feedback.all(nextFilters),
+                queryFn: () => CollegeAdminService.getAllFeedback(nextFilters),
+            });
+        }
+    }, [queryClient, queryFilters, pagination.page, pagination.totalPages]);
+
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof ApiError ? queryError.message : "Failed to fetch feedback";
+    }
     const errorStatus = queryError instanceof ApiError ? queryError.status : undefined;
 
     useEffect(() => {

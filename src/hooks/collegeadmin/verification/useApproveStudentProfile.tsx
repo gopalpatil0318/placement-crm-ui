@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
-import { showToast } from "@/utils/ToastUtils";
+import { showToast, getErrorTitle } from "@/utils/ToastUtils";
 import { verifyItemSchema } from "@/validators/VerificationSchema";
 
 // ========================
@@ -23,6 +23,23 @@ interface ApproveResponse {
             certificates: number;
         };
     };
+}
+
+// ========================
+// HELPERS
+// ========================
+
+function buildAutoApprovedSuffix(auto?: NonNullable<ApproveResponse["data"]>["auto_approved"]): string {
+    if (!auto) return "";
+    const entries: Array<[number, string]> = [
+        [auto.experiences, "experience"],
+        [auto.achievements, "achievement"],
+        [auto.certificates, "certificate"],
+    ];
+    const parts = entries
+        .filter(([count]) => count > 0)
+        .map(([count, label]) => `${count} ${label}${count > 1 ? "s" : ""}`);
+    return parts.length > 0 ? `. Auto-approved ${parts.join(", ")}` : "";
 }
 
 // ========================
@@ -49,35 +66,16 @@ export function useApproveStudentProfile(studentId: string) {
         onSuccess: (response: unknown) => {
             invalidateCache();
             const res = response as ApproveResponse;
-            const auto = res.data?.auto_approved;
-            let description = res.message || "Student profile approved";
-            if (auto) {
-                const parts: string[] = [];
-                if (auto.experiences > 0)
-                    parts.push(`${auto.experiences} experience${auto.experiences > 1 ? "s" : ""}`);
-                if (auto.achievements > 0)
-                    parts.push(`${auto.achievements} achievement${auto.achievements > 1 ? "s" : ""}`);
-                if (auto.certificates > 0)
-                    parts.push(`${auto.certificates} certificate${auto.certificates > 1 ? "s" : ""}`);
-                if (parts.length > 0) {
-                    description += `. Auto-approved ${parts.join(", ")}`;
-                }
-            }
+            const description =
+                (res.message || "Student profile approved") +
+                buildAutoApprovedSuffix(res.data?.auto_approved);
             showToast({ type: "success", title: "Profile Approved", description });
         },
         onError: (error: unknown) => {
             const message =
                 error instanceof ApiError ? error.message : "Something went wrong";
             const status = error instanceof ApiError ? error.status : undefined;
-            if (status === 400) {
-                showToast({
-                    type: "error",
-                    title: "Cannot Approve",
-                    description: message,
-                });
-            } else {
-                showToast({ type: "error", title: "Error", description: message });
-            }
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
         },
     });
 
@@ -97,7 +95,8 @@ export function useApproveStudentProfile(studentId: string) {
         onError: (error: unknown) => {
             const message =
                 error instanceof ApiError ? error.message : "Something went wrong";
-            showToast({ type: "error", title: "Error", description: message });
+            const status = error instanceof ApiError ? error.status : undefined;
+            showToast({ type: "error", title: getErrorTitle(status), description: message });
         },
     });
 

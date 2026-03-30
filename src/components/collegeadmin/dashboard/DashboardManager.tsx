@@ -48,7 +48,6 @@ import {
     useDashboard,
     formatPackage,
     getGrowthPercent,
-    getPassoutYearOptions,
     SLAB_LABELS,
     type DashboardTab,
     type DashboardOverview,
@@ -98,11 +97,17 @@ const TABS: TabConfig[] = [
     { key: "yearComparison", label: "Year Trends", icon: TrendingUp },
 ];
 
+const STAR_KEYS = ["star-1", "star-2", "star-3", "star-4", "star-5"] as const;
+
+function LegendLabel(v: string) {
+    return <span className="text-xs text-gray-600 dark:text-gray-400">{v}</span>;
+}
+
 // ========================
 // ANIMATED COUNTER
 // ========================
 
-function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }) {
+function AnimatedNumber({ value, decimals = 0 }: Readonly<{ value: number; decimals?: number }>) {
     const prefersReduced = useReducedMotion();
     const spring = useSpring(0, { stiffness: 60, damping: 20 });
     const display = useTransform(spring, (v) =>
@@ -124,7 +129,7 @@ function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: num
 // CIRCULAR PROGRESS
 // ========================
 
-function CircularProgress({ percentage, ringColor, size = 100, strokeWidth = 8 }: { percentage: number; ringColor: string; size?: number; strokeWidth?: number }) {
+function CircularProgress({ percentage, ringColor, size = 100, strokeWidth = 8 }: Readonly<{ percentage: number; ringColor: string; size?: number; strokeWidth?: number }>) {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
     const pct = Math.min(Math.max(percentage, 0), 100);
@@ -151,7 +156,7 @@ function CircularProgress({ percentage, ringColor, size = 100, strokeWidth = 8 }
     );
 }
 
-function PackageStat({ label, value, color, icon: Icon }: { label: string; value: string; color: string; icon: typeof IndianRupee }) {
+function PackageStat({ label, value, color, icon: Icon }: Readonly<{ label: string; value: string; color: string; icon: typeof IndianRupee }>) {
     return (
         <div className="rounded-lg bg-white/50 p-2.5 dark:bg-gray-900/30">
             <div className="flex items-center gap-1.5">
@@ -182,6 +187,48 @@ interface KPICardProps {
     accentColor?: string;
 }
 
+function getPlacementGradient(pct: number): string {
+    if (pct >= 70) return "from-emerald-50 to-teal-50/50 dark:from-emerald-950/30 dark:to-teal-950/20";
+    if (pct >= 50) return "from-amber-50 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20";
+    return "from-red-50 to-rose-50/50 dark:from-red-950/30 dark:to-rose-950/20";
+}
+
+function getPlacementBarColor(pct: number): string {
+    if (pct >= 70) return "bg-emerald-500";
+    if (pct >= 50) return "bg-amber-500";
+    return "bg-red-500";
+}
+
+function getPlacementStrokeColor(pct: number): string {
+    if (pct >= 70) return "stroke-emerald-500";
+    if (pct >= 50) return "stroke-amber-500";
+    return "stroke-red-500";
+}
+
+function getPlacementTextColor(pct: number): string {
+    if (pct >= 70) return "text-emerald-600 dark:text-emerald-400";
+    if (pct >= 50) return "text-amber-600 dark:text-amber-400";
+    return "text-red-600 dark:text-red-400";
+}
+
+function placementColor(pct: number): string {
+    if (pct >= 80) return "text-emerald-600 dark:text-emerald-400";
+    if (pct >= 60) return "text-amber-600 dark:text-amber-400";
+    return "text-red-600 dark:text-red-400";
+}
+
+function selectionColor(rate: number): string {
+    if (rate >= 20) return "text-emerald-600 dark:text-emerald-400";
+    if (rate >= 10) return "text-amber-600 dark:text-amber-400";
+    return "text-red-600 dark:text-red-400";
+}
+
+function getHighlightClass(highlight?: "success" | "warning" | "danger"): string {
+    if (highlight === "danger") return "border-red-200 bg-red-50/40 dark:border-red-900/40 dark:bg-red-950/20";
+    if (highlight === "warning") return "border-amber-200 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20";
+    return "border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900";
+}
+
 function KPICard({
     icon: Icon,
     iconBg,
@@ -195,27 +242,24 @@ function KPICard({
     prefix,
     suffix,
     accentColor,
-}: KPICardProps) {
-    const highlightClass =
-        highlight === "danger"
-            ? "border-red-200 bg-red-50/40 dark:border-red-900/40 dark:bg-red-950/20"
-            : highlight === "warning"
-              ? "border-amber-200 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20"
-              : "border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900";
+}: Readonly<KPICardProps>) {
+    const highlightClass = getHighlightClass(highlight);
+
+    const accentBorder = accentColor ? ` border-l-[3px] ${accentColor}` : "";
 
     return (
         <div
-            className={`group relative overflow-hidden rounded-xl border p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${highlightClass} ${accentColor ? `border-l-[3px] ${accentColor}` : ""}`}
+        className={`group relative overflow-hidden rounded-xl border p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${highlightClass}${accentBorder}`}
         >
             <div className="flex items-start justify-between">
                 <div>
                     <div className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</div>
                     <div className="mt-1.5 text-2xl font-bold text-gray-900 dark:text-gray-50">
                         {prefix}
-                        {animateValue !== undefined ? (
-                            <AnimatedNumber value={animateValue} decimals={decimals} />
-                        ) : (
+                        {animateValue === undefined ? (
                             value
+                        ) : (
+                            <AnimatedNumber value={animateValue} decimals={decimals} />
                         )}
                         {suffix}
                     </div>
@@ -248,7 +292,7 @@ function KPICardSkeleton() {
 // OVERVIEW SECTION
 // ========================
 
-function OverviewSection({ data, loading }: { data?: DashboardOverview; loading: boolean }) {
+function OverviewSection({ data, loading }: Readonly<{ data?: DashboardOverview; loading: boolean }>) {
     const shouldReduce = useReducedMotion();
 
     if (loading || !data) {
@@ -259,8 +303,8 @@ function OverviewSection({ data, loading }: { data?: DashboardOverview; loading:
                     <div className="h-44 rounded-2xl bg-gray-200 dark:bg-gray-700 animate-pulse lg:col-span-2" />
                 </div>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <KPICardSkeleton key={i} />
+                    {["sk-companies", "sk-offers", "sk-jobs", "sk-students", "sk-unplaced"].map((id) => (
+                        <KPICardSkeleton key={id} />
                     ))}
                 </div>
             </div>
@@ -273,14 +317,10 @@ function OverviewSection({ data, loading }: { data?: DashboardOverview; loading:
     const unplacedCount = Number(data.unplaced_count);
     const unplacedPercent = totalStudents > 0 ? (unplacedCount / totalStudents) * 100 : 0;
 
-    const ringColor = pct >= 70 ? "stroke-emerald-500" : pct >= 50 ? "stroke-amber-500" : "stroke-red-500";
-    const ringTextColor = pct >= 70 ? "text-emerald-600 dark:text-emerald-400" : pct >= 50 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
-    const ringBg = pct >= 70
-        ? "from-emerald-50 to-teal-50/50 dark:from-emerald-950/30 dark:to-teal-950/20"
-        : pct >= 50
-          ? "from-amber-50 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20"
-          : "from-red-50 to-rose-50/50 dark:from-red-950/30 dark:to-rose-950/20";
-    const barColor = pct >= 70 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500";
+    const ringColor = getPlacementStrokeColor(pct);
+    const ringTextColor = getPlacementTextColor(pct);
+    const ringBg = getPlacementGradient(pct);
+    const barColor = getPlacementBarColor(pct);
 
     const kpiCards = [
         <KPICard key="companies" icon={Building2} iconBg="bg-violet-100 dark:bg-violet-900/30" iconColor="text-violet-600 dark:text-violet-400" value="" animateValue={data.total_companies} label="Companies Visited" accentColor="border-l-violet-500" />,
@@ -358,8 +398,8 @@ function OverviewSection({ data, loading }: { data?: DashboardOverview; loading:
                     animate="animate"
                     className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5"
                 >
-                    {kpiCards.map((card, i) => (
-                        <motion.div key={i} variants={staggerItem}>
+                    {kpiCards.map((card) => (
+                        <motion.div key={card.key} variants={staggerItem}>
                             {card}
                         </motion.div>
                     ))}
@@ -376,10 +416,10 @@ function OverviewSection({ data, loading }: { data?: DashboardOverview; loading:
 function ProblemIndicators({
     data,
     onNavigate,
-}: {
+}: Readonly<{
     data: DashboardOverview;
     onNavigate: (tab: DashboardTab) => void;
-}) {
+}>) {
     const alerts: { message: string; severity: "danger" | "warning"; tab: DashboardTab }[] = [];
 
     const unplacedPercent = Number(data.total_students) > 0
@@ -402,12 +442,12 @@ function ProblemIndicators({
                 Attention Required
             </div>
             <div className="flex flex-wrap gap-3">
-                {alerts.map((a, i) => (
+                {alerts.map((a) => (
                     <button
-                        key={i}
+                        key={a.message}
                         type="button"
                         onClick={() => onNavigate(a.tab)}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                        className={`min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                             a.severity === "danger"
                                 ? "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50"
                                 : "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
@@ -429,11 +469,11 @@ function TabBar({
     activeTab,
     onTabChange,
     loadingTabs,
-}: {
+}: Readonly<{
     activeTab: DashboardTab;
     onTabChange: (tab: DashboardTab) => void;
     loadingTabs: Set<DashboardTab>;
-}) {
+}>) {
     return (
         <div className="scrollbar-hide relative flex gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-800/50">
             {TABS.map((tab) => {
@@ -446,7 +486,7 @@ function TabBar({
                         key={tab.key}
                         type="button"
                         onClick={() => onTabChange(tab.key)}
-                        className={`relative flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                        className={`relative flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors min-h-[44px] ${
                             isActive
                                 ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-700 dark:text-indigo-300"
                                 : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200"
@@ -473,8 +513,8 @@ function TabSkeleton() {
     return (
         <div className="animate-pulse space-y-4">
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-20 rounded-xl bg-gray-200 dark:bg-gray-700" />
+                {["tsk-1", "tsk-2", "tsk-3", "tsk-4"].map((id) => (
+                    <div key={id} className="h-20 rounded-xl bg-gray-200 dark:bg-gray-700" />
                 ))}
             </div>
             <div className="h-72 rounded-xl bg-gray-200 dark:bg-gray-700" />
@@ -482,7 +522,7 @@ function TabSkeleton() {
     );
 }
 
-function EmptyTabState({ year }: { year: number }) {
+function EmptyTabState({ year }: Readonly<{ year: number }>) {
     return (
         <div className="flex flex-col items-center justify-center py-16 text-center">
             <BarChart3 className="mb-3 h-12 w-12 text-gray-300 dark:text-gray-600" />
@@ -496,7 +536,7 @@ function EmptyTabState({ year }: { year: number }) {
     );
 }
 
-function TabError({ message, onRetry }: { message: string; onRetry: () => void }) {
+function TabError({ message, onRetry }: Readonly<{ message: string; onRetry: () => void }>) {
     return (
         <div className="flex flex-col items-center justify-center py-16 text-center">
             <AlertTriangle className="mb-3 h-12 w-12 text-red-300 dark:text-red-600" />
@@ -532,7 +572,7 @@ function useChartTheme() {
     };
 }
 
-function ChartCard({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
+function ChartCard({ title, children, className }: Readonly<{ title: string; children: React.ReactNode; className?: string }>) {
     return (
         <div className={`rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow duration-200 hover:shadow-md dark:border-gray-700 dark:bg-gray-900 ${className ?? ""}`}>
             <h4 className="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300">{title}</h4>
@@ -541,7 +581,7 @@ function ChartCard({ title, children, className }: { title: string; children: Re
     );
 }
 
-function StatCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
+function StatCard({ label, value, color }: Readonly<{ label: string; value: string | number; color?: string }>) {
     return (
         <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 transition-shadow duration-200 hover:shadow-md dark:border-gray-700 dark:bg-gray-800/50">
             <div className={`text-xl font-bold ${color ?? "text-gray-900 dark:text-gray-100"}`}>
@@ -552,15 +592,15 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
     );
 }
 
-function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) {
+function StarRating({ rating, size = "sm" }: Readonly<{ rating: number; size?: "sm" | "md" }>) {
     const s = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
     return (
         <span className="inline-flex items-center gap-0.5">
-            {Array.from({ length: 5 }).map((_, i) => (
+            {STAR_KEYS.map((starKey, starIdx) => (
                 <Star
-                    key={i}
+                    key={starKey}
                     className={`${s} ${
-                        i < Math.round(rating)
+                        starIdx < Math.round(rating)
                             ? "fill-amber-400 text-amber-400"
                             : "fill-gray-200 text-gray-200 dark:fill-gray-600 dark:text-gray-600"
                     }`}
@@ -577,13 +617,13 @@ function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
 // PLACEMENT TAB
 // ========================
 
-function PlacementTab({ data, year }: { data?: PlacementStats; year: number }) {
+function PlacementTab({ data, year }: Readonly<{ data?: PlacementStats; year: number }>) {
     const ct = useChartTheme();
     if (!data) return <EmptyTabState year={year} />;
 
     const slabData = Object.entries(data.package_slabs).map(([key, count]) => ({
         name: SLAB_LABELS[key] ?? key,
-        count: count as number,
+        count: count,
     }));
 
     const offerPieData = [
@@ -614,8 +654,8 @@ function PlacementTab({ data, year }: { data?: PlacementStats; year: number }) {
                                 }}
                             />
                             <Bar dataKey="count" name="Students" radius={[0, 4, 4, 0]}>
-                                {slabData.map((_, i) => (
-                                    <Cell key={i} fill={CHART_COLORS.slabs[i]} />
+                                {slabData.map((entry, i) => (
+                                    <Cell key={entry.name} fill={CHART_COLORS.slabs[i]} />
                                 ))}
                             </Bar>
                         </BarChart>
@@ -648,9 +688,7 @@ function PlacementTab({ data, year }: { data?: PlacementStats; year: number }) {
                             <Legend
                                 verticalAlign="bottom"
                                 iconType="circle"
-                                formatter={(v) => (
-                                    <span className="text-xs text-gray-600 dark:text-gray-400">{v}</span>
-                                )}
+                                formatter={LegendLabel}
                             />
                         </PieChart>
                     </ResponsiveContainer>
@@ -689,7 +727,7 @@ function PlacementTab({ data, year }: { data?: PlacementStats; year: number }) {
 // FUNNEL TAB
 // ========================
 
-function FunnelTab({ data, year }: { data?: ApplicationFunnel; year: number }) {
+function FunnelTab({ data, year }: Readonly<{ data?: ApplicationFunnel; year: number }>) {
     if (!data) return <EmptyTabState year={year} />;
 
     const stages = [
@@ -770,7 +808,7 @@ function FunnelTab({ data, year }: { data?: ApplicationFunnel; year: number }) {
 // STUDENTS TAB
 // ========================
 
-function StudentsTab({ data, year }: { data?: StudentReadiness; year: number }) {
+function StudentsTab({ data, year }: Readonly<{ data?: StudentReadiness; year: number }>) {
     const ct = useChartTheme();
     if (!data) return <EmptyTabState year={year} />;
 
@@ -803,8 +841,8 @@ function StudentsTab({ data, year }: { data?: StudentReadiness; year: number }) 
                                 paddingAngle={3}
                                 dataKey="value"
                             >
-                                {statusData.map((entry, i) => (
-                                    <Cell key={i} fill={entry.fill} />
+                                {statusData.map((entry) => (
+                                    <Cell key={entry.name} fill={entry.fill} />
                                 ))}
                             </Pie>
                             <Tooltip
@@ -818,9 +856,7 @@ function StudentsTab({ data, year }: { data?: StudentReadiness; year: number }) 
                             <Legend
                                 verticalAlign="bottom"
                                 iconType="circle"
-                                formatter={(v) => (
-                                    <span className="text-xs text-gray-600 dark:text-gray-400">{v}</span>
-                                )}
+                                formatter={LegendLabel}
                             />
                         </PieChart>
                     </ResponsiveContainer>
@@ -887,7 +923,7 @@ function StudentsTab({ data, year }: { data?: StudentReadiness; year: number }) 
 // DEPARTMENTS TAB
 // ========================
 
-function DepartmentsTab({ data, year }: { data?: DepartmentStat[]; year: number }) {
+function DepartmentsTab({ data, year }: Readonly<{ data?: DepartmentStat[]; year: number }>) {
     const ct = useChartTheme();
     const [sortKey, setSortKey] = useState<"placement_percentage" | "average_package" | "total_students">("placement_percentage");
     const [sortAsc, setSortAsc] = useState(false);
@@ -899,19 +935,13 @@ function DepartmentsTab({ data, year }: { data?: DepartmentStat[]; year: number 
     );
 
     const chartData = sorted.map((d) => ({
-        name: d.dept_name.length > 18 ? d.dept_name.substring(0, 18) + "…" : d.dept_name,
+        name: (d.dept_name?.length ?? 0) > 18 ? d.dept_name.substring(0, 18) + "…" : d.dept_name,
         placement: d.placement_percentage,
     }));
 
     function handleSort(key: typeof sortKey) {
         if (sortKey === key) setSortAsc(!sortAsc);
         else { setSortKey(key); setSortAsc(false); }
-    }
-
-    function placementColor(pct: number) {
-        if (pct >= 80) return "text-emerald-600 dark:text-emerald-400";
-        if (pct >= 60) return "text-amber-600 dark:text-amber-400";
-        return "text-red-600 dark:text-red-400";
     }
 
     return (
@@ -936,18 +966,18 @@ function DepartmentsTab({ data, year }: { data?: DepartmentStat[]; year: number 
                 </ResponsiveContainer>
             </ChartCard>
 
-            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="hidden overflow-x-auto rounded-xl border border-gray-200 md:block dark:border-gray-700">
                 <table className="w-full text-sm">
                     <thead className="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">#</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Department</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">#</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Department</th>
                             <SortHeader label="Total" active={sortKey === "total_students"} asc={sortAsc} onClick={() => handleSort("total_students")} />
-                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Placed</th>
+                            <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Placed</th>
                             <SortHeader label="Placement %" active={sortKey === "placement_percentage"} asc={sortAsc} onClick={() => handleSort("placement_percentage")} />
                             <SortHeader label="Avg Package" active={sortKey === "average_package"} asc={sortAsc} onClick={() => handleSort("average_package")} />
-                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Highest</th>
-                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Avg CGPA</th>
+                            <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Highest</th>
+                            <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Avg CGPA</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -962,26 +992,50 @@ function DepartmentsTab({ data, year }: { data?: DepartmentStat[]; year: number 
                                 </td>
                                 <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{formatPackage(d.average_package)}</td>
                                 <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{formatPackage(d.highest_package)}</td>
-                                <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{d.avg_cgpa != null ? Number(d.avg_cgpa).toFixed(2) : "—"}</td>
+                                <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{d.avg_cgpa == null ? "—" : Number(d.avg_cgpa).toFixed(2)}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
+
+            {/* Mobile cards */}
+            <div className="space-y-3 md:hidden">
+                {sorted.map((d, i) => (
+                    <div key={d.dept_id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{i + 1}. {d.dept_name}</span>
+                            <span className={`text-sm font-bold ${placementColor(Number(d.placement_percentage))}`}>{Number(d.placement_percentage).toFixed(1)}%</span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                            <span>Students: <span className="font-semibold text-gray-900 dark:text-gray-100">{d.total_students}</span></span>
+                            <span>Placed: <span className="font-semibold text-gray-900 dark:text-gray-100">{d.placed_count}</span></span>
+                            <span>Avg Pkg: <span className="font-semibold text-gray-900 dark:text-gray-100">{formatPackage(d.average_package)}</span></span>
+                            <span>Highest: <span className="font-semibold text-gray-900 dark:text-gray-100">{formatPackage(d.highest_package)}</span></span>
+                            <span>CGPA: <span className="font-semibold text-gray-900 dark:text-gray-100">{d.avg_cgpa == null ? "—" : Number(d.avg_cgpa).toFixed(2)}</span></span>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
 
-function SortHeader({ label, active, asc, onClick }: { label: string; active: boolean; asc: boolean; onClick: () => void }) {
+function SortHeader({ label, active, asc, onClick }: Readonly<{ label: string; active: boolean; asc: boolean; onClick: () => void }>) {
     return (
         <th
+            scope="col"
             className="cursor-pointer px-4 py-3 text-right text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors select-none"
             onClick={onClick}
         >
-            <span className="inline-flex items-center gap-1">
+            <button
+                type="button"
+                className="inline-flex min-h-[44px] items-center gap-1"
+                aria-label={`Sort by ${label}`}
+            >
                 {label}
                 {active && <ChevronDown className={`h-3 w-3 transition-transform ${asc ? "rotate-180" : ""}`} />}
-            </span>
+            </button>
         </th>
     );
 }
@@ -990,7 +1044,7 @@ function SortHeader({ label, active, asc, onClick }: { label: string; active: bo
 // COMPANIES TAB
 // ========================
 
-function CompaniesTab({ data, year }: { data?: CompanyStat[]; year: number }) {
+function CompaniesTab({ data, year }: Readonly<{ data?: CompanyStat[]; year: number }>) {
     const ct = useChartTheme();
     const [sortKey, setSortKey] = useState<"offers_made" | "selection_rate" | "avg_package">("offers_made");
     const [sortAsc, setSortAsc] = useState(false);
@@ -1002,19 +1056,13 @@ function CompaniesTab({ data, year }: { data?: CompanyStat[]; year: number }) {
     );
 
     const top10 = sorted.slice(0, 10).map((c) => ({
-        name: c.company_name.length > 16 ? c.company_name.substring(0, 16) + "…" : c.company_name,
+        name: (c.company_name?.length ?? 0) > 16 ? c.company_name.substring(0, 16) + "…" : c.company_name,
         offers: c.offers_made,
     }));
 
     function handleSort(key: typeof sortKey) {
         if (sortKey === key) setSortAsc(!sortAsc);
         else { setSortKey(key); setSortAsc(false); }
-    }
-
-    function selectionColor(rate: number) {
-        if (rate >= 20) return "text-emerald-600 dark:text-emerald-400";
-        if (rate >= 10) return "text-amber-600 dark:text-amber-400";
-        return "text-red-600 dark:text-red-400";
     }
 
     return (
@@ -1035,17 +1083,17 @@ function CompaniesTab({ data, year }: { data?: CompanyStat[]; year: number }) {
                 </ChartCard>
             )}
 
-            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="hidden overflow-x-auto rounded-xl border border-gray-200 md:block dark:border-gray-700">
                 <table className="w-full text-sm">
                     <thead className="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">#</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Company</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Industry</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">#</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Company</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Industry</th>
                             <SortHeader label="Offers" active={sortKey === "offers_made"} asc={sortAsc} onClick={() => handleSort("offers_made")} />
                             <SortHeader label="Select %" active={sortKey === "selection_rate"} asc={sortAsc} onClick={() => handleSort("selection_rate")} />
                             <SortHeader label="Avg Pkg" active={sortKey === "avg_package"} asc={sortAsc} onClick={() => handleSort("avg_package")} />
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Rating</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Rating</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -1067,6 +1115,24 @@ function CompaniesTab({ data, year }: { data?: CompanyStat[]; year: number }) {
                     </tbody>
                 </table>
             </div>
+
+            {/* Mobile cards */}
+            <div className="space-y-3 md:hidden">
+                {sorted.map((c, i) => (
+                    <div key={c.company_id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{i + 1}. {c.company_name}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{c.industry ?? "—"}</span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                            <span>Offers: <span className="font-semibold text-gray-900 dark:text-gray-100">{c.offers_made}</span></span>
+                            <span>Select: <span className={`font-semibold ${selectionColor(Number(c.selection_rate))}`}>{Number(c.selection_rate).toFixed(1)}%</span></span>
+                            <span>Avg Pkg: <span className="font-semibold text-gray-900 dark:text-gray-100">{formatPackage(c.avg_package)}</span></span>
+                            <span>Rating: {c.feedback_count > 0 ? <StarRating rating={c.feedback_avg_rating} /> : <span className="text-gray-400">—</span>}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
@@ -1075,7 +1141,7 @@ function CompaniesTab({ data, year }: { data?: CompanyStat[]; year: number }) {
 // DIVERSITY TAB
 // ========================
 
-function DiversityTab({ data, year }: { data?: DiversityStats; year: number }) {
+function DiversityTab({ data, year }: Readonly<{ data?: DiversityStats; year: number }>) {
     const ct = useChartTheme();
     if (!data) return <EmptyTabState year={year} />;
 
@@ -1101,7 +1167,7 @@ function DiversityTab({ data, year }: { data?: DiversityStats; year: number }) {
                             <YAxis tick={{ fill: ct.axisColor, fontSize: 12 }} />
                             <Tooltip contentStyle={{ backgroundColor: ct.tooltipBg, borderColor: ct.tooltipBorder, borderRadius: 8, fontSize: 12 }} />
                             <Legend
-                                formatter={(v) => <span className="text-xs text-gray-600 dark:text-gray-400">{v}</span>}
+                                formatter={LegendLabel}
                             />
                             <Bar dataKey="Total" fill={CHART_COLORS.secondary} radius={[4, 4, 0, 0]} />
                             <Bar dataKey="Placed" fill={CHART_COLORS.success} radius={[4, 4, 0, 0]} />
@@ -1131,14 +1197,14 @@ function DiversityTab({ data, year }: { data?: DiversityStats; year: number }) {
             </div>
 
             {/* NAAC Data Table */}
-            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="hidden overflow-x-auto rounded-xl border border-gray-200 md:block dark:border-gray-700">
                 <table className="w-full text-sm">
                     <thead className="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Gender / Category</th>
-                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Total</th>
-                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Placed</th>
-                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Placement %</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Gender / Category</th>
+                            <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Total</th>
+                            <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Placed</th>
+                            <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Placement %</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -1171,6 +1237,44 @@ function DiversityTab({ data, year }: { data?: DiversityStats; year: number }) {
                     </tbody>
                 </table>
             </div>
+
+            {/* Mobile cards */}
+            <div className="space-y-4 md:hidden">
+                <div>
+                    <div className="mb-2 text-xs font-semibold text-blue-700 dark:text-blue-300">Gender-Wise</div>
+                    <div className="space-y-2">
+                        {data.gender_wise.map((g) => (
+                            <div key={g.gender} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{g.gender}</span>
+                                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{Number(g.placement_percentage).toFixed(2)}%</span>
+                                </div>
+                                <div className="mt-1.5 grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                    <span>Total: <span className="font-semibold text-gray-900 dark:text-gray-100">{g.total}</span></span>
+                                    <span>Placed: <span className="font-semibold text-gray-900 dark:text-gray-100">{g.placed}</span></span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div>
+                    <div className="mb-2 text-xs font-semibold text-violet-700 dark:text-violet-300">Category-Wise</div>
+                    <div className="space-y-2">
+                        {data.category_wise.map((c) => (
+                            <div key={c.category} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{c.category}</span>
+                                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{Number(c.placement_percentage).toFixed(2)}%</span>
+                                </div>
+                                <div className="mt-1.5 grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                    <span>Total: <span className="font-semibold text-gray-900 dark:text-gray-100">{c.total}</span></span>
+                                    <span>Placed: <span className="font-semibold text-gray-900 dark:text-gray-100">{c.placed}</span></span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
@@ -1179,7 +1283,7 @@ function DiversityTab({ data, year }: { data?: DiversityStats; year: number }) {
 // TRAINING TAB
 // ========================
 
-function TrainingTab({ data, year }: { data?: TrainingStats; year: number }) {
+function TrainingTab({ data, year }: Readonly<{ data?: TrainingStats; year: number }>) {
     const ct = useChartTheme();
     if (!data) return <EmptyTabState year={year} />;
 
@@ -1230,15 +1334,15 @@ function TrainingTab({ data, year }: { data?: TrainingStats; year: number }) {
                                 paddingAngle={3}
                                 dataKey="value"
                             >
-                                {statusPieData.map((entry, i) => (
-                                    <Cell key={i} fill={entry.fill} />
+                                {statusPieData.map((entry) => (
+                                    <Cell key={entry.name} fill={entry.fill} />
                                 ))}
                             </Pie>
                             <Tooltip contentStyle={{ backgroundColor: ct.tooltipBg, borderColor: ct.tooltipBorder, borderRadius: 8, fontSize: 12 }} />
                             <Legend
                                 verticalAlign="bottom"
                                 iconType="circle"
-                                formatter={(v) => <span className="text-xs text-gray-600 dark:text-gray-400">{v}</span>}
+                                formatter={LegendLabel}
                             />
                         </PieChart>
                     </ResponsiveContainer>
@@ -1303,14 +1407,15 @@ function YearComparisonTab({
     year,
     comparisonYears,
     onYearsChange,
-}: {
+}: Readonly<{
     data?: YearComparison[];
     year: number;
     comparisonYears: number[];
     onYearsChange: (years: number[]) => void;
-}) {
+}>) {
     const ct = useChartTheme();
-    const yearOptions = getPassoutYearOptions();
+    const currentYear = Number.parseInt(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata', year: 'numeric' }), 10);
+    const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear + 1 - i);
 
     if (!data || data.length === 0) return <EmptyTabState year={year} />;
 
@@ -1343,7 +1448,7 @@ function YearComparisonTab({
                             key={y}
                             type="button"
                             onClick={() => toggleYear(y)}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                            className={`rounded-lg px-3 py-1.5 min-h-[44px] text-xs font-medium transition-colors ${
                                 selected
                                     ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300 dark:bg-indigo-900/30 dark:text-indigo-300 dark:ring-indigo-700"
                                     : "bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
@@ -1400,18 +1505,18 @@ function YearComparisonTab({
             </div>
 
             {/* Comparison Table */}
-            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="hidden overflow-x-auto rounded-xl border border-gray-200 md:block dark:border-gray-700">
                 <table className="w-full text-sm">
                     <thead className="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Metric</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Metric</th>
                             {sorted.map((d) => (
-                                <th key={d.passout_year} className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                <th key={d.passout_year} scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">
                                     {d.passout_year}
                                 </th>
                             ))}
                             {sorted.length >= 2 && (
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">
                                     Growth
                                 </th>
                             )}
@@ -1433,10 +1538,10 @@ function YearComparisonTab({
                             { label: "Selection Rate", key: "selection_rate" as const, suffix: "%", decimals: 1 },
                         ].map((metric) => {
                             const first = sorted[0];
-                            const last = sorted[sorted.length - 1];
+                            const last = sorted.at(-1)!;
                             const growth = getGrowthPercent(
-                                last[metric.key] as number,
-                                first[metric.key] as number,
+                                last[metric.key],
+                                first[metric.key],
                             );
 
                             return (
@@ -1445,11 +1550,11 @@ function YearComparisonTab({
                                         {metric.label}
                                     </td>
                                     {sorted.map((d) => {
-                                        const val = d[metric.key] as number;
+                                        const val = d[metric.key];
                                         let display: string;
                                         if (metric.format === "pkg") display = formatPackage(val);
-                                        else if (metric.suffix === "%") display = `${Number(val).toFixed(metric.decimals ?? 0)}%`;
-                                        else display = val.toLocaleString("en-IN");
+                                        else if (metric.suffix === "%") display = `${Number(val ?? 0).toFixed(metric.decimals ?? 0)}%`;
+                                        else display = (val ?? 0).toLocaleString("en-IN");
                                         return (
                                             <td key={d.passout_year} className="px-4 py-2.5 text-right text-gray-900 dark:text-gray-100">
                                                 {display}
@@ -1458,24 +1563,24 @@ function YearComparisonTab({
                                     })}
                                     {sorted.length >= 2 && (
                                         <td className="px-4 py-2.5 text-right">
-                                            {growth !== null ? (
-                                                <span
-                                                    className={`inline-flex items-center gap-0.5 text-xs font-semibold ${
-                                                        growth >= 0
-                                                            ? "text-emerald-600 dark:text-emerald-400"
-                                                            : "text-red-600 dark:text-red-400"
-                                                    }`}
-                                                >
-                                                    {growth >= 0 ? (
-                                                        <ArrowUpRight className="h-3.5 w-3.5" />
-                                                    ) : (
-                                                        <ArrowDownRight className="h-3.5 w-3.5" />
-                                                    )}
-                                                    {Math.abs(growth).toFixed(1)}%
-                                                </span>
+                                            {growth === null ? (
+                                        <span className="text-xs text-gray-400">—</span>
+                                    ) : (
+                                        <span
+                                            className={`inline-flex items-center gap-0.5 text-xs font-semibold ${
+                                                growth >= 0
+                                                    ? "text-emerald-600 dark:text-emerald-400"
+                                                    : "text-red-600 dark:text-red-400"
+                                            }`}
+                                        >
+                                            {growth >= 0 ? (
+                                                <ArrowUpRight className="h-3.5 w-3.5" />
                                             ) : (
-                                                <span className="text-xs text-gray-400">—</span>
+                                                <ArrowDownRight className="h-3.5 w-3.5" />
                                             )}
+                                            {Math.abs(growth).toFixed(1)}%
+                                        </span>
+                                    )}
                                         </td>
                                     )}
                                 </tr>
@@ -1483,6 +1588,66 @@ function YearComparisonTab({
                         })}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="space-y-3 md:hidden">
+                {[
+                    { label: "Total Students", key: "total_students" as const },
+                    { label: "Placed", key: "placed_count" as const },
+                    { label: "Placement %", key: "placement_percentage" as const, suffix: "%", decimals: 1 },
+                    { label: "Total Offers", key: "total_offers" as const },
+                    { label: "Avg Package", key: "average_package" as const, format: "pkg" },
+                    { label: "Highest Package", key: "highest_package" as const, format: "pkg" },
+                    { label: "Companies", key: "total_companies" as const },
+                    { label: "Jobs Posted", key: "total_job_postings" as const },
+                    { label: "Full-time Offers", key: "fulltime_count" as const },
+                    { label: "Internship Offers", key: "internship_count" as const },
+                    { label: "Applications", key: "total_applications" as const },
+                    { label: "Selection Rate", key: "selection_rate" as const, suffix: "%", decimals: 1 },
+                ].map((metric) => {
+                    const first = sorted[0];
+                    const last = sorted.at(-1)!;
+                    const growth = getGrowthPercent(last[metric.key], first[metric.key]);
+
+                    return (
+                        <div key={metric.key} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{metric.label}</span>
+                                {sorted.length >= 2 && growth !== null && (
+                                    <span
+                                        className={`inline-flex items-center gap-0.5 text-xs font-semibold ${
+                                            growth >= 0
+                                                ? "text-emerald-600 dark:text-emerald-400"
+                                                : "text-red-600 dark:text-red-400"
+                                        }`}
+                                    >
+                                        {growth >= 0 ? (
+                                            <ArrowUpRight className="h-3.5 w-3.5" />
+                                        ) : (
+                                            <ArrowDownRight className="h-3.5 w-3.5" />
+                                        )}
+                                        {Math.abs(growth).toFixed(1)}%
+                                    </span>
+                                )}
+                            </div>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                {sorted.map((d) => {
+                                    const val = d[metric.key];
+                                    let display: string;
+                                    if (metric.format === "pkg") display = formatPackage(val);
+                                    else if (metric.suffix === "%") display = `${Number(val ?? 0).toFixed(metric.decimals ?? 0)}%`;
+                                    else display = (val ?? 0).toLocaleString("en-IN");
+                                    return (
+                                        <span key={d.passout_year}>
+                                            {d.passout_year}: <span className="font-semibold text-gray-900 dark:text-gray-100">{display}</span>
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
@@ -1492,13 +1657,13 @@ function YearComparisonTab({
 // OVERVIEW TAB (quick insights below cards)
 // ========================
 
-function OverviewTab({ data }: { data?: DashboardOverview }) {
+function OverviewTab({ data }: Readonly<{ data?: DashboardOverview }>) {
     if (!data) return null;
 
     const pct = Number(data.placement_percentage);
     const totalStudents = Number(data.total_students);
     const placedCount = Number(data.placed_count);
-    const barColor = pct >= 70 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500";
+    const barColor = getPlacementBarColor(pct);
 
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -1617,7 +1782,6 @@ export default function DashboardManager() {
         dash.training.isFetching, dash.yearComparison.isFetching,
     ]);
 
-    const yearOptions = getPassoutYearOptions();
     const isRefreshing = dash.overview.isFetching;
 
     function renderTabContent() {
@@ -1640,24 +1804,24 @@ export default function DashboardManager() {
             case "overview":
                 return <OverviewTab data={dash.overview.data} />;
             case "placement":
-                return renderQuery(dash.placement, (d) => <PlacementTab data={d} year={dash.passoutYear} />);
+                return renderQuery(dash.placement, (d) => <PlacementTab data={d} year={dash.selectedYear} />);
             case "funnel":
-                return renderQuery(dash.funnel, (d) => <FunnelTab data={d} year={dash.passoutYear} />);
+                return renderQuery(dash.funnel, (d) => <FunnelTab data={d} year={dash.selectedYear} />);
             case "students":
-                return renderQuery(dash.students, (d) => <StudentsTab data={d} year={dash.passoutYear} />);
+                return renderQuery(dash.students, (d) => <StudentsTab data={d} year={dash.selectedYear} />);
             case "departments":
-                return renderQuery(dash.departments, (d) => <DepartmentsTab data={d} year={dash.passoutYear} />);
+                return renderQuery(dash.departments, (d) => <DepartmentsTab data={d} year={dash.selectedYear} />);
             case "companies":
-                return renderQuery(dash.companies, (d) => <CompaniesTab data={d} year={dash.passoutYear} />);
+                return renderQuery(dash.companies, (d) => <CompaniesTab data={d} year={dash.selectedYear} />);
             case "diversity":
-                return renderQuery(dash.diversity, (d) => <DiversityTab data={d} year={dash.passoutYear} />);
+                return renderQuery(dash.diversity, (d) => <DiversityTab data={d} year={dash.selectedYear} />);
             case "training":
-                return renderQuery(dash.training, (d) => <TrainingTab data={d} year={dash.passoutYear} />);
+                return renderQuery(dash.training, (d) => <TrainingTab data={d} year={dash.selectedYear} />);
             case "yearComparison":
                 return renderQuery(dash.yearComparison, (d) => (
                     <YearComparisonTab
                         data={d}
-                        year={dash.passoutYear}
+                        year={dash.selectedYear}
                         comparisonYears={dash.comparisonYears}
                         onYearsChange={dash.setComparisonYears}
                     />
@@ -1683,7 +1847,7 @@ export default function DashboardManager() {
                         )}
                         <span className="hidden sm:inline text-gray-300 dark:text-gray-600">|</span>
                         <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                            Batch {dash.passoutYear}
+                            Batch {dash.selectedYear}
                         </span>
                         <span className="hidden sm:inline text-gray-300 dark:text-gray-600">|</span>
                         <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
@@ -1693,25 +1857,11 @@ export default function DashboardManager() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <select
-                            value={dash.passoutYear}
-                            onChange={(e) => dash.changeYear(Number(e.target.value))}
-                            className="appearance-none rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-8 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-gray-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-gray-600"
-                        >
-                            {yearOptions.map((y) => (
-                                <option key={y} value={y}>
-                                    {y}
-                                </option>
-                            ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    </div>
                     <button
                         type="button"
                         onClick={dash.refresh}
                         disabled={isRefreshing}
-                        className="rounded-lg border border-gray-200 bg-white p-2 text-gray-500 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                        className="rounded-lg border border-gray-200 bg-white p-2.5 min-h-[44px] min-w-[44px] text-gray-500 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
                         aria-label="Refresh dashboard"
                     >
                         <RefreshCcw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />

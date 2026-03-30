@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
@@ -36,6 +36,25 @@ export const useCreateCompany = () => {
         companyLogo: "",
     });
     const [errors, setErrors] = useState<FormErrors>({});
+
+    // ── Unsaved-changes guard ──
+    const isDirty = useMemo(() => {
+        return (
+            formData.companyName.trim() !== "" ||
+            formData.companyDescription.trim() !== "" ||
+            formData.companyWebsite.trim() !== "" ||
+            formData.industry.trim() !== "" ||
+            formData.companyLogo.trim() !== ""
+        );
+    }, [formData]);
+
+    useEffect(() => {
+        const handler = (e: BeforeUnloadEvent) => {
+            if (isDirty) e.preventDefault();
+        };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     const mutation = useMutation({
         mutationFn: (payload: {

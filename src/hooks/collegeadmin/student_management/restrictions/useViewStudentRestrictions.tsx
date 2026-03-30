@@ -28,11 +28,10 @@ export const useViewStudentRestrictions = (
     const totalRestrictions = responseData?.total_restrictions ?? 0;
     const activeRestrictions = responseData?.active_restrictions ?? 0;
 
-    const error = queryError
-        ? queryError instanceof Error
-            ? queryError.message
-            : "Failed to fetch student restrictions"
-        : null;
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch student restrictions";
+    }
 
     return {
         student,

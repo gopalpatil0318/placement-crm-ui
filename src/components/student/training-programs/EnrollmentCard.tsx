@@ -15,8 +15,6 @@ import {
   ENROLLMENT_STATUS_LABELS,
   ENROLLMENT_STATUS_COLORS,
   type StudentEnrollment,
-  type ProgramType,
-  type EnrollmentStatus,
 } from "@/validators/TrainingProgramSchema"
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
@@ -33,6 +31,7 @@ function formatDate(d: string | null): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Kolkata",
   })
 }
 
@@ -51,9 +50,58 @@ interface EnrollmentCardProps {
   onFeedback: (enrollment: StudentEnrollment) => void
 }
 
-export default memo(function EnrollmentCard({ enrollment, onFeedback }: EnrollmentCardProps) {
+function CertificateSection({ enrollment }: Readonly<{ enrollment: StudentEnrollment }>) {
+  if (enrollment.certificate_issued && enrollment.certificate_url) {
+    return (
+      <a
+        href={enrollment.certificate_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+      >
+        <Download size={13} />
+        Certificate
+      </a>
+    )
+  }
+  if (enrollment.certificate_issued) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+        <Award size={13} />
+        Certificate Earned
+      </span>
+    )
+  }
+  return <span />
+}
+
+function FeedbackSection({ enrollment, onFeedback }: Readonly<{ enrollment: StudentEnrollment; onFeedback: (e: StudentEnrollment) => void }>) {
+  if (canSubmitFeedback(enrollment)) {
+    return (
+      <button
+        type="button"
+        onClick={() => onFeedback(enrollment)}
+        className="inline-flex items-center gap-1.5 px-3 min-h-[44px] text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors cursor-pointer"
+      >
+        <MessageSquare size={13} />
+        Submit Feedback
+      </button>
+    )
+  }
+  if (enrollment.has_submitted_feedback) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+        <CheckCircle size={13} />
+        Feedback Submitted
+      </span>
+    )
+  }
+  return null
+}
+
+export default memo(function EnrollmentCard({ enrollment, onFeedback }: Readonly<EnrollmentCardProps>) {
   const shouldReduce = useReducedMotion()
-  const statusColor = ENROLLMENT_STATUS_COLORS[enrollment.completion_status as EnrollmentStatus]
+  const statusColor = ENROLLMENT_STATUS_COLORS[enrollment.completion_status]
 
   return (
     <motion.div
@@ -68,11 +116,11 @@ export default memo(function EnrollmentCard({ enrollment, onFeedback }: Enrollme
           </h3>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400">
-              {PROGRAM_TYPE_LABELS[enrollment.program_type as ProgramType] ?? enrollment.program_type}
+              {PROGRAM_TYPE_LABELS[enrollment.program_type] ?? enrollment.program_type}
             </span>
             <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full ${statusColor.bg} ${statusColor.text}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
-              {ENROLLMENT_STATUS_LABELS[enrollment.completion_status as EnrollmentStatus]}
+              {ENROLLMENT_STATUS_LABELS[enrollment.completion_status]}
             </span>
           </div>
         </div>
@@ -134,7 +182,7 @@ export default memo(function EnrollmentCard({ enrollment, onFeedback }: Enrollme
         <div className="flex items-center gap-1 mb-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <Star
-              key={i}
+              key={`star-${String(i)}`}
               size={14}
               className={i < enrollment.student_rating! ? "text-amber-400 fill-amber-400" : "text-gray-300 dark:text-gray-600"}
             />
@@ -145,42 +193,8 @@ export default memo(function EnrollmentCard({ enrollment, onFeedback }: Enrollme
 
       {/* Footer Actions */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700 gap-2 flex-wrap">
-        {/* Certificate */}
-        {enrollment.certificate_issued && enrollment.certificate_url ? (
-          <a
-            href={enrollment.certificate_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
-          >
-            <Download size={13} />
-            Certificate
-          </a>
-        ) : enrollment.certificate_issued ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-            <Award size={13} />
-            Certificate Earned
-          </span>
-        ) : (
-          <span />
-        )}
-
-        {/* Feedback */}
-        {canSubmitFeedback(enrollment) ? (
-          <button
-            type="button"
-            onClick={() => onFeedback(enrollment)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors cursor-pointer"
-          >
-            <MessageSquare size={13} />
-            Submit Feedback
-          </button>
-        ) : enrollment.has_submitted_feedback ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-            <CheckCircle size={13} />
-            Feedback Submitted
-          </span>
-        ) : null}
+        <CertificateSection enrollment={enrollment} />
+        <FeedbackSection enrollment={enrollment} onFeedback={onFeedback} />
       </div>
     </motion.div>
   )

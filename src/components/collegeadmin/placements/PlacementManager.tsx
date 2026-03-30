@@ -55,9 +55,6 @@ import {
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
 
-const currentYear = new Date().getFullYear();
-const PASSOUT_YEARS = Array.from({ length: 8 }, (_, i) => currentYear - 3 + i);
-
 const STATUS_MODAL_CONFIG: Record<
     string,
     {
@@ -145,6 +142,7 @@ const formatDate = (iso: string | null) => {
         day: "2-digit",
         month: "short",
         year: "numeric",
+        timeZone: "Asia/Kolkata",
     });
 };
 
@@ -302,7 +300,7 @@ const StatsDashboard = ({
 const SkeletonStats = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 animate-pulse">
         {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 p-3 flex items-center gap-2.5">
+            <div key={`stat-skeleton-${String(i)}`} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 p-3 flex items-center gap-2.5">
                 <div className="h-9 w-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
                 <div className="space-y-1">
                     <div className="h-4 w-10 bg-gray-100 dark:bg-gray-700 rounded" />
@@ -416,15 +414,11 @@ const SortHeader = ({
             className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
         >
             {label}
-            {isActive ? (
-                currentOrder === "asc" ? (
-                    <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                ) : (
-                    <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500" />
-            )}
+            {(() => {
+                if (!isActive) return <ArrowUpDown className="h-3 w-3 text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500" />;
+                if (currentOrder === "asc") return <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+                return <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />;
+            })()}
         </button>
     );
 };
@@ -459,7 +453,7 @@ const PaginationControls = ({
 
     return (
         <div className="flex items-center gap-1">
-            <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || loading} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition" aria-label="Previous page">
+            <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || loading} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition" aria-label="Previous page">
                 <ChevronLeft className="h-4 w-4" />
             </button>
             {pages.map((p, idx) =>
@@ -472,7 +466,7 @@ const PaginationControls = ({
                         onClick={() => onPageChange(p)}
                         disabled={loading}
                         aria-current={p === page ? "page" : undefined}
-                        className={`min-w-[32px] h-8 rounded-lg text-sm font-medium transition ${
+                        className={`min-h-[44px] min-w-[44px] rounded-lg text-sm font-medium transition ${
                             p === page ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                         } disabled:cursor-not-allowed`}
                     >
@@ -480,7 +474,7 @@ const PaginationControls = ({
                     </button>
                 ),
             )}
-            <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages || loading} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition" aria-label="Next page">
+            <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages || loading} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition" aria-label="Next page">
                 <ChevronRight className="h-4 w-4" />
             </button>
         </div>
@@ -610,6 +604,7 @@ const EditPlacementModal = ({
                                 label="Package (₹)"
                                 name="fulltime_package"
                                 type="number"
+                                inputMode="numeric"
                                 value={formData.fulltime_package}
                                 onChange={handleChange}
                                 placeholder="(clear to remove)"
@@ -644,6 +639,7 @@ const EditPlacementModal = ({
                                 label="Stipend (₹/month)"
                                 name="internship_stipend"
                                 type="number"
+                                inputMode="numeric"
                                 value={formData.internship_stipend}
                                 onChange={handleChange}
                                 disabled={loading}
@@ -732,8 +728,8 @@ const StatusChangeModal = ({
                 <div className={`rounded-xl border p-4 ${config.boxBg} ${config.boxBorder}`}>
                     <p className={`text-xs font-semibold ${config.boxText} mb-2`}>This action will:</p>
                     <ul className={`space-y-1 text-xs ${config.boxText}`}>
-                        {config.consequences.map((c, i) => (
-                            <li key={i} className="flex items-start gap-1.5">
+                        {config.consequences.map((c) => (
+                            <li key={c} className="flex items-start gap-1.5">
                                 <span className="mt-0.5">•</span>
                                 <span>{c}</span>
                             </li>
@@ -842,7 +838,10 @@ const VerifyOfferModal = ({
                         }`}
                     >
                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {loading ? "Processing..." : willVerify ? "Verify" : "Remove Verification"}
+                        {(() => {
+                            if (loading) return "Processing...";
+                            return willVerify ? "Verify" : "Remove Verification";
+                        })()}
                     </button>
                 </div>
             </div>
@@ -1119,7 +1118,7 @@ const PlacementDetailPanel = ({
                             <button
                                 type="button"
                                 onClick={onEdit}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition"
+                                className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition"
                             >
                                 <Pencil className="h-3.5 w-3.5" />
                                 Edit
@@ -1128,7 +1127,7 @@ const PlacementDetailPanel = ({
                         <button
                             type="button"
                             onClick={onVerify}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 transition"
+                            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 transition"
                         >
                             <ShieldCheck className="h-3.5 w-3.5" />
                             {placement.offer_letter_verified ? "Un-verify" : "Verify Offer"}
@@ -1140,7 +1139,7 @@ const PlacementDetailPanel = ({
                                     key={status}
                                     type="button"
                                     onClick={() => onStatusChange(status)}
-                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${colors.bg} ${colors.text} ${colors.hover}`}
+                                    className={`min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${colors.bg} ${colors.text} ${colors.hover}`}
                                 >
                                     {PLACEMENT_STATUS_LABELS[status]}
                                 </button>
@@ -1166,7 +1165,6 @@ const PlacementManager = () => {
         error,
         pagination,
         search,
-        passoutYear,
         placementStatus,
         placementType,
         acceptanceStatus,
@@ -1179,7 +1177,6 @@ const PlacementManager = () => {
         handleSortChange,
         handleStatusFilterChange,
         handleTypeFilterChange,
-        handlePassoutYearChange,
         handleAcceptanceFilterChange,
         handleVerifiedFilterChange,
         clearFilters,
@@ -1191,9 +1188,7 @@ const PlacementManager = () => {
     const [statusChangeModal, setStatusChangeModal] = useState<{ placement: PlacementListItem; status: PlacementStatus } | null>(null);
     const [verifyModal, setVerifyModal] = useState<PlacementListItem | null>(null);
 
-    useEffect(() => {
-        setExpandedId(null);
-    }, [placements]);
+    const validExpandedId = expandedId && placements.some(p => p.placement_id === expandedId) ? expandedId : null;
 
     const toggleExpand = useCallback((id: string) => {
         setExpandedId((prev) => (prev === id ? null : id));
@@ -1213,7 +1208,7 @@ const PlacementManager = () => {
         [navigate],
     );
 
-    const hasFilters = !!(search || passoutYear || placementStatus || placementType || acceptanceStatus || offerLetterVerified);
+    const hasFilters = !!(search || placementStatus || placementType || acceptanceStatus || offerLetterVerified);
 
     const startEntry = placements.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
     const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
@@ -1247,9 +1242,7 @@ const PlacementManager = () => {
                             <div>
                                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Placement Dashboard</h2>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    {passoutYear
-                                        ? `Class of ${passoutYear}`
-                                        : "All batches"}
+                                    All batches
                                 </p>
                             </div>
                         </div>
@@ -1280,26 +1273,17 @@ const PlacementManager = () => {
                                 placeholder="Search students, companies..."
                                 value={search}
                                 onChange={(e) => handleSearchChange(e.target.value)}
+                                maxLength={200}
+                                aria-label="Search placements"
                                 className="w-full border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-4 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                             />
                         </div>
-
-                        {/* Year filter */}
-                        <select
-                            value={passoutYear}
-                            onChange={(e) => handlePassoutYearChange(e.target.value)}
-                            className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors appearance-none"
-                        >
-                            <option value="">All Years</option>
-                            {PASSOUT_YEARS.map((y) => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
 
                         {/* Type filter */}
                         <select
                             value={placementType}
                             onChange={(e) => handleTypeFilterChange(e.target.value)}
+                            aria-label="Filter by placement type"
                             className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors appearance-none"
                         >
                             <option value="">All Types</option>
@@ -1312,6 +1296,7 @@ const PlacementManager = () => {
                         <select
                             value={acceptanceStatus}
                             onChange={(e) => handleAcceptanceFilterChange(e.target.value)}
+                            aria-label="Filter by acceptance status"
                             className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors appearance-none"
                         >
                             <option value="">All Acceptance</option>
@@ -1324,6 +1309,7 @@ const PlacementManager = () => {
                         <select
                             value={offerLetterVerified}
                             onChange={(e) => handleVerifiedFilterChange(e.target.value)}
+                            aria-label="Filter by offer letter verification"
                             className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors appearance-none"
                         >
                             <option value="">All Verification</option>
@@ -1356,58 +1342,112 @@ const PlacementManager = () => {
                     </div>
                 </div>
 
-                {/* Table */}
-                <div className="overflow-x-auto">
+                {/* Desktop table */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-gray-50/70 dark:bg-gray-800/50 text-left text-gray-500 dark:text-gray-400">
-                                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider w-10">#</th>
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader label="Student" field="student_name" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                 </th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader label="Company" field="company_name" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                 </th>
-                                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Type</th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Type</th>
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader label="Package" field="fulltime_package" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                 </th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader label="Status" field="placement_status" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                 </th>
-                                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Verified</th>
-                                <th className="px-4 py-3">
+                                <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wider">Verified</th>
+                                <th scope="col" className="px-4 py-3">
                                     <SortHeader label="Date" field="created_at" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSortChange} />
                                 </th>
-                                <th className="px-4 py-3 w-16" />
+                                <th scope="col" className="px-4 py-3 w-16" />
                             </tr>
                         </thead>
                         <tbody>
-                            {loading ? (
-                                <SkeletonTable />
-                            ) : placements.length > 0 ? (
-                                placements.map((p, i) => (
-                                    <PlacementRow
-                                        key={p.placement_id}
-                                        placement={p}
-                                        index={(pagination.page - 1) * pagination.limit + i + 1}
-                                        isExpanded={expandedId === p.placement_id}
-                                        onToggleExpand={toggleExpand}
-                                        onEdit={setEditingPlacement}
-                                        onStatusChange={(placement, status) => setStatusChangeModal({ placement, status })}
-                                        onVerify={setVerifyModal}
-                                        onNavigate={handleNavigate}
-                                    />
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={9}>
-                                        <EmptyState hasFilters={hasFilters} />
-                                    </td>
-                                </tr>
-                            )}
+                            {(() => {
+                                if (loading) return <SkeletonTable />;
+                                if (placements.length > 0) {
+                                    return placements.map((p, i) => (
+                                        <PlacementRow
+                                            key={p.placement_id}
+                                            placement={p}
+                                            index={(pagination.page - 1) * pagination.limit + i + 1}
+                                            isExpanded={validExpandedId === p.placement_id}
+                                            onToggleExpand={toggleExpand}
+                                            onEdit={setEditingPlacement}
+                                            onStatusChange={(placement, status) => setStatusChangeModal({ placement, status })}
+                                            onVerify={setVerifyModal}
+                                            onNavigate={handleNavigate}
+                                        />
+                                    ));
+                                }
+                                return (
+                                    <tr>
+                                        <td colSpan={9}>
+                                            <EmptyState hasFilters={hasFilters} />
+                                        </td>
+                                    </tr>
+                                );
+                            })()}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile card layout */}
+                <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                    {(() => {
+                        if (loading) {
+                            return Array.from({ length: 6 }).map((_, i) => (
+                                <div key={`mob-skel-${String(i)}`} className="p-4 animate-pulse space-y-2">
+                                    <div className="h-4 bg-gray-100 dark:bg-gray-700 rounded w-36" />
+                                    <div className="h-3 bg-gray-50 dark:bg-gray-800 rounded w-48" />
+                                    <div className="flex gap-2 mt-2">
+                                        <div className="h-5 bg-gray-50 dark:bg-gray-800 rounded-full w-16" />
+                                        <div className="h-5 bg-gray-50 dark:bg-gray-800 rounded-full w-20" />
+                                    </div>
+                                </div>
+                            ));
+                        }
+                        if (placements.length > 0) {
+                            return placements.map((p) => (
+                                <button
+                                    key={p.placement_id}
+                                    type="button"
+                                    onClick={() => handleNavigate(p)}
+                                    className="w-full text-left p-4 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{p.student_name}</p>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">{p.enrollment_number} · {p.dept_name}</p>
+                                        </div>
+                                        <StatusBadge status={p.placement_status as PlacementStatus} />
+                                    </div>
+                                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                        <Building2 className="h-3 w-3 flex-shrink-0" />
+                                        <span className="truncate">{p.company_name} · {p.job_title}</span>
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                        <TypeBadge type={p.placement_type as PlacementType} />
+                                        <VerifiedBadge verified={p.offer_letter_verified} />
+                                        {p.fulltime_package !== null && (
+                                            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">{formatPackage(p.fulltime_package)}</span>
+                                        )}
+                                        {p.internship_stipend !== null && (
+                                            <span className="text-xs font-medium text-purple-600 dark:text-purple-400">₹{p.internship_stipend.toLocaleString("en-IN")}/mo</span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">{formatDate(p.created_at)}</p>
+                                </button>
+                            ));
+                        }
+                        return <EmptyState hasFilters={hasFilters} />;
+                    })()}
                 </div>
 
                 {/* Pagination footer */}

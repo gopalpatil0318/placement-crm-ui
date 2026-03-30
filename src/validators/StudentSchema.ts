@@ -9,6 +9,6 @@ export const studentSchema = z.object({
         .string()
         .min(8, "Password must be at least 8 characters"),
     dept_name: z.string().min(1, "Department is required"),
-    student_passout_year: z.number().min(2000, "Passout year must be 2000 or later"),
+    student_passout_year: z.number().min(2020, "Passout year must be 2020 or later"),
     current_year: z.number().min(1, "Current year is required").max(6, "Current year cannot exceed 6"),
 });

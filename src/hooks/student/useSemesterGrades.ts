@@ -29,6 +29,7 @@ export const useSemesterGrades = () => {
             const response = await StudentSemesterGradeService.getAllGrades();
             return response.data ?? { grades: [], total_semesters_in_dept: 0 };
         },
+        staleTime: 2 * 60 * 1000,
     });
 
     const grades: SemesterGradeData[] = gradesData?.grades ?? [];
@@ -105,14 +106,20 @@ export const useSemesterGrades = () => {
     const saveMutation = useMutation({
         mutationFn: async ({ payload, gradeId }: { payload: Omit<SemesterGradeData, "grade_id">; gradeId: string | null }) => {
             if (gradeId) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { semester_number: _, ...updatePayload } = payload;
                 return StudentSemesterGradeService.updateGrade(gradeId, updatePayload);
             }
             return StudentSemesterGradeService.addGrade(payload);
         },
-        onSuccess: () => {
+        onSuccess: (response, { gradeId }) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.semesterGrades() });
             queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.fullProfile() });
+            showToast({
+                type: "success",
+                title: gradeId ? "Grade Updated" : "Grade Added",
+                description: response.message || "Semester grade saved successfully",
+            });
             closeForm();
         },
         onError: (error, { gradeId }) => {

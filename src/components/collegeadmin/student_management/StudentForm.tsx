@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo, type ChangeEvent, type FormEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
 import { User, Building2, Lock, Loader2, Eye, EyeOff, Wand2, AlertCircle } from "lucide-react";
 import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingSelect from "@/components/ui/FloatingSelect";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ========================
 // TYPES
@@ -101,25 +103,35 @@ const StudentForm = ({
 }: StudentFormProps) => {
     const shouldReduce = useReducedMotion();
     const [showPassword, setShowPassword] = useState(false);
-    const [departments, setDepartments] = useState<{ dept_id: string; dept_name: string }[]>([]);
-    const [deptLoadError, setDeptLoadError] = useState(false);
     const isEdit = mode === "edit";
     const strength = mode === "create" ? getPasswordStrength(formData.student_password) : null;
 
-    // Fetch departments
+    // Fetch departments via React Query (cached across navigations)
+    const { data: deptData, isError: deptLoadError } = useQuery({
+        queryKey: queryKeys.departments.all({ status: "active" }),
+        queryFn: () => CollegeAdminService.getDepartments({ is_active: true, limit: 100 }),
+    });
+
+    const departments: { dept_id: string; dept_name: string }[] = useMemo(() => {
+        const raw = deptData?.data || deptData;
+        return Array.isArray(raw) ? raw : [];
+    }, [deptData]);
+
+    // Unsaved changes warning
+    const [initialData] = useState(() => JSON.stringify(formData));
+    const isDirty = useMemo(
+        () => JSON.stringify(formData) !== initialData,
+        [formData, initialData]
+    );
+
     useEffect(() => {
-        const fetchDepts = async () => {
-            try {
-                setDeptLoadError(false);
-                const res = await CollegeAdminService.getDepartments({ is_active: true, limit: 100 });
-                const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-                setDepartments(list);
-            } catch {
-                setDeptLoadError(true);
-            }
+        if (!isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
         };
-        fetchDepts();
-    }, []);
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     const deptOptions = useMemo(
         () => departments.map((d) => ({ value: d.dept_name, label: d.dept_name })),
@@ -286,6 +298,7 @@ const StudentForm = ({
                                                 type="button"
                                                 onClick={handleGeneratePassword}
                                                 title={`Generate: ${defaultPassword}`}
+                                                aria-label="Generate default password"
                                                 className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition"
                                                 tabIndex={-1}
                                             >
@@ -295,6 +308,7 @@ const StudentForm = ({
                                         <button
                                             type="button"
                                             onClick={() => setShowPassword((p) => !p)}
+                                            aria-label={showPassword ? "Hide password" : "Show password"}
                                             className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition"
                                             tabIndex={-1}
                                         >
@@ -325,8 +339,8 @@ const StudentForm = ({
                     </section>
                 )}
 
-                {/* Action Buttons */}
-                <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                {/* Action Buttons — sticky on mobile */}
+                <div className="hidden md:flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                     {shouldReduce ? (
                         <button
                             type="submit"
@@ -360,6 +374,29 @@ const StudentForm = ({
                         Cancel
                     </button>
                 </div>
+
+                {/* Mobile sticky action bar */}
+                <div className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-3 pb-safe flex items-center gap-3">
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="flex-1 inline-flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl text-sm font-semibold transition shadow-sm disabled:cursor-not-allowed min-h-[48px]"
+                    >
+                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {loading
+                            ? isEdit ? "Saving..." : "Registering..."
+                            : isEdit ? "Save Changes" : "Register Student"}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleCancel}
+                        className="px-5 py-3 rounded-xl font-medium text-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition min-h-[48px]"
+                    >
+                        Cancel
+                    </button>
+                </div>
+                {/* Spacer for mobile sticky bar */}
+                <div className="h-20 md:hidden" />
             </form>
         </div>
     );

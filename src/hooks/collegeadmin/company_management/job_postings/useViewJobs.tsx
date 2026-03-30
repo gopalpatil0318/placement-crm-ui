@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef, useMemo } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
+import { useYearFilter } from "@/context/YearFilterContext";
 
 // ========================
 // TYPES
@@ -36,6 +37,8 @@ interface Pagination {
 // ========================
 
 export const useViewJobs = () => {
+    const { selectedYear } = useYearFilter();
+    const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
 
@@ -44,7 +47,6 @@ export const useViewJobs = () => {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [jobTypeFilter, setJobTypeFilter] = useState("");
-    const [passoutYearFilter, setPassoutYearFilter] = useState("");
     const [companyFilter, setCompanyFilter] = useState("");
     const [sortBy, setSortBy] = useState("created_at");
     const [sortOrder, setSortOrder] = useState("desc");
@@ -57,11 +59,11 @@ export const useViewJobs = () => {
         search: debouncedSearch || undefined,
         job_status: statusFilter || undefined,
         job_type: jobTypeFilter || undefined,
-        passout_year: passoutYearFilter ? Number(passoutYearFilter) : undefined,
+        passout_year: selectedYear,
         company_id: companyFilter || undefined,
         sort_by: sortBy || undefined,
         sort_order: sortOrder || undefined,
-    }), [page, limit, debouncedSearch, statusFilter, jobTypeFilter, passoutYearFilter, companyFilter, sortBy, sortOrder]);
+    }), [page, limit, debouncedSearch, statusFilter, jobTypeFilter, selectedYear, companyFilter, sortBy, sortOrder]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.jobs.all(queryFilters),
@@ -73,6 +75,17 @@ export const useViewJobs = () => {
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
     const loading = isLoading || isFetching;
     const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch jobs") : null;
+
+    // Prefetch next page
+    useEffect(() => {
+        if (pagination.page < pagination.totalPages) {
+            const nextFilters = { ...queryFilters, page: pagination.page + 1 };
+            queryClient.prefetchQuery({
+                queryKey: queryKeys.jobs.all(nextFilters),
+                queryFn: () => CollegeAdminService.getAllJobs(nextFilters),
+            });
+        }
+    }, [pagination.page, pagination.totalPages, queryFilters, queryClient]);
 
     const handleSearchChange = useCallback(
         (value: string) => {
@@ -107,11 +120,6 @@ export const useViewJobs = () => {
         setPage(1);
     }, []);
 
-    const handlePassoutYearFilterChange = useCallback((value: string) => {
-        setPassoutYearFilter(value);
-        setPage(1);
-    }, []);
-
     const handleCompanyFilterChange = useCallback((value: string) => {
         setCompanyFilter(value);
         setPage(1);
@@ -137,7 +145,6 @@ export const useViewJobs = () => {
         search,
         statusFilter,
         jobTypeFilter,
-        passoutYearFilter,
         companyFilter,
         sortBy,
         sortOrder,
@@ -146,7 +153,6 @@ export const useViewJobs = () => {
         handleLimitChange,
         handleStatusFilterChange,
         handleJobTypeFilterChange,
-        handlePassoutYearFilterChange,
         handleCompanyFilterChange,
         handleSortChange,
         refresh: refetch,

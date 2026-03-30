@@ -170,7 +170,7 @@ const QuestionCard = ({
                         <button
                             type="button"
                             onClick={onEdit}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition"
+                            className="inline-flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition"
                             aria-label={`Edit question ${question.question_order}`}
                         >
                             <Pencil className="h-3.5 w-3.5" />
@@ -179,7 +179,7 @@ const QuestionCard = ({
                         <button
                             type="button"
                             onClick={onDelete}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition"
+                            className="inline-flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition"
                             aria-label={`Delete question ${question.question_order}`}
                         >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -533,6 +533,7 @@ const QuestionFormBody = ({
                         onChange={handleChange}
                         min={1}
                         max={100}
+                        inputMode="numeric"
                         className={inputClass(!!errors.question_order)}
                     />
                     <div className="flex items-center justify-between mt-1">

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Link } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import {
@@ -117,6 +117,7 @@ function formatDate(dateStr: string): string {
     year: "numeric",
     month: "short",
     day: "numeric",
+    timeZone: "Asia/Kolkata",
   })
 }
 
@@ -169,6 +170,12 @@ const SUMMARY_CARDS = [
   { key: "selected", label: "Selected", icon: Trophy, gradient: "from-emerald-500 to-green-600" },
 ] as const
 
+const JOB_TYPE_LABELS: Record<string, string> = {
+  "full-time": "Full-time",
+  internship: "Internship",
+  both: "Both",
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────────
 
 export default function MyApplications() {
@@ -180,13 +187,13 @@ export default function MyApplications() {
 
   const limit = 10
 
-  const filters: ApplicationsListFilters = {
+  const filters = useMemo<ApplicationsListFilters>(() => ({
     ...(statusFilter && { application_status: statusFilter }),
     sort_by: sortBy,
     sort_order: sortOrder,
     page,
     limit,
-  }
+  }), [statusFilter, sortBy, sortOrder, page])
 
   const { applications, statusSummary, pagination, isLoading, isFetching } =
     useMyApplications(filters)
@@ -210,7 +217,7 @@ export default function MyApplications() {
       {isLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <SummaryCardSkeleton key={i} />
+            <SummaryCardSkeleton key={`summary-skeleton-${String(i)}`} />
           ))}
         </div>
       ) : (
@@ -286,6 +293,7 @@ export default function MyApplications() {
               setSortBy(e.target.value)
               setPage(1)
             }}
+            aria-label="Sort applications by"
             className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
           >
             {SORT_OPTIONS.map((opt) => (
@@ -301,6 +309,7 @@ export default function MyApplications() {
             }}
             className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition"
             title={sortOrder === "asc" ? "Ascending" : "Descending"}
+            aria-label={`Sort order: ${sortOrder === "asc" ? "ascending" : "descending"}`}
           >
             <ArrowUpDown className="h-4 w-4" />
           </button>
@@ -308,13 +317,15 @@ export default function MyApplications() {
       </div>
 
       {/* Application Cards */}
-      {isLoading ? (
+      {isLoading && (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <AppCardSkeleton key={i} />
+            <AppCardSkeleton key={`app-skeleton-${String(i)}`} />
           ))}
         </div>
-      ) : applications.length === 0 ? (
+      )}
+
+      {!isLoading && applications.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="h-16 w-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
             <ClipboardList className="h-8 w-8 text-gray-400 dark:text-gray-500" />
@@ -337,7 +348,9 @@ export default function MyApplications() {
             </Link>
           )}
         </div>
-      ) : (
+      )}
+
+      {!isLoading && applications.length > 0 && (
         <AnimatePresence mode="wait">
           <motion.div
             key={statusFilter + sortBy + sortOrder}
@@ -402,7 +415,7 @@ export default function MyApplications() {
                           </span>
                           <span className="flex items-center gap-1">
                             <Briefcase className="h-3 w-3" />
-                            {app.job_type === "full-time" ? "Full-time" : app.job_type === "internship" ? "Internship" : "Both"}
+                            {JOB_TYPE_LABELS[app.job_type] ?? app.job_type}
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
@@ -470,7 +483,7 @@ export default function MyApplications() {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 px-3 py-2 min-w-[44px] min-h-[44px] rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="h-4 w-4" />
               Prev
@@ -478,7 +491,7 @@ export default function MyApplications() {
             <button
               onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
               disabled={page === pagination.totalPages}
-              className="flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 px-3 py-2 min-w-[44px] min-h-[44px] rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Next
               <ChevronRight className="h-4 w-4" />

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
     Calendar,
     Clock,
@@ -34,15 +34,17 @@ interface TrainingProgramDetailViewProps {
     onProgramLoaded?: (name: string) => void;
 }
 
-const TrainingProgramDetailView = ({ programId, onProgramLoaded }: TrainingProgramDetailViewProps) => {
+const TrainingProgramDetailView = ({ programId, onProgramLoaded }: Readonly<TrainingProgramDetailViewProps>) => {
     const { program, loading, error, refetch } = useViewTrainingProgram(programId);
 
     // Notify parent of program name for breadcrumbs
     const notifiedRef = useRef(false);
-    if (program?.program_name && onProgramLoaded && !notifiedRef.current) {
-        notifiedRef.current = true;
-        onProgramLoaded(program.program_name);
-    }
+    useEffect(() => {
+        if (program?.program_name && onProgramLoaded && !notifiedRef.current) {
+            notifiedRef.current = true;
+            onProgramLoaded(program.program_name);
+        }
+    }, [program?.program_name, onProgramLoaded]);
 
     // ── Loading skeleton ──
     if (loading) {
@@ -59,7 +61,7 @@ const TrainingProgramDetailView = ({ programId, onProgramLoaded }: TrainingProgr
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="h-32 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800" />
+                        <div key={`detail-skeleton-${String(i)}`} className="h-32 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800" />
                     ))}
                 </div>
             </div>
@@ -100,6 +102,7 @@ const TrainingProgramDetailView = ({ programId, onProgramLoaded }: TrainingProgr
             day: "numeric",
             month: "short",
             year: "numeric",
+            timeZone: "Asia/Kolkata",
         });
     };
 
@@ -181,12 +184,21 @@ const TrainingProgramDetailView = ({ programId, onProgramLoaded }: TrainingProgr
                 />
 
                 {/* Schedule */}
-                <InfoCard
-                    icon={Calendar}
-                    label="Schedule"
-                    value={`${formatDate(program.start_date)} — ${formatDate(program.end_date)}`}
-                    sub={program.enrollment_deadline ? `Deadline: ${formatDate(program.enrollment_deadline)}${deadlineRemaining ? ` (${deadlineRemaining})` : ""}` : undefined}
-                />
+                {(() => {
+                    let deadlineSub: string | undefined;
+                    if (program.enrollment_deadline) {
+                        const base = "Deadline: " + formatDate(program.enrollment_deadline);
+                        deadlineSub = deadlineRemaining ? base + ` (${deadlineRemaining})` : base;
+                    }
+                    return (
+                        <InfoCard
+                            icon={Calendar}
+                            label="Schedule"
+                            value={`${formatDate(program.start_date)} — ${formatDate(program.end_date)}`}
+                            sub={deadlineSub}
+                        />
+                    );
+                })()}
 
                 {/* Sessions */}
                 <InfoCard
@@ -298,7 +310,7 @@ interface InfoCardProps {
     sub?: string;
 }
 
-const InfoCard = ({ icon: Icon, label, value, sub }: InfoCardProps) => (
+const InfoCard = ({ icon: Icon, label, value, sub }: Readonly<InfoCardProps>) => (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
         <div className="flex items-center gap-2 mb-2">
             <Icon className="h-4 w-4 text-gray-400" />
@@ -315,7 +327,7 @@ interface StatBoxProps {
     color: string;
 }
 
-const StatBox = ({ label, value, color }: StatBoxProps) => (
+const StatBox = ({ label, value, color }: Readonly<StatBoxProps>) => (
     <div className="text-center">
         <p className={`text-xl font-bold ${color}`}>{value}</p>
         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{label}</p>
@@ -329,7 +341,7 @@ interface StatusToggleDropdownProps {
     currentStatus: string;
 }
 
-const StatusToggleDropdown = ({ programId, currentStatus }: StatusToggleDropdownProps) => {
+const StatusToggleDropdown = ({ programId, currentStatus }: Readonly<StatusToggleDropdownProps>) => {
     const {
         allowedTransitions,
         showConfirm,

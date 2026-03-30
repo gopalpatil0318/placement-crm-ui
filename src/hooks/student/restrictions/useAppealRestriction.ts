@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ApiError } from "@/lib/api"
-import { showToast } from "@/utils/ToastUtils"
+import { showToast, getErrorTitle } from "@/utils/ToastUtils"
+import { queryKeys } from "@/lib/queryKeys"
 import { RestrictionsService } from "@/services/student/restrictions.service"
 import {
   appealRestrictionSchema,
@@ -59,24 +60,18 @@ export function useAppealRestriction() {
       })
       resetForm()
       // Invalidate all restriction queries to refresh the list + summary
-      queryClient.invalidateQueries({ queryKey: ["studentPortal", "myRestrictions"] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.myRestrictions() })
     },
     onError: (error: unknown) => {
       const message = error instanceof ApiError ? error.message : "Failed to submit appeal"
       const status = error instanceof ApiError ? error.status : undefined
-
-      let title = "Error"
-      if (status === 409) title = "Already Appealed"
-      else if (status === 400) title = "Cannot Appeal"
-      else if (status === 404) title = "Not Found"
-      else if (status === 429) title = "Too Many Requests"
 
       const description =
         status === 429
           ? "You're submitting too quickly. Please wait a moment and try again."
           : message
 
-      showToast({ type: "error", title, description })
+      showToast({ type: "error", title: getErrorTitle(status), description })
     },
   })
 

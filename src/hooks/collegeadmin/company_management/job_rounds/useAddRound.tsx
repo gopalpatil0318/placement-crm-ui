@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
@@ -53,6 +53,19 @@ export const useAddRound = (jobId: string, onSuccess?: () => void) => {
         setFormData(INITIAL_FORM);
         setErrors({});
     }, []);
+
+    const isDirty = useMemo(() => {
+        return Object.keys(INITIAL_FORM).some(
+            (key) => formData[key as keyof AddRoundFormData] !== INITIAL_FORM[key as keyof AddRoundFormData]
+        );
+    }, [formData]);
+
+    useEffect(() => {
+        if (!isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isDirty]);
 
     const mutation = useMutation({
         mutationFn: (payload: {
@@ -126,5 +139,6 @@ export const useAddRound = (jobId: string, onSuccess?: () => void) => {
         handleChange,
         handleSubmit,
         resetForm,
+        isDirty,
     };
 };
