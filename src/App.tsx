@@ -12,6 +12,7 @@ import { useOnlineStatus } from "./hooks/useOnlineStatus"
 import { sysadminRoutes } from "./routes/sysadminRoutes"
 import { collegeAdminRoutes } from "./routes/collegeAdminRoutes"
 import { studentRoutes } from "./routes/studentRoutes"
+import RootLanding from "./pages/RootLanding"
 import './App.css'
 
 function UnauthorizedPage() {
@@ -61,6 +62,7 @@ function App() {
   // from throwing when their provider isn't in the tree.
   const subdomain = useMemo(() => getSubdomain(), [])
   const isAdmin = subdomain === "admin"
+  const isRoot = subdomain === null
 
   return (
     <ErrorBoundary>
@@ -69,16 +71,25 @@ function App() {
           <Router>
             <Suspense fallback={<PageLoadingSkeleton />}>
               <Routes>
-                {isAdmin ? sysadminRoutes : (
+                {isRoot ? (
+                  <>
+                    <Route path="/" element={<RootLanding />} />
+                    <Route path="*" element={<RootLanding />} />
+                  </>
+                ) : isAdmin ? sysadminRoutes : (
                   <>
                     {collegeAdminRoutes}
                     {studentRoutes}
                   </>
                 )}
 
-                <Route path="/unauthorized" element={<UnauthorizedPage />} />
-                <Route path="/" element={<SmartRedirect />} />
-                <Route path="*" element={<SmartRedirect />} />
+                {!isRoot && (
+                  <>
+                    <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                    <Route path="/" element={<SmartRedirect />} />
+                    <Route path="*" element={<SmartRedirect />} />
+                  </>
+                )}
               </Routes>
             </Suspense>
           </Router>
