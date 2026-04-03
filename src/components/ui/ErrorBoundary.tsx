@@ -32,6 +32,22 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
   override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error("ErrorBoundary caught:", error, errorInfo)
+
+    // Automatically recover from Vite chunk fetch errors after new deployments
+    const isChunkLoadError =
+      error?.message?.includes("Failed to fetch dynamically imported module") ||
+      error?.name === "ChunkLoadError" ||
+      error?.message?.includes("Importing a module script failed");
+
+    if (isChunkLoadError) {
+      // Use sessionStorage to prevent an infinite reload loop if the file actually 404s
+      const reloadCount = Number(sessionStorage.getItem('chunk_reload_count') || 0);
+      if (reloadCount < 2) {
+        sessionStorage.setItem('chunk_reload_count', String(reloadCount + 1));
+        window.location.reload();
+        return;
+      }
+    }
   }
 
   handleRetry = (): void => {
