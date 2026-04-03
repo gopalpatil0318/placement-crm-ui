@@ -1,10 +1,10 @@
 import { lazy } from "react";
-import { Route, Navigate } from "react-router-dom";
+import { Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/routes/ProtectedRoute";
 import { PublicRoute } from "@/components/routes/PublicRoute";
 
 const SysAdminLayout = lazy(() => import("@/components/sysadmin/SysAdminLayout"));
-const SuperAdminLogin = lazy(() => import("@/pages/SuperAdmin/SuperAdminLogin"));
+const AdminLogin = lazy(() => import("@/pages/login/AdminLogin"));
 const Dashboard = lazy(() => import("@/pages/SuperAdmin/Dashboard"));
 const CreateCollege = lazy(() => import("@/pages/SuperAdmin/CreateCollege"));
 const ViewColleges = lazy(() => import("@/pages/SuperAdmin/ViewColleges"));
@@ -13,8 +13,7 @@ const EditCollege = lazy(() => import("@/pages/SuperAdmin/EditCollege"));
 
 export const sysadminRoutes = (
     <>
-        <Route path="/sysadmin/login" element={<PublicRoute><SuperAdminLogin /></PublicRoute>} />
-        <Route path="/login" element={<Navigate to="/sysadmin/login" replace />} />
+        <Route path="/sysadmin/login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
         <Route element={<ProtectedRoute allowedRoles={["sysadmin"]}><SysAdminLayout /></ProtectedRoute>}>
             <Route path="/sysadmin/dashboard" element={<Dashboard />} />
             <Route path="/sysadmin/colleges/create" element={<CreateCollege />} />

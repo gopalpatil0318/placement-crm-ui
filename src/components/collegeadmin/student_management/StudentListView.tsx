@@ -5,6 +5,7 @@ import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
 import { AnimatedTableBody, AnimatedRow } from "@/components/ui/AnimatedList";
 import { useStudentList } from "@/hooks/collegeadmin/student_management/useStudentList";
+import { getCurrentYear, formatYearLabel } from "@/lib/utils";
 
 // ========================
 // TYPES
@@ -17,7 +18,6 @@ interface StudentRow {
     last_name: string;
     student_email: string;
     dept_name?: string;
-    current_year?: number;
     student_passout_year: number;
     student_status: string;
     profile_complete: boolean;
@@ -37,11 +37,6 @@ const STATUS_BADGE_MAP: Record<string, { bg: string; dot: string }> = {
 };
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-const formatYearLabel = (year: number): string => {
-    const suffixes: Record<number, string> = { 1: "st", 2: "nd", 3: "rd" };
-    return `${year}${suffixes[year] || "th"} Yr`;
-};
 
 // ========================
 // SUB-COMPONENTS
@@ -165,7 +160,7 @@ interface StudentListViewProps {
 const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus }) => {
     const navigate = useNavigate();
     const {
-        students, departments, loading, isFetching, pagination, filters,
+        students, departments, loading, isFetching, error, pagination, filters,
         updateFilters, handleSearchChange, handleLimitChange, handlePageChange,
     } = useStudentList({ initialDeptId: deptId, initialStatus });
 
@@ -278,6 +273,16 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                                 if (loading) {
                                     return <tbody><SkeletonRows showDept={showDeptCol} /></tbody>;
                                 }
+                                if (error) {
+                                    return (
+                                        <tbody>
+                                            <tr><td colSpan={showDeptCol ? 7 : 6} className="py-16 text-center">
+                                                <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Please try refreshing the page.</p>
+                                            </td></tr>
+                                        </tbody>
+                                    );
+                                }
                                 if (students.length === 0) {
                                     return (
                                         <tbody>
@@ -314,7 +319,7 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                                                 )}
 
                                                 {/* Year */}
-                                                <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400">{s.current_year ? formatYearLabel(s.current_year) : "—"}</td>
+                                                <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400">{formatYearLabel(getCurrentYear(s.student_passout_year))}</td>
 
                                                 {/* Passout */}
                                                 <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400 font-mono text-xs">{s.student_passout_year}</td>
@@ -373,6 +378,14 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                                 </div>
                                 );
                             }
+                            if (error) {
+                                return (
+                                    <div className="py-16 text-center">
+                                        <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Please try refreshing the page.</p>
+                                    </div>
+                                );
+                            }
                             if (students.length === 0) {
                                 return <EmptyState hasFilters={hasActiveFilters} onReset={clearFilters} onAdd={() => navigate("/college/create-student")} />;
                             }
@@ -399,9 +412,7 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                                                 {showDeptCol && s.dept_name && (
                                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">{s.dept_name}</span>
                                                 )}
-                                                {s.current_year && (
-                                                    <span className="text-xs text-gray-500 dark:text-gray-400">{formatYearLabel(s.current_year)}</span>
-                                                )}
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">{formatYearLabel(getCurrentYear(s.student_passout_year))}</span>
                                                 <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{s.student_passout_year}</span>
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${s.profile_complete ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300" : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300"}`}>
                                                     {s.profile_complete ? "Complete" : "Incomplete"}

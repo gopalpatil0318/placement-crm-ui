@@ -1,7 +1,8 @@
-import { createContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import api from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { clearOtherSessions } from "@/lib/clearAllAuthSessions";
+import { queryClient } from "@/lib/queryClient";
 import type { User, StudentAuthContextType } from "@/types/auth";
 
 // eslint-disable-next-line react-refresh/only-export-components -- context object co-exported with provider
@@ -24,7 +25,7 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const response = await api.post("/student/login", { email, password });
 
     const { data: responseData, message } = response.data;
@@ -49,7 +50,6 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
       deptId: studentData.dept_id,
       deptName: studentData.dept_name,
       passoutYear: studentData.student_passout_year,
-      currentYear: studentData.current_year,
       defaultAcademicYear: studentData.default_academic_year,
       studentStatus: studentData.student_status,
       profileComplete: studentData.profile_complete ?? false,
@@ -66,9 +66,9 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
       title: "Success",
       description: message || "Welcome back!",
     });
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       const response = await api.post("/student/logout");
       const logoutMessage = response.data?.message || "You have been logged out successfully";
@@ -85,13 +85,19 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
         description: msg,
       });
     } finally {
+      queryClient.clear();
       setUser(null);
       localStorage.removeItem("student_user");
     }
-  };
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({ user, isAuthenticated: !!user, isLoading, login, logout }),
+    [user, isLoading, login, logout]
+  );
 
   return (
-    <StudentAuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
+    <StudentAuthContext.Provider value={contextValue}>
       {!isLoading && children}
     </StudentAuthContext.Provider>
   );

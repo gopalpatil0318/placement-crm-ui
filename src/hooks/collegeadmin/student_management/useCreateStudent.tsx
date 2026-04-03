@@ -15,7 +15,6 @@ const INITIAL_FORM = {
     student_password: "",
     dept_name: "",
     student_passout_year: new Date().getFullYear(),
-    current_year: 1,
 };
 
 export const useCreateStudent = () => {
@@ -31,7 +30,7 @@ export const useCreateStudent = () => {
             setFormData((prev) => ({
                 ...prev,
                 [name]:
-                    name === "student_passout_year" || name === "current_year"
+                    name === "student_passout_year"
                         ? Number(value)
                         : value,
             }));

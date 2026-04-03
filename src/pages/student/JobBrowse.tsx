@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   IndianRupee,
   GraduationCap,
+  AlertCircle,
 } from "lucide-react"
 import { staggerContainer, staggerItem, fadeInUp } from "@/lib/animations"
 import AnimatedPage from "@/components/ui/AnimatedPage"
@@ -276,7 +277,7 @@ export default function JobBrowse() {
     limit,
   }), [debouncedSearch, jobType, companyName, selectedJobYear, sortBy, sortOrder, page, limit])
 
-  const { jobs, pagination, isLoading, isFetching } = useJobList(filters)
+  const { jobs, pagination, isLoading, isFetching, isError, error } = useJobList(filters)
 
   const activeFilterCount = [jobType, debouncedSearch, companyName, selectedJobYear].filter(Boolean).length
 
@@ -435,7 +436,18 @@ export default function JobBrowse() {
           ))}
         </div>
       )}
-      {!isLoading && jobs.length === 0 && (
+      {!isLoading && isError && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="h-16 w-16 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+            <AlertCircle className="h-8 w-8 text-red-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Failed to load jobs</h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+            {error instanceof Error ? error.message : "Something went wrong. Please try again."}
+          </p>
+        </div>
+      )}
+      {!isLoading && !isError && jobs.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="h-16 w-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
             <Briefcase className="h-8 w-8 text-gray-400 dark:text-gray-500" />
@@ -448,7 +460,7 @@ export default function JobBrowse() {
           </p>
         </div>
       )}
-      {!isLoading && jobs.length > 0 && (
+      {!isLoading && !isError && jobs.length > 0 && (
         <motion.div
           variants={shouldReduceMotion ? undefined : staggerContainer}
           initial="initial"

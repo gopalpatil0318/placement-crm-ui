@@ -1,7 +1,5 @@
 import { Link } from "react-router-dom";
 import {
-    Linkedin,
-    Github,
     Globe,
     Code2,
     BookOpen,
@@ -18,8 +16,21 @@ import {
     TooltipContent,
 } from "@/components/ui/tooltip";
 import type { ProfileLinks, ProfileCompletion, StudentInfo } from "@/types/student";
+import { getCurrentYear } from "@/lib/utils";
 
 type ViewMode = "student" | "college" | "interviewer";
+
+// Brand SVG icons (lucide deprecated brand icons)
+const LinkedInIcon = ({ className }: Readonly<{ className?: string }>) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect width="4" height="12" x="2" y="9" /><circle cx="4" cy="4" r="2" />
+    </svg>
+);
+const GitHubIcon = ({ className }: Readonly<{ className?: string }>) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" /><path d="M9 18c-4.51 2-5-2-7-2" />
+    </svg>
+);
 
 interface ProfileHeaderProps {
     student: StudentInfo | null;
@@ -33,7 +44,7 @@ export default function ProfileHeader({
     profileLinks,
     profileCompletion,
     viewMode = "student",
-}: ProfileHeaderProps) {
+}: Readonly<ProfileHeaderProps>) {
     const isOwnProfile = viewMode === "student";
 
     // Build display name
@@ -45,8 +56,8 @@ export default function ProfileHeader({
 
     // Social links config
     const socialLinks = [
-        { url: profileLinks?.linkedin_url, icon: Linkedin, label: "LinkedIn" },
-        { url: profileLinks?.github_url, icon: Github, label: "GitHub" },
+        { url: profileLinks?.linkedin_url, icon: LinkedInIcon, label: "LinkedIn" },
+        { url: profileLinks?.github_url, icon: GitHubIcon, label: "GitHub" },
         { url: profileLinks?.personal_portfolio_url, icon: Globe, label: "Portfolio" },
         { url: profileLinks?.leetcode_url, icon: Code2, label: "LeetCode" },
         { url: profileLinks?.hackerrank_url, icon: Trophy, label: "HackerRank" },
@@ -98,9 +109,9 @@ export default function ProfileHeader({
                             )}
 
                             {/* Year info */}
-                            {student?.current_year && (
+                            {student?.student_passout_year && (
                                 <p className="text-slate-400 text-xs mt-0.5">
-                                    Year {student.current_year} · Passout {student.student_passout_year}
+                                    Year {getCurrentYear(student.student_passout_year)} · Passout {student.student_passout_year}
                                 </p>
                             )}
 
@@ -228,7 +239,7 @@ export default function ProfileHeader({
                                 </p>
                                 <div className="flex flex-wrap gap-2">
                                     {incompleteSections.map(([key, section]) => {
-                                        const label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+                                        const label = key.replaceAll("_", " ").replaceAll(/\b\w/g, (c) => c.toUpperCase());
                                         return isOwnProfile ? (
                                             <Link
                                                 key={key}
@@ -236,9 +247,9 @@ export default function ProfileHeader({
                                                 className="px-3 py-1.5 rounded-full text-xs font-medium border bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
                                             >
                                                 {label}
-                                                {section.count !== undefined
-                                                    ? ` (${section.count}/${section.weight})`
-                                                    : ` (${section.earned}/${section.weight})`}
+                                                {section.count === undefined
+                                                    ? ` (${section.earned}/${section.weight})`
+                                                    : ` (${section.count}/${section.weight})`}
                                             </Link>
                                         ) : (
                                             <span
@@ -246,9 +257,9 @@ export default function ProfileHeader({
                                                 className="px-3 py-1.5 rounded-full text-xs font-medium border bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800"
                                             >
                                                 {label}
-                                                {section.count !== undefined
-                                                    ? ` (${section.count}/${section.weight})`
-                                                    : ` (${section.earned}/${section.weight})`}
+                                                {section.count === undefined
+                                                    ? ` (${section.earned}/${section.weight})`
+                                                    : ` (${section.count}/${section.weight})`}
                                             </span>
                                         );
                                     })}

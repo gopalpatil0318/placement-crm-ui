@@ -8,6 +8,12 @@ import { SysAdminService } from "@/services/sysadmin/sysadmin.services"
 import { collegeSchemaUpdate } from "@/validators/CollegeSchemaUpdate"
 import { queryKeys } from "@/lib/queryKeys"
 
+function getEditCollegeError(queryError: unknown, mutationError: unknown): string | null {
+  if (queryError) return queryError instanceof ApiError ? queryError.message : "Failed to load college"
+  if (!mutationError) return null
+  return mutationError instanceof ApiError ? mutationError.message : "Failed to update college"
+}
+
 interface EditCollegeForm {
   college_name: string
   college_subdomain: string
@@ -18,6 +24,11 @@ interface EditCollegeForm {
   college_district: string
   college_state: string
   college_pincode: string
+  college_logo_url: string
+  college_website: string
+  college_affiliation: string
+  college_established_year: string
+  college_description: string
 }
 
 type FormErrors = Partial<Record<keyof EditCollegeForm, string>>
@@ -37,6 +48,11 @@ export const useEditCollege = (onItemLoaded?: (name: string) => void) => {
     college_district: "",
     college_state: "",
     college_pincode: "",
+    college_logo_url: "",
+    college_website: "",
+    college_affiliation: "",
+    college_established_year: "",
+    college_description: "",
   })
 
   const originalData = useRef<EditCollegeForm | null>(null)
@@ -54,6 +70,11 @@ export const useEditCollege = (onItemLoaded?: (name: string) => void) => {
         college_district: college.college_district || "",
         college_state: college.college_state || "",
         college_pincode: college.college_pincode || "",
+        college_logo_url: college.college_logo_url || "",
+        college_website: college.college_website || "",
+        college_affiliation: college.college_affiliation || "",
+        college_established_year: college.college_established_year ? String(college.college_established_year) : "",
+        college_description: college.college_description || "",
       }
       // eslint-disable-next-line react-hooks/set-state-in-effect -- data prefill from query
       setFormData(data)
@@ -63,8 +84,15 @@ export const useEditCollege = (onItemLoaded?: (name: string) => void) => {
   }, [college, onItemLoaded])
 
   const mutation = useMutation({
-    mutationFn: ({ collegeId, payload }: { collegeId: string; payload: Partial<EditCollegeForm> }) =>
-      SysAdminService.updateCollege(collegeId, payload),
+    mutationFn: ({ collegeId, payload }: { collegeId: string; payload: Partial<EditCollegeForm> }) => {
+      // Convert established_year from string to number for the API
+      const apiPayload: Record<string, unknown> = { ...payload }
+      if (apiPayload.college_established_year !== undefined) {
+        const yearStr = apiPayload.college_established_year as string
+        apiPayload.college_established_year = yearStr ? Number(yearStr) : null
+      }
+      return SysAdminService.updateCollege(collegeId, apiPayload as Parameters<typeof SysAdminService.updateCollege>[1])
+    },
     onSuccess: (res) => {
       const collegeId = college?.college_id
       if (res?.success) {
@@ -163,7 +191,7 @@ export const useEditCollege = (onItemLoaded?: (name: string) => void) => {
   return {
     loading,
     updating: mutation.isPending,
-    error: queryError || (mutation.error instanceof ApiError ? mutation.error.message : mutation.error ? "Failed to update college" : null),
+    error: getEditCollegeError(queryError, mutation.error),
     errors,
     formData,
     handleChange,

@@ -18,7 +18,7 @@ function formatDate(d: string | null | undefined): string {
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function ExpandableDescription({ text }: { text: string }) {
+function ExpandableDescription({ text }: Readonly<{ text: string }>) {
     const [expanded, setExpanded] = useState(false);
     const [isClamped, setIsClamped] = useState(false);
     const ref = useRef<HTMLParagraphElement>(null);
@@ -59,6 +59,11 @@ const ExperienceForm = () => {
     const shouldReduce = useReducedMotion();
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
+    const getSubmitLabel = () => {
+        if (saving) return "Saving...";
+        return editingId ? "Update" : "Add Experience";
+    };
+
     if (loading) {
         return (
             <div className="p-8 bg-white dark:bg-gray-900 rounded-2xl border dark:border-gray-800">
@@ -70,8 +75,8 @@ const ExperienceForm = () => {
                     <div className="h-9 w-28 rounded-full bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {Array.from({ length: 2 }).map((_, i) => (
-                        <div key={i} className="p-5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
+                    {["a", "b"].map((id) => (
+                        <div key={id} className="p-5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
                             <div className="h-4 w-48 rounded bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
                             <div className="flex gap-2">
                                 <div className="h-5 w-16 rounded-full bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
@@ -145,7 +150,7 @@ const ExperienceForm = () => {
                     </button>
                     <button type="button" onClick={handleSubmit} disabled={saving}
                         className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium transition cursor-pointer disabled:opacity-50">
-                        {saving ? "Saving..." : editingId ? "Update" : "Add Experience"}
+                        {getSubmitLabel()}
                     </button>
                 </div>
             }>
@@ -166,7 +171,7 @@ const ExperienceForm = () => {
 
                             {/* Responsibilities */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Responsibilities</label>
+                                <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Responsibilities</p>
                                 <div className="flex gap-2">
                                     <input value={respInput} onChange={(e) => setRespInput(e.target.value)}
                                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addResp(); } }}
@@ -189,7 +194,7 @@ const ExperienceForm = () => {
 
                             {/* Technologies */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Technologies Used</label>
+                                <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Technologies Used</p>
                                 <div className="flex gap-2">
                                     <input value={techInput} onChange={(e) => setTechInput(e.target.value)}
                                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTech(); } }}
@@ -302,17 +307,17 @@ const ExperienceCard = memo(function ExperienceCard({
 
                 {/* Badges row */}
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
-                    <span role="status" className="text-xs px-2.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full font-medium">
+                    <output className="text-xs px-2.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full font-medium">
                         {EMPLOYMENT_TYPE_LABELS[exp.employment_type] || exp.employment_type}
-                    </span>
+                    </output>
                     <span className="text-xs px-2.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-full font-medium">
                         {WORK_MODE_LABELS[exp.work_mode] || exp.work_mode}
                     </span>
                     {exp.is_current && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            Current
-                        </span>
+                        <output className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true" />
+                            <span>Current</span>
+                        </output>
                     )}
                 </div>
 
@@ -373,14 +378,14 @@ const ExperienceCard = memo(function ExperienceCard({
                         </a>
                     )}
                     {exp.is_verified && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                        <output className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
                             <CheckCircle className="h-3.5 w-3.5" /> Verified
-                        </span>
+                        </output>
                     )}
                     {exp.is_verified === false && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 font-medium">
+                        <output className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 font-medium">
                             <AlertCircle className="h-3.5 w-3.5" /> Pending verification
-                        </span>
+                        </output>
                     )}
                 </div>
             </div>

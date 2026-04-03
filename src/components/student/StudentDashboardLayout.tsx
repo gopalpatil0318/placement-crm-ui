@@ -4,9 +4,9 @@ import Sidebar from "./StudentSidebar";
 
 export default function StudentDashboardLayout({
     children,
-}: {
+}: Readonly<{
     children: React.ReactNode;
-}) {
+}>) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     return (

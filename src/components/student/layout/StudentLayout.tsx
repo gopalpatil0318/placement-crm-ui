@@ -7,9 +7,9 @@ import StudentMobileBottomBar from "./StudentMobileBottomBar"
 const MD_BREAKPOINT = 768
 
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < MD_BREAKPOINT)
+  const [isMobile, setIsMobile] = useState(() => globalThis.innerWidth < MD_BREAKPOINT)
   useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MD_BREAKPOINT - 1}px)`)
+    const mql = globalThis.matchMedia(`(max-width: ${MD_BREAKPOINT - 1}px)`)
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
     mql.addEventListener("change", handler)
     return () => mql.removeEventListener("change", handler)

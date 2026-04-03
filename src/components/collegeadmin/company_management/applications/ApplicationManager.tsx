@@ -177,10 +177,8 @@ const StatusPills = ({
                         : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                 }`}
             >
-                All
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                    activeFilter === "" ? "bg-white/20 text-white dark:bg-gray-900/20 dark:text-gray-900" : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
-                }`}>
+                <span>All</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeFilter === "" ? "bg-white/20 text-white dark:bg-gray-900/20 dark:text-gray-900" : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"}`}>
                     {total}
                 </span>
             </button>
@@ -295,7 +293,7 @@ const Pagination = ({
 
             {pages.map((p, idx) =>
                 p === "ellipsis" ? (
-                    <span key={`ellipsis-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
+                    <span key={`ellipsis-${String(idx)}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
                         ...
                     </span>
                 ) : (
@@ -359,7 +357,7 @@ const EmptyState = ({ hasFilters }: { hasFilters: boolean }) =>
 const SkeletonTable = () => (
     <>
         {Array.from({ length: 8 }).map((_, i) => (
-            <tr key={`skel-${i}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
+            <tr key={`skel-${String(i)}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
                 <td className="px-4 py-3.5 w-10"><div className="h-4 w-4 bg-gray-100 dark:bg-gray-700 rounded" /></td>
                 <td className="px-4 py-3.5 w-10"><div className="h-4 bg-gray-100 dark:bg-gray-700 rounded w-5" /></td>
                 <td className="px-4 py-3.5">
@@ -1203,7 +1201,7 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
 
                     {/* Page size */}
                     <div className="text-sm text-gray-600 dark:text-gray-400 font-medium flex items-center gap-2 ml-auto">
-                        Show
+                        <span>Show</span>
                         <select
                             value={pagination.limit}
                             onChange={(e) => wrappedLimitChange(Number(e.target.value))}
@@ -1392,7 +1390,7 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                 {loading && (
                     <div className="divide-y divide-gray-100 dark:divide-gray-800">
                         {Array.from({ length: 5 }).map((_, i) => (
-                            <div key={`mskel-${i}`} className="px-4 py-4 animate-pulse space-y-2">
+                            <div key={`mskel-${String(i)}`} className="px-4 py-4 animate-pulse space-y-2">
                                 <div className="h-4 bg-gray-100 dark:bg-gray-700 rounded w-36" />
                                 <div className="h-3 bg-gray-50 dark:bg-gray-800 rounded w-48" />
                                 <div className="flex gap-2 mt-2">
@@ -1421,12 +1419,10 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                                         >
                                             {isSelected ? <CheckSquare className="h-4 w-4 text-blue-600" /> : <Square className="h-4 w-4" />}
                                         </button>
-                                        <div
-                                            className="flex-1 min-w-0 cursor-pointer"
-                                            role="button"
-                                            tabIndex={0}
+                                        <button
+                                            type="button"
+                                            className="flex-1 min-w-0 cursor-pointer text-left"
                                             onClick={() => handleRowClick(app.application_id)}
-                                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRowClick(app.application_id); } }}
                                         >
                                             <div className="flex items-center justify-between gap-2">
                                                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{app.student_name}</p>
@@ -1455,7 +1451,7 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                                                     })}
                                                 </span>
                                             </div>
-                                        </div>
+                                        </button>
                                     </div>
                                 </div>
                             );

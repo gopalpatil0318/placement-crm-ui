@@ -29,7 +29,6 @@ export interface User {
   profileComplete?: boolean
   profileIsApproved?: boolean
   passoutYear?: number
-  currentYear?: number
   studentStatus?: string
 }
 

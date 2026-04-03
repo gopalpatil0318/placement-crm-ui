@@ -17,7 +17,7 @@ function formatDate(d: string | null | undefined): string {
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function ExpandableDescription({ text }: { text: string }) {
+function ExpandableDescription({ text }: Readonly<{ text: string }>) {
     const [expanded, setExpanded] = useState(false);
     const [isClamped, setIsClamped] = useState(false);
     const ref = useRef<HTMLParagraphElement>(null);
@@ -57,6 +57,11 @@ const ActivitiesForm = () => {
     const shouldReduce = useReducedMotion();
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
+    const getSubmitLabel = () => {
+        if (saving) return "Saving...";
+        return editingId ? "Update" : "Add Activity";
+    };
+
     if (loading) {
         return (
             <div className="p-8 bg-white dark:bg-gray-900 rounded-2xl border dark:border-gray-800">
@@ -68,8 +73,8 @@ const ActivitiesForm = () => {
                     <div className="h-9 w-28 rounded-full bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {Array.from({ length: 2 }).map((_, i) => (
-                        <div key={i} className="p-5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
+                    {["a", "b"].map((id) => (
+                        <div key={id} className="p-5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
                             <div className="h-4 w-40 rounded bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
                             <div className="flex gap-2">
                                 <div className="h-5 w-16 rounded-full bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
@@ -139,7 +144,7 @@ const ActivitiesForm = () => {
                     </button>
                     <button type="button" onClick={handleSubmit} disabled={saving}
                         className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium transition cursor-pointer disabled:opacity-50">
-                        {saving ? "Saving..." : editingId ? "Update" : "Add Activity"}
+                        {getSubmitLabel()}
                     </button>
                 </div>
             }>
@@ -175,7 +180,7 @@ const ActivitiesForm = () => {
 
                             {/* Proof URLs */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Proof URLs (max 5)</label>
+                                <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Proof URLs (max 5)</p>
                                 <div className="flex gap-2">
                                     <input value={proofInput} onChange={(e) => setProofInput(e.target.value)}
                                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addProofUrl(); } }}
@@ -228,6 +233,10 @@ const ActivityCard = memo(function ActivityCard({
     const visibleProofs = act.proof_urls?.slice(0, MAX_VISIBLE_PROOFS) ?? [];
     const hiddenProofCount = (act.proof_urls?.length ?? 0) - MAX_VISIBLE_PROOFS;
 
+    let endDateLabel = "";
+    if (act.is_ongoing) endDateLabel = " \u2013 Present";
+    else if (act.end_date) endDateLabel = ` \u2013 ${formatDate(act.end_date)}`;
+
     return (
         <motion.div
             variants={shouldReduce ? undefined : staggerItem}
@@ -267,18 +276,18 @@ const ActivityCard = memo(function ActivityCard({
                 {/* Badges row */}
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
                     {act.activity_type && (
-                        <span role="status" className="text-xs px-2.5 py-0.5 bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 rounded-full font-medium">
+                        <output className="text-xs px-2.5 py-0.5 bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 rounded-full font-medium">
                             {ACTIVITY_TYPE_LABELS[act.activity_type] || act.activity_type}
-                        </span>
+                        </output>
                     )}
                     {act.organizing_body && (
                         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{act.organizing_body}</span>
                     )}
                     {act.is_ongoing && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            Ongoing
-                        </span>
+                        <output className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true" />
+                            <span>Ongoing</span>
+                        </output>
                     )}
                     {act.hours_contributed && (
                         <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">
@@ -293,7 +302,7 @@ const ActivityCard = memo(function ActivityCard({
                         <Calendar size={13} className="shrink-0 text-gray-400 dark:text-gray-500" />
                         <span>
                             {formatDate(act.start_date)}
-                            {act.is_ongoing ? " – Present" : act.end_date ? ` – ${formatDate(act.end_date)}` : ""}
+                            {endDateLabel}
                         </span>
                     </div>
                 </div>
@@ -319,9 +328,9 @@ const ActivityCard = memo(function ActivityCard({
                         <span className="text-xs text-gray-400 dark:text-gray-500">+{hiddenProofCount} more</span>
                     )}
                     {(act as ActivityData & { is_verified?: boolean }).is_verified && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                        <output className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
                             <CheckCircle className="h-3.5 w-3.5" /> Verified
-                        </span>
+                        </output>
                     )}
                 </div>
             </div>

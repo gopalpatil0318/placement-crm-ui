@@ -21,6 +21,11 @@ interface CreateCollegeForm {
   adminName: string
   adminEmail: string
   adminPassword: string
+  collegeLogoUrl: string
+  collegeWebsite: string
+  collegeAffiliation: string
+  collegeEstablishedYear: string
+  collegeDescription: string
 }
 
 type FormErrors = Partial<CreateCollegeForm>
@@ -39,6 +44,11 @@ const INITIAL_FORM: CreateCollegeForm = {
   adminName: "",
   adminEmail: "",
   adminPassword: "",
+  collegeLogoUrl: "",
+  collegeWebsite: "",
+  collegeAffiliation: "",
+  collegeEstablishedYear: "",
+  collegeDescription: "",
 }
 
 export const useCreateCollege = () => {
@@ -94,7 +104,7 @@ export const useCreateCollege = () => {
     const { name, value } = e.target
 
     if (name === "collegeSubdomain") {
-      const sanitized = value.toLowerCase().replace(/[^a-z0-9-]/g, "")
+      const sanitized = value.toLowerCase().replaceAll(/[^a-z0-9-]/g, "")
       setFormData((prev) => ({ ...prev, [name]: sanitized }))
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }))
@@ -145,6 +155,11 @@ export const useCreateCollege = () => {
       adminName:          formData.adminName.trim(),
       adminEmail:         formData.adminEmail.trim(),
       adminPassword:      formData.adminPassword,
+      collegeLogoUrl:     formData.collegeLogoUrl.trim(),
+      collegeWebsite:     formData.collegeWebsite.trim(),
+      collegeAffiliation: formData.collegeAffiliation.trim(),
+      collegeEstablishedYear: formData.collegeEstablishedYear.trim(),
+      collegeDescription: formData.collegeDescription.trim(),
     } as CreateCollegeForm & { defaultAcademicYear: number })
   }, [formData, mutation])
 

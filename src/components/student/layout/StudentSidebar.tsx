@@ -20,6 +20,8 @@ import {
 import { Link, useLocation } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { useStudentAuth } from "@/hooks/student/useStudentAuth"
+import { useCollegeTenant } from "@/context/CollegeTenantContext"
+import { sanitizeImageUrl } from "@/utils/sanitize"
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -96,10 +98,28 @@ interface SidebarProps {
   onToggle: () => void
 }
 
-export default function StudentSidebar({ isOpen, onToggle }: SidebarProps) {
+// ─── Helpers to reduce cognitive complexity ────────────────────────────────────
+
+function getNavSectionClass(idx: number): string {
+  return idx === 0 ? "" : "mt-5"
+}
+
+function getLogoutClass(isOpen: boolean): string {
+  return `flex items-center gap-3 w-full text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium cursor-pointer
+    ${isOpen ? "px-6 py-3" : "justify-center py-3"}`
+}
+
+function getCollapseClass(isOpen: boolean): string {
+  return `flex items-center gap-3 w-full text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer border-t border-gray-100 dark:border-gray-800
+    ${isOpen ? "px-6 py-3" : "justify-center py-3"}`
+}
+
+export default function StudentSidebar({ isOpen, onToggle }: Readonly<SidebarProps>) {
   const location = useLocation()
   const { user, logout } = useStudentAuth()
+  const { college } = useCollegeTenant()
   const shouldReduce = useReducedMotion()
+  const [logoError, setLogoError] = useState(false)
 
   // Auto-expand the section containing the active path
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
@@ -150,17 +170,30 @@ export default function StudentSidebar({ isOpen, onToggle }: SidebarProps) {
         bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl
         border-r border-gray-200/60 dark:border-gray-800/60"
     >
-      {/* ── Logo ── */}
-      <div className="px-4 py-5 flex items-center gap-3 shrink-0">
-        <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-md shadow-indigo-500/20">
-          <GraduationCap size={20} className="text-white" />
-        </div>
+      {/* ── College branding ── */}
+      <div className="px-4 py-5 flex items-center gap-2.5 shrink-0 min-h-[60px]">
+        {college && sanitizeImageUrl(college.college_logo_url) && !logoError ? (
+          <img
+            src={sanitizeImageUrl(college.college_logo_url)!}
+            alt={college.college_name}
+            width={32}
+            height={32}
+            decoding="async"
+            onError={() => setLogoError(true)}
+            className="h-8 w-8 shrink-0 rounded-xl object-contain"
+          />
+        ) : (
+          <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-md shadow-indigo-500/20">
+            <GraduationCap size={20} className="text-white" />
+          </div>
+        )}
         <motion.span
           animate={{ opacity: isOpen ? 1 : 0, width: isOpen ? "auto" : 0 }}
           transition={{ duration: 0.15 }}
-          className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent overflow-hidden whitespace-nowrap"
+          className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate overflow-hidden whitespace-nowrap"
+          title={college?.college_name}
         >
-          PlacementCRM
+          {college?.college_name || "PlacementCRM"}
         </motion.span>
       </div>
 
@@ -203,13 +236,13 @@ export default function StudentSidebar({ isOpen, onToggle }: SidebarProps) {
       {/* ── Nav Sections ── */}
       <nav className="flex-1 px-3 text-sm overflow-y-auto pb-4 scrollbar-thin">
         {navSections.map((section, idx) => (
-          <div key={section.section} className={idx !== 0 ? "mt-5" : ""}>
+          <div key={section.section} className={getNavSectionClass(idx)}>
             {isOpen ? (
               <p className="mb-2 px-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 {section.section}
               </p>
             ) : (
-              idx !== 0 && <div className="mb-2 mx-2 border-b border-gray-100 dark:border-gray-800" />
+              idx > 0 && <div className="mb-2 mx-2 border-b border-gray-100 dark:border-gray-800" />
             )}
             <div className="space-y-0.5">
               {section.items.map((item) => (
@@ -234,10 +267,9 @@ export default function StudentSidebar({ isOpen, onToggle }: SidebarProps) {
         <button
           type="button"
           onClick={handleLogout}
-          className={`flex items-center gap-3 w-full text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium cursor-pointer
-            ${isOpen ? "px-6 py-3" : "justify-center py-3"}`}
+          className={getLogoutClass(isOpen)}
           aria-label="Log out"
-          title={!isOpen ? "Log Out" : undefined}
+          title={isOpen ? undefined : "Log Out"}
         >
           <LogOut size={18} className="shrink-0" />
           <motion.span
@@ -253,10 +285,9 @@ export default function StudentSidebar({ isOpen, onToggle }: SidebarProps) {
         <button
           type="button"
           onClick={onToggle}
-          className={`flex items-center gap-3 w-full text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer border-t border-gray-100 dark:border-gray-800
-            ${isOpen ? "px-6 py-3" : "justify-center py-3"}`}
+          className={getCollapseClass(isOpen)}
           aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-          title={!isOpen ? "Expand sidebar" : "Collapse sidebar"}
+          title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
         >
           <motion.span
             animate={{ rotate: isOpen ? 0 : 180 }}
@@ -289,13 +320,50 @@ interface NavItemProps {
   shouldReduce: boolean | null
 }
 
-function SidebarNavItem({ item, isExpanded, onToggle, activePath, isOpen, shouldReduce }: NavItemProps) {
+// ─── NavItem style helpers ──────────────────────────────────────────────────────
+
+function getIconClass(isActive: boolean): string {
+  return isActive
+    ? "shrink-0 transition-colors text-indigo-600 dark:text-indigo-400"
+    : "shrink-0 transition-colors text-gray-400 dark:text-gray-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
+}
+
+function getNavButtonClass(isOpen: boolean, isActive: boolean): string {
+  const layout = isOpen ? "justify-between px-3" : "justify-center px-0"
+  const state = isActive
+    ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-medium"
+    : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:text-indigo-600 dark:hover:text-indigo-400"
+  return `w-full flex items-center rounded-xl transition-all duration-200 group cursor-pointer ${layout} py-2.5 ${state}`
+}
+
+function getNavLinkClass(isOpen: boolean, isActive: boolean): string {
+  const layout = isOpen ? "px-3" : "justify-center px-0"
+  const state = isActive
+    ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-medium"
+    : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:text-indigo-600 dark:hover:text-indigo-400"
+  return `flex items-center gap-3 py-2.5 rounded-xl transition-all duration-200 group ${layout} ${state}`
+}
+
+function getSubItemClass(isSubActive: boolean): string {
+  return isSubActive
+    ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-900/10 font-medium"
+    : "text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-800/40"
+}
+
+function getSubDotClass(isSubActive: boolean): string {
+  return isSubActive
+    ? "bg-indigo-600 dark:bg-indigo-400 scale-125"
+    : "bg-gray-300 dark:bg-gray-600 group-hover:bg-indigo-500"
+}
+
+function SidebarNavItem({ item, isExpanded, onToggle, activePath, isOpen, shouldReduce }: Readonly<NavItemProps>) {
   const { icon: Icon, label, path, subItems } = item
   const hasSubItems = subItems && subItems.length > 0
   const isActive = path === activePath || subItems?.some((sub) => sub.path === activePath)
+  const titleAttr = isOpen ? undefined : label
 
   const iconEl = (
-    <span className={`shrink-0 transition-colors ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400 dark:text-gray-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"}`}>
+    <span className={getIconClass(!!isActive)}>
       <Icon size={18} />
     </span>
   )
@@ -316,13 +384,8 @@ function SidebarNavItem({ item, isExpanded, onToggle, activePath, isOpen, should
         <button
           type="button"
           onClick={onToggle}
-          title={!isOpen ? label : undefined}
-          className={`w-full flex items-center rounded-xl transition-all duration-200 group cursor-pointer
-            ${isOpen ? "justify-between px-3" : "justify-center px-0"} py-2.5
-            ${isActive
-              ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-medium"
-              : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:text-indigo-600 dark:hover:text-indigo-400"
-            }`}
+          title={titleAttr}
+          className={getNavButtonClass(isOpen, !!isActive)}
         >
           <div className="flex items-center gap-3">
             {iconEl}
@@ -338,13 +401,8 @@ function SidebarNavItem({ item, isExpanded, onToggle, activePath, isOpen, should
       ) : (
         <Link
           to={path || "#"}
-          title={!isOpen ? label : undefined}
-          className={`flex items-center gap-3 py-2.5 rounded-xl transition-all duration-200 group
-            ${isOpen ? "px-3" : "justify-center px-0"}
-            ${activePath === path
-              ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-medium"
-              : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:text-indigo-600 dark:hover:text-indigo-400"
-            }`}
+          title={titleAttr}
+          className={getNavLinkClass(isOpen, activePath === path)}
         >
           {iconEl}
           {labelEl}
@@ -371,13 +429,9 @@ function SidebarNavItem({ item, isExpanded, onToggle, activePath, isOpen, should
                 <Link
                   key={sub.path}
                   to={sub.path}
-                  className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-all duration-200 group text-[13px]
-                    ${activePath === sub.path
-                      ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-900/10 font-medium"
-                      : "text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-800/40"
-                    }`}
+                  className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-all duration-200 group text-[13px] ${getSubItemClass(activePath === sub.path)}`}
                 >
-                  <span className={`h-1.5 w-1.5 rounded-full transition-all ${activePath === sub.path ? "bg-indigo-600 dark:bg-indigo-400 scale-125" : "bg-gray-300 dark:bg-gray-600 group-hover:bg-indigo-500"}`} />
+                  <span className={`h-1.5 w-1.5 rounded-full transition-all ${getSubDotClass(activePath === sub.path)}`} />
                   {sub.label}
                 </Link>
               ))}

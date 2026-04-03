@@ -19,7 +19,6 @@ interface StudentFormData {
     student_password: string;
     dept_name: string;
     student_passout_year: number;
-    current_year: number;
 }
 
 type FormErrors = Partial<Record<keyof StudentFormData, string>>;
@@ -78,14 +77,108 @@ function getPasswordStrength(password: string): { label: string; color: string; 
 // CONSTANTS
 // ========================
 
-const YEAR_OPTIONS = [
-    { value: "1", label: "1st Year" },
-    { value: "2", label: "2nd Year" },
-    { value: "3", label: "3rd Year" },
-    { value: "4", label: "4th Year" },
-    { value: "5", label: "5th Year" },
-    { value: "6", label: "6th Year" },
-];
+// ========================
+// HELPERS
+// ========================
+
+function getButtonLabel(isEdit: boolean, isLoading: boolean): string {
+    if (isLoading) return isEdit ? "Saving..." : "Registering...";
+    return isEdit ? "Save Changes" : "Register Student";
+}
+
+// ========================
+// SUB-COMPONENT: Password Section
+// ========================
+
+interface PasswordSectionProps {
+    formData: { student_password: string };
+    errors: Partial<Record<string, string>>;
+    showPassword: boolean;
+    setShowPassword: (fn: (prev: boolean) => boolean) => void;
+    handleChange: StudentFormProps["handleChange"];
+    strength: ReturnType<typeof getPasswordStrength> | null;
+    defaultPassword: string;
+    handleGeneratePassword: () => void;
+}
+
+function PasswordSection({
+    formData,
+    errors,
+    showPassword,
+    setShowPassword,
+    handleChange,
+    strength,
+    defaultPassword,
+    handleGeneratePassword,
+}: Readonly<PasswordSectionProps>) {
+    return (
+        <section>
+            <SectionHeader
+                icon={Lock}
+                title="Security"
+                subtitle="Set a password for the student account"
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <div className="relative">
+                        <FloatingInput
+                            label="Password"
+                            name="student_password"
+                            value={formData.student_password}
+                            onChange={handleChange}
+                            error={errors.student_password}
+                            required
+                            type={showPassword ? "text" : "password"}
+                            maxLength={128}
+                            placeholder="Min 8 characters"
+                        />
+                        <div className="absolute right-3 top-[38px] flex items-center gap-1">
+                            {defaultPassword && (
+                                <button
+                                    type="button"
+                                    onClick={handleGeneratePassword}
+                                    title={`Generate: ${defaultPassword}`}
+                                    aria-label="Generate default password"
+                                    className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition"
+                                    tabIndex={-1}
+                                >
+                                    <Wand2 className="h-4 w-4" />
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword((p) => !p)}
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 transition"
+                                tabIndex={-1}
+                            >
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                    </div>
+                    {strength && formData.student_password && (
+                        <div className="mt-2">
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                <div
+                                    className={`h-1.5 rounded-full transition-all duration-300 ${strength.barColor}`}
+                                    style={{ width: strength.width }}
+                                />
+                            </div>
+                            <p className={`text-xs mt-1 font-medium ${strength.color}`}>
+                                {strength.label}
+                            </p>
+                        </div>
+                    )}
+                    {defaultPassword && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                            Suggested: <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs">{defaultPassword}</code>
+                        </p>
+                    )}
+                </div>
+            </div>
+        </section>
+    );
+}
 
 // ========================
 // COMPONENT
@@ -231,7 +324,7 @@ const StudentForm = ({
                         title="Academic Details"
                         subtitle="Department and year information"
                     />
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <FloatingSelect
                                 label="Department"
@@ -250,15 +343,6 @@ const StudentForm = ({
                             )}
                         </div>
                         <FloatingSelect
-                            label="Current Year"
-                            name="current_year"
-                            value={String(formData.current_year)}
-                            onChange={handleChange}
-                            options={YEAR_OPTIONS}
-                            error={errors.current_year}
-                            required
-                        />
-                        <FloatingSelect
                             label="Passout Year"
                             name="student_passout_year"
                             value={String(formData.student_passout_year)}
@@ -272,71 +356,16 @@ const StudentForm = ({
 
                 {/* Password Section (create mode only) */}
                 {mode === "create" && (
-                    <section>
-                        <SectionHeader
-                            icon={Lock}
-                            title="Security"
-                            subtitle="Set a password for the student account"
-                        />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <div className="relative">
-                                    <FloatingInput
-                                        label="Password"
-                                        name="student_password"
-                                        value={formData.student_password}
-                                        onChange={handleChange}
-                                        error={errors.student_password}
-                                        required
-                                        type={showPassword ? "text" : "password"}
-                                        maxLength={128}
-                                        placeholder="Min 8 characters"
-                                    />
-                                    <div className="absolute right-3 top-[38px] flex items-center gap-1">
-                                        {defaultPassword && (
-                                            <button
-                                                type="button"
-                                                onClick={handleGeneratePassword}
-                                                title={`Generate: ${defaultPassword}`}
-                                                aria-label="Generate default password"
-                                                className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition"
-                                                tabIndex={-1}
-                                            >
-                                                <Wand2 className="h-4 w-4" />
-                                            </button>
-                                        )}
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword((p) => !p)}
-                                            aria-label={showPassword ? "Hide password" : "Show password"}
-                                            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition"
-                                            tabIndex={-1}
-                                        >
-                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                        </button>
-                                    </div>
-                                </div>
-                                {strength && formData.student_password && (
-                                    <div className="mt-2">
-                                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                                            <div
-                                                className={`h-1.5 rounded-full transition-all duration-300 ${strength.barColor}`}
-                                                style={{ width: strength.width }}
-                                            />
-                                        </div>
-                                        <p className={`text-xs mt-1 font-medium ${strength.color}`}>
-                                            {strength.label}
-                                        </p>
-                                    </div>
-                                )}
-                                {defaultPassword && (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                                        Suggested: <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs">{defaultPassword}</code>
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    </section>
+                    <PasswordSection
+                        formData={formData}
+                        errors={errors}
+                        showPassword={showPassword}
+                        setShowPassword={setShowPassword}
+                        handleChange={handleChange}
+                        strength={strength}
+                        defaultPassword={defaultPassword}
+                        handleGeneratePassword={handleGeneratePassword}
+                    />
                 )}
 
                 {/* Action Buttons — sticky on mobile */}
@@ -348,9 +377,7 @@ const StudentForm = ({
                             className="inline-flex items-center gap-2 px-8 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl text-sm font-semibold transition shadow-sm disabled:cursor-not-allowed"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {loading
-                                ? isEdit ? "Saving..." : "Registering..."
-                                : isEdit ? "Save Changes" : "Register Student"}
+                            {getButtonLabel(isEdit, loading)}
                         </button>
                     ) : (
                         <motion.button
@@ -361,9 +388,7 @@ const StudentForm = ({
                             className="inline-flex items-center gap-2 px-8 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl text-sm font-semibold transition shadow-sm disabled:cursor-not-allowed"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {loading
-                                ? isEdit ? "Saving..." : "Registering..."
-                                : isEdit ? "Save Changes" : "Register Student"}
+                            {getButtonLabel(isEdit, loading)}
                         </motion.button>
                     )}
                     <button
@@ -383,9 +408,7 @@ const StudentForm = ({
                         className="flex-1 inline-flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl text-sm font-semibold transition shadow-sm disabled:cursor-not-allowed min-h-[48px]"
                     >
                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {loading
-                            ? isEdit ? "Saving..." : "Registering..."
-                            : isEdit ? "Save Changes" : "Register Student"}
+                        {getButtonLabel(isEdit, loading)}
                     </button>
                     <button
                         type="button"

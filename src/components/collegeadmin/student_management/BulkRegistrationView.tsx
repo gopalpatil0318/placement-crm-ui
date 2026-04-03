@@ -112,12 +112,12 @@ const BulkRegistrationView = () => {
 
   const handleDownloadSample = useCallback(() => {
     const csvContent = [
-      "first_name,middle_name,last_name,student_email,dept_name,student_passout_year,current_year",
-      "Rohan,Suresh,Das,rohan.das@example.com,Computer Engineering,2026,3",
-      "Sarah,,Jenkins,sarah.j@example.com,Mechanical Engineering,2027,2",
-      "Amit,Rajesh,Patel,amit.patel@example.com,Civil Engineering,2025,4",
-      "Emily,,Chen,emily.chen@example.com,Electrical Engineering,2028,1",
-      "Michael,James,Brown,michael.b@example.com,Information Technology,2026,3",
+      "first_name,middle_name,last_name,student_email,dept_name,student_passout_year",
+      "Rohan,Suresh,Das,rohan.das@example.com,Computer Engineering,2026",
+      "Sarah,,Jenkins,sarah.j@example.com,Mechanical Engineering,2027",
+      "Amit,Rajesh,Patel,amit.patel@example.com,Civil Engineering,2025",
+      "Emily,,Chen,emily.chen@example.com,Electrical Engineering,2028",
+      "Michael,James,Brown,michael.b@example.com,Information Technology,2026",
       "",
       "# Passwords are auto-generated as firstname@passoutyear (e.g. rohan@2026)",
     ].join("\n");

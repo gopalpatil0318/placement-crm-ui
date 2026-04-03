@@ -22,7 +22,7 @@ export default function DeleteConfirmDialog({
     onConfirm,
     isDeleting = false,
     itemLabel = "item",
-}: DeleteConfirmDialogProps) {
+}: Readonly<DeleteConfirmDialogProps>) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]" showCloseButton={false}>

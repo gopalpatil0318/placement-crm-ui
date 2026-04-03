@@ -4,7 +4,11 @@ import { staggerContainer, staggerItem } from "@/lib/animations";
 import { useProjects } from "@/hooks/student/useProjects";
 import type { ProjectData } from "@/services/student/projects.service";
 import { PROJECT_TYPE_LABELS, VALID_PROJECT_TYPES } from "@/validators/student/projectSchema";
-import { Plus, X, Pencil, Trash2, Star, ExternalLink, Github, CheckCircle, AlertCircle, Calendar, Users, ChevronDown, Code } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Star, ExternalLink, CheckCircle, AlertCircle, Calendar, Users, ChevronDown, Code } from "lucide-react";
+
+const GitHubIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" /></svg>
+);
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
@@ -18,7 +22,7 @@ function formatDate(d: string | null | undefined): string {
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function ExpandableDescription({ text }: { text: string }) {
+function ExpandableDescription({ text }: Readonly<{ text: string }>) {
     const [expanded, setExpanded] = useState(false);
     const [isClamped, setIsClamped] = useState(false);
     const ref = useRef<HTMLParagraphElement>(null);
@@ -59,6 +63,11 @@ const ProjectsForm = () => {
     const shouldReduce = useReducedMotion();
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
+    const getSubmitLabel = () => {
+        if (saving) return "Saving...";
+        return editingId ? "Update" : "Add Project";
+    };
+
     if (loading) {
         return (
             <div className="p-8 bg-white dark:bg-gray-900 rounded-2xl border dark:border-gray-800">
@@ -70,8 +79,8 @@ const ProjectsForm = () => {
                     <div className="h-9 w-28 rounded-full bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {Array.from({ length: 2 }).map((_, i) => (
-                        <div key={i} className="p-5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
+                    {["a", "b"].map((id) => (
+                        <div key={id} className="p-5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
                             <div className="h-4 w-44 rounded bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
                             <div className="flex gap-2">
                                 <div className="h-5 w-16 rounded-full bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
@@ -149,7 +158,7 @@ const ProjectsForm = () => {
                     </button>
                     <button type="button" onClick={handleSubmit} disabled={saving}
                         className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium transition cursor-pointer disabled:opacity-50">
-                        {saving ? "Saving..." : editingId ? "Update" : "Add Project"}
+                        {getSubmitLabel()}
                     </button>
                 </div>
             }>
@@ -166,9 +175,9 @@ const ProjectsForm = () => {
 
                             {/* Technologies */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     Technologies Used <span className="text-red-500">*</span>
-                                </label>
+                                </p>
                                 <div className="flex gap-2">
                                     <input
                                         value={techInput}
@@ -301,14 +310,14 @@ const ProjectCard = memo(function ProjectCard({
 
                 {/* Badges row */}
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
-                    <span role="status" className="text-xs px-2.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full font-medium">
+                    <output className="text-xs px-2.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full font-medium">
                         {PROJECT_TYPE_LABELS[project.project_type] || project.project_type}
-                    </span>
+                    </output>
                     {project.is_ongoing && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            Ongoing
-                        </span>
+                        <output className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true" />
+                            <span>Ongoing</span>
+                        </output>
                     )}
                     {project.is_featured && (
                         <span className="text-xs px-2.5 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-full font-medium">
@@ -357,7 +366,7 @@ const ProjectCard = memo(function ProjectCard({
                     {project.github_link && (
                         <a href={project.github_link} target="_blank" rel="noreferrer"
                             className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <Github className="h-3.5 w-3.5" /> GitHub
+                            <GitHubIcon className="h-3.5 w-3.5" /> GitHub
                         </a>
                     )}
                     {project.demo_link && (
@@ -373,14 +382,14 @@ const ProjectCard = memo(function ProjectCard({
                         </a>
                     )}
                     {project.is_verified && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                        <output className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
                             <CheckCircle className="h-3.5 w-3.5" /> Verified
-                        </span>
+                        </output>
                     )}
                     {project.is_verified === false && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 font-medium">
+                        <output className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 font-medium">
                             <AlertCircle className="h-3.5 w-3.5" /> Pending verification
-                        </span>
+                        </output>
                     )}
                 </div>
             </div>

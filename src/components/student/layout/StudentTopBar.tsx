@@ -6,6 +6,9 @@ import { useLocation } from "react-router-dom"
 import { useStudentAuth } from "@/hooks/student/useStudentAuth"
 import { useUnreadCount } from "@/hooks/student/notifications/useUnreadCount"
 import NotificationDropdown from "@/components/student/notifications/NotificationDropdown"
+import CommandPalette from "@/components/ui/CommandPalette"
+import { useCommandPaletteShortcut } from "@/hooks/useCommandPalette"
+import { studentNav } from "@/lib/navigationRegistry"
 
 interface TopBarProps {
   onMenuClick: () => void
@@ -19,6 +22,10 @@ export default function StudentTopBar({ onMenuClick, isMobile }: Readonly<TopBar
   const shouldReduce = useReducedMotion()
   const location = useLocation()
   const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false)
+  const openPalette = useCallback(() => setIsPaletteOpen(true), [])
+  const closePalette = useCallback(() => setIsPaletteOpen(false), [])
+  useCommandPaletteShortcut(openPalette)
   const notifContainerRef = useRef<HTMLDivElement>(null)
   const toggleNotifDropdown = useCallback(() => setIsNotifOpen((prev) => !prev), [])
   const closeNotifDropdown = useCallback(() => setIsNotifOpen(false), [])
@@ -42,7 +49,7 @@ export default function StudentTopBar({ onMenuClick, isMobile }: Readonly<TopBar
   return (
     <header className="sticky top-0 z-30 w-full h-14 shrink-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/60 dark:border-gray-800/60 flex items-center justify-between px-4 sm:px-6">
       {/* LEFT */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {/* Mobile hamburger */}
         {isMobile && (
           <motion.button
@@ -56,15 +63,17 @@ export default function StudentTopBar({ onMenuClick, isMobile }: Readonly<TopBar
           </motion.button>
         )}
 
-        {/* Search */}
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-          <input
-            type="text"
-            placeholder="Search… (Ctrl+K)"
-            className="pl-9 pr-4 py-2 w-48 sm:w-56 lg:w-64 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all"
-          />
-        </div>
+        {/* Search trigger — compact icon button */}
+        <motion.button
+          type="button"
+          onClick={openPalette}
+          aria-label="Search (Ctrl+K)"
+          title="Search… (Ctrl+K)"
+          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300 cursor-pointer"
+          {...btnMotion}
+        >
+          <Search size={18} />
+        </motion.button>
       </div>
 
       {/* RIGHT */}
@@ -135,6 +144,8 @@ export default function StudentTopBar({ onMenuClick, isMobile }: Readonly<TopBar
           </div>
         )}
       </div>
+
+      <CommandPalette items={studentNav} isOpen={isPaletteOpen} onClose={closePalette} />
     </header>
   )
 }

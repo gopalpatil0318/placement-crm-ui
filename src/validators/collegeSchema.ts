@@ -55,6 +55,38 @@ export const collegeSchema = z.object({
     .optional()
     .or(z.literal("")),
 
+  collegeLogoUrl: z
+    .string()
+    .regex(/^https?:\/\/.+/, { message: "Must be a valid URL" })
+    .max(2000, { message: "Logo URL cannot exceed 2000 characters" })
+    .optional()
+    .or(z.literal("")),
+
+  collegeWebsite: z
+    .string()
+    .regex(/^https?:\/\/.+/, { message: "Must be a valid URL" })
+    .max(500, { message: "Website URL cannot exceed 500 characters" })
+    .optional()
+    .or(z.literal("")),
+
+  collegeAffiliation: z
+    .string()
+    .max(200, { message: "Affiliation cannot exceed 200 characters" })
+    .optional()
+    .or(z.literal("")),
+
+  collegeEstablishedYear: z
+    .string()
+    .regex(/^(\d{4})?$/, { message: "Must be a valid 4-digit year" })
+    .optional()
+    .or(z.literal("")),
+
+  collegeDescription: z
+    .string()
+    .max(1000, { message: "Description cannot exceed 1000 characters" })
+    .optional()
+    .or(z.literal("")),
+
   defaultAcademicYear: z
     .string()
     .min(1, { message: "Please select a default academic year" }),
@@ -66,7 +98,7 @@ export const collegeSchema = z.object({
 
   adminEmail: z
     .string()
-    .email({ message: "Invalid email format" }),
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: "Invalid email format" }),
 
   adminPassword: z
     .string()

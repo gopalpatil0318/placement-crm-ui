@@ -1,7 +1,8 @@
-import { createContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import api from "../lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { clearOtherSessions } from "@/lib/clearAllAuthSessions";
+import { queryClient } from "@/lib/queryClient";
 import type { User, UserRole, SysAdminAuthContextType } from "../types/auth";
 
 // eslint-disable-next-line react-refresh/only-export-components -- context object co-exported with provider
@@ -9,7 +10,7 @@ export const SysAdminAuthContext = createContext<SysAdminAuthContextType | undef
 
 const STORAGE_KEY = "sysadmin_user";
 
-export function SysAdminAuthProvider({ children }: { children: ReactNode }) {
+export function SysAdminAuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -26,7 +27,7 @@ export function SysAdminAuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
     }, []);
 
-    const login = async (email: string, password: string) => {
+    const login = useCallback(async (email: string, password: string) => {
         try {
             const response = await api.post("/sysadmin/login", { email, password });
 
@@ -66,9 +67,9 @@ export function SysAdminAuthProvider({ children }: { children: ReactNode }) {
 
             throw error;
         }
-    };
+    }, []);
 
-    const logout = async () => {
+    const logout = useCallback(async () => {
         try {
             const response = await api.post("/sysadmin/logout");
 
@@ -90,13 +91,18 @@ export function SysAdminAuthProvider({ children }: { children: ReactNode }) {
             });
 
         } finally {
+            queryClient.clear();
             setUser(null);
             localStorage.removeItem(STORAGE_KEY);
         }
-    };
+    }, []);
+
+    const contextValue = useMemo(() => ({
+        user, isAuthenticated: !!user, isLoading, login, logout,
+    }), [user, isLoading, login, logout]);
 
     return (
-        <SysAdminAuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
+        <SysAdminAuthContext.Provider value={contextValue}>
             {!isLoading && children}
         </SysAdminAuthContext.Provider>
     );

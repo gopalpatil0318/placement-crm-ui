@@ -12,7 +12,6 @@ export interface StudentDetail {
     dept_id: string;
     dept_name: string;
     student_passout_year: number;
-    current_year: number;
     student_status: string;
     profile_complete: boolean;
     profile_is_approved: boolean;
@@ -22,7 +21,7 @@ export interface StudentDetail {
 
 export const useStudentDetail = (studentId: string) => {
     const { data, isLoading, error, refetch } = useQuery({
-        queryKey: queryKeys.students.detail(studentId!),
+        queryKey: queryKeys.students.detail(studentId),
         queryFn: async () => {
             const response = await CollegeAdminService.getStudent(studentId);
             return (response.data || response) as StudentDetail;
@@ -30,12 +29,15 @@ export const useStudentDetail = (studentId: string) => {
         enabled: !!studentId,
     });
 
+    let errorMessage: string | null = null;
+    if (error) {
+        errorMessage = error instanceof ApiError ? error.message : "Failed to fetch student details";
+    }
+
     return {
         student: data ?? null,
         loading: isLoading,
-        error: error
-            ? (error instanceof ApiError ? error.message : "Failed to fetch student details")
-            : null,
+        error: errorMessage,
         refresh: refetch,
     };
 };

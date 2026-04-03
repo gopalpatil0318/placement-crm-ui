@@ -1,13 +1,10 @@
 import { lazy } from "react";
-import { Route } from "react-router-dom";
-import StudentPublicRoute from "@/components/routes/StudentPublicRoute";
+import { Route, Navigate } from "react-router-dom";
 import StudentProtectedRoute from "@/components/routes/StudentProtectedRoute";
 import StudentLayout from "@/components/student/layout/StudentLayout";
 
-// Auth pages (public — no layout)
-const StudentLogin = lazy(() => import("@/pages/Students/StudentLogin"));
-const StudentForgotPassword = lazy(() => import("@/pages/Students/StudentForgotPassword"));
-const StudentResetPassword = lazy(() => import("@/pages/Students/StudentResetPassword"));
+// Auth pages are now handled by the combined login in collegeAdminRoutes.
+// Legacy /student/* auth paths redirect to the new unified routes.
 
 // Dashboard & Profile
 const StudentDashboard = lazy(() => import("@/pages/Students/StudentDashboard"));
@@ -47,10 +44,10 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 
 export const studentRoutes = (
     <>
-        {/* Public (no layout) */}
-        <Route path="/student/login" element={<StudentPublicRoute><StudentLogin /></StudentPublicRoute>} />
-        <Route path="/student/forgot-password" element={<StudentPublicRoute><StudentForgotPassword /></StudentPublicRoute>} />
-        <Route path="/student/reset-password" element={<StudentPublicRoute><StudentResetPassword /></StudentPublicRoute>} />
+        {/* Legacy auth paths — redirect to new unified routes */}
+        <Route path="/student/login" element={<Navigate to="/login" replace />} />
+        <Route path="/student/forgot-password" element={<Navigate to="/forgot-password?type=student" replace />} />
+        <Route path="/student/reset-password" element={<Navigate to="/reset-password?type=student" replace />} />
 
         {/* Protected (shared StudentLayout: sidebar + top bar) */}
         <Route element={<StudentProtectedRoute><StudentLayout /></StudentProtectedRoute>}>

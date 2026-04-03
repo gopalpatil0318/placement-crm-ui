@@ -324,7 +324,7 @@ const SummaryStatsBar = ({ summary, loading }: { summary: StatusSummary | null; 
 const SkeletonStats = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 animate-pulse">
         {Array.from({ length: 5 }).map((_, i) => (
-            <div key={`stat-skel-${i}`} className="rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3.5 flex items-center gap-3">
+            <div key={`stat-skel-${String(i)}`} className="rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3.5 flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-gray-100 dark:bg-gray-700" />
                 <div className="space-y-1.5">
                     <div className="h-5 w-12 bg-gray-100 dark:bg-gray-700 rounded" />
@@ -476,7 +476,7 @@ const PaginationControls = ({
             </button>
             {pages.map((p, idx) =>
                 p === "ellipsis" ? (
-                    <span key={`ell-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
+                    <span key={`ell-${String(idx)}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
                         ...
                     </span>
                 ) : (
@@ -555,7 +555,7 @@ const EmptyState = ({
 const SkeletonTable = () => (
     <>
         {Array.from({ length: 8 }).map((_, i) => (
-            <tr key={`skel-${i}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
+            <tr key={`skel-${String(i)}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
                 <td className="px-4 py-3.5 w-10">
                     <div className="h-4 w-4 bg-gray-100 dark:bg-gray-700 rounded" />
                 </td>
@@ -1754,7 +1754,7 @@ const BulkResultModal = ({
                     </div>
                     <div className="divide-y divide-red-100 dark:divide-red-800 max-h-40 overflow-y-auto">
                         {result.errors.map((e, i) => (
-                            <div key={`err-${i}`} className="px-4 py-2.5">
+                            <div key={`err-${String(i)}`} className="px-4 py-2.5">
                                 <p className="text-sm text-red-600 dark:text-red-400">{e.error}</p>
                             </div>
                         ))}
@@ -2405,7 +2405,7 @@ const RoundResultsManager = ({
                     {(() => {
                         if (loading) {
                             return Array.from({ length: 5 }).map((_, i) => (
-                                <div key={`card-skel-${i}`} className="p-4 space-y-3 animate-pulse">
+                                <div key={`card-skel-${String(i)}`} className="p-4 space-y-3 animate-pulse">
                                 <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
                                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/3" />
                                 <div className="flex gap-2">

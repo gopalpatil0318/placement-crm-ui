@@ -19,8 +19,8 @@ const PersonalInfoForm = () => {
                 <div className="space-y-6">
                     {/* Contact Details */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {Array.from({ length: 2 }).map((_, i) => (
-                            <div key={i} className="space-y-2">
+                        {["mobile", "alt-mobile"].map((id) => (
+                            <div key={id} className="space-y-2">
                                 <div className="h-3 w-24 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
                                 <div className="h-10 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
                             </div>
@@ -28,8 +28,8 @@ const PersonalInfoForm = () => {
                     </div>
                     {/* Personal Details */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                            <div key={i} className="space-y-2">
+                        {["gender", "dob", "blood"].map((id) => (
+                            <div key={id} className="space-y-2">
                                 <div className="h-3 w-20 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
                                 <div className="h-10 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
                             </div>
@@ -37,20 +37,20 @@ const PersonalInfoForm = () => {
                     </div>
                     {/* Identity */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                            <div key={i} className="space-y-2">
+                        {["category", "aadhar", "pan"].map((id) => (
+                            <div key={id} className="space-y-2">
                                 <div className="h-3 w-20 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
                                 <div className="h-10 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
                             </div>
                         ))}
                     </div>
                     {/* Section headers + grids for Father/Mother/Address */}
-                    {Array.from({ length: 3 }).map((_, s) => (
-                        <div key={s}>
+                    {["father", "mother", "address"].map((section) => (
+                        <div key={section}>
                             <div className="h-4 w-28 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse mb-4" />
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                {Array.from({ length: 4 }).map((_, i) => (
-                                    <div key={i} className="space-y-2">
+                                {["a", "b", "c", "d"].map((field) => (
+                                    <div key={`${section}-${field}`} className="space-y-2">
                                         <div className="h-3 w-20 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
                                         <div className="h-10 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
                                     </div>

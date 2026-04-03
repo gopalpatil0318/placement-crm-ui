@@ -73,7 +73,7 @@ const QUESTION_TYPE_COLORS: Record<string, { bg: string; text: string; border: s
     yes_no: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-400", border: "border-amber-100 dark:border-amber-800" },
 };
 
-const MCQ_TYPES = ["mcq_single", "mcq_multiple"];
+const MCQ_TYPES = new Set(["mcq_single", "mcq_multiple"]);
 
 const inputClass = (hasError: boolean) =>
     `w-full rounded-xl border px-4 py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 transition ${
@@ -101,7 +101,7 @@ const QuestionCard = ({
 }) => {
     const typeColors = QUESTION_TYPE_COLORS[question.question_type] || QUESTION_TYPE_COLORS.text;
     const TypeIcon = QUESTION_TYPE_ICONS[question.question_type] || HelpCircle;
-    const isMcq = MCQ_TYPES.includes(question.question_type);
+    const isMcq = MCQ_TYPES.has(question.question_type);
 
     return (
         <div className="flex gap-4">
@@ -138,9 +138,9 @@ const QuestionCard = ({
                         {/* MCQ options */}
                         {isMcq && question.question_options && question.question_options.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 mt-2.5">
-                                {question.question_options.map((opt, i) => (
+                                {question.question_options.map((opt) => (
                                     <span
-                                        key={i}
+                                        key={opt}
                                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-800"
                                     >
                                         {question.question_type === "mcq_single" ? (
@@ -213,7 +213,7 @@ const QuestionManager = ({ jobId, jobStatus, questions, onRefresh }: QuestionMan
     // Stats
     const totalCount = questions.length;
     const requiredCount = questions.filter((q) => q.is_required).length;
-    const mcqCount = questions.filter((q) => MCQ_TYPES.includes(q.question_type)).length;
+    const mcqCount = questions.filter((q) => MCQ_TYPES.has(q.question_type)).length;
 
     const handleAddSuccess = useCallback(() => {
         setShowAddModal(false);
@@ -265,7 +265,7 @@ const QuestionManager = ({ jobId, jobStatus, questions, onRefresh }: QuestionMan
                         {totalCount > 0 && (
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                                    {totalCount} question{totalCount !== 1 ? "s" : ""}
+                                    {totalCount} question{totalCount === 1 ? "" : "s"}
                                 </span>
                                 {requiredCount > 0 && (
                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
@@ -393,7 +393,7 @@ const McqOptionsSection = ({
 }) => (
     <div className="rounded-xl border border-indigo-100 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-900/10 p-4">
         <div className="flex items-center justify-between mb-3">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="question-options-section" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Options <span className="text-red-500">*</span>
                 <span className="text-gray-400 dark:text-gray-500 text-xs ml-1">(min 2, max 20)</span>
             </label>
@@ -409,7 +409,7 @@ const McqOptionsSection = ({
         </div>
         <div className="space-y-2">
             {options.map((opt, i) => (
-                <div key={i} className="flex items-center gap-2">
+                <div key={`option-${String(i)}`} className="flex items-center gap-2">
                     <span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-5 text-right flex-shrink-0">
                         {i + 1}.
                     </span>
@@ -475,7 +475,7 @@ const QuestionFormBody = ({
     submitLabel: string;
     loadingLabel: string;
 }) => {
-    const isMcq = MCQ_TYPES.includes(formData.question_type);
+    const isMcq = MCQ_TYPES.has(formData.question_type);
 
     return (
         <div className="space-y-5">
@@ -520,13 +520,14 @@ const QuestionFormBody = ({
             {/* Question Order — edit mode only */}
             {mode === "edit" && (
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    <label htmlFor="question-order-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                         <span className="inline-flex items-center gap-1.5">
                             <ListOrdered className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                             Question Order
                         </span>
                     </label>
                     <input
+                        id="question-order-input"
                         type="number"
                         name="question_order"
                         value={formData.question_order ?? 1}
@@ -553,6 +554,7 @@ const QuestionFormBody = ({
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Students must answer this to apply</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
+                    <span className="sr-only">Required question toggle</span>
                     <input
                         type="checkbox"
                         name="is_required"
@@ -734,11 +736,10 @@ const DeleteConfirmModal = ({
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                     Are you sure you want to delete{" "}
                     <span className="font-semibold text-gray-800 dark:text-gray-100">
-                        "Q{question.question_order}. {question.question_text.length > 60
+                        &quot;Q{question.question_order}. {question.question_text.length > 60
                             ? question.question_text.slice(0, 60) + "..."
-                            : question.question_text}"
-                    </span>
-                    ?
+                            : question.question_text}&quot;
+                    </span>{"?"}
                 </p>
 
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">

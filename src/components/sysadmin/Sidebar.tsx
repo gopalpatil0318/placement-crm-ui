@@ -10,6 +10,7 @@ import {
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { useAuth } from "@/hooks/sysadmin/useAuth"
+import PlaceNexLogo from "@/components/ui/PlaceNexLogo"
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -76,7 +77,12 @@ interface SidebarProps {
   isMobile?: boolean
 }
 
-export default function Sidebar({ isOpen, onClose, isMobile = false }: SidebarProps) {
+function getSidebarWidth(isMobile: boolean, isOpen: boolean): number {
+  if (isMobile) return isOpen ? 280 : 0
+  return isOpen ? 280 : 72
+}
+
+export default function Sidebar({ isOpen, onClose, isMobile = false }: Readonly<SidebarProps>) {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
@@ -145,21 +151,19 @@ export default function Sidebar({ isOpen, onClose, isMobile = false }: SidebarPr
       </AnimatePresence>
 
       <motion.aside
-        animate={{ width: isMobile ? (isOpen ? 280 : 0) : (isOpen ? 280 : 72) }}
+        animate={{ width: getSidebarWidth(isMobile, isOpen) }}
         transition={sidebarTransition}
         className={`h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-hidden
           ${isMobile ? "fixed z-50" : "relative"}`}
       >
         {/* Logo */}
-        <div className="px-5 py-5 flex items-center gap-2 shrink-0">
-          <span className="text-2xl font-bold text-blue-600 tracking-tight shrink-0 w-8 text-center">P</span>
-          <motion.span
-            animate={{ opacity: isOpen ? 1 : 0, width: isOpen ? "auto" : 0 }}
-            transition={{ duration: 0.15 }}
-            className="text-2xl font-bold text-blue-600 tracking-tight overflow-hidden whitespace-nowrap"
-          >
-            CRM
-          </motion.span>
+        <div className="px-4 py-4 flex items-center gap-2 shrink-0">
+          <PlaceNexLogo variant={isOpen ? "full" : "icon"} size={28} />
+          {isOpen && (
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded">
+              Admin
+            </span>
+          )}
         </div>
 
         {/* User Card — visible only when expanded */}
@@ -192,7 +196,7 @@ export default function Sidebar({ isOpen, onClose, isMobile = false }: SidebarPr
         {/* Nav Sections */}
         <nav className="flex-1 mt-2 px-3 text-sm overflow-y-auto pb-4">
           {navItems.map((section, idx) => (
-            <div key={section.section} className={idx !== 0 ? "mt-6" : ""}>
+            <div key={section.section} className={idx === 0 ? "" : "mt-6"}>
               {isOpen ? (
                 <p className="mb-2 px-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider whitespace-nowrap overflow-hidden">
                   {section.section}
@@ -217,6 +221,13 @@ export default function Sidebar({ isOpen, onClose, isMobile = false }: SidebarPr
           ))}
         </nav>
 
+        {/* Powered by */}
+        {isOpen && (
+          <div className="px-4 py-2 text-center">
+            <span className="text-[10px] text-gray-400 dark:text-gray-500">Powered by <span className="font-semibold text-blue-500">PlaceNex</span></span>
+          </div>
+        )}
+
         {/* Logout */}
         <div className="p-3 border-t border-gray-100 dark:border-gray-800 shrink-0">
           <button
@@ -225,7 +236,7 @@ export default function Sidebar({ isOpen, onClose, isMobile = false }: SidebarPr
             className={`flex items-center gap-3 w-full rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors group font-medium cursor-pointer
               ${isOpen ? "px-3 py-2.5" : "justify-center py-2.5"}`}
             aria-label="Log out"
-            title={!isOpen ? "Log Out" : undefined}
+            title={isOpen ? undefined : "Log Out"}
           >
             <LogOut size={18} className="shrink-0" />
             <motion.span
@@ -242,6 +253,64 @@ export default function Sidebar({ isOpen, onClose, isMobile = false }: SidebarPr
   )
 }
 
+// ─── NavItem helpers ────────────────────────────────────────────────────────
+
+function getNavItemClass(isActive: boolean, isOpen: boolean): string {
+  const layout = isOpen ? "justify-between px-3" : "justify-center px-0"
+  const state = isActive
+    ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 font-medium"
+    : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-600"
+  return `w-full flex items-center rounded-lg transition-all duration-200 group cursor-pointer ${layout} py-2.5 ${state}`
+}
+
+function getNavLinkClass(isActive: boolean, isOpen: boolean): string {
+  const layout = isOpen ? "px-3" : "justify-center px-0"
+  const state = isActive
+    ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 font-medium"
+    : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-600"
+  return `flex items-center gap-3 py-2.5 rounded-lg transition-all duration-200 group ${layout} ${state}`
+}
+
+function getSubItemClass(isSubActive: boolean): string {
+  return isSubActive
+    ? "text-blue-600 bg-blue-50/50 dark:bg-blue-900/10 font-medium"
+    : "text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+}
+
+function getSubDotClass(isSubActive: boolean): string {
+  return isSubActive
+    ? "bg-blue-600 scale-125"
+    : "bg-gray-300 dark:bg-gray-600 group-hover:bg-blue-600"
+}
+
+function NavSubItems({ subItems, activePath, shouldReduce }: Readonly<{ subItems: SubItem[]; activePath: string; shouldReduce: boolean | null }>) {
+  return (
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: "auto", opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      transition={shouldReduce ? { duration: 0 } : { duration: 0.2, ease: "easeInOut" }}
+      className="overflow-hidden"
+    >
+      <div className="ml-9 mt-1 space-y-0.5 relative before:absolute before:left-0 before:top-0 before:bottom-2 before:w-px before:bg-gray-200 dark:before:bg-gray-700">
+        {subItems.map((sub) => {
+          const isSubActive = activePath === sub.path || activePath.startsWith(sub.path + "/")
+          return (
+            <Link
+              key={sub.path}
+              to={sub.path}
+              className={`flex items-center gap-2 py-2 px-3 rounded-md transition-all duration-200 group ${getSubItemClass(isSubActive)}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full transition-all ${getSubDotClass(isSubActive)}`} />
+              {sub.label}
+            </Link>
+          )
+        })}
+      </div>
+    </motion.div>
+  )
+}
+
 // ─── NavItem Sub-component ──────────────────────────────────────────────────────
 
 interface NavItemComponentProps {
@@ -253,13 +322,17 @@ interface NavItemComponentProps {
   shouldReduce: boolean | null
 }
 
-function NavItem({ item, isExpanded, onToggle, activePath, isOpen, shouldReduce }: NavItemComponentProps) {
+function NavItem({ item, isExpanded, onToggle, activePath, isOpen, shouldReduce }: Readonly<NavItemComponentProps>) {
   const { icon: Icon, label, path, subItems } = item
   const hasSubItems = subItems && subItems.length > 0
   const isActive = path === activePath || subItems?.some((sub) => activePath.startsWith(sub.path))
 
+  const iconClass = isActive
+    ? "text-blue-600"
+    : "text-gray-400 dark:text-gray-500 group-hover:text-blue-600"
+
   const iconEl = (
-    <span className={`shrink-0 ${isActive ? "text-blue-600" : "text-gray-400 dark:text-gray-500 group-hover:text-blue-600"} transition-colors`}>
+    <span className={`shrink-0 ${iconClass} transition-colors`}>
       <Icon size={18} />
     </span>
   )
@@ -274,17 +347,20 @@ function NavItem({ item, isExpanded, onToggle, activePath, isOpen, shouldReduce 
     </motion.span>
   )
 
+  const chevronClass = isActive
+    ? "text-blue-600"
+    : "text-gray-400 group-hover:text-blue-600"
+
+  const titleAttr = isOpen ? undefined : label
+
   return (
     <div className="relative">
       {hasSubItems ? (
         <button
           type="button"
           onClick={onToggle}
-          title={!isOpen ? label : undefined}
-          className={`w-full flex items-center rounded-lg transition-all duration-200 group cursor-pointer
-            ${isOpen ? "justify-between px-3" : "justify-center px-0"} py-2.5
-            ${isActive ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 font-medium" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-600"}
-          `}
+          title={titleAttr}
+          className={getNavItemClass(!!isActive, isOpen)}
         >
           <div className="flex items-center gap-3">
             {iconEl}
@@ -293,18 +369,15 @@ function NavItem({ item, isExpanded, onToggle, activePath, isOpen, shouldReduce 
           {isOpen && (
             <ChevronDown
               size={16}
-              className={`transition-transform duration-300 ${isExpanded ? "rotate-180" : ""} ${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"}`}
+              className={`transition-transform duration-300 ${isExpanded ? "rotate-180" : ""} ${chevronClass}`}
             />
           )}
         </button>
       ) : (
         <Link
           to={path || "#"}
-          title={!isOpen ? label : undefined}
-          className={`flex items-center gap-3 py-2.5 rounded-lg transition-all duration-200 group
-            ${isOpen ? "px-3" : "justify-center px-0"}
-            ${activePath === path ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 font-medium" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-600"}
-          `}
+          title={titleAttr}
+          className={getNavLinkClass(activePath === path, isOpen)}
         >
           {iconEl}
           {labelEl}
@@ -316,31 +389,10 @@ function NavItem({ item, isExpanded, onToggle, activePath, isOpen, shouldReduce 
         <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-blue-600" />
       )}
 
-      {/* Sub-items with animated expand/collapse */}
+      {/* Sub-items */}
       <AnimatePresence initial={false}>
         {hasSubItems && isExpanded && isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={shouldReduce ? { duration: 0 } : { duration: 0.2, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="ml-9 mt-1 space-y-0.5 relative before:absolute before:left-0 before:top-0 before:bottom-2 before:w-px before:bg-gray-200 dark:before:bg-gray-700">
-              {subItems.map((sub) => (
-                <Link
-                  key={sub.path}
-                  to={sub.path}
-                  className={`flex items-center gap-2 py-2 px-3 rounded-md transition-all duration-200 group
-                    ${activePath === sub.path || activePath.startsWith(sub.path + "/") ? "text-blue-600 bg-blue-50/50 dark:bg-blue-900/10 font-medium" : "text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-gray-800"}
-                  `}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full transition-all ${activePath === sub.path || activePath.startsWith(sub.path + "/") ? "bg-blue-600 scale-125" : "bg-gray-300 dark:bg-gray-600 group-hover:bg-blue-600"}`} />
-                  {sub.label}
-                </Link>
-              ))}
-            </div>
-          </motion.div>
+          <NavSubItems subItems={subItems} activePath={activePath} shouldReduce={shouldReduce} />
         )}
       </AnimatePresence>
     </div>

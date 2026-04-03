@@ -57,7 +57,7 @@ const INITIALS_COLORS = [
 ] as const;
 
 const getInitialsColor = (name: string) =>
-    INITIALS_COLORS[name.charCodeAt(0) % INITIALS_COLORS.length];
+    INITIALS_COLORS[(name.codePointAt(0) ?? 0) % INITIALS_COLORS.length];
 
 // ========================
 // SUB-COMPONENTS
@@ -101,17 +101,17 @@ const Pagination = ({
 }) => {
     if (totalPages <= 1) return null;
 
-    const pages: (number | "ellipsis")[] = [];
+    const pages: (number | string)[] = [];
     const addPage = (p: number) => {
         if (!pages.includes(p)) pages.push(p);
     };
 
     addPage(1);
-    if (page > 3) pages.push("ellipsis");
+    if (page > 3) pages.push("ellipsis-start");
     for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
         addPage(i);
     }
-    if (page < totalPages - 2) pages.push("ellipsis");
+    if (page < totalPages - 2) pages.push("ellipsis-end");
     if (totalPages > 1) addPage(totalPages);
 
     return (
@@ -126,9 +126,9 @@ const Pagination = ({
                 <ChevronLeft className="h-4 w-4" />
             </button>
 
-            {pages.map((p, idx) =>
-                p === "ellipsis" ? (
-                    <span key={`ellipsis-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
+            {pages.map((p) =>
+                typeof p === "string" ? (
+                    <span key={p} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
                         ...
                     </span>
                 ) : (
@@ -162,7 +162,7 @@ const Pagination = ({
 };
 
 /** Empty state */
-const EmptyState = ({ hasFilters, onAdd }: { hasFilters: boolean; onAdd: () => void }) => (
+const EmptyState = ({ hasFilters, onAdd }: Readonly<{ hasFilters: boolean; onAdd: () => void }>) => (
     <div className="flex flex-col items-center py-16 text-center">
         <div className="h-16 w-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-5">
             <Building2 className="h-8 w-8 text-gray-400 dark:text-gray-500" />
@@ -197,6 +197,7 @@ const ViewCompanies = () => {
     const {
         companies,
         loading,
+        error,
         pagination,
         search,
         statusFilter,
@@ -220,8 +221,8 @@ const ViewCompanies = () => {
     // Skeleton rows
     const skeletonRows = useMemo(
         () =>
-            Array.from({ length: 5 }).map((_, i) => (
-                <tr key={`skel-${i}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
+            ['skel-0', 'skel-1', 'skel-2', 'skel-3', 'skel-4'].map((id) => (
+                <tr key={id} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
                     <td className="px-4 py-3.5"><div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-6" /></td>
                     <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
@@ -371,9 +372,20 @@ const ViewCompanies = () => {
                                 </tr>
                             </thead>
 
-                            {loading ? (
+                            {loading && (
                                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800">{skeletonRows}</tbody>
-                            ) : companies.length > 0 ? (
+                            )}
+                            {!loading && error && (
+                                <tbody>
+                                    <tr>
+                                        <td colSpan={6} className="py-16 text-center">
+                                            <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Please try refreshing the page.</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            )}
+                            {!loading && !error && companies.length > 0 && (
                                 <AnimatedTableBody className="divide-y divide-gray-50 dark:divide-gray-800">
                                     {companies.map((company, index) => (
                                         <AnimatedRow
@@ -448,7 +460,8 @@ const ViewCompanies = () => {
                                         </AnimatedRow>
                                     ))}
                                 </AnimatedTableBody>
-                            ) : (
+                            )}
+                            {!loading && !error && companies.length === 0 && (
                                 <tbody>
                                     <tr>
                                         <td colSpan={6}>
@@ -467,8 +480,11 @@ const ViewCompanies = () => {
                     {!loading && companies.length > 0 && (
                         <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-500 dark:text-gray-400">
                             <span>
-                                Showing <span className="font-medium text-gray-700 dark:text-gray-300">{startEntry}</span>â€“
-                                <span className="font-medium text-gray-700 dark:text-gray-300">{endEntry}</span> of{" "}
+                                {"Showing "}
+                                <span className="font-medium text-gray-700 dark:text-gray-300">{startEntry}</span>
+                                {"–"}
+                                <span className="font-medium text-gray-700 dark:text-gray-300">{endEntry}</span>
+                                {" of "}
                                 <span className="font-medium text-gray-700 dark:text-gray-300">{pagination.total}</span>
                             </span>
 

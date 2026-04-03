@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useMemo } from "react";
 
 interface SidebarContextType {
     isSidebarOpen: boolean;
@@ -11,19 +11,19 @@ interface SidebarContextType {
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
-export function SidebarProvider({ children }: { children: React.ReactNode }) {
+export function SidebarProvider({ children }: Readonly<{ children: React.ReactNode }>) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isProfileSidebarExpanded, setIsProfileSidebarExpanded] = useState(true);
 
+    const value = useMemo<SidebarContextType>(() => ({
+        isSidebarOpen,
+        setIsSidebarOpen,
+        isProfileSidebarExpanded,
+        setIsProfileSidebarExpanded,
+    }), [isSidebarOpen, isProfileSidebarExpanded]);
+
     return (
-        <SidebarContext.Provider
-            value={{
-                isSidebarOpen,
-                setIsSidebarOpen,
-                isProfileSidebarExpanded,
-                setIsProfileSidebarExpanded,
-            }}
-        >
+        <SidebarContext.Provider value={value}>
             {children}
         </SidebarContext.Provider>
     );

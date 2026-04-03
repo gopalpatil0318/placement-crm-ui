@@ -247,7 +247,7 @@ const StatsDashboard = ({
             border: "border-orange-100 dark:border-orange-900/40",
             iconBg: "bg-orange-100 dark:bg-orange-900/30",
             iconColor: "text-orange-600 dark:text-orange-400",
-            value: stats.avg_package !== null ? formatPackage(stats.avg_package) : "—",
+            value: stats.avg_package === null ? "—" : formatPackage(stats.avg_package),
             label: "Avg Package",
             Icon: BarChart3,
         },
@@ -256,7 +256,7 @@ const StatsDashboard = ({
             border: "border-cyan-100 dark:border-cyan-900/40",
             iconBg: "bg-cyan-100 dark:bg-cyan-900/30",
             iconColor: "text-cyan-600 dark:text-cyan-400",
-            value: stats.highest_package !== null ? formatPackage(stats.highest_package) : "—",
+            value: stats.highest_package === null ? "—" : formatPackage(stats.highest_package),
             label: "Highest",
             Icon: TrendingUp,
         },
@@ -265,7 +265,7 @@ const StatsDashboard = ({
             border: "border-amber-100 dark:border-amber-900/40",
             iconBg: "bg-amber-100 dark:bg-amber-900/30",
             iconColor: "text-amber-600 dark:text-amber-400",
-            value: stats.lowest_package !== null ? formatPackage(stats.lowest_package) : "—",
+            value: stats.lowest_package === null ? "—" : formatPackage(stats.lowest_package),
             label: "Lowest",
             Icon: TrendingDown,
         },
@@ -340,15 +340,13 @@ const StatusPills = ({
                 type="button"
                 onClick={() => onFilter("")}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    !activeFilter
-                        ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-sm"
-                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    activeFilter
+                        ? "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        : "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-sm"
                 }`}
             >
-                All
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                    !activeFilter ? "bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900" : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-                }`}>
+                <span>All</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeFilter ? "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300" : "bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900"}`}>
                     {stats.total_placements}
                 </span>
             </button>
@@ -458,7 +456,7 @@ const PaginationControls = ({
             </button>
             {pages.map((p, idx) =>
                 p === "ellipsis" ? (
-                    <span key={`ell-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
+                    <span key={`ell-${String(idx)}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
                 ) : (
                     <button
                         key={p}
@@ -513,7 +511,7 @@ const EmptyState = ({ hasFilters }: { hasFilters: boolean }) =>
 const SkeletonTable = () => (
     <>
         {Array.from({ length: 8 }).map((_, i) => (
-            <tr key={`skel-${i}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
+            <tr key={`skel-${String(i)}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
                 <td className="px-4 py-3.5 w-10"><div className="h-4 bg-gray-100 dark:bg-gray-700 rounded w-5" /></td>
                 <td className="px-4 py-3.5">
                     <div className="space-y-1.5">
@@ -1034,7 +1032,7 @@ const PlacementDetailPanel = ({
                         </div>
                         <div className="p-3 rounded-xl bg-white dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700">
                             <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Package</p>
-                            <p className={`text-base font-bold ${placement.fulltime_package !== null ? "text-emerald-700 dark:text-emerald-400" : "text-gray-300 dark:text-gray-600"}`}>
+                            <p className={`text-base font-bold ${placement.fulltime_package === null ? "text-gray-300 dark:text-gray-600" : "text-emerald-700 dark:text-emerald-400"}`}>
                                 {formatPackage(placement.fulltime_package)}
                             </p>
                         </div>
@@ -1319,7 +1317,7 @@ const PlacementManager = () => {
 
                         {/* Page size */}
                         <div className="text-sm text-gray-600 dark:text-gray-400 font-medium flex items-center gap-2 ml-auto">
-                            Show
+                            <span>Show</span>
                             <select
                                 value={pagination.limit}
                                 onChange={(e) => handleLimitChange(Number(e.target.value))}

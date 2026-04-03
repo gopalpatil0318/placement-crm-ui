@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { Building2, MapPin, User, Loader2, Eye, EyeOff } from "lucide-react"
+import { Building2, MapPin, User, Loader2, Eye, EyeOff, Globe } from "lucide-react"
 import FloatingInput from "@/components/ui/FloatingInput"
 import FloatingSelect from "@/components/ui/FloatingSelect"
 import FloatingTextarea from "@/components/ui/FloatingTextarea"
@@ -7,16 +7,16 @@ import FloatingTextarea from "@/components/ui/FloatingTextarea"
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
 interface CollegeFormProps {
-  mode: "create" | "edit"
-  formData: Record<string, string>
-  errors: Record<string, string | undefined>
-  loading: boolean
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void
-  handleSubmit?: (e: React.FormEvent<HTMLFormElement>) => void
-  handleUpdate?: () => void
-  handleCancel: () => void
-  showPassword?: boolean
-  togglePassword?: () => void
+  readonly mode: "create" | "edit"
+  readonly formData: Record<string, string>
+  readonly errors: Record<string, string | undefined>
+  readonly loading: boolean
+  readonly handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void
+  readonly handleSubmit?: (e: React.FormEvent<HTMLFormElement>) => void
+  readonly handleUpdate?: () => void
+  readonly handleCancel: () => void
+  readonly showPassword?: boolean
+  readonly togglePassword?: () => void
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
@@ -50,6 +50,17 @@ function getPasswordStrength(password: string) {
   return { label: "Strong", color: "bg-emerald-500", width: "100%" }
 }
 
+function getStrengthLabelColor(label: string) {
+  if (label === "Weak") return "text-red-500 dark:text-red-400"
+  if (label === "Medium") return "text-yellow-600 dark:text-yellow-400"
+  return "text-emerald-600 dark:text-emerald-400"
+}
+
+function getSubmitLabel(isCreate: boolean, loading: boolean) {
+  if (isCreate) return loading ? "Creating..." : "Create College"
+  return loading ? "Saving..." : "Save Changes"
+}
+
 // ─── Field name maps ────────────────────────────────────────────────────────────
 
 const F = {
@@ -66,7 +77,12 @@ const F = {
     pincode: "collegePincode",
     adminName: "adminName",
     adminEmail: "adminEmail",
-    adminPassword: "adminPassword",
+    adminPassword: "adminPassword", // NOSONAR - field name key, not a password value
+    logoUrl: "collegeLogoUrl",
+    website: "collegeWebsite",
+    affiliation: "collegeAffiliation",
+    establishedYear: "collegeEstablishedYear",
+    description: "collegeDescription",
   },
   edit: {
     name: "college_name",
@@ -82,16 +98,21 @@ const F = {
     adminName: "",
     adminEmail: "",
     adminPassword: "",
+    logoUrl: "college_logo_url",
+    website: "college_website",
+    affiliation: "college_affiliation",
+    establishedYear: "college_established_year",
+    description: "college_description",
   },
 } as const
 
 // ─── Section Header ─────────────────────────────────────────────────────────────
 
-function SectionHeader({ icon: Icon, title, description }: {
+function SectionHeader({ icon: Icon, title, description }: Readonly<{
   icon: React.ComponentType<{ className?: string }>
   title: string
   description: string
-}) {
+}>) {
   return (
     <div className="flex items-start gap-3 mb-6">
       <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20">
@@ -121,6 +142,8 @@ export default function CollegeForm({
 }: CollegeFormProps) {
   const f = F[mode]
   const isCreate = mode === "create"
+
+  const submitLabel = getSubmitLabel(isCreate, loading)
 
   const passwordValue = isCreate ? formData[f.adminPassword] || "" : ""
   const passwordStrength = useMemo(
@@ -193,7 +216,7 @@ export default function CollegeForm({
           </div>
           {formData[f.subdomain] && (
             <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 font-medium">
-              {formData[f.subdomain]}.placementcrm.com
+              {formData[f.subdomain]}.placenex.in
             </p>
           )}
         </div>
@@ -271,6 +294,75 @@ export default function CollegeForm({
           </div>
         </div>
 
+        {/* ── Divider ── */}
+        <div className="border-t border-gray-100 dark:border-gray-800" />
+
+        {/* ── Branding & Identity ── */}
+        <div>
+          <SectionHeader
+            icon={Globe}
+            title="Branding & Identity"
+            description="Logo, website, and affiliation details shown on the college portal"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <FloatingInput
+              label="Logo URL"
+              name={f.logoUrl}
+              value={formData[f.logoUrl] || ""}
+              onChange={handleChange}
+              error={errors[f.logoUrl]}
+              placeholder="https://res.cloudinary.com/.../logo.png"
+              type="url"
+              disabled={loading}
+            />
+            <FloatingInput
+              label="Website"
+              name={f.website}
+              value={formData[f.website] || ""}
+              onChange={handleChange}
+              error={errors[f.website]}
+              placeholder="https://www.college.ac.in"
+              type="url"
+              disabled={loading}
+            />
+            <FloatingInput
+              label="Affiliation"
+              name={f.affiliation}
+              value={formData[f.affiliation] || ""}
+              onChange={handleChange}
+              error={errors[f.affiliation]}
+              placeholder="e.g. SPPU, Pune"
+              disabled={loading}
+            />
+            <FloatingInput
+              label="Established Year"
+              name={f.establishedYear}
+              value={formData[f.establishedYear] || ""}
+              onChange={handleChange}
+              error={errors[f.establishedYear]}
+              placeholder="e.g. 1996"
+              maxLength={4}
+              disabled={loading}
+            />
+          </div>
+          <div className="mt-5">
+            <FloatingTextarea
+              label="Description"
+              name={f.description}
+              value={formData[f.description] || ""}
+              onChange={handleChange}
+              error={errors[f.description]}
+              placeholder="Short description about the college"
+              maxLength={1000}
+              rows={3}
+              disabled={loading}
+            />
+          </div>
+        </div>
+
+        {/* ── Divider ── */}
+        <div className="border-t border-gray-100 dark:border-gray-800" />
+
         {/* ── Admin Account (create only) ── */}
         {isCreate && f.adminName && (
           <>
@@ -336,10 +428,7 @@ export default function CollegeForm({
                         style={{ width: passwordStrength.width }}
                       />
                     </div>
-                    <p className={`text-xs mt-1 font-medium ${passwordStrength.label === "Weak" ? "text-red-500 dark:text-red-400"
-                      : passwordStrength.label === "Medium" ? "text-yellow-600 dark:text-yellow-400"
-                        : "text-emerald-600 dark:text-emerald-400"
-                      }`}>
+                    <p className={`text-xs mt-1 font-medium ${getStrengthLabelColor(passwordStrength.label)}`}>
                       {passwordStrength.label}
                     </p>
                   </div>
@@ -360,7 +449,7 @@ export default function CollegeForm({
             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-60 cursor-pointer"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isCreate ? (loading ? "Creating..." : "Create College") : (loading ? "Saving..." : "Save Changes")}
+            {submitLabel}
           </button>
           <button
             type="button"

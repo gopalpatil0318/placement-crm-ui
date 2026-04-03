@@ -19,6 +19,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import PlaceNexLogo from "@/components/ui/PlaceNexLogo";
 
 interface SubItem {
     label: string;
@@ -34,7 +35,7 @@ interface NavItemProps {
     disabledMessage?: string;
 }
 
-export default function Sidebar({ isOpen }: { isOpen: boolean }) {
+export default function Sidebar({ isOpen }: Readonly<{ isOpen: boolean }>) {
     const location = useLocation();
     const navigate = useNavigate();
     const { user, logout } = useStudentAuth();
@@ -155,9 +156,9 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
     const handleLogout = async () => {
         try {
             await logout();
-            navigate("/student/login", { replace: true });
+            navigate("/login", { replace: true });
         } catch {
-            navigate("/student/login", { replace: true });
+            navigate("/login", { replace: true });
         }
     };
 
@@ -168,32 +169,30 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
 
     return (
         <aside
-            className={`h-screen bg-white border-r flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "w-[280px]" : "w-0"
+            className={`h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "w-[280px]" : "w-0"
                 }`}
         >
             <div className="flex flex-col h-full min-w-[280px]">
                 {/* Header: Logo */}
-                <div className="px-6 py-5 flex items-center gap-2">
-                    <span className="text-2xl font-bold text-blue-600 tracking-tight">
-                        PCRM
-                    </span>
+                <div className="px-5 py-4 flex items-center gap-2">
+                    <PlaceNexLogo variant="full" size={28} />
                 </div>
 
                 {/* Header: Profile Card */}
                 <div className="px-4 mb-2">
                     <Link
                         to="/student/profile"
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-100 transition-colors group"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-blue-100 dark:hover:border-blue-900 transition-colors group"
                     >
                         <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="h-10 w-10 shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                            <div className="h-10 w-10 shrink-0 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
                                 <UserIcon size={20} />
                             </div>
                             <div className="truncate">
-                                <p className="text-sm font-semibold text-gray-900 truncate" title={displayName}>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate" title={displayName}>
                                     {displayName}
                                 </p>
-                                <p className="text-xs text-gray-500 truncate" title={displayDept}>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate" title={displayDept}>
                                     {displayDept}
                                 </p>
                             </div>
@@ -204,8 +203,8 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                 {/* Scrollable Navigation */}
                 <nav className="flex-1 mt-2 px-4 text-sm overflow-y-auto custom-scrollbar pb-4">
                     {navItems.map((section, idx) => (
-                        <div key={section.section} className={idx !== 0 ? "mt-8" : ""}>
-                            <p className="mb-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        <div key={section.section} className={idx === 0 ? "" : "mt-8"}>
+                            <p className="mb-3 px-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                                 {section.section}
                             </p>
                             <div className="space-y-1">
@@ -223,11 +222,16 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
                     ))}
                 </nav>
 
+                {/* Powered by */}
+                <div className="px-4 py-2 text-center">
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500">Powered by <span className="font-semibold text-blue-500">PlaceNex</span></span>
+                </div>
+
                 {/* Footer: Logout Button */}
-                <div className="p-4 border-t border-gray-100 bg-white">
+                <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200 group font-medium cursor-pointer"
+                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 group font-medium cursor-pointer"
                     >
                         <LogOut size={18} className="group-hover:scale-110 transition-transform" />
                         <span>Log Out</span>
@@ -263,10 +267,10 @@ function NavItem({
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 cursor-not-allowed select-none">
-                            <span className="text-gray-300">{icon}</span>
+                        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 dark:text-gray-500 cursor-not-allowed select-none">
+                            <span className="text-gray-300 dark:text-gray-600">{icon}</span>
                             <span>{label}</span>
-                            <Lock size={14} className="ml-auto text-gray-300" />
+                            <Lock size={14} className="ml-auto text-gray-300 dark:text-gray-600" />
                         </div>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="max-w-[200px]">
@@ -283,8 +287,8 @@ function NavItem({
                 <button
                     onClick={onToggle}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer ${isActive
-                        ? "bg-blue-50 text-blue-600 font-medium"
-                        : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+                        ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 font-medium"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-600"
                         }`}
                 >
                     <div className="flex items-center gap-3">
@@ -302,8 +306,8 @@ function NavItem({
                 <Link
                     to={path || "#"}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${activePath === path
-                        ? "bg-blue-50 text-blue-600 font-medium"
-                        : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+                        ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 font-medium"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-600"
                         }`}
                 >
                     <span className={`${activePath === path ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"} transition-colors`}>
@@ -314,17 +318,17 @@ function NavItem({
             )}
 
             {hasSubItems && isExpanded && (
-                <div className="ml-9 mt-1.5 space-y-1 relative before:absolute before:left-[-14px] before:top-0 before:bottom-2 before:w-[1px] before:bg-gray-100">
+                <div className="ml-9 mt-1.5 space-y-1 relative before:absolute before:left-[-14px] before:top-0 before:bottom-2 before:w-[1px] before:bg-gray-100 dark:before:bg-gray-700">
                     {subItems.map((sub) => (
                         <Link
                             key={sub.path}
                             to={sub.path}
                             className={`flex items-center gap-2 py-2 px-3 rounded-md transition-all duration-200 group ${activePath === sub.path
-                                ? "text-blue-600 bg-blue-50/50 font-medium"
-                                : "text-gray-500 hover:text-blue-600"
+                                ? "text-blue-600 bg-blue-50/50 dark:bg-blue-900/10 font-medium"
+                                : "text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                                 }`}
                         >
-                            <span className={`h-1.5 w-1.5 rounded-full transition-all ${activePath === sub.path ? "bg-blue-600 scale-125" : "bg-gray-300 group-hover:bg-blue-600"}`} />
+                            <span className={`h-1.5 w-1.5 rounded-full transition-all ${activePath === sub.path ? "bg-blue-600 scale-125" : "bg-gray-300 dark:bg-gray-600 group-hover:bg-blue-600"}`} />
                             {sub.label}
                         </Link>
                     ))}

@@ -18,14 +18,14 @@ import { useStudentDetail } from "@/hooks/collegeadmin/student_management/useStu
 const FormSkeleton = () => (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 animate-pulse space-y-8">
         {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-4">
+            <div key={`skeleton-section-${String(i)}`} className="space-y-4">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-xl" />
                     <div className="space-y-1"><div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded" /><div className="h-3 w-40 bg-gray-100 dark:bg-gray-800 rounded" /></div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {Array.from({ length: 3 }).map((_, j) => (
-                        <div key={j} className="h-12 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                        <div key={`skeleton-field-${String(j)}`} className="h-12 bg-gray-100 dark:bg-gray-800 rounded-lg" />
                     ))}
                 </div>
             </div>
@@ -55,7 +55,6 @@ export default function EditStudent() {
         student_password: "",
         dept_name: "",
         student_passout_year: new Date().getFullYear(),
-        current_year: 1,
     });
     const [formInitialized, setFormInitialized] = useState(false);
 
@@ -69,7 +68,6 @@ export default function EditStudent() {
             student_password: "",
             dept_name: student.dept_name || "",
             student_passout_year: student.student_passout_year || new Date().getFullYear(),
-            current_year: student.current_year || 1,
         };
         setFormData(data);
         // Store original for diff — mutate the ref-like state directly during render
@@ -116,7 +114,7 @@ export default function EditStudent() {
             const { name, value } = e.target;
             setFormData((prev) => ({
                 ...prev,
-                [name]: name === "student_passout_year" || name === "current_year" ? Number(value) : value,
+                [name]: name === "student_passout_year" ? Number(value) : value,
             }));
         },
         []

@@ -187,7 +187,7 @@ const CompanyAvatar = ({ name }: { name: string }) => {
         "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
         "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
     ];
-    const colorIdx = name.charCodeAt(0) % colors.length;
+    const colorIdx = (name.codePointAt(0) ?? 0) % colors.length;
     const initials = name
         .split(" ")
         .map((w) => w[0])
@@ -283,6 +283,12 @@ const formatDeadlineRemaining = (deadline: string): { label: string; sublabel: s
     return { label: expired ? "Expired" : label, sublabel, expired, urgentSoon };
 };
 
+const getDeadlineClass = (deadline: { expired: boolean; urgentSoon: boolean }, red: string, amber: string, emerald: string) => {
+    if (deadline.expired) return red;
+    if (deadline.urgentSoon) return amber;
+    return emerald;
+};
+
 const StatsRow = ({ job }: { job: JobDetail }) => {
     const totalPositions = job.positions.reduce((sum, p) => sum + (p.vacancies || 0), 0);
     const totalApps = job.application_stats?.total ?? 0;
@@ -304,29 +310,134 @@ const StatsRow = ({ job }: { job: JobDetail }) => {
                 <p className="text-xl font-bold text-purple-700 dark:text-purple-400">{roundCount}</p>
                 <p className="text-xs text-purple-600 dark:text-purple-500 font-medium mt-0.5">Rounds</p>
             </div>
-            <div className={`p-4 rounded-xl border text-center ${
-                deadline.expired    ? "bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/40"
-                : deadline.urgentSoon ? "bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/40"
-                : "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/40"
-            }`}>
-                <p className={`text-xl font-bold ${
-                    deadline.expired    ? "text-red-700 dark:text-red-400"
-                    : deadline.urgentSoon ? "text-amber-700 dark:text-amber-400"
-                    : "text-emerald-700 dark:text-emerald-400"
-                }`}>
+            <div className={`p-4 rounded-xl border text-center ${getDeadlineClass(deadline,
+                "bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/40",
+                "bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/40",
+                "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/40"
+            )}`}>
+                <p className={`text-xl font-bold ${getDeadlineClass(deadline,
+                    "text-red-700 dark:text-red-400",
+                    "text-amber-700 dark:text-amber-400",
+                    "text-emerald-700 dark:text-emerald-400"
+                )}`}>
                     {deadline.label}
                 </p>
-                <p className={`text-[10px] font-medium mt-0.5 ${
-                    deadline.expired    ? "text-red-600 dark:text-red-500"
-                    : deadline.urgentSoon ? "text-amber-600 dark:text-amber-500"
-                    : "text-emerald-600 dark:text-emerald-500"
-                }`}>
+                <p className={`text-[10px] font-medium mt-0.5 ${getDeadlineClass(deadline,
+                    "text-red-600 dark:text-red-500",
+                    "text-amber-600 dark:text-amber-500",
+                    "text-emerald-600 dark:text-emerald-500"
+                )}`}>
                     {deadline.sublabel}
                 </p>
             </div>
         </div>
     );
 };
+
+// ========================
+// CONFIRMATION MODAL (extracted to reduce cognitive complexity)
+// ========================
+
+const getColorByModalColor = (modalColor: string, colors: { red: string; amber: string; emerald: string }) => {
+    if (modalColor === "red") return colors.red;
+    if (modalColor === "amber") return colors.amber;
+    return colors.emerald;
+};
+
+interface ConfirmationModalProps {
+    confirmAction: StatusAction | null;
+    onClose: () => void;
+    statusLoading: boolean;
+    onConfirm: (value: string) => void;
+}
+
+const ConfirmationModal = ({ confirmAction, onClose, statusLoading, onConfirm }: ConfirmationModalProps) => (
+    <ModalWrapper
+        isOpen={!!confirmAction}
+        onClose={onClose}
+        disabled={statusLoading}
+        size="md"
+        title={confirmAction?.label}
+        titleIcon={
+            confirmAction && (
+                <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${getColorByModalColor(confirmAction.modalColor, {
+                    red: "bg-red-50 dark:bg-red-900/20",
+                    amber: "bg-amber-50 dark:bg-amber-900/20",
+                    emerald: "bg-emerald-50 dark:bg-emerald-900/20",
+                })}`}>
+                    <AlertTriangle className={`h-5 w-5 ${getColorByModalColor(confirmAction.modalColor, {
+                        red: "text-red-500",
+                        amber: "text-amber-500",
+                        emerald: "text-emerald-500",
+                    })}`} />
+                </div>
+            )
+        }
+    >
+        {confirmAction && (
+            <>
+                <div className="px-6 py-5 space-y-4">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                        {confirmAction.heading}
+                    </p>
+                    <div className={`rounded-xl p-4 space-y-2 ${getColorByModalColor(confirmAction.modalColor, {
+                        red: "bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30",
+                        amber: "bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30",
+                        emerald: "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30",
+                    })}`}>
+                        <p className={`text-xs font-semibold uppercase ${getColorByModalColor(confirmAction.modalColor, {
+                            red: "text-red-700 dark:text-red-400",
+                            amber: "text-amber-700 dark:text-amber-400",
+                            emerald: "text-emerald-700 dark:text-emerald-400",
+                        })}`}>
+                            This action will:
+                        </p>
+                        <ul className="space-y-1">
+                            {confirmAction.consequences.map((c) => (
+                                <li key={c} className={`text-sm flex items-start gap-2 ${getColorByModalColor(confirmAction.modalColor, {
+                                    red: "text-red-600 dark:text-red-400",
+                                    amber: "text-amber-600 dark:text-amber-400",
+                                    emerald: "text-emerald-600 dark:text-emerald-400",
+                                })}`}>
+                                    <span className="mt-1">•</span> {c}
+                                </li>
+                            ))}
+                        </ul>
+                        <p className={`text-xs mt-2 pt-2 border-t ${getColorByModalColor(confirmAction.modalColor, {
+                            red: "text-red-500 dark:text-red-400 border-red-200 dark:border-red-800",
+                            amber: "text-amber-500 dark:text-amber-400 border-amber-200 dark:border-amber-800",
+                            emerald: "text-emerald-500 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
+                        })}`}>
+                            {confirmAction.reversible}
+                        </p>
+                    </div>
+                </div>
+                <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 flex items-center justify-end gap-3">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={statusLoading}
+                        className="px-5 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-40"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onConfirm(confirmAction.value);
+                            onClose();
+                        }}
+                        disabled={statusLoading}
+                        className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-colors disabled:opacity-60 ${confirmAction.btnClass}`}
+                    >
+                        {statusLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {statusLoading ? "Processing..." : `Confirm ${confirmAction.label}`}
+                    </button>
+                </div>
+            </>
+        )}
+    </ModalWrapper>
+);
 
 // ========================
 // COMPONENT
@@ -565,94 +676,12 @@ const JobDetailView = ({ jobId, onJobLoaded }: JobDetailViewProps) => {
             </div>
 
             {/* ======================== CONFIRMATION MODAL ======================== */}
-            <ModalWrapper
-                isOpen={!!confirmAction}
+            <ConfirmationModal
+                confirmAction={confirmAction}
                 onClose={() => setConfirmAction(null)}
-                disabled={statusLoading}
-                size="md"
-                title={confirmAction?.label}
-                titleIcon={
-                    confirmAction && (
-                        <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                            confirmAction.modalColor === "red"     ? "bg-red-50 dark:bg-red-900/20"
-                            : confirmAction.modalColor === "amber" ? "bg-amber-50 dark:bg-amber-900/20"
-                            : "bg-emerald-50 dark:bg-emerald-900/20"
-                        }`}>
-                            <AlertTriangle className={`h-5 w-5 ${
-                                confirmAction.modalColor === "red"     ? "text-red-500"
-                                : confirmAction.modalColor === "amber" ? "text-amber-500"
-                                : "text-emerald-500"
-                            }`} />
-                        </div>
-                    )
-                }
-            >
-                {confirmAction && (
-                    <>
-                        {/* Modal body */}
-                        <div className="px-6 py-5 space-y-4">
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                                {confirmAction.heading}
-                            </p>
-                            <div className={`rounded-xl p-4 space-y-2 ${
-                                confirmAction.modalColor === "red"     ? "bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30"
-                                : confirmAction.modalColor === "amber" ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30"
-                                : "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30"
-                            }`}>
-                                <p className={`text-xs font-semibold uppercase ${
-                                    confirmAction.modalColor === "red"     ? "text-red-700 dark:text-red-400"
-                                    : confirmAction.modalColor === "amber" ? "text-amber-700 dark:text-amber-400"
-                                    : "text-emerald-700 dark:text-emerald-400"
-                                }`}>
-                                    This action will:
-                                </p>
-                                <ul className="space-y-1">
-                                    {confirmAction.consequences.map((c, i) => (
-                                        <li key={i} className={`text-sm flex items-start gap-2 ${
-                                            confirmAction.modalColor === "red"     ? "text-red-600 dark:text-red-400"
-                                            : confirmAction.modalColor === "amber" ? "text-amber-600 dark:text-amber-400"
-                                            : "text-emerald-600 dark:text-emerald-400"
-                                        }`}>
-                                            <span className="mt-1">•</span> {c}
-                                        </li>
-                                    ))}
-                                </ul>
-                                <p className={`text-xs mt-2 pt-2 border-t ${
-                                    confirmAction.modalColor === "red"     ? "text-red-500 dark:text-red-400 border-red-200 dark:border-red-800"
-                                    : confirmAction.modalColor === "amber" ? "text-amber-500 dark:text-amber-400 border-amber-200 dark:border-amber-800"
-                                    : "text-emerald-500 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800"
-                                }`}>
-                                    {confirmAction.reversible}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Modal footer */}
-                        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 flex items-center justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setConfirmAction(null)}
-                                disabled={statusLoading}
-                                className="px-5 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-40"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    await updateStatus(job.job_id, confirmAction.value);
-                                    setConfirmAction(null);
-                                }}
-                                disabled={statusLoading}
-                                className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-colors disabled:opacity-60 ${confirmAction.btnClass}`}
-                            >
-                                {statusLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {statusLoading ? "Processing..." : `Confirm ${confirmAction.label}`}
-                            </button>
-                        </div>
-                    </>
-                )}
-            </ModalWrapper>
+                statusLoading={statusLoading}
+                onConfirm={(value) => updateStatus(job.job_id, value)}
+            />
         </>
     );
 };
@@ -756,15 +785,15 @@ const EligibilityTab = ({ job, onRefresh }: { job: JobDetail; onRefresh: () => v
             <div className="border-t border-gray-200 dark:border-gray-700" />
 
             {/* Eligible Students Preview — lazy-loaded behind CTA */}
-            {!showStudents ? (
-                <EligibilityStudentsCTA
-                    hasCriteria={!!job.eligibility_criteria}
-                    onPreview={() => setShowStudents(true)}
-                />
-            ) : (
+            {showStudents ? (
                 <EligibleStudentsPreview
                     jobId={job.job_id}
                     onCollapse={() => setShowStudents(false)}
+                />
+            ) : (
+                <EligibilityStudentsCTA
+                    hasCriteria={!!job.eligibility_criteria}
+                    onPreview={() => setShowStudents(true)}
                 />
             )}
         </div>
@@ -815,6 +844,24 @@ const EligibilityStudentsCTA = ({
 // ELIGIBLE STUDENTS PREVIEW (lazy-loaded)
 // ========================
 
+const getCgpaColorClass = (cgpa: number) => {
+    if (cgpa >= 8) return "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20";
+    if (cgpa >= 6) return "text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20";
+    return "text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/20";
+};
+
+const getTwelfthDiplomaVal = (s: { twelfth_percentage?: number | null; diploma_percentage?: number | null }) => {
+    if (s.twelfth_percentage != null) return `${s.twelfth_percentage}% (12th)`;
+    if (s.diploma_percentage != null) return `${s.diploma_percentage}% (Dip)`;
+    return "\u2014";
+};
+
+const getEmptyStudentsMessage = (hasFilter: boolean, eligibleCount: number): { title: string; subtitle: string } => {
+    if (hasFilter) return { title: "No students match your search", subtitle: "Try adjusting your search or filters" };
+    if (eligibleCount === 0) return { title: "No students match the current criteria", subtitle: "Try adjusting the eligibility filters" };
+    return { title: "No eligible students found", subtitle: "Set eligibility criteria first to see matching students" };
+};
+
 const EligibleStudentsPreview = ({
     jobId,
     onCollapse,
@@ -849,7 +896,7 @@ const EligibleStudentsPreview = ({
             .catch(() => {});
         return () => { cancelled = true; };
     }, []);
-    const deptOptions = departments.map((d) => d.dept_name).sort();
+    const deptOptions = departments.map((d) => d.dept_name).sort((a, b) => a.localeCompare(b));
 
     // Skeleton loading on first fetch
     if (loading && students.length === 0) {
@@ -914,6 +961,7 @@ const EligibleStudentsPreview = ({
     }
 
     const progressWidth = totalStudents > 0 ? Math.round((eligibleCount / totalStudents) * 100) : 0;
+    const emptyMsg = getEmptyStudentsMessage(!!(search || deptFilter), eligibleCount);
 
     return (
         <div className="space-y-5">
@@ -1008,22 +1056,8 @@ const EligibleStudentsPreview = ({
                     <div className="h-14 w-14 rounded-2xl bg-gray-50 dark:bg-gray-800/60 flex items-center justify-center mx-auto mb-4">
                         <Users className="h-7 w-7 text-gray-300 dark:text-gray-600" />
                     </div>
-                    {search || deptFilter ? (
-                        <>
-                            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No students match your search</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try adjusting your search or filters</p>
-                        </>
-                    ) : eligibleCount === 0 ? (
-                        <>
-                            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No students match the current criteria</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try adjusting the eligibility filters</p>
-                        </>
-                    ) : (
-                        <>
-                            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No eligible students found</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Set eligibility criteria first to see matching students</p>
-                        </>
-                    )}
+                    <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">{emptyMsg.title}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{emptyMsg.subtitle}</p>
                 </div>
             ) : (
                 <>
@@ -1043,25 +1077,13 @@ const EligibleStudentsPreview = ({
                             </thead>
                             <tbody>
                                 {students.map((s, idx) => {
-                                    // CGPA color: ≥8 emerald, ≥6 amber, <6 red
-                                    const cgpaColor =
-                                        s.overall_cgpa >= 8
-                                            ? "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20"
-                                            : s.overall_cgpa >= 6
-                                            ? "text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20"
-                                            : "text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/20";
+                                    const cgpaColor = getCgpaColorClass(s.overall_cgpa);
                                     // KTs badge: 0 = emerald, >0 = red
                                     const ktsColor =
                                         s.total_live_kts === 0
                                             ? "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/40"
                                             : "bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/40";
-                                    // 12th or Diploma %
-                                    const twelfthDiplomaVal =
-                                        s.twelfth_percentage != null
-                                            ? `${s.twelfth_percentage}% (12th)`
-                                            : s.diploma_percentage != null
-                                            ? `${s.diploma_percentage}% (Dip)`
-                                            : "—";
+                                    const twelfthDiplomaVal = getTwelfthDiplomaVal(s);
 
                                     return (
                                         <tr key={s.student_id} className="group border-b border-gray-50 dark:border-gray-800 text-sm hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors">
@@ -1102,22 +1124,12 @@ const EligibleStudentsPreview = ({
                     {/* Mobile Cards */}
                     <div className="md:hidden space-y-3">
                         {students.map((s, idx) => {
-                            const cgpaColor =
-                                s.overall_cgpa >= 8
-                                    ? "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20"
-                                    : s.overall_cgpa >= 6
-                                    ? "text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20"
-                                    : "text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/20";
+                            const cgpaColor = getCgpaColorClass(s.overall_cgpa);
                             const ktsColor =
                                 s.total_live_kts === 0
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/40"
                                     : "bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/40";
-                            const twelfthDiplomaVal =
-                                s.twelfth_percentage != null
-                                    ? `${s.twelfth_percentage}% (12th)`
-                                    : s.diploma_percentage != null
-                                    ? `${s.diploma_percentage}% (Dip)`
-                                    : "—";
+                            const twelfthDiplomaVal = getTwelfthDiplomaVal(s);
                             return (
                                 <div key={s.student_id} className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 space-y-3">
                                     <div className="flex items-start justify-between">

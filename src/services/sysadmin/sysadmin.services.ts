@@ -22,6 +22,11 @@ interface CreateCollegePayload {
     adminName: string;
     adminEmail: string;
     adminPassword: string;
+    collegeLogoUrl: string;
+    collegeWebsite: string;
+    collegeAffiliation: string;
+    collegeEstablishedYear: string;
+    collegeDescription: string;
 }
 
 interface UpdateCollegePayload {
@@ -34,6 +39,11 @@ interface UpdateCollegePayload {
     college_district?: string;
     college_state?: string;
     college_pincode?: string;
+    college_logo_url?: string;
+    college_website?: string;
+    college_affiliation?: string;
+    college_established_year?: number | null;
+    college_description?: string;
 }
 
 export const SysAdminService = {
@@ -57,6 +67,11 @@ export const SysAdminService = {
             admin_name: data.adminName,
             admin_email: data.adminEmail,
             admin_password: data.adminPassword,
+            college_logo_url: data.collegeLogoUrl,
+            college_website: data.collegeWebsite,
+            college_affiliation: data.collegeAffiliation,
+            college_established_year: data.collegeEstablishedYear ? Number(data.collegeEstablishedYear) : null,
+            college_description: data.collegeDescription,
         });
 
         return response.data;

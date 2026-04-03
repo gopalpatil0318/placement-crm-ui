@@ -14,7 +14,7 @@ const StudentProtectedRoute = ({ children }: { children: ReactNode }) => {
     }
 
     if (!isAuthenticated || user?.role !== "student") {
-        return <Navigate to="/student/login" replace />
+        return <Navigate to="/login" replace />
     }
 
     return <>{children}</>

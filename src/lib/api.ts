@@ -18,7 +18,7 @@ export class ApiError extends Error {
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
   withCredentials: true,
-  timeout: 30000, // 30 seconds — prevents hanging requests on slow networks
+  timeout: 15000, // 15 seconds — balances slow networks vs connection exhaustion at scale
   headers: {
     "Content-Type": "application/json",
   },
@@ -28,16 +28,19 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status
+    const requestUrl = error.config?.url ?? ""
 
-    // 401 Unauthorized — session expired, redirect to login
-    if (status === 401) {
-      const path = window.location.pathname
-      if (path.startsWith("/student")) {
-        window.location.href = "/student/login"
-      } else if (path.startsWith("/sysadmin")) {
-        window.location.href = "/sysadmin/login"
+    // Check if this is a login request — login 401s are credential errors, not session expiry
+    const requestPath = new URL(requestUrl, "http://localhost").pathname
+    const isLoginRequest = /\/(college|student|sysadmin)\/login$/.test(requestPath)
+
+    // 401 Unauthorized — for non-login requests, session expired → redirect to login
+    if (status === 401 && !isLoginRequest) {
+      const path = globalThis.location.pathname
+      if (path.startsWith("/sysadmin")) {
+        globalThis.location.href = "/sysadmin/login"
       } else {
-        window.location.href = "/college/login"
+        globalThis.location.href = "/login"
       }
       return Promise.reject(new ApiError("Session expired. Please log in again.", 401))
     }

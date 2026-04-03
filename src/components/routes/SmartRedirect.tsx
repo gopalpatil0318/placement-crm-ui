@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom"
 import { SysAdminAuthContext } from "@/context/SysAdminAuthContext"
 import { CollegeAuthContext } from "@/context/CollegeAuthContext"
 import { StudentAuthContext } from "@/context/students/StudentAuthContext"
+import { useCollegeTenant } from "@/context/CollegeTenantContext"
 
 /**
  * Smart catch-all redirect that checks all three auth contexts
@@ -12,6 +13,7 @@ export default function SmartRedirect() {
   const sysAdminAuth = useContext(SysAdminAuthContext)
   const collegeAuth = useContext(CollegeAuthContext)
   const studentAuth = useContext(StudentAuthContext)
+  const { isAdmin } = useCollegeTenant()
 
   if (sysAdminAuth?.isAuthenticated) {
     return <Navigate to="/sysadmin/dashboard" replace />
@@ -29,6 +31,10 @@ export default function SmartRedirect() {
     return <Navigate to="/student/dashboard" replace />
   }
 
-  // No one is logged in — default to college login
-  return <Navigate to="/college/login" replace />
+  // No one is logged in — redirect based on subdomain
+  if (isAdmin) {
+    return <Navigate to="/sysadmin/login" replace />
+  }
+
+  return <Navigate to="/login" replace />
 }

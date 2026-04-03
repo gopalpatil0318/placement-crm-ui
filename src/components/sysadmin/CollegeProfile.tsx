@@ -59,8 +59,34 @@ function getInitials(name: string) {
 
 function getAvatarColor(name: string) {
   let hash = 0
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  for (let i = 0; i < name.length; i++) hash = (name.codePointAt(i) ?? 0) + ((hash << 5) - hash)
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}
+
+function toggleFeatureSelection(
+  key: string,
+  setter: React.Dispatch<React.SetStateAction<string[]>>,
+) {
+  if (key === "core") return
+  setter((prev) =>
+    prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key]
+  )
+}
+
+async function handleModalSave(
+  saveFn: () => Promise<unknown>,
+  setLoading: (v: boolean) => void,
+  closeModal: () => void,
+) {
+  setLoading(true)
+  try {
+    await saveFn()
+    closeModal()
+  } catch {
+    // Error toast shown by mutation onError
+  } finally {
+    setLoading(false)
+  }
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────────
@@ -97,114 +123,38 @@ export default function CollegeProfile() {
     setShowFeaturesModal(true)
   }
 
-  const toggleFeature = (key: string) => {
-    if (key === "core") return
-    setSelectedFeatures((prev) =>
-      prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key]
-    )
-  }
+  const toggleFeature = (key: string) => toggleFeatureSelection(key, setSelectedFeatures)
 
-  const handleSaveFeatures = async () => {
-    setSavingFeatures(true)
-    try {
-      await updateFeatures(selectedFeatures)
-      setShowFeaturesModal(false)
-    } catch {
-      // Error toast shown by mutation onError
-    } finally {
-      setSavingFeatures(false)
-    }
-  }
+  const handleSaveFeatures = () =>
+    handleModalSave(
+      () => updateFeatures(selectedFeatures),
+      setSavingFeatures,
+      () => setShowFeaturesModal(false),
+    )
 
   const openYearModal = () => {
     setSelectedYear(college?.default_academic_year || 2025)
     setShowYearModal(true)
   }
 
-  const handleSaveYear = async () => {
-    setSavingYear(true)
-    try {
-      await updateAcademicYear(selectedYear)
-      setShowYearModal(false)
-    } catch {
-      // Error toast shown by mutation onError
-    } finally {
-      setSavingYear(false)
-    }
-  }
+  const handleSaveYear = () =>
+    handleModalSave(
+      () => updateAcademicYear(selectedYear),
+      setSavingYear,
+      () => setShowYearModal(false),
+    )
 
   const avatarColor = useMemo(() => college ? getAvatarColor(college.college_name) : "", [college])
   const initials = useMemo(() => college ? getInitials(college.college_name) : "", [college])
 
   // ─── Loading skeleton ───────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <div className="animate-pulse space-y-6">
-        {/* Hero skeleton */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
-          <div className="flex flex-col sm:flex-row items-start gap-6">
-            <div className="h-18 w-18 rounded-xl bg-gray-200 dark:bg-gray-700" />
-            <div className="flex-1 space-y-3">
-              <div className="h-7 w-64 bg-gray-200 dark:bg-gray-700 rounded" />
-              <div className="flex gap-3">
-                <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
-                <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded-full" />
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="h-10 w-28 bg-gray-200 dark:bg-gray-700 rounded-lg" />
-              <div className="h-10 w-28 bg-gray-200 dark:bg-gray-700 rounded-lg" />
-            </div>
-          </div>
-        </div>
-        {/* Stats row skeleton */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
-              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-              <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
-            </div>
-          ))}
-        </div>
-        {/* Tab area skeleton */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-8">
-          <div className="flex gap-6 mb-8">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
-            ))}
-          </div>
-          <div className="space-y-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex gap-4">
-                <div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <CollegeProfileSkeleton />
 
-  if (!college) {
-    return (
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-12 text-center">
-        <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 mb-4">
-          <AlertCircle className="h-6 w-6 text-red-500" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {error ? "Failed to Load College" : "College Not Found"}
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {error || "The requested college could not be loaded."}
-        </p>
-      </div>
-    )
-  }
+  if (!college) return <CollegeNotFound error={error} />
 
   const isActive = college.college_status === "active"
+  const toggleLabel = isActive ? "Deactivate" : "Activate"
 
   return (
     <div className="space-y-6">
@@ -263,7 +213,7 @@ export default function CollegeProfile() {
               }`}
             >
               {toggling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
-              {isActive ? "Deactivate" : "Activate"}
+              {toggleLabel}
             </button>
           </div>
         </div>
@@ -340,6 +290,25 @@ export default function CollegeProfile() {
                     <InfoRow label="College ID" value={college.college_id} mono />
                   </div>
                 </div>
+
+                {/* Branding & Identity */}
+                {(college.college_logo_url || college.college_website || college.college_affiliation || college.college_established_year || college.college_description) && (
+                  <div className="col-span-1 lg:col-span-2 mt-4 pt-6 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center gap-2 mb-5">
+                      <Globe className="h-4.5 w-4.5 text-blue-500" />
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">Branding & Identity</h3>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-3.5">
+                      <InfoRow label="Logo URL" value={college.college_logo_url ?? undefined} />
+                      <InfoRow label="Website" value={college.college_website ?? undefined} />
+                      <InfoRow label="Affiliation" value={college.college_affiliation ?? undefined} />
+                      <InfoRow label="Established Year" value={college.college_established_year ?? undefined} />
+                      <div className="lg:col-span-2">
+                        <InfoRow label="Description" value={college.college_description ?? undefined} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -588,7 +557,70 @@ export default function CollegeProfile() {
 
 // ─── Sub-components ─────────────────────────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+function CollegeNotFound({ error }: Readonly<{ error: string | null }>) {
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-12 text-center">
+      <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 mb-4">
+        <AlertCircle className="h-6 w-6 text-red-500" />
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+        {error ? "Failed to Load College" : "College Not Found"}
+      </h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        {error || "The requested college could not be loaded."}
+      </p>
+    </div>
+  )
+}
+
+function CollegeProfileSkeleton() {
+  return (
+    <div className="animate-pulse space-y-6">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
+        <div className="flex flex-col sm:flex-row items-start gap-6">
+          <div className="h-18 w-18 rounded-xl bg-gray-200 dark:bg-gray-700" />
+          <div className="flex-1 space-y-3">
+            <div className="h-7 w-64 bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="flex gap-3">
+              <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+              <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded-full" />
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="h-10 w-28 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+            <div className="h-10 w-28 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {['skel-stat-0', 'skel-stat-1', 'skel-stat-2'].map(id => (
+          <div key={id} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+            <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-8">
+        <div className="flex gap-6 mb-8">
+          {['skel-tab-0', 'skel-tab-1', 'skel-tab-2'].map(id => (
+            <div key={id} className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+          ))}
+        </div>
+        <div className="space-y-4">
+          {['skel-row-0', 'skel-row-1', 'skel-row-2', 'skel-row-3', 'skel-row-4', 'skel-row-5'].map(id => (
+            <div key={id} className="flex gap-4">
+              <div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ icon: Icon, label, value }: Readonly<{ icon: React.ComponentType<{ className?: string }>; label: string; value: string }>) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
       <div className="flex items-center gap-3">
@@ -604,12 +636,12 @@ function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ cl
   )
 }
 
-function InfoRow({ label, value, mono, badge }: {
+function InfoRow({ label, value, mono, badge }: Readonly<{
   label: string
   value: string | number | undefined
   mono?: boolean
   badge?: "active" | "inactive"
-}) {
+}>) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-1">
       <span className="text-xs font-medium text-gray-500 dark:text-gray-400 sm:w-28 shrink-0">

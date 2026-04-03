@@ -1,14 +1,14 @@
 import { lazy } from "react";
-import { Route } from "react-router-dom";
+import { Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/routes/ProtectedRoute";
 import { PublicRoute } from "@/components/routes/PublicRoute";
 import { COLLEGE_ROLES } from "@/types/auth";
 import CollegeAdminLayout from "@/components/collegeadmin/CollegeAdminLayout";
 
-// Public pages
-const CollegeAdminLogin = lazy(() => import("@/pages/collegeadmin/CollegeAdminLogin"));
-const ForgotPassword = lazy(() => import("@/pages/collegeadmin/ForgotPassword"));
-const ResetPassword = lazy(() => import("@/pages/collegeadmin/ResetPassword"));
+// Public pages (combined login)
+const CollegeLogin = lazy(() => import("@/pages/login/CollegeLogin"));
+const LoginForgotPassword = lazy(() => import("@/pages/login/ForgotPassword"));
+const LoginResetPassword = lazy(() => import("@/pages/login/ResetPassword"));
 
 // Dashboard & Settings
 const CollegeDashboard = lazy(() => import("@/pages/collegeadmin/Dashboard"));
@@ -79,10 +79,15 @@ const ViewPlacementPolicies = lazy(() => import("@/pages/collegeadmin/placements
 
 export const collegeAdminRoutes = (
     <>
-        {/* Public (no layout) */}
-        <Route path="/college/login" element={<PublicRoute><CollegeAdminLogin /></PublicRoute>} />
-        <Route path="/college/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
-        <Route path="/college/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
+        {/* Public — combined login page */}
+        <Route path="/login" element={<PublicRoute><CollegeLogin /></PublicRoute>} />
+        <Route path="/forgot-password" element={<PublicRoute><LoginForgotPassword /></PublicRoute>} />
+        <Route path="/reset-password" element={<PublicRoute><LoginResetPassword /></PublicRoute>} />
+
+        {/* Legacy paths — redirect to new unified routes */}
+        <Route path="/college/login" element={<Navigate to="/login" replace />} />
+        <Route path="/college/forgot-password" element={<Navigate to="/forgot-password" replace />} />
+        <Route path="/college/reset-password" element={<Navigate to="/reset-password" replace />} />
 
         {/* Protected (shared DashboardLayout via CollegeAdminLayout) */}
         <Route element={<ProtectedRoute allowedRoles={COLLEGE_ROLES}><CollegeAdminLayout /></ProtectedRoute>}>

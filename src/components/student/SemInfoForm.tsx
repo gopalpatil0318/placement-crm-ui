@@ -63,8 +63,8 @@ const SemInfoForm = () => {
                     <div className="h-9 w-28 rounded-full bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="p-6 rounded-xl border border-gray-200 dark:border-gray-700 min-h-[180px] space-y-4">
+                    {["a", "b", "c"].map((id) => (
+                        <div key={id} className="p-6 rounded-xl border border-gray-200 dark:border-gray-700 min-h-[180px] space-y-4">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-lg bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
                                 <div>
@@ -83,6 +83,10 @@ const SemInfoForm = () => {
             </div>
         );
     }
+
+    let submitLabel = "Save";
+    if (saving) submitLabel = "Saving...";
+    else if (editingGradeId) submitLabel = "Update";
 
     return (
         <div className="p-8 bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-800">
@@ -115,7 +119,7 @@ const SemInfoForm = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {grades
+                    {[...grades]
                         .sort((a, b) => a.semester_number - b.semester_number)
                         .map((grade) => (
                             <GradeCard
@@ -145,7 +149,7 @@ const SemInfoForm = () => {
                         disabled={saving}
                         className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium transition cursor-pointer disabled:opacity-50"
                     >
-                        {saving ? "Saving..." : editingGradeId ? "Update" : "Save"}
+                        {submitLabel}
                     </button>
                 </div>
             }>
@@ -153,9 +157,9 @@ const SemInfoForm = () => {
                         <div className="p-6 space-y-5">
                             {/* Semester Number — keep raw due to complex filtering + disabled */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     Semester Number <span className="text-red-500">*</span>
-                                </label>
+                                </p>
                                 <select
                                     name="semester_number"
                                     value={formData.semester_number}
@@ -198,9 +202,9 @@ const SemInfoForm = () => {
                                     {/* Backlog Subjects — only show if backlogs > 0 */}
                                     {Number(formData.backlogs_in_semester) > 0 && (
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Backlog Subjects
-                                            </label>
+                                            </p>
                                             <div className="flex gap-2">
                                                 <input
                                                     value={backlogInput}

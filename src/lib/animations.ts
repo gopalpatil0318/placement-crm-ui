@@ -119,3 +119,40 @@ export const tabContentVariants: Variants = {
     transition: { duration: 0.15 },
   }),
 }
+
+// ─── Auth / Login Page Variants ─────────────────────────────────────────────────
+// Split-screen panel entrances and form-field stagger for login pages
+
+export const slideInFromLeft: Variants = {
+  initial: { opacity: 0, x: -40 },
+  animate: { opacity: 1, x: 0, transition: { type: "tween", ease: "easeOut", duration: 0.5 } },
+}
+
+export const slideInFromRight: Variants = {
+  initial: { opacity: 0, x: 40 },
+  animate: { opacity: 1, x: 0, transition: { type: "tween", ease: "easeOut", duration: 0.5 } },
+}
+
+export const formFadeIn: Variants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { type: "tween", ease: "easeOut", duration: 0.25 } },
+}
+
+export const formStaggerContainer: Variants = {
+  initial: {},
+  animate: {
+    transition: {
+      staggerChildren: 0.07,
+      delayChildren: 0.15,
+    },
+  },
+}
+
+export const formStaggerItem: Variants = {
+  initial: { opacity: 0, y: 12 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: "easeOut" },
+  },
+}

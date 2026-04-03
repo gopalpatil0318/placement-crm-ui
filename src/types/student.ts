@@ -8,7 +8,6 @@ export interface StudentInfo {
     dept_id: string;
     college_id: string;
     student_passout_year: number;
-    current_year: number;
     student_status: string;
     profile_complete: boolean;
     profile_is_approved: boolean;

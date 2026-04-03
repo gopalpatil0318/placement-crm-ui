@@ -7,7 +7,7 @@ interface SemesterGradesFormProps {
 
 export default function SemesterGradesForm({
     semesterGrades,
-}: SemesterGradesFormProps) {
+}: Readonly<SemesterGradesFormProps>) {
     if (!semesterGrades) {
         return (
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
@@ -64,7 +64,7 @@ export default function SemesterGradesForm({
                             </tr>
                         </thead>
                         <tbody>
-                            {grades
+                            {[...grades]
                                 .sort((a, b) => a.semester_number - b.semester_number)
                                 .map((grade) => {
                                     const hasBacklogs = grade.backlogs_in_semester > 0;

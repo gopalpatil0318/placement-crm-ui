@@ -6,6 +6,11 @@ import { SysAdminService } from "@/services/sysadmin/sysadmin.services"
 import { showToast } from "@/utils/ToastUtils"
 import { queryKeys } from "@/lib/queryKeys"
 
+function getCollegeProfileError(queryError: unknown): string | null {
+  if (!queryError) return null
+  return queryError instanceof ApiError ? queryError.message : "Failed to load college"
+}
+
 export interface CollegeData {
   college_id: string
   college_name: string
@@ -22,6 +27,11 @@ export interface CollegeData {
   default_academic_year: number
   admin_name: string
   admin_email: string
+  college_logo_url: string | null
+  college_website: string | null
+  college_affiliation: string | null
+  college_established_year: number | null
+  college_description: string | null
   created_at: string
   updated_at: string
 }
@@ -123,7 +133,7 @@ export const useCollegeProfile = () => {
   return {
     college: college ?? null,
     loading,
-    error: queryError instanceof ApiError ? queryError.message : queryError ? "Failed to load college" : null,
+    error: getCollegeProfileError(queryError),
     toggling: statusMutation.isPending,
     showConfirmDialog,
     requestStatusToggle,

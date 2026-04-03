@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import api from "../lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { clearOtherSessions } from "@/lib/clearAllAuthSessions";
@@ -12,7 +12,7 @@ export const CollegeAuthContext = createContext<CollegeAuthContextType | undefin
 
 const STORAGE_KEY = "college_user";
 
-export function CollegeAuthProvider({ children }: { children: ReactNode }) {
+export function CollegeAuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -29,7 +29,7 @@ export function CollegeAuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
     }, []);
 
-    const login = async (email: string, password: string) => {
+    const login = useCallback(async (email: string, password: string) => {
         const response = await api.post("/college/login", { email, password });
 
         const { data, message } = response.data;
@@ -72,9 +72,9 @@ export function CollegeAuthProvider({ children }: { children: ReactNode }) {
             title: "Success",
             description: message || "Welcome back!",
         });
-    };
+    }, []);
 
-    const logout = async () => {
+    const logout = useCallback(async () => {
         try {
             const response = await api.post("/college/logout");
 
@@ -95,13 +95,18 @@ export function CollegeAuthProvider({ children }: { children: ReactNode }) {
                 description: errorMessage,
             });
         } finally {
+            queryClient.clear();
             setUser(null);
             localStorage.removeItem(STORAGE_KEY);
         }
-    };
+    }, []);
+
+    const contextValue = useMemo(() => ({
+        user, isAuthenticated: !!user, isLoading, login, logout,
+    }), [user, isLoading, login, logout]);
 
     return (
-        <CollegeAuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
+        <CollegeAuthContext.Provider value={contextValue}>
             {!isLoading && children}
         </CollegeAuthContext.Provider>
     );

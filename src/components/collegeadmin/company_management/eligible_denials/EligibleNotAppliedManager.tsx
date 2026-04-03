@@ -83,7 +83,7 @@ const DeadlineBadge = ({ deadline }: { deadline: string | null }) => {
         return (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
                 <Clock className="h-3 w-3" />
-                {diffDays} day{diffDays !== 1 ? "s" : ""} left
+                {diffDays} day{diffDays === 1 ? "" : "s"} left
             </span>
         );
     }
@@ -214,7 +214,7 @@ const PaginationControls = ({
             </button>
             {pages.map((p, idx) =>
                 p === "ellipsis" ? (
-                    <span key={`ellipsis-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
+                    <span key={`ellipsis-${String(idx)}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
                         ...
                     </span>
                 ) : (
@@ -277,7 +277,7 @@ const EmptyState = ({ hasFilters }: { hasFilters: boolean }) =>
 const SkeletonTable = () => (
     <>
         {Array.from({ length: 8 }).map((_, i) => (
-            <tr key={`skel-${i}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
+            <tr key={`skel-${String(i)}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
                 <td className="px-4 py-3.5 w-10"><div className="h-4 w-4 bg-gray-100 dark:bg-gray-700 rounded" /></td>
                 <td className="px-4 py-3.5 w-10"><div className="h-4 bg-gray-100 dark:bg-gray-700 rounded w-5" /></td>
                 <td className="px-4 py-3.5">
@@ -324,7 +324,7 @@ const NotifyModal = ({
     const targetCount = mode === "selected" ? selectedCount : studentCount;
 
     const handleConfirm = async () => {
-        await handleSubmit(jobId, mode === "selected" ? selectedIds : undefined);
+        handleSubmit(jobId, mode === "selected" ? selectedIds : undefined);
     };
 
     const handleClose = () => {
@@ -367,7 +367,7 @@ const NotifyModal = ({
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                             Send a deadline reminder to{" "}
                             <span className="font-semibold text-gray-800 dark:text-gray-200">
-                                {targetCount} student{targetCount !== 1 ? "s" : ""}
+                                {targetCount} student{targetCount === 1 ? "" : "s"}
                             </span>
                             {" "}who haven&apos;t applied yet.
                         </p>
@@ -378,15 +378,15 @@ const NotifyModal = ({
                             <ul className="text-sm space-y-1 text-blue-700 dark:text-blue-400">
                                 <li className="flex items-start gap-2">
                                     <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current flex-shrink-0" />
-                                    Send a notification to each student&apos;s notification feed
+                                    <span>Send a notification to each student&apos;s notification feed</span>
                                 </li>
                                 <li className="flex items-start gap-2">
                                     <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current flex-shrink-0" />
-                                    Students who were already notified will be skipped (no duplicates)
+                                    <span>Students who were already notified will be skipped (no duplicates)</span>
                                 </li>
                                 <li className="flex items-start gap-2">
                                     <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current flex-shrink-0" />
-                                    You can send reminders again later with a different message
+                                    <span>You can send reminders again later with a different message</span>
                                 </li>
                             </ul>
                         </div>
@@ -445,7 +445,7 @@ const NotifyModal = ({
                             ) : (
                                 <>
                                     <Send className="h-4 w-4" />
-                                    Send to {targetCount} Student{targetCount !== 1 ? "s" : ""}
+                                    Send to {targetCount} Student{targetCount === 1 ? "" : "s"}
                                 </>
                             )}
                         </button>
@@ -584,7 +584,7 @@ const EligibleNotAppliedManager = ({ jobId, onRefresh }: EligibleNotAppliedManag
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Eligible Not Applied</h2>
                             {job && (
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    {eligibleNotAppliedCount} student{eligibleNotAppliedCount !== 1 ? "s" : ""} haven&apos;t applied yet
+                                    {eligibleNotAppliedCount} student{eligibleNotAppliedCount === 1 ? "" : "s"} haven&apos;t applied yet
                                 </p>
                             )}
                         </div>
@@ -657,7 +657,7 @@ const EligibleNotAppliedManager = ({ jobId, onRefresh }: EligibleNotAppliedManag
 
                     {/* Page size */}
                     <div className="text-sm text-gray-600 dark:text-gray-400 font-medium flex items-center gap-2 ml-auto">
-                        Show
+                        <span>Show</span>
                         <select
                             value={pagination.limit}
                             onChange={(e) => wrappedLimitChange(Number(e.target.value))}
@@ -773,7 +773,7 @@ const EligibleNotAppliedManager = ({ jobId, onRefresh }: EligibleNotAppliedManag
                             <span className="text-xs font-bold text-blue-700 dark:text-blue-400">{selectedIds.size}</span>
                         </div>
                         <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                            student{selectedIds.size !== 1 ? "s" : ""} selected
+                            student{selectedIds.size === 1 ? "" : "s"} selected
                         </span>
                         <button type="button" onClick={handleDeselectAll} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition p-1">
                             <X className="h-4 w-4" />

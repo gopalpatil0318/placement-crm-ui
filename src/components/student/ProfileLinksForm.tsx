@@ -28,8 +28,8 @@ const ProfileLinksForm = () => {
                     <div>
                         <div className="h-4 w-36 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse mb-4" />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {Array.from({ length: 3 }).map((_, i) => (
-                                <div key={i} className="h-10 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                            {["portfolio", "resume", "image"].map((id) => (
+                                <div key={id} className="h-10 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
                             ))}
                         </div>
                     </div>
@@ -37,8 +37,8 @@ const ProfileLinksForm = () => {
                     <div>
                         <div className="h-4 w-28 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse mb-4" />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="h-10 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                            {["github", "linkedin", "twitter", "other"].map((id) => (
+                                <div key={id} className="h-10 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
                             ))}
                         </div>
                     </div>
@@ -77,7 +77,7 @@ const ProfileLinksForm = () => {
 
                     {/* Area of Interest */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">🎯 Areas of Interest (max 10)</label>
+                        <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">🎯 Areas of Interest (max 10)</p>
                         <div className="flex gap-2">
                             <input value={interestInput} onChange={(e) => setInterestInput(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addInterest(); } }}

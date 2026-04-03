@@ -15,6 +15,7 @@ import { useStudentDetail } from "@/hooks/collegeadmin/student_management/useStu
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
+import { getCurrentYear, formatYearLabel } from "@/lib/utils";
 import { showToast } from "@/utils/ToastUtils";
 import { useStudentReviewProfile } from "@/hooks/collegeadmin/verification/useStudentReviewProfile";
 import { useVerifyItem } from "@/hooks/collegeadmin/verification/useVerifyItem";
@@ -51,6 +52,13 @@ const ALL_STATUSES = [
 
 const TAB_KEYS = ["overview", "details", "profile", "restrictions"] as const;
 
+const TAB_LABELS: Record<string, string> = {
+    overview: "Overview",
+    details: "Details",
+    profile: "Full Profile",
+    restrictions: "Restrictions",
+};
+
 const AVATAR_COLORS = [
     "from-blue-500 to-blue-600",
     "from-emerald-500 to-emerald-600",
@@ -65,7 +73,7 @@ const AVATAR_COLORS = [
 // ========================
 
 const getAvatarGradient = (name: string) =>
-    AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+    AVATAR_COLORS[(name.codePointAt(0) ?? 0) % AVATAR_COLORS.length];
 
 const getInitials = (first: string, last: string) =>
     (first[0] + (last[0] || "")).toUpperCase();
@@ -77,10 +85,10 @@ const formatDateTime = (dateStr: string | undefined | null) => {
     });
 };
 
-const formatYearLabel = (year: number) => {
-    const s: Record<number, string> = { 1: "st", 2: "nd", 3: "rd" };
-    return `${year}${s[year] || "th"} Year`;
-};
+function getApproveButtonLabel(isProcessing: boolean, isApprove: boolean): string {
+    if (isProcessing) return "Processing...";
+    return isApprove ? "Approve" : "Revoke";
+}
 
 // ========================
 // SUB-COMPONENTS
@@ -141,14 +149,14 @@ const DetailSkeleton = () => (
             </div>
             <div className="p-8 grid grid-cols-2 md:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-xl" />
+                    <div key={`stat-skel-${String(i)}`} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-xl" />
                 ))}
             </div>
         </div>
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex items-start gap-3">
+                    <div key={`info-skel-${String(i)}`} className="flex items-start gap-3">
                         <div className="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded-lg" />
                         <div className="space-y-1.5"><div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded" /><div className="h-4 w-32 bg-gray-100 dark:bg-gray-800 rounded" /></div>
                     </div>
@@ -157,6 +165,213 @@ const DetailSkeleton = () => (
         </div>
     </div>
 );
+
+interface StatusChangeModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    currentStatus: string;
+    newStatus: string;
+    onNewStatusChange: (status: string) => void;
+    isPending: boolean;
+    onSubmit: () => void;
+}
+
+const StatusChangeModal = ({ isOpen, onClose, currentStatus, newStatus, onNewStatusChange, isPending, onSubmit }: Readonly<StatusChangeModalProps>) => {
+    const showWarning = (newStatus === "suspended" || newStatus === "dropout" || newStatus === "inactive") && newStatus !== currentStatus;
+    return (
+        <ModalWrapper isOpen={isOpen} onClose={onClose} disabled={isPending} title="Change Student Status" titleIcon={<Power className="h-5 w-5 text-gray-500" />}>
+            <div className="p-6">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    Currently: <span className="font-semibold text-gray-900 dark:text-gray-100 capitalize">{currentStatus}</span>
+                </p>
+                <label htmlFor="new-status-select" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-1.5">New Status</label>
+                <select
+                    id="new-status-select"
+                    value={newStatus}
+                    onChange={(e) => onNewStatusChange(e.target.value)}
+                    disabled={isPending}
+                    aria-label="Select new student status"
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition disabled:opacity-50"
+                >
+                    {ALL_STATUSES.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
+                </select>
+                {showWarning && (
+                    <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                        <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-amber-700 dark:text-amber-300">This will block the student from logging in.</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-end gap-3">
+                <button type="button" onClick={onClose} disabled={isPending} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40">Cancel</button>
+                <button type="button" onClick={onSubmit} disabled={isPending || newStatus === currentStatus} className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed">
+                    {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {isPending ? "Updating..." : "Update Status"}
+                </button>
+            </div>
+        </ModalWrapper>
+    );
+};
+
+interface ApproveModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    approveAction: boolean;
+    fullName: string;
+    revokeReason: string;
+    onRevokeReasonChange: (reason: string) => void;
+    isProcessing: boolean;
+    onSubmit: () => void;
+}
+
+const ApproveModal = ({ isOpen, onClose, approveAction, fullName, revokeReason, onRevokeReasonChange, isProcessing, onSubmit }: Readonly<ApproveModalProps>) => (
+    <ModalWrapper
+        isOpen={isOpen}
+        onClose={onClose}
+        disabled={isProcessing}
+        title={approveAction ? "Approve Profile" : "Revoke Approval"}
+        titleIcon={approveAction ? <CheckCircle className="h-5 w-5 text-emerald-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
+    >
+        <div className="p-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+                Are you sure you want to <span className="font-semibold text-gray-900 dark:text-gray-100">{approveAction ? "approve" : "revoke approval for"}</span>{" "}
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{fullName}</span>'s profile?
+            </p>
+            {approveAction ? (
+                <div className="mt-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-emerald-700 dark:text-emerald-300">This will make them visible in placement eligibility checks.</p>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                        <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-red-700 dark:text-red-300">They will no longer be eligible for placements.</p>
+                        </div>
+                    </div>
+                    <label htmlFor="revoke-reason" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-1.5">
+                        Reason for Revoking <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        id="revoke-reason"
+                        maxLength={500}
+                        rows={3}
+                        value={revokeReason}
+                        onChange={(e) => onRevokeReasonChange(e.target.value)}
+                        placeholder="Explain why this profile approval is being revoked…"
+                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                    />
+                    <p className="mt-1 text-xs text-gray-400 text-right">{revokeReason.length}/500</p>
+                </>
+            )}
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-end gap-3">
+            <button type="button" onClick={onClose} disabled={isProcessing} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40">Cancel</button>
+            <button type="button" onClick={onSubmit} disabled={isProcessing || (!approveAction && revokeReason.trim().length < 3)} className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed ${approveAction ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"}`}>
+                {isProcessing && <Loader2 className="h-4 w-4 animate-spin" />}
+                {getApproveButtonLabel(isProcessing, approveAction)}
+            </button>
+        </div>
+    </ModalWrapper>
+);
+
+interface ReviewRejectModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    reason: string;
+    onReasonChange: (reason: string) => void;
+    onSubmit: () => void;
+}
+
+const ReviewRejectModal = ({ isOpen, onClose, reason, onReasonChange, onSubmit }: Readonly<ReviewRejectModalProps>) => (
+    <ModalWrapper
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Reject Item"
+        titleIcon={<AlertTriangle className="h-5 w-5 text-red-500" />}
+    >
+        <div className="p-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Send this item back to the student for corrections.
+            </p>
+            <label htmlFor="review-reject-reason" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Rejection Reason <span className="text-red-500">*</span>
+            </label>
+            <textarea
+                id="review-reject-reason"
+                rows={3}
+                maxLength={500}
+                value={reason}
+                onChange={(e) => onReasonChange(e.target.value)}
+                placeholder="Explain what needs to be corrected..."
+                className="w-full px-3 py-2.5 rounded-lg text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 resize-none"
+            />
+            <p className="text-[11px] text-gray-400 text-right mt-1">{reason.length}/500</p>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-end gap-3">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer">Cancel</button>
+            <button
+                type="button"
+                disabled={reason.trim().length < 3}
+                onClick={onSubmit}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50 cursor-pointer"
+            >
+                Send Back for Corrections
+            </button>
+        </div>
+    </ModalWrapper>
+);
+
+interface VerificationItemRowProps {
+    id: string;
+    title: string;
+    subtitle: string;
+    status: string;
+    rejectionReason?: string;
+    onApprove: (id: string) => void;
+    processingId: string | null;
+    onReject: (id: string) => void;
+}
+
+const VerificationItemRow = ({ id, title, subtitle, status, rejectionReason, onApprove, processingId, onReject }: Readonly<VerificationItemRowProps>) => {
+    const config = VERIFICATION_STATUS_CONFIG[status] || VERIFICATION_STATUS_CONFIG.pending;
+    return (
+        <div className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${config.bg}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
+                        {config.label}
+                    </span>
+                    {status === "pending" && (
+                        <div className="flex gap-1">
+                            <button type="button" onClick={() => onApprove(id)} disabled={processingId === id} className="h-6 w-6 rounded bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Approve">
+                                <CheckCircle className="h-3 w-3 text-emerald-600" />
+                            </button>
+                            <button type="button" onClick={() => onReject(id)} className="h-6 w-6 rounded bg-red-50 dark:bg-red-900/20 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Reject">
+                                <XCircle className="h-3 w-3 text-red-600" />
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+            {status === "rejected" && rejectionReason && (
+                <p className="mt-2 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/10 rounded px-2 py-1">
+                    Reason: {rejectionReason}
+                </p>
+            )}
+        </div>
+    );
+};
 
 // ========================
 // MAIN COMPONENT
@@ -236,6 +451,20 @@ export default function StudentDetail() {
         setShowApproveModal(false);
         setRevokeReason("");
     }, [student, approveAction, revokeReason, profileApproval]);
+
+    const handleReviewRejectSubmit = useCallback(() => {
+        if (!reviewRejectTarget) return;
+        const rejectActions: Record<string, () => void> = {
+            profile: () => profileApproval.reject(reviewRejectReason),
+            experiences: () => expVerify.reject(reviewRejectTarget.id, reviewRejectReason),
+            achievements: () => achVerify.reject(reviewRejectTarget.id, reviewRejectReason),
+            certificates: () => certVerify.reject(reviewRejectTarget.id, reviewRejectReason),
+        };
+        rejectActions[reviewRejectTarget.category]?.();
+        setReviewRejectOpen(false);
+        setReviewRejectTarget(null);
+        setReviewRejectReason("");
+    }, [reviewRejectTarget, reviewRejectReason, profileApproval, expVerify, achVerify, certVerify]);
 
     const breadcrumbs = useMemo(() => {
         const crumbs = [
@@ -347,7 +576,7 @@ export default function StudentDetail() {
                     {/* Stat Cards */}
                     <div className="p-8 grid grid-cols-2 md:grid-cols-4 gap-4">
                         <StatCard icon={<Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />} value={student.dept_name || "—"} label="Department" color="blue" />
-                        <StatCard icon={<GraduationCap className="h-5 w-5 text-purple-600 dark:text-purple-400" />} value={student.current_year ? formatYearLabel(student.current_year) : "—"} label="Current Year" color="purple" />
+                        <StatCard icon={<GraduationCap className="h-5 w-5 text-purple-600 dark:text-purple-400" />} value={formatYearLabel(getCurrentYear(student.student_passout_year))} label="Current Year" color="purple" />
                         <StatCard icon={<Calendar className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />} value={String(student.student_passout_year)} label="Passout Year" color="cyan" />
                         <StatCard icon={<Shield className="h-5 w-5 text-orange-600 dark:text-orange-400" />} value={student.profile_is_approved ? "Yes" : "No"} label="Approved" color="orange" />
                     </div>
@@ -364,7 +593,7 @@ export default function StudentDetail() {
                                     onClick={() => setActiveTab(tab)}
                                     className={`relative px-5 py-3.5 text-sm font-medium transition-colors ${activeTab === tab ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
                                 >
-                                    {tab === "overview" ? "Overview" : tab === "details" ? "Details" : tab === "profile" ? "Full Profile" : "Restrictions"}
+                                    {TAB_LABELS[tab] || tab}
                                     {activeTab === tab && (
                                         shouldReduce ? (
                                             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full" />
@@ -387,7 +616,7 @@ export default function StudentDetail() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1">
                                         <InfoRow icon={<Mail className="h-4 w-4 text-gray-500 dark:text-gray-400" />} label="Email Address" value={student.student_email} />
                                         <InfoRow icon={<Building2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />} label="Department" value={student.dept_name || "—"} />
-                                        <InfoRow icon={<GraduationCap className="h-4 w-4 text-gray-500 dark:text-gray-400" />} label="Current Year" value={student.current_year ? formatYearLabel(student.current_year) : "—"} />
+                                        <InfoRow icon={<GraduationCap className="h-4 w-4 text-gray-500 dark:text-gray-400" />} label="Current Year" value={formatYearLabel(getCurrentYear(student.student_passout_year))} />
                                         <InfoRow icon={<User className="h-4 w-4 text-gray-500 dark:text-gray-400" />} label="Passout Year" value={String(student.student_passout_year)} />
                                     </div>
                                 </div>
@@ -407,13 +636,14 @@ export default function StudentDetail() {
                             )}
                             {activeTab === "profile" && (
                                 <div className="p-8">
-                                    {reviewLoading ? (
+                                    {reviewLoading && (
                                         <div className="space-y-4 animate-pulse">
                                             {Array.from({ length: 4 }).map((_, i) => (
-                                                <div key={i} className="h-32 rounded-xl bg-gray-100 dark:bg-gray-800" />
+                                                <div key={`profile-skel-${String(i)}`} className="h-32 rounded-xl bg-gray-100 dark:bg-gray-800" />
                                             ))}
                                         </div>
-                                    ) : profileData ? (
+                                    )}
+                                    {!reviewLoading && profileData && (
                                         <div className="space-y-8">
                                             {/* Verification Summary Banner */}
                                             {profileData.verification_summary && (
@@ -493,42 +723,19 @@ export default function StudentDetail() {
                                                 <div>
                                                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Experience</h4>
                                                     <div className="space-y-3">
-                                                        {profileData.experience.map((exp) => {
-                                                            const status = (exp as Record<string, unknown>).verification_status as string;
-                                                            const config = VERIFICATION_STATUS_CONFIG[status] || VERIFICATION_STATUS_CONFIG.pending;
-                                                            const expId = exp.experience_id as string;
-                                                            return (
-                                                                <div key={expId} className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-                                                                    <div className="flex items-start justify-between gap-3">
-                                                                        <div className="min-w-0 flex-1">
-                                                                            <p className="text-sm font-medium text-gray-900 dark:text-white">{exp.position_title as string}</p>
-                                                                            <p className="text-xs text-gray-500 dark:text-gray-400">{exp.company_name as string}</p>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${config.bg}`}>
-                                                                                <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
-                                                                                {config.label}
-                                                                            </span>
-                                                                            {status === "pending" && (
-                                                                                <div className="flex gap-1">
-                                                                                    <button type="button" onClick={() => expVerify.approve(expId)} disabled={expVerify.processingId === expId} className="h-6 w-6 rounded bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Approve">
-                                                                                        <CheckCircle className="h-3 w-3 text-emerald-600" />
-                                                                                    </button>
-                                                                                    <button type="button" onClick={() => { setReviewRejectTarget({ category: "experiences", id: expId }); setReviewRejectOpen(true); }} className="h-6 w-6 rounded bg-red-50 dark:bg-red-900/20 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Reject">
-                                                                                        <XCircle className="h-3 w-3 text-red-600" />
-                                                                                    </button>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                    {status === "rejected" && Boolean((exp as Record<string, unknown>).rejection_reason) && (
-                                                                        <p className="mt-2 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/10 rounded px-2 py-1">
-                                                                            Reason: {String((exp as Record<string, unknown>).rejection_reason)}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
+                                                        {profileData.experience.map((exp) => (
+                                                            <VerificationItemRow
+                                                                key={exp.experience_id as string}
+                                                                id={exp.experience_id as string}
+                                                                title={exp.position_title as string}
+                                                                subtitle={exp.company_name as string}
+                                                                status={(exp as Record<string, unknown>).verification_status as string}
+                                                                rejectionReason={(exp as Record<string, unknown>).rejection_reason ? String((exp as Record<string, unknown>).rejection_reason) : undefined}
+                                                                onApprove={expVerify.approve}
+                                                                processingId={expVerify.processingId}
+                                                                onReject={(id) => { setReviewRejectTarget({ category: "experiences", id }); setReviewRejectOpen(true); }}
+                                                            />
+                                                        ))}
                                                     </div>
                                                 </div>
                                             )}
@@ -537,42 +744,19 @@ export default function StudentDetail() {
                                                 <div>
                                                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Achievements</h4>
                                                     <div className="space-y-3">
-                                                        {profileData.achievements.map((ach) => {
-                                                            const status = (ach as Record<string, unknown>).verification_status as string;
-                                                            const config = VERIFICATION_STATUS_CONFIG[status] || VERIFICATION_STATUS_CONFIG.pending;
-                                                            const achId = ach.achievement_id as string;
-                                                            return (
-                                                                <div key={achId} className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-                                                                    <div className="flex items-start justify-between gap-3">
-                                                                        <div className="min-w-0 flex-1">
-                                                                            <p className="text-sm font-medium text-gray-900 dark:text-white">{ach.achievement_title as string}</p>
-                                                                            <p className="text-xs text-gray-500 dark:text-gray-400">{ach.achievement_type as string} • {ach.achievement_level as string}</p>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${config.bg}`}>
-                                                                                <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
-                                                                                {config.label}
-                                                                            </span>
-                                                                            {status === "pending" && (
-                                                                                <div className="flex gap-1">
-                                                                                    <button type="button" onClick={() => achVerify.approve(achId)} disabled={achVerify.processingId === achId} className="h-6 w-6 rounded bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Approve">
-                                                                                        <CheckCircle className="h-3 w-3 text-emerald-600" />
-                                                                                    </button>
-                                                                                    <button type="button" onClick={() => { setReviewRejectTarget({ category: "achievements", id: achId }); setReviewRejectOpen(true); }} className="h-6 w-6 rounded bg-red-50 dark:bg-red-900/20 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Reject">
-                                                                                        <XCircle className="h-3 w-3 text-red-600" />
-                                                                                    </button>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                    {status === "rejected" && Boolean((ach as Record<string, unknown>).rejection_reason) && (
-                                                                        <p className="mt-2 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/10 rounded px-2 py-1">
-                                                                            Reason: {String((ach as Record<string, unknown>).rejection_reason)}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
+                                                        {profileData.achievements.map((ach) => (
+                                                            <VerificationItemRow
+                                                                key={ach.achievement_id as string}
+                                                                id={ach.achievement_id as string}
+                                                                title={ach.achievement_title as string}
+                                                                subtitle={`${ach.achievement_type as string} • ${ach.achievement_level as string}`}
+                                                                status={(ach as Record<string, unknown>).verification_status as string}
+                                                                rejectionReason={(ach as Record<string, unknown>).rejection_reason ? String((ach as Record<string, unknown>).rejection_reason) : undefined}
+                                                                onApprove={achVerify.approve}
+                                                                processingId={achVerify.processingId}
+                                                                onReject={(id) => { setReviewRejectTarget({ category: "achievements", id }); setReviewRejectOpen(true); }}
+                                                            />
+                                                        ))}
                                                     </div>
                                                 </div>
                                             )}
@@ -581,42 +765,19 @@ export default function StudentDetail() {
                                                 <div>
                                                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Certificates</h4>
                                                     <div className="space-y-3">
-                                                        {profileData.certificates.map((cert) => {
-                                                            const status = (cert as Record<string, unknown>).verification_status as string;
-                                                            const config = VERIFICATION_STATUS_CONFIG[status] || VERIFICATION_STATUS_CONFIG.pending;
-                                                            const certId = cert.certificate_id as string;
-                                                            return (
-                                                                <div key={certId} className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-                                                                    <div className="flex items-start justify-between gap-3">
-                                                                        <div className="min-w-0 flex-1">
-                                                                            <p className="text-sm font-medium text-gray-900 dark:text-white">{cert.certificate_name as string}</p>
-                                                                            <p className="text-xs text-gray-500 dark:text-gray-400">{cert.issuing_organization as string}</p>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${config.bg}`}>
-                                                                                <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
-                                                                                {config.label}
-                                                                            </span>
-                                                                            {status === "pending" && (
-                                                                                <div className="flex gap-1">
-                                                                                    <button type="button" onClick={() => certVerify.approve(certId)} disabled={certVerify.processingId === certId} className="h-6 w-6 rounded bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Approve">
-                                                                                        <CheckCircle className="h-3 w-3 text-emerald-600" />
-                                                                                    </button>
-                                                                                    <button type="button" onClick={() => { setReviewRejectTarget({ category: "certificates", id: certId }); setReviewRejectOpen(true); }} className="h-6 w-6 rounded bg-red-50 dark:bg-red-900/20 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Reject">
-                                                                                        <XCircle className="h-3 w-3 text-red-600" />
-                                                                                    </button>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                    {status === "rejected" && Boolean((cert as Record<string, unknown>).rejection_reason) && (
-                                                                        <p className="mt-2 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/10 rounded px-2 py-1">
-                                                                            Reason: {String((cert as Record<string, unknown>).rejection_reason)}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
+                                                        {profileData.certificates.map((cert) => (
+                                                            <VerificationItemRow
+                                                                key={cert.certificate_id as string}
+                                                                id={cert.certificate_id as string}
+                                                                title={cert.certificate_name as string}
+                                                                subtitle={cert.issuing_organization as string}
+                                                                status={(cert as Record<string, unknown>).verification_status as string}
+                                                                rejectionReason={(cert as Record<string, unknown>).rejection_reason ? String((cert as Record<string, unknown>).rejection_reason) : undefined}
+                                                                onApprove={certVerify.approve}
+                                                                processingId={certVerify.processingId}
+                                                                onReject={(id) => { setReviewRejectTarget({ category: "certificates", id }); setReviewRejectOpen(true); }}
+                                                            />
+                                                        ))}
                                                     </div>
                                                 </div>
                                             )}
@@ -638,7 +799,8 @@ export default function StudentDetail() {
                                                 </div>
                                             )}
                                         </div>
-                                    ) : (
+                                    )}
+                                    {!reviewLoading && !profileData && (
                                         <div className="flex flex-col items-center justify-center py-12">
                                             <AlertCircle className="h-10 w-10 text-red-400 mb-3" />
                                             <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Unable to load profile data</p>
@@ -668,147 +830,36 @@ export default function StudentDetail() {
             </div>
 
             {/* Status Change Modal */}
-            <ModalWrapper
+            <StatusChangeModal
                 isOpen={showStatusModal}
                 onClose={() => setShowStatusModal(false)}
-                disabled={statusMutation.isPending}
-                title="Change Student Status"
-                titleIcon={<Power className="h-5 w-5 text-gray-500" />}
-            >
-                <div className="p-6">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        Currently: <span className="font-semibold text-gray-900 dark:text-gray-100 capitalize">{student.student_status}</span>
-                    </p>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-1.5">New Status</label>
-                    <select
-                        value={newStatus}
-                        onChange={(e) => setNewStatus(e.target.value)}
-                        disabled={statusMutation.isPending}
-                        aria-label="Select new student status"
-                        className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition disabled:opacity-50"
-                    >
-                        {ALL_STATUSES.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
-                    </select>
-                    {(newStatus === "suspended" || newStatus === "dropout" || newStatus === "inactive") && newStatus !== student.student_status && (
-                        <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                            <div className="flex items-start gap-2">
-                                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                                <p className="text-xs text-amber-700 dark:text-amber-300">This will block the student from logging in.</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-                <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-end gap-3">
-                    <button type="button" onClick={() => setShowStatusModal(false)} disabled={statusMutation.isPending} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40">Cancel</button>
-                    <button type="button" onClick={handleStatusSubmit} disabled={statusMutation.isPending || newStatus === student.student_status} className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed">
-                        {statusMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {statusMutation.isPending ? "Updating..." : "Update Status"}
-                    </button>
-                </div>
-            </ModalWrapper>
+                currentStatus={student.student_status}
+                newStatus={newStatus}
+                onNewStatusChange={setNewStatus}
+                isPending={statusMutation.isPending}
+                onSubmit={handleStatusSubmit}
+            />
 
             {/* Approve/Reject Modal */}
-            <ModalWrapper
+            <ApproveModal
                 isOpen={showApproveModal}
                 onClose={() => { setShowApproveModal(false); setRevokeReason(""); }}
-                disabled={profileApproval.isApproving || profileApproval.isRejecting}
-                title={approveAction ? "Approve Profile" : "Revoke Approval"}
-                titleIcon={approveAction ? <CheckCircle className="h-5 w-5 text-emerald-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
-            >
-                <div className="p-6">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Are you sure you want to <span className="font-semibold text-gray-900 dark:text-gray-100">{approveAction ? "approve" : "revoke approval for"}</span>{" "}
-                        <span className="font-semibold text-gray-900 dark:text-gray-100">{fullName}</span>'s profile?
-                    </p>
-                    {approveAction ? (
-                        <div className="mt-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
-                            <div className="flex items-start gap-2">
-                                <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                                <p className="text-xs text-emerald-700 dark:text-emerald-300">This will make them visible in placement eligibility checks.</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                                <div className="flex items-start gap-2">
-                                    <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                                    <p className="text-xs text-red-700 dark:text-red-300">They will no longer be eligible for placements.</p>
-                                </div>
-                            </div>
-                            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-1.5">
-                                Reason for Revoking <span className="text-red-500">*</span>
-                            </label>
-                            <textarea
-                                maxLength={500}
-                                rows={3}
-                                value={revokeReason}
-                                onChange={(e) => setRevokeReason(e.target.value)}
-                                placeholder="Explain why this profile approval is being revoked…"
-                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
-                            />
-                            <p className="mt-1 text-xs text-gray-400 text-right">{revokeReason.length}/500</p>
-                        </>
-                    )}
-                </div>
-                <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-end gap-3">
-                    <button type="button" onClick={() => { setShowApproveModal(false); setRevokeReason(""); }} disabled={profileApproval.isApproving || profileApproval.isRejecting} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40">Cancel</button>
-                    <button type="button" onClick={handleApproveSubmit} disabled={profileApproval.isApproving || profileApproval.isRejecting || (!approveAction && revokeReason.trim().length < 3)} className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed ${approveAction ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"}`}>
-                        {(profileApproval.isApproving || profileApproval.isRejecting) && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {(profileApproval.isApproving || profileApproval.isRejecting) ? "Processing..." : approveAction ? "Approve" : "Revoke"}
-                    </button>
-                </div>
-            </ModalWrapper>
+                approveAction={approveAction}
+                fullName={fullName}
+                revokeReason={revokeReason}
+                onRevokeReasonChange={setRevokeReason}
+                isProcessing={profileApproval.isApproving || profileApproval.isRejecting}
+                onSubmit={handleApproveSubmit}
+            />
 
             {/* Review Mode Reject Modal */}
-            <ModalWrapper
+            <ReviewRejectModal
                 isOpen={reviewRejectOpen}
                 onClose={() => { setReviewRejectOpen(false); setReviewRejectTarget(null); setReviewRejectReason(""); }}
-                title="Reject Item"
-                titleIcon={<AlertTriangle className="h-5 w-5 text-red-500" />}
-            >
-                <div className="p-6">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                        Send this item back to the student for corrections.
-                    </p>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                        Rejection Reason <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                        rows={3}
-                        maxLength={500}
-                        value={reviewRejectReason}
-                        onChange={(e) => setReviewRejectReason(e.target.value)}
-                        placeholder="Explain what needs to be corrected..."
-                        className="w-full px-3 py-2.5 rounded-lg text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 resize-none"
-                    />
-                    <p className="text-[11px] text-gray-400 text-right mt-1">{reviewRejectReason.length}/500</p>
-                </div>
-                <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-end gap-3">
-                    <button type="button" onClick={() => { setReviewRejectOpen(false); setReviewRejectTarget(null); setReviewRejectReason(""); }} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer">Cancel</button>
-                    <button
-                        type="button"
-                        disabled={reviewRejectReason.trim().length < 3}
-                        onClick={() => {
-                            if (!reviewRejectTarget) return;
-                            if (reviewRejectTarget.category === "profile") {
-                                profileApproval.reject(reviewRejectReason);
-                            } else if (reviewRejectTarget.category === "experiences") {
-                                expVerify.reject(reviewRejectTarget.id, reviewRejectReason);
-                            } else if (reviewRejectTarget.category === "achievements") {
-                                achVerify.reject(reviewRejectTarget.id, reviewRejectReason);
-                            } else if (reviewRejectTarget.category === "certificates") {
-                                certVerify.reject(reviewRejectTarget.id, reviewRejectReason);
-                            }
-                            setReviewRejectOpen(false);
-                            setReviewRejectTarget(null);
-                            setReviewRejectReason("");
-                        }}
-                        className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50 cursor-pointer"
-                    >
-                        Send Back for Corrections
-                    </button>
-                </div>
-            </ModalWrapper>
+                reason={reviewRejectReason}
+                onReasonChange={setReviewRejectReason}
+                onSubmit={handleReviewRejectSubmit}
+            />
         </AnimatedPage>
     );
 }

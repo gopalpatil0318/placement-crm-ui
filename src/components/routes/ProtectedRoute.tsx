@@ -30,7 +30,7 @@ export const ProtectedRoute = ({
 
   // 1. Not authenticated → redirect to the correct login page
   if (!isAuthenticated) {
-    const loginPath = isCollegePath ? "/college/login" : "/sysadmin/login";
+    const loginPath = isCollegePath ? "/login" : "/sysadmin/login";
     return <Navigate to={loginPath} replace />;
   }
 

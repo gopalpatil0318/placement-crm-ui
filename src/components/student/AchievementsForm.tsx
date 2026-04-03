@@ -17,7 +17,7 @@ function formatDate(d: string | null | undefined): string {
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function ExpandableDescription({ text }: { text: string }) {
+function ExpandableDescription({ text }: Readonly<{ text: string }>) {
     const [expanded, setExpanded] = useState(false);
     const [isClamped, setIsClamped] = useState(false);
     const ref = useRef<HTMLParagraphElement>(null);
@@ -81,6 +81,11 @@ const AchievementsForm = () => {
     const shouldReduce = useReducedMotion();
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
+    const getSubmitLabel = () => {
+        if (saving) return "Saving...";
+        return editingId ? "Update" : "Add Achievement";
+    };
+
     if (loading) {
         return (
             <div className="p-8 bg-white dark:bg-gray-900 rounded-2xl border dark:border-gray-800">
@@ -92,8 +97,8 @@ const AchievementsForm = () => {
                     <div className="h-9 w-28 rounded-full bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {Array.from({ length: 2 }).map((_, i) => (
-                        <div key={i} className="p-5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
+                    {["a", "b"].map((id) => (
+                        <div key={id} className="p-5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
                             <div className="h-4 w-44 rounded bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
                             <div className="flex gap-2">
                                 <div className="h-5 w-16 rounded-full bg-gray-200 dark:bg-gray-700/60 motion-safe:animate-pulse" />
@@ -163,7 +168,7 @@ const AchievementsForm = () => {
                     </button>
                     <button type="button" onClick={handleSubmit} disabled={saving}
                         className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium transition cursor-pointer disabled:opacity-50">
-                        {saving ? "Saving..." : editingId ? "Update" : "Add Achievement"}
+                        {getSubmitLabel()}
                     </button>
                 </div>
             }>
@@ -202,7 +207,7 @@ const AchievementsForm = () => {
                                     <span className="text-sm text-gray-700 dark:text-gray-300"><Star className="inline h-4 w-4 text-amber-500 fill-amber-500 -mt-0.5 mr-1" />Featured Achievement</span>
                                 </label>
                                 <div className="flex items-center gap-2">
-                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Display Order</label>
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Display Order</p>
                                     <input name="display_order" type="number" min="1" max="10" value={formData.display_order} onChange={handleChange}
                                         placeholder="#" inputMode="numeric"
                                         className="w-16 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-center text-sm outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20" />
@@ -281,14 +286,14 @@ const AchievementCard = memo(function AchievementCard({
                 {/* Badges row */}
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
                     {ach.achievement_type && (
-                        <span role="status" className="text-xs px-2.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full font-medium">
+                        <output className="text-xs px-2.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full font-medium">
                             {ACHIEVEMENT_TYPE_LABELS[ach.achievement_type] || ach.achievement_type}
-                        </span>
+                        </output>
                     )}
                     {ach.achievement_level && (
-                        <span role="status" className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${LEVEL_COLORS[ach.achievement_level] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                        <output className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${LEVEL_COLORS[ach.achievement_level] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
                             {ACHIEVEMENT_LEVEL_LABELS[ach.achievement_level] || ach.achievement_level}
-                        </span>
+                        </output>
                     )}
                     {ach.position_rank && (
                         <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-full">
@@ -331,14 +336,14 @@ const AchievementCard = memo(function AchievementCard({
                         </a>
                     )}
                     {ach.is_verified && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                        <output className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
                             <CheckCircle className="h-3.5 w-3.5" /> Verified
-                        </span>
+                        </output>
                     )}
                     {ach.is_verified === false && (
-                        <span role="status" className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 font-medium">
+                        <output className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 font-medium">
                             <AlertCircle className="h-3.5 w-3.5" /> Pending verification
-                        </span>
+                        </output>
                     )}
                 </div>
             </div>

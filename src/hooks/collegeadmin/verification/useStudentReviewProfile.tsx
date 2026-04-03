@@ -25,7 +25,6 @@ export interface ReviewProfileData {
         dept_name: string;
         college_name: string;
         student_passout_year: number;
-        current_year: number;
         student_status: string;
         profile_complete: boolean;
         profile_is_approved: boolean;
@@ -146,14 +145,15 @@ export function useStudentReviewProfile(studentId: string, enabled = true) {
           })()
         : null;
 
+    let errorMessage: string | null = null;
+    if (error) {
+        errorMessage = error instanceof Error ? error.message : "Failed to load profile";
+    }
+
     return {
         profileData,
         isLoading,
-        error: error
-            ? error instanceof Error
-                ? error.message
-                : "Failed to load profile"
-            : null,
+        error: errorMessage,
         refetch,
     };
 }

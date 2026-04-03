@@ -15,7 +15,7 @@ interface BulkUploadSectionProps {
 
 const REQUIRED_COLUMNS = [
   "first_name", "last_name", "student_email",
-  "dept_name", "student_passout_year", "current_year",
+  "dept_name", "student_passout_year",
 ];
 
 export const BulkUploadSection = ({
@@ -35,7 +35,7 @@ export const BulkUploadSection = ({
     (e: React.DragEvent) => {
       e.preventDefault();
       const file = e.dataTransfer.files[0];
-      if (file && file.name.endsWith(".csv")) onFileChange(file);
+      if (file?.name.endsWith(".csv")) onFileChange(file);
     },
     [onFileChange]
   );
@@ -55,7 +55,7 @@ export const BulkUploadSection = ({
             <div>
               <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{selectedFile.name}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500">
-                {(selectedFile.size / 1024).toFixed(1)} KB &middot; {csvData.length} student{csvData.length !== 1 ? "s" : ""} found
+                {(selectedFile.size / 1024).toFixed(1)} KB &middot; {csvData.length} student{csvData.length === 1 ? "" : "s"} found
               </p>
             </div>
             <button
@@ -76,7 +76,7 @@ export const BulkUploadSection = ({
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Data Preview</span>
             </div>
             <span className="text-xs font-medium text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-700 px-2.5 py-1 rounded-full">
-              {csvData.length} row{csvData.length !== 1 ? "s" : ""}
+              {csvData.length} row{csvData.length === 1 ? "" : "s"}
             </span>
           </div>
           <div className="overflow-x-auto max-h-[360px]">
@@ -84,8 +84,8 @@ export const BulkUploadSection = ({
               <thead className="text-[11px] text-gray-500 dark:text-gray-400 uppercase bg-gray-50/80 dark:bg-gray-800/50 sticky top-0 z-10 border-b border-gray-100 dark:border-gray-800">
                 <tr>
                   <th scope="col" className="px-4 py-2.5 font-semibold tracking-wider text-gray-400 dark:text-gray-500 w-12">#</th>
-                  {headers.map((header, index) => (
-                    <th key={index} scope="col" className="px-4 py-2.5 font-semibold tracking-wider whitespace-nowrap">
+                  {headers.map((header) => (
+                    <th key={header} scope="col" className="px-4 py-2.5 font-semibold tracking-wider whitespace-nowrap">
                       {header}
                       {REQUIRED_COLUMNS.includes(header) && (
                         <span className="text-red-400 ml-0.5">*</span>
@@ -96,10 +96,10 @@ export const BulkUploadSection = ({
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {csvData.map((row, rowIndex) => (
-                  <tr key={rowIndex} className="hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors">
+                  <tr key={row.student_email || `row-${String(rowIndex)}`} className="hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors">
                     <td className="px-4 py-2.5 text-xs text-gray-400 dark:text-gray-500 font-mono">{rowIndex + 1}</td>
-                    {headers.map((header, cellIndex) => (
-                      <td key={cellIndex} className="px-4 py-2.5 whitespace-nowrap text-gray-700 dark:text-gray-300 font-medium">
+                    {headers.map((header) => (
+                      <td key={header} className="px-4 py-2.5 whitespace-nowrap text-gray-700 dark:text-gray-300 font-medium">
                         {row[header] || <span className="text-gray-300 dark:text-gray-600">—</span>}
                       </td>
                     ))}
@@ -124,7 +124,7 @@ export const BulkUploadSection = ({
             className="inline-flex items-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
           >
             <ArrowUpFromLine size={16} />
-            Register {csvData.length} Student{csvData.length !== 1 ? "s" : ""}
+            Register {csvData.length} Student{csvData.length === 1 ? "" : "s"}
           </button>
         </div>
       </div>

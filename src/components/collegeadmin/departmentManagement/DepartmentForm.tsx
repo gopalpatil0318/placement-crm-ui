@@ -64,6 +64,15 @@ const SectionHeader = ({ icon: Icon, title, subtitle }: SectionHeaderProps) => (
 );
 
 // ========================
+// HELPERS
+// ========================
+
+const getButtonText = (loading: boolean, mode: "create" | "edit") => {
+    if (loading) return mode === "create" ? "Creating..." : "Saving...";
+    return mode === "create" ? "Create Department" : "Save Changes";
+};
+
+// ========================
 // COMPONENT
 // ========================
 
@@ -207,9 +216,7 @@ const DepartmentForm = ({
                             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl text-sm font-medium transition shadow-sm shadow-blue-200 dark:shadow-none disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {loading
-                                ? mode === "create" ? "Creating..." : "Saving..."
-                                : mode === "create" ? "Create Department" : "Save Changes"}
+                            {getButtonText(loading, mode)}
                         </button>
                     ) : (
                         <motion.button
@@ -219,9 +226,7 @@ const DepartmentForm = ({
                             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl text-sm font-medium transition shadow-sm shadow-blue-200 dark:shadow-none disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {loading
-                                ? mode === "create" ? "Creating..." : "Saving..."
-                                : mode === "create" ? "Create Department" : "Save Changes"}
+                            {getButtonText(loading, mode)}
                         </motion.button>
                     )}
                     <button

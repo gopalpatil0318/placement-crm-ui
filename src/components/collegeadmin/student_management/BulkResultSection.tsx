@@ -6,7 +6,6 @@ interface CSVStudentRow {
   student_email?: string;
   dept_name?: string;
   student_passout_year?: string;
-  current_year?: string;
   middle_name?: string;
   [key: string]: string | undefined;
 }
@@ -67,7 +66,7 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
       if (originalIdx !== -1) recordIndex = originalIdx;
     }
 
-    if (recordIndex !== -1) {
+    if (recordIndex >= 0) {
       failedIndices.add(recordIndex);
       const errorReason = err.error || err.message || "Failed to register";
       failedRecords.push({ ...originalData[recordIndex], "Error Reason": errorReason });
@@ -80,7 +79,7 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
 
   const toCsvBlob = (data: CSVStudentRow[], head: string[], isErrorCsv: boolean = false) => {
     if (data.length === 0) return null;
-    let cols = Array.from(new Set([...head]));
+    let cols = Array.from(new Set(head));
     if (isErrorCsv) {
       const errorHeader = "Error Reason";
       cols = cols.filter(c => c !== errorHeader);
@@ -94,7 +93,7 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
     }
     const headerRow = cols.join(",");
     const rows = data.map(item =>
-      cols.map(c => `"${(item[c] || "").toString().replace(/"/g, '""')}"`).join(",")
+      cols.map(c => `"${(item[c] || "").toString().replaceAll('"', '""')}"`).join(",")
     ).join("\n");
     return new Blob([headerRow + "\n" + rows], { type: "text/csv" });
   };
@@ -103,12 +102,12 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
     if (successfulRecords.length > 0) {
       const blob = toCsvBlob(successfulRecords, headers, false);
       if (blob) {
-        const url = window.URL.createObjectURL(blob);
+        const url = globalThis.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
         link.download = "successful_students.csv";
         link.click();
-        setTimeout(() => window.URL.revokeObjectURL(url), 100);
+        setTimeout(() => globalThis.URL.revokeObjectURL(url), 100);
       }
     }
   };
@@ -120,12 +119,12 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
       const head = dynamicHeaders.includes("student_name") ? dynamicHeaders : headers;
       const blob = toCsvBlob(failedRecords, head, true);
       if (blob) {
-        const url = window.URL.createObjectURL(blob);
+        const url = globalThis.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
         link.download = "failed_students.csv";
         link.click();
-        setTimeout(() => window.URL.revokeObjectURL(url), 100);
+        setTimeout(() => globalThis.URL.revokeObjectURL(url), 100);
       }
     }
   };
@@ -143,12 +142,12 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
     }).join("\n");
     const csvContent = credHeaders + "\n" + rows;
     const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
+    const url = globalThis.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = "student_credentials.csv";
     link.click();
-    setTimeout(() => window.URL.revokeObjectURL(url), 100);
+    setTimeout(() => globalThis.URL.revokeObjectURL(url), 100);
   };
 
   return (
@@ -290,28 +289,28 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
             <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
               <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-gray-50/50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <tr>
-                  {headers.slice(0, 3).map((h, i) => (
-                    <th key={i} scope="col" className="px-6 py-3 font-semibold tracking-wider whitespace-nowrap">{h}</th>
+                  {headers.slice(0, 3).map((h) => (
+                    <th key={h} scope="col" className="px-6 py-3 font-semibold tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                   <th scope="col" className="px-6 py-3 font-bold tracking-wider text-red-600 whitespace-nowrap">Error Column</th>
-                  {headers.slice(3).map((h, i) => (
-                    <th key={i + 3} scope="col" className="px-6 py-3 font-semibold tracking-wider whitespace-nowrap">{h}</th>
+                  {headers.slice(3).map((h) => (
+                    <th key={h} scope="col" className="px-6 py-3 font-semibold tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {failedRecords.map((req, idx) => (
-                  <tr key={idx} className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 hover:bg-red-50/30 dark:hover:bg-red-900/10 transition-colors">
-                    {headers.slice(0, 3).map((h, i) => (
-                      <td key={i} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
+                {failedRecords.map((req) => (
+                  <tr key={req.student_email || req["Error Reason"]} className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 hover:bg-red-50/30 dark:hover:bg-red-900/10 transition-colors">
+                    {headers.slice(0, 3).map((h) => (
+                      <td key={h} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
                         {req[h] || "-"}
                       </td>
                     ))}
                     <td className="px-6 py-4 font-bold text-red-600 max-w-xs break-words">
                       {req["Error Reason"] || "Validation Failed"}
                     </td>
-                    {headers.slice(3).map((h, i) => (
-                      <td key={i + 3} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
+                    {headers.slice(3).map((h) => (
+                      <td key={h} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
                         {req[h] || "-"}
                       </td>
                     ))}
@@ -337,16 +336,16 @@ export const BulkResultSection = ({ result, onReset, originalData, headers }: Bu
             <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
               <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-gray-50/50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <tr>
-                  {headers.map((h, i) => (
-                    <th key={i} scope="col" className="px-6 py-3 font-semibold tracking-wider">{h}</th>
+                  {headers.map((h) => (
+                    <th key={h} scope="col" className="px-6 py-3 font-semibold tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {successfulRecords.map((req, idx) => (
-                  <tr key={idx} className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 hover:bg-emerald-50/20 dark:hover:bg-emerald-900/10 transition-colors">
-                    {headers.map((h, i) => (
-                      <td key={i} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
+                {successfulRecords.map((req) => (
+                  <tr key={req.student_email || req.first_name} className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 hover:bg-emerald-50/20 dark:hover:bg-emerald-900/10 transition-colors">
+                    {headers.map((h) => (
+                      <td key={h} className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
                         {req[h]}
                       </td>
                     ))}

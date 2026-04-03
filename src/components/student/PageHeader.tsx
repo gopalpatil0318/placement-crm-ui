@@ -17,7 +17,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, breadcrumbs }) => {
             <div>
                 <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 mb-2 uppercase tracking-wider font-semibold">
                     {breadcrumbs.map((crumb, index) => (
-                        <React.Fragment key={index}>
+                        <React.Fragment key={crumb.label}>
                             <span className={crumb.active ? "text-blue-600 dark:text-blue-400" : ""}>{crumb.label}</span>
                             {index < breadcrumbs.length - 1 && <ChevronRight size={14} />}
                         </React.Fragment>

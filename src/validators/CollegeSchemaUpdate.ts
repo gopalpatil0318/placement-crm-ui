@@ -54,6 +54,38 @@ export const collegeSchemaUpdate = z.object({
     .regex(/^(\d{6})?$/, { message: "Pincode must be a valid 6-digit number" })
     .optional()
     .or(z.literal("")),
+
+  college_logo_url: z
+    .string()
+    .regex(/^https?:\/\/.+/, { message: "Must be a valid URL" })
+    .max(2000, { message: "Logo URL cannot exceed 2000 characters" })
+    .optional()
+    .or(z.literal("")),
+
+  college_website: z
+    .string()
+    .regex(/^https?:\/\/.+/, { message: "Must be a valid URL" })
+    .max(500, { message: "Website URL cannot exceed 500 characters" })
+    .optional()
+    .or(z.literal("")),
+
+  college_affiliation: z
+    .string()
+    .max(200, { message: "Affiliation cannot exceed 200 characters" })
+    .optional()
+    .or(z.literal("")),
+
+  college_established_year: z
+    .string()
+    .regex(/^(\d{4})?$/, { message: "Must be a valid 4-digit year" })
+    .optional()
+    .or(z.literal("")),
+
+  college_description: z
+    .string()
+    .max(1000, { message: "Description cannot exceed 1000 characters" })
+    .optional()
+    .or(z.literal("")),
 });
 
 export type CollegeSchemaUpdateType = z.infer<typeof collegeSchemaUpdate>;
