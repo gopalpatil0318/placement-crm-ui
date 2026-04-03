@@ -1,6 +1,3 @@
-import React from "react";
-import { Link } from "react-router-dom";
-
 export default function RootLanding() {
   return (
     <div className="min-h-screen bg-[#080C14] text-[#F8FAFC] flex items-center justify-center relative overflow-hidden font-sans">
