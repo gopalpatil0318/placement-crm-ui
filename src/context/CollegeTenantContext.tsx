@@ -61,8 +61,13 @@ export function CollegeTenantProvider({
     const isDev =
       globalThis.location.hostname === "localhost" ||
       globalThis.location.hostname === "127.0.0.1" ||
-      globalThis.location.hostname === "lvh.me"
-    return !isDev
+      globalThis.location.hostname === "lvh.me" ||
+      globalThis.location.hostname.endsWith(".lvh.me")
+    // Don't redirect if in dev
+    if (isDev) return false
+    // Only redirect if NOT already on placenex.in — prevents infinite loop
+    const isOnMarketingDomain = globalThis.location.hostname === "placenex.in"
+    return !isOnMarketingDomain
   }, [subdomain])
 
   if (needsRedirect) {
