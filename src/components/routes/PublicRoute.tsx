@@ -34,9 +34,6 @@ export const PublicRoute = ({ children }: PublicRouteProps) => {
 
   // Check Student auth
   if (studentAuth?.isAuthenticated && studentAuth?.user?.role === "student") {
-    if (!studentAuth.user?.profileComplete || !studentAuth.user?.profileIsApproved) {
-      return <Navigate to="/student/profile" replace />;
-    }
     return <Navigate to="/student/dashboard" replace />;
   }
 

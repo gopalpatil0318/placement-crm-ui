@@ -48,7 +48,7 @@ export const useApplicationPicker = (
                 CollegeAdminService.getJobApplications(jobId, {
                     application_status: status,
                     search: debouncedSearch || undefined,
-                    limit: 200,
+                    limit: 100,
                 }),
             );
 

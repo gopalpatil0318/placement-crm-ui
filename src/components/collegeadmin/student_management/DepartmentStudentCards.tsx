@@ -43,7 +43,7 @@ const ICON_COLORS = [
 const SkeletonCards = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 animate-pulse">
+            <div key={`skeleton-${String(i)}`} className="p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 animate-pulse">
                 <div className="h-12 w-12 rounded-xl bg-gray-200 dark:bg-gray-700 mb-4" />
                 <div className="h-5 w-3/4 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
                 <div className="h-3 w-1/2 bg-gray-100 dark:bg-gray-800 rounded" />
@@ -125,17 +125,20 @@ const DepartmentStudentCards = () => {
 
                     {/* Cards */}
                     <div className="p-6">
-                        {loading ? (
-                            <SkeletonCards />
-                        ) : departments.length > 0 ? (
+                        {loading && <SkeletonCards />}
+                        {!loading && departments.length === 0 && (
+                            <EmptyState onAdd={() => navigate("/college/create-student")} />
+                        )}
+                        {!loading && departments.length > 0 && (
                             <AnimatedGrid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                                 {departments.map((dept: { dept_id: string; dept_name: string; dept_code?: string }) => {
-                                    const colorIdx = dept.dept_name.charCodeAt(0) % CARD_COLORS.length;
+                                    const colorIdx = dept.dept_name.codePointAt(0)! % CARD_COLORS.length;
                                     return (
                                         <AnimatedGridItem key={dept.dept_id}>
-                                            <div
+                                            <button
+                                                type="button"
                                                 onClick={() => navigate(`/college/students/${dept.dept_id}`)}
-                                                className={`group relative p-5 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${CARD_COLORS[colorIdx]}`}
+                                                className={`group relative p-5 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 w-full text-left ${CARD_COLORS[colorIdx]}`}
                                             >
                                                 {/* Icon */}
                                                 <div className={`h-12 w-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 ${ICON_COLORS[colorIdx]}`}>
@@ -158,13 +161,11 @@ const DepartmentStudentCards = () => {
                                                 <div className="absolute top-5 right-5 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-400 transition-all duration-300 group-hover:translate-x-1">
                                                     <ArrowRight className="h-5 w-5" />
                                                 </div>
-                                            </div>
+                                            </button>
                                         </AnimatedGridItem>
                                     );
                                 })}
                             </AnimatedGrid>
-                        ) : (
-                            <EmptyState onAdd={() => navigate("/college/create-student")} />
                         )}
                     </div>
 
@@ -172,7 +173,7 @@ const DepartmentStudentCards = () => {
                     {departments.length > 0 && (
                         <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800">
                             <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                                Showing <span className="font-semibold text-gray-700 dark:text-gray-300">{departments.length}</span> department{departments.length !== 1 ? "s" : ""}
+                                Showing <span className="font-semibold text-gray-700 dark:text-gray-300">{departments.length}</span> department{departments.length === 1 ? "" : "s"}
                             </p>
                         </div>
                     )}

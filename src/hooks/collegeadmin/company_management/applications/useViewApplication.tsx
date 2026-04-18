@@ -8,9 +8,10 @@ import { queryKeys } from "@/lib/queryKeys";
 
 export interface AcademicInfo {
     overall_cgpa: number | null;
-    live_kts: number | null;
+    total_live_kts: number | null;
     tenth_percentage: number | null;
     twelfth_percentage: number | null;
+    diploma_percentage: number | null;
 }
 
 export interface ApplicationAnswer {
@@ -18,8 +19,12 @@ export interface ApplicationAnswer {
     question_id: string;
     question_text: string;
     question_type: string;
+    question_options: string[] | null;
+    is_required: boolean;
+    question_order: number;
     answer_text: string | null;
-    selected_options: string[] | null;
+    answer_options: string[] | null;
+    answer_boolean: boolean | null;
 }
 
 export interface ApplicationRoundResult {
@@ -67,10 +72,12 @@ export const useViewApplication = (applicationId: string | undefined) => {
         enabled: !!applicationId,
     });
 
+    const errorMessage = queryError instanceof Error ? queryError.message : "Failed to fetch application";
+
     return {
         application: data ?? null,
         loading: isLoading,
-        error: queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch application") : null,
+        error: queryError ? errorMessage : null,
         refresh: refetch,
     };
 };

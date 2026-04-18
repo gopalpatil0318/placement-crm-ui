@@ -4,9 +4,9 @@ import FloatingSelect from "@/components/ui/FloatingSelect";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
 import { OCCUPATION_OPTIONS } from "@/constants/personalInfo";
 
-const PersonalInfoForm = () => {
+const PersonalInfoForm = ({ onSaveSuccess }: Readonly<{ onSaveSuccess?: () => void }>) => {
     const { formData, errors, loading, fetching, handleChange, handleCheckboxChange, handleSubmit } =
-        usePersonalInfo();
+        usePersonalInfo({ onSaveSuccess });
 
     const genderOptions = ["Male", "Female", "Other", "Prefer not to say"].map(o => ({ value: o, label: o }));
     const categoryOptions = ["General", "OBC", "OBC-NCL", "SC", "ST", "EWS", "NT", "NT-A", "NT-B", "NT-C", "NT-D", "VJ", "VJ-A", "SBC", "SEBC", "DT/DNT", "Open"].map(o => ({ value: o, label: o }));
@@ -81,7 +81,7 @@ const PersonalInfoForm = () => {
 
                 {/* ================= Personal Details ================= */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <FloatingInput label="Birth Date" name="birth_date" value={formData.birth_date} onChange={handleChange} error={errors.birth_date} required type="date" />
+                    <FloatingInput label="Birth Date" name="birth_date" value={formData.birth_date} onChange={handleChange} error={errors.birth_date} required type="date" max={new Date().toISOString().split('T')[0]} />
                     <FloatingSelect label="Gender" name="gender" value={String(formData.gender ?? "")} onChange={handleChange} error={errors.gender} required options={genderOptions} />
                     <FloatingSelect label="Blood Group" name="blood_group" value={String(formData.blood_group ?? "")} onChange={handleChange} error={errors.blood_group} required options={bloodGroupOptions} />
                 </div>

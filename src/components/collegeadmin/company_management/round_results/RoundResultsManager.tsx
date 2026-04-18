@@ -37,6 +37,7 @@ import { useViewRoundResults } from "@/hooks/collegeadmin/company_management/rou
 import { useAddRoundResult } from "@/hooks/collegeadmin/company_management/round_results/useAddRoundResult";
 import { useBulkAddRoundResults } from "@/hooks/collegeadmin/company_management/round_results/useBulkAddRoundResults";
 import { useUpdateRoundResult } from "@/hooks/collegeadmin/company_management/round_results/useUpdateRoundResult";
+import { useProcessRoundResults } from "@/hooks/collegeadmin/company_management/round_results/useProcessRoundResults";
 import { useApplicationPicker, type PickerApplication } from "@/hooks/collegeadmin/company_management/applications/useApplicationPicker";
 import {
     RESULT_STATUS_COLORS,
@@ -2053,6 +2054,7 @@ const RoundResultsManager = ({
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingResult, setEditingResult] = useState<RoundResult | null>(null);
     const [showBulkEntry, setShowBulkEntry] = useState(false);
+    const [showProcessModal, setShowProcessModal] = useState(false);
 
     // Build set of application IDs that already have results (to exclude from picker)
     const existingApplicationIds = useMemo(
@@ -2142,6 +2144,8 @@ const RoundResultsManager = ({
     }, [refresh]);
 
     const isCancelled = roundInfo?.round_status === "cancelled";
+    const isPending = roundInfo?.round_status === "pending";
+    const isReadOnly = isCancelled || isPending;
     const hasFilters = !!(search || statusFilter || attendedFilter);
     const startEntry =
         results.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
@@ -2181,8 +2185,24 @@ const RoundResultsManager = ({
                         <RoundInfoHeader roundInfo={roundInfo} loading={loading} />
 
                         {/* Action buttons */}
-                        {!isCancelled && !loading && (
+                        {!isReadOnly && !loading && (
                             <div className="flex items-center gap-2 flex-shrink-0">
+                                {roundInfo?.round_status === "completed" && !roundInfo.is_processed && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowProcessModal(true)}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition shadow-sm"
+                                    >
+                                        <Award className="h-4 w-4" />
+                                        Process Results
+                                    </button>
+                                )}
+                                {roundInfo?.is_processed && (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800">
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                        Processed
+                                    </span>
+                                )}
                                 <button
                                     type="button"
                                     onClick={() => setShowBulkEntry(true)}
@@ -2202,6 +2222,21 @@ const RoundResultsManager = ({
                             </div>
                         )}
                     </div>
+
+                    {/* Pending round banner */}
+                    {isPending && !loading && (
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 mb-5">
+                            <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                                    Round Not Started
+                                </p>
+                                <p className="text-xs text-blue-600 dark:text-blue-400">
+                                    Start this round (set status to &quot;In Progress&quot;) before entering results. You can change the round status from the Rounds tab.
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Cancelled banner */}
                     {isCancelled && (
@@ -2565,8 +2600,268 @@ const RoundResultsManager = ({
                     onSuccess={handleSuccess}
                 />
             )}
+
+            {/* Process round results modal */}
+            {showProcessModal && (
+                <ProcessResultsModal
+                    roundId={roundId}
+                    roundInfo={roundInfo}
+                    onClose={() => setShowProcessModal(false)}
+                    onSuccess={() => {
+                        setShowProcessModal(false);
+                        refresh();
+                    }}
+                />
+            )}
         </div>
     );
 };
+
+// ========================
+// PROCESS RESULTS MODAL
+// ========================
+
+const PROCESS_SUMMARY_CARDS = [
+    { key: "will_select", label: "Will Select", icon: Award, color: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400" },
+    { key: "will_advance", label: "Will Advance", icon: ChevronRight, color: "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400" },
+    { key: "will_reject", label: "Will Reject", icon: XCircle, color: "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400" },
+    { key: "will_mark_absent", label: "Mark Absent", icon: AlertTriangle, color: "bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400" },
+    { key: "on_hold", label: "On Hold", icon: Clock, color: "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400" },
+    { key: "skipped", label: "Skipped", icon: Minus, color: "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400" },
+] as const;
+
+const RESULT_SUMMARY_CARDS = [
+    { key: "selected", label: "Selected", icon: Award, color: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400" },
+    { key: "advanced", label: "Advanced", icon: ChevronRight, color: "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400" },
+    { key: "rejected", label: "Rejected", icon: XCircle, color: "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400" },
+    { key: "absent_marked", label: "Absent", icon: AlertTriangle, color: "bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400" },
+    { key: "on_hold", label: "On Hold", icon: Clock, color: "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400" },
+] as const;
+
+function ProcessResultsModal({
+    roundId,
+    roundInfo,
+    onClose,
+    onSuccess,
+}: Readonly<{
+    roundId: string;
+    roundInfo: RoundInfo | null;
+    onClose: () => void;
+    onSuccess: () => void;
+}>) {
+    const {
+        previewLoading,
+        preview,
+        processLoading,
+        processResult,
+        loadPreview,
+        executeProcess,
+        reset,
+    } = useProcessRoundResults(roundId, onSuccess);
+
+    useEffect(() => {
+        loadPreview();
+        return () => reset();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roundId]);
+
+    if (!roundInfo) return null;
+
+    // ── Result view (after processing) ──
+    if (processResult) {
+        return (
+            <ModalWrapper isOpen onClose={onClose} title="Round Processed" titleIcon={<CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />} size="lg">
+                <div className="px-6 py-5 space-y-5">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <span className="font-semibold">{processResult.round.round_name}</span> for {processResult.round.job_title} has been processed.
+                    </p>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {RESULT_SUMMARY_CARDS.map(({ key, label, icon: Icon, color }) => (
+                            <div key={key} className={`p-3 rounded-xl ${color} flex items-center gap-2.5`}>
+                                <Icon className="h-4 w-4 flex-shrink-0" />
+                                <div>
+                                    <p className="text-xs font-medium opacity-70">{label}</p>
+                                    <p className="text-lg font-bold">{processResult.processed[key]}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-400">
+                        {processResult.processed.notifications_sent} notifications sent to students and admins
+                    </div>
+
+                    <button type="button" onClick={onClose} className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition">
+                        Close
+                    </button>
+                </div>
+            </ModalWrapper>
+        );
+    }
+
+    // ── Preview view ──
+    return (
+        <ModalWrapper
+            isOpen
+            onClose={onClose}
+            title="Process Round Results"
+            titleIcon={<Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+            size="lg"
+            disabled={previewLoading || processLoading}
+        >
+            <div className="px-6 py-5 space-y-5">
+                {previewLoading && (
+                    <div className="flex items-center justify-center py-10">
+                        <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400 mr-2" />
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Loading preview…</span>
+                    </div>
+                )}
+
+                {!previewLoading && !preview && (
+                    <div className="text-center py-10">
+                        <AlertTriangle className="h-8 w-8 text-red-400 mx-auto mb-3" />
+                        <p className="text-sm text-red-600 dark:text-red-400 font-medium">Failed to load preview</p>
+                        <button type="button" onClick={() => loadPreview()} className="mt-3 text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                            Retry
+                        </button>
+                    </div>
+                )}
+
+                {!previewLoading && preview && (
+                    <>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Review what will happen when you process <span className="font-semibold">{roundInfo.round_name}</span>.
+                            {preview.round.is_final_round && (
+                                <span className="ml-1 text-emerald-600 dark:text-emerald-400 font-medium">(Final Round)</span>
+                            )}
+                        </p>
+
+                        {/* Summary cards */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {PROCESS_SUMMARY_CARDS.map(({ key, label, icon: Icon, color }) => {
+                                const count = preview.summary[key];
+                                if (count === 0) return null;
+                                return (
+                                    <div key={key} className={`p-3 rounded-xl ${color} flex items-center gap-2.5`}>
+                                        <Icon className="h-4 w-4 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-xs font-medium opacity-70">{label}</p>
+                                            <p className="text-lg font-bold">{count}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Detail panels */}
+                        <div className="space-y-3 max-h-56 overflow-y-auto">
+                            {preview.details.selecting.length > 0 && (
+                                <ProcessDetailPanel
+                                    title="Students → Selected"
+                                    items={preview.details.selecting}
+                                    color="border-emerald-100 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10"
+                                    icon={<Award className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                                />
+                            )}
+                            {preview.details.advancing.length > 0 && (
+                                <ProcessDetailPanel
+                                    title="Students → Advance to Next Round"
+                                    items={preview.details.advancing}
+                                    color="border-blue-100 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10"
+                                    icon={<ChevronRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+                                />
+                            )}
+                            {preview.details.rejecting.length > 0 && (
+                                <ProcessDetailPanel
+                                    title="Students → Rejected"
+                                    items={preview.details.rejecting}
+                                    color="border-red-100 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10"
+                                    icon={<XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />}
+                                />
+                            )}
+                            {preview.details.skipped.length > 0 && (
+                                <ProcessDetailPanel
+                                    title="Skipped (Cannot Process)"
+                                    items={preview.details.skipped}
+                                    color="border-amber-100 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10"
+                                    icon={<AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                                />
+                            )}
+                        </div>
+
+                        {/* Auto-reject info */}
+                        {!preview.settings.auto_reject_on_round_fail && (
+                            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-400">
+                                Auto-reject is <span className="font-semibold">disabled</span> in your placement settings. Failed/absent students will not be automatically rejected.
+                            </div>
+                        )}
+
+                        {/* Warning */}
+                        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 space-y-1">
+                            <p className="text-sm font-semibold text-red-700 dark:text-red-400">This action cannot be undone</p>
+                            <p className="text-xs text-red-600 dark:text-red-500">
+                                Application statuses will be updated and notifications will be sent to all affected students.
+                            </p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                disabled={processLoading}
+                                className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => executeProcess()}
+                                disabled={processLoading}
+                                className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                            >
+                                {processLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Award className="h-4 w-4" />}
+                                {processLoading ? "Processing…" : "Process Round"}
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
+        </ModalWrapper>
+    );
+}
+
+function ProcessDetailPanel({
+    title,
+    items,
+    color,
+    icon,
+}: Readonly<{
+    title: string;
+    items: { student_name: string; reason?: string; action?: string }[];
+    color: string;
+    icon: React.ReactNode;
+}>) {
+    return (
+        <div className={`rounded-xl border ${color} p-3 space-y-2`}>
+            <div className="flex items-center gap-2">
+                {icon}
+                <h4 className="font-semibold text-sm">
+                    {title} <span className="opacity-60">({items.length})</span>
+                </h4>
+            </div>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                {items.map((item) => (
+                    <div key={item.student_name} className="px-2.5 py-1.5 rounded-lg text-xs bg-white/60 dark:bg-black/20">
+                        <p className="font-medium">{item.student_name}</p>
+                        {item.reason && <p className="opacity-60 mt-0.5">{item.reason}</p>}
+                        {item.action && <p className="opacity-60 mt-0.5">{item.action}</p>}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 export default RoundResultsManager;

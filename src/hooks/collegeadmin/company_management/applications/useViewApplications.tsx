@@ -16,6 +16,7 @@ export interface ApplicationListItem {
     current_round_id: string | null;
     is_eligible: boolean;
     eligibility_remarks: string | null;
+    waitlist_rank: number | null;
     applied_at: string;
     last_updated_at: string;
     student_name: string;
@@ -34,6 +35,7 @@ export interface StatusSummary {
     rejected: number;
     selected: number;
     offered: number;
+    waitlisted: number;
     withdrawn: number;
 }
 

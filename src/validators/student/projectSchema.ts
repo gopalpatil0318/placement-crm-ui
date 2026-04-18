@@ -20,21 +20,21 @@ export const projectSchema = z
         project_type: z.enum(VALID_PROJECT_TYPES, {
             message: "Please select a valid project type",
         }),
-        project_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-        github_link: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-        demo_link: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+        project_url: z.url({ message: "Must be a valid URL" }).optional().or(z.literal("")),
+        github_link: z.url({ message: "Must be a valid URL" }).optional().or(z.literal("")),
+        demo_link: z.url({ message: "Must be a valid URL" }).optional().or(z.literal("")),
         technologies_used: z.array(z.string()).min(1, "Add at least one technology"),
         start_date: z.string().min(1, "Start date is required"),
         end_date: z.string().optional().or(z.literal("")),
         is_ongoing: z.boolean(),
         team_size: z
             .union([z.number(), z.string()])
-            .transform((v) => Number(v))
-            .refine((v) => !isNaN(v) && v >= 1, { message: "Team size must be at least 1" }),
+            .transform(Number)
+            .refine((v) => !Number.isNaN(v) && v >= 1, { message: "Team size must be at least 1" }),
         role_in_project: z.string().min(1, "Your role is required").max(100),
         display_order: z
             .union([z.number(), z.string()])
-            .transform((v) => Number(v))
+            .transform(Number)
             .optional(),
         is_featured: z.boolean(),
     })
@@ -46,6 +46,25 @@ export const projectSchema = z
             return true;
         },
         { message: "End date is required when project is not ongoing", path: ["end_date"] }
+    )
+    .refine(
+        (data) => {
+            // B24: End date cannot be in the future for completed projects
+            if (!data.is_ongoing && data.end_date) {
+                return new Date(data.end_date) <= new Date();
+            }
+            return true;
+        },
+        { message: 'End date cannot be in the future for completed projects', path: ['end_date'] }
+    )
+    .refine(
+        (data) => {
+            if (data.start_date && data.end_date) {
+                return new Date(data.end_date) >= new Date(data.start_date);
+            }
+            return true;
+        },
+        { message: 'End date must be on or after start date', path: ['end_date'] }
     );
 
 export type ProjectSchemaType = z.infer<typeof projectSchema>;

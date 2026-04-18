@@ -12,8 +12,8 @@ export function useWithdrawApplication(applicationId: string) {
     mutationFn: (payload) => JobBrowsingService.withdrawApplication(applicationId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.applicationDetail(applicationId) })
-      queryClient.invalidateQueries({ queryKey: ["studentPortal", "applications"] })
-      queryClient.invalidateQueries({ queryKey: ["studentPortal", "jobs"] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.myApplications() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.availableJobs() })
     },
     onError: (error) => {
       showToast({

@@ -34,6 +34,7 @@ import {
     type OverrideStatus,
 } from "@/validators/OverrideSchema";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { useAuth } from "@/hooks/collegeadmin/useAuth";
 import {
     type DashboardOverrideRequest,
     type OverrideSummary,
@@ -1280,19 +1281,13 @@ const OverrideDashboard = () => {
     const startEntry = overrides.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
     const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
 
-    // Fetch departments and jobs from APIs for filter dropdowns
-    const [departments, setDepartments] = useState<string[]>([]);
+    // Use departments from auth context; fetch jobs from API for filter dropdowns
+    const { user } = useAuth();
+    const departments: string[] = (user?.departments ?? []).map((d) => d.dept_name).sort((a, b) => a.localeCompare(b));
     const [jobOptions, setJobOptions] = useState<[string, string][]>([]);
 
     useEffect(() => {
         let cancelled = false;
-        CollegeAdminService.getDepartments({ is_active: true, limit: 500 }).then((res) => {
-            if (cancelled) return;
-            const depts: string[] = (res.data?.departments ?? res.departments ?? [])
-                .map((d: { dept_name: string }) => d.dept_name)
-                .sort();
-            setDepartments(depts);
-        }).catch(() => {});
         CollegeAdminService.getAllJobs({ limit: 500 }).then((res) => {
             if (cancelled) return;
             const jobs: [string, string][] = (res.data?.jobs ?? res.jobs ?? [])

@@ -347,6 +347,21 @@ function SubmitPanel({ onTabSwitch }: Readonly<{ onTabSwitch: (tab: DashboardTab
 
   const Wrapper = shouldReduce ? "div" : motion.div
 
+  // Empty state: no applied jobs
+  if (!appsLoading && applications.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center max-w-md mx-auto">
+        <div className="h-12 w-12 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-3">
+          <MessageSquare size={24} className="text-amber-500" />
+        </div>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Apply to jobs first</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          You can share interview feedback only for jobs you&apos;ve applied to. Browse available jobs and apply to get started.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <Wrapper
       {...(shouldReduce ? {} : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.25 } })}

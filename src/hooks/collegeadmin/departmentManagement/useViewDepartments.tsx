@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
+import { useYearFilter } from "@/context/YearFilterContext";
 
 // ========================
 // TYPES
@@ -33,6 +34,7 @@ interface Pagination {
 
 export const useViewDepartments = () => {
     const queryClient = useQueryClient();
+    const { selectedYear } = useYearFilter();
 
     // ── Local filter / pagination state ──
     const [page, setPage] = useState(1);
@@ -44,17 +46,20 @@ export const useViewDepartments = () => {
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // ── React Query ──
+    let resolvedActive: boolean | undefined;
+    if (statusFilter === "true") {
+        resolvedActive = true;
+    } else if (statusFilter === "false") {
+        resolvedActive = false;
+    }
+
     const queryFilters = useMemo(() => ({
         page,
         limit,
         search: debouncedSearch || undefined,
-        is_active:
-            statusFilter === "true"
-                ? true
-                : statusFilter === "false"
-                    ? false
-                    : undefined,
-    }), [page, limit, debouncedSearch, statusFilter]);
+        is_active: resolvedActive,
+        passout_year: selectedYear,
+    }), [page, limit, debouncedSearch, resolvedActive, selectedYear]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.departments.all(queryFilters),
@@ -64,9 +69,8 @@ export const useViewDepartments = () => {
 
     const departments: Department[] = Array.isArray(data?.data) ? data.data : [];
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
-    const error = queryError
-        ? (queryError instanceof Error ? queryError.message : "Failed to fetch departments")
-        : null;
+    const errorMessage = queryError instanceof Error ? queryError.message : "Failed to fetch departments";
+    const error = queryError ? errorMessage : null;
 
     // ── Prefetch next page for smoother pagination ──
     useEffect(() => {

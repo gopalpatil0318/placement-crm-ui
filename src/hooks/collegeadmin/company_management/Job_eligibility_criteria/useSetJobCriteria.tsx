@@ -39,7 +39,7 @@ export interface CriteriaToggles {
 }
 
 const INITIAL_FORM: CriteriaFormData = {
-    min_overall_cgpa: 7.0,
+    min_overall_cgpa: 7,
     max_live_kts: 0,
     min_tenth_percentage: 60,
     min_twelfth_percentage: 55,
@@ -226,73 +226,99 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
         },
     });
 
-    const handleSubmit = useCallback(() => {
-        // Build payload from toggled-on fields only
+    const buildPayload = useCallback(() => {
         const payload: Record<string, unknown> = {};
         const emptyErrors: Record<string, string> = {};
 
         for (const field of NUMERIC_FIELDS) {
-            if (toggles[field]) {
-                if (formData[field] === "") {
-                    emptyErrors[field] = "This field is required when enabled";
-                } else {
-                    payload[field] = formData[field];
-                }
+            if (!toggles[field]) continue;
+            if (formData[field] === "") {
+                emptyErrors[field] = "This field is required when enabled";
+            } else {
+                payload[field] = formData[field];
             }
         }
 
         for (const field of ARRAY_FIELDS) {
-            if (toggles[field]) {
-                payload[field] = formData[field];
-            }
+            if (toggles[field]) payload[field] = formData[field];
         }
 
         if (toggles.exclude_already_placed) {
             payload.exclude_already_placed = formData.exclude_already_placed;
         }
 
-        // At least one criterion must be enabled
-        if (Object.keys(payload).length === 0 && Object.keys(emptyErrors).length === 0) {
-            showToast({
-                type: "warning",
-                title: "No Criteria Selected",
-                description: "Enable and configure at least one eligibility criterion",
-            });
-            return;
-        }
+        return { payload, emptyErrors };
+    }, [formData, toggles]);
 
-        // Empty numeric fields that are toggled on
-        if (Object.keys(emptyErrors).length > 0) {
-            setErrors(emptyErrors);
-            showToast({
-                type: "warning",
-                title: "Validation Failed",
-                description: Object.values(emptyErrors)[0],
-            });
-            return;
-        }
-
-        // Validate assembled payload with Zod
+    const validatePayload = useCallback((payload: Record<string, unknown>) => {
         const result = setCriteriaSchema.safeParse(payload);
-        if (!result.success) {
-            const fieldErrors: Record<string, string> = {};
-            for (const issue of result.error.issues) {
-                const field = String(issue.path[0]);
-                if (!fieldErrors[field]) fieldErrors[field] = issue.message;
-            }
-            setErrors(fieldErrors);
-            showToast({
-                type: "warning",
-                title: "Validation Failed",
-                description: result.error.issues[0].message,
-            });
+        if (result.success) return null;
+
+        const fieldErrors: Record<string, string> = {};
+        for (const issue of result.error.issues) {
+            const field = String(issue.path[0]);
+            if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+        }
+        return { fieldErrors, firstMessage: result.error.issues[0].message };
+    }, []);
+
+    // Build a payload that clears all criteria (all nulls + exclude_already_placed: false)
+    const buildClearPayload = useCallback((): Record<string, unknown> => {
+        const p: Record<string, unknown> = {};
+        for (const field of NUMERIC_FIELDS) p[field] = null;
+        for (const field of ARRAY_FIELDS) p[field] = null;
+        p.exclude_already_placed = false;
+        return p;
+    }, []);
+
+    // Inject null for every toggled-OFF field so backend clears stale DB values
+    const injectDisabledNulls = useCallback((payload: Record<string, unknown>) => {
+        for (const field of NUMERIC_FIELDS) {
+            if (!toggles[field]) payload[field] = null;
+        }
+        for (const field of ARRAY_FIELDS) {
+            if (!toggles[field]) payload[field] = null;
+        }
+        if (!toggles.exclude_already_placed) {
+            payload.exclude_already_placed = false;
+        }
+    }, [toggles]);
+
+    const handleSubmit = useCallback(() => {
+        const { payload, emptyErrors } = buildPayload();
+        const hasPayload = Object.keys(payload).length > 0;
+        const hasErrors = Object.keys(emptyErrors).length > 0;
+
+        // On update with ALL toggles off: send explicit nulls to clear every criterion
+        if (isUpdate && !hasPayload && !hasErrors) {
+            setErrors({});
+            mutation.mutate({ payload: buildClearPayload(), isUpdate });
             return;
         }
+
+        if (!hasPayload && !hasErrors) {
+            showToast({ type: "warning", title: "No Criteria Selected", description: "Enable and configure at least one eligibility criterion" });
+            return;
+        }
+
+        if (hasErrors) {
+            setErrors(emptyErrors);
+            showToast({ type: "warning", title: "Validation Failed", description: Object.values(emptyErrors)[0] });
+            return;
+        }
+
+        const validationError = validatePayload(payload);
+        if (validationError) {
+            setErrors(validationError.fieldErrors);
+            showToast({ type: "warning", title: "Validation Failed", description: validationError.firstMessage });
+            return;
+        }
+
+        if (isUpdate) injectDisabledNulls(payload);
 
         setErrors({});
-
         mutation.mutate({ payload, isUpdate });
-    }, [formData, toggles, isUpdate, mutation]);
+    }, [buildPayload, buildClearPayload, injectDisabledNulls, validatePayload, isUpdate, mutation]);
 
     return {
         formData,

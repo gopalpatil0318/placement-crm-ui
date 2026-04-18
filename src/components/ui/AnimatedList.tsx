@@ -24,7 +24,7 @@ interface AnimatedListProps {
  * </table>
  * ```
  */
-export function AnimatedTableBody({ children, className }: AnimatedListProps) {
+export function AnimatedTableBody({ children, className }: Readonly<AnimatedListProps>) {
   const shouldReduce = useReducedMotion()
 
   if (shouldReduce) {
@@ -73,7 +73,7 @@ export function AnimatedRow({
  * Animated <div> container — staggers child items on mount.
  * Use for card grids, vertical lists, or any non-table stagger layout.
  */
-export function AnimatedGrid({ children, className }: AnimatedListProps) {
+export function AnimatedGrid({ children, className }: Readonly<AnimatedListProps>) {
   const shouldReduce = useReducedMotion()
 
   if (shouldReduce) {
@@ -96,7 +96,7 @@ export function AnimatedGrid({ children, className }: AnimatedListProps) {
  * Animated <div> child — used inside AnimatedGrid.
  * Inherits stagger timing from parent container.
  */
-export function AnimatedGridItem({ children, className }: AnimatedListProps) {
+export function AnimatedGridItem({ children, className }: Readonly<AnimatedListProps>) {
   const shouldReduce = useReducedMotion()
 
   if (shouldReduce) {

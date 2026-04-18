@@ -294,6 +294,22 @@ const TrainingForm = ({
                                 onChange={onChange}
                                 error={errors.session_duration_hours}
                             />
+                            <FloatingInput
+                                label="Program Fee (₹)"
+                                name="program_fee"
+                                type="number"
+                                value={formData.program_fee ?? ""}
+                                onChange={onChange}
+                                error={errors.program_fee}
+                            />
+                            <FloatingInput
+                                label="Min Attendance %"
+                                name="min_attendance_pct"
+                                type="number"
+                                value={formData.min_attendance_pct ?? ""}
+                                onChange={onChange}
+                                error={errors.min_attendance_pct}
+                            />
                         </div>
                     </div>
                 )}

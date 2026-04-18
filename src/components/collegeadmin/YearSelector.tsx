@@ -80,7 +80,7 @@ export default function YearSelector() {
       {/* Dropdown */}
       <AnimatePresence>
         {open && (
-          <motion.ul
+          <motion.div
             role="listbox"
             aria-label="Select academic year"
             {...dropdownMotion}
@@ -92,7 +92,7 @@ export default function YearSelector() {
               const isActive = year === selectedYear
               const isDefault = year === defaultYear
               return (
-                <li
+                <div
                   key={year}
                   role="option"
                   aria-selected={isActive}
@@ -119,10 +119,10 @@ export default function YearSelector() {
                     )}
                   </span>
                   {isActive && <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />}
-                </li>
+                </div>
               )
             })}
-          </motion.ul>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

@@ -2,7 +2,7 @@
     "rewrites": [
         {
             "source": "/api/:path*",
-            "destination": "https://testpcrmapi.vercel.app/api/:path*"
+            "destination": "https://api.placenex.in/api/:path*"
         },
         {
             "source": "/((?!api/).*)",

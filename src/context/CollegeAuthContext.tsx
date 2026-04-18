@@ -98,6 +98,7 @@ export function CollegeAuthProvider({ children }: Readonly<{ children: ReactNode
             queryClient.clear();
             setUser(null);
             localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem("placenex_selected_year");
         }
     }, []);
 

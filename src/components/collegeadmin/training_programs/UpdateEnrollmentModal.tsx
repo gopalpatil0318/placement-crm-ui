@@ -9,6 +9,10 @@ import FloatingSelect from "@/components/ui/FloatingSelect";
 import {
     ENROLLMENT_STATUS_OPTIONS,
     ENROLLMENT_STATUS_LABELS,
+    ENROLLMENT_VALID_TRANSITIONS,
+    PAYMENT_STATUS_OPTIONS,
+    PAYMENT_STATUS_LABELS,
+    type EnrollmentStatus,
     type UpdateEnrollmentInput,
 } from "@/validators/TrainingProgramSchema";
 
@@ -25,21 +29,44 @@ interface UpdateEnrollmentModalProps {
     loading: boolean;
     studentName?: string;
     studentEmail?: string;
-    totalSessions?: number;
+    currentStatus?: string;
     handleChange: (name: string, value: unknown) => void;
     handleSubmit: () => void;
     handleClose: () => void;
 }
 
 // ========================
-// CONSTANTS
+// HELPERS
 // ========================
 
-const STATUS_OPTIONS = [
+function getStatusOptions(currentStatus?: string): { value: string; label: string }[] {
+    const base = [{ value: "", label: "" }];
+    if (!currentStatus) {
+        return [
+            ...base,
+            ...ENROLLMENT_STATUS_OPTIONS.map((s) => ({
+                value: s,
+                label: ENROLLMENT_STATUS_LABELS[s],
+            })),
+        ];
+    }
+    const valid = ENROLLMENT_VALID_TRANSITIONS[currentStatus as EnrollmentStatus] ?? [];
+    // Include current status + valid transitions
+    const allowed = [currentStatus as EnrollmentStatus, ...valid];
+    return [
+        ...base,
+        ...allowed.map((s) => ({
+            value: s,
+            label: ENROLLMENT_STATUS_LABELS[s],
+        })),
+    ];
+}
+
+const PAYMENT_STATUS_SELECT_OPTIONS = [
     { value: "", label: "" },
-    ...ENROLLMENT_STATUS_OPTIONS.map((s) => ({
+    ...PAYMENT_STATUS_OPTIONS.map((s) => ({
         value: s,
-        label: ENROLLMENT_STATUS_LABELS[s],
+        label: PAYMENT_STATUS_LABELS[s],
     })),
 ];
 
@@ -54,7 +81,7 @@ const UpdateEnrollmentModal = ({
     loading,
     studentName,
     studentEmail,
-    totalSessions,
+    currentStatus,
     handleChange,
     handleSubmit,
     handleClose,
@@ -125,31 +152,12 @@ const UpdateEnrollmentModal = ({
 
             {/* Form */}
             <div className="px-6 py-5 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <FloatingInput
-                        label={totalSessions ? `Sessions Attended (out of ${totalSessions})` : "Sessions Attended"}
-                        name="sessions_attended"
-                        type="number"
-                        value={formData.sessions_attended ?? ""}
-                        onChange={onChange}
-                        error={errors.sessions_attended}
-                    />
-                    <FloatingInput
-                        label="Completion %"
-                        name="completion_percentage"
-                        type="number"
-                        value={formData.completion_percentage ?? ""}
-                        onChange={onChange}
-                        error={errors.completion_percentage}
-                    />
-                </div>
-
                 <FloatingSelect
                     label="Status"
                     name="completion_status"
                     value={formData.completion_status ?? ""}
                     onChange={onChange}
-                    options={STATUS_OPTIONS}
+                    options={getStatusOptions(currentStatus)}
                     error={errors.completion_status}
                 />
 
@@ -175,6 +183,26 @@ const UpdateEnrollmentModal = ({
                             error={errors.certificate_url}
                         />
                     )}
+                </div>
+
+                {/* Payment */}
+                <div className="grid grid-cols-2 gap-4">
+                    <FloatingSelect
+                        label="Payment Status"
+                        name="payment_status"
+                        value={formData.payment_status ?? ""}
+                        onChange={onChange}
+                        options={PAYMENT_STATUS_SELECT_OPTIONS}
+                        error={errors.payment_status}
+                    />
+                    <FloatingInput
+                        label="Amount Paid (₹)"
+                        name="amount_paid"
+                        type="number"
+                        value={formData.amount_paid ?? ""}
+                        onChange={onChange}
+                        error={errors.amount_paid}
+                    />
                 </div>
             </div>
         </ModalWrapper>

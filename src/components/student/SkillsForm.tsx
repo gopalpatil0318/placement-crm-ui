@@ -1,10 +1,10 @@
 import { useSkills } from "@/hooks/student/useSkills";
-import { SKILL_CATEGORY_LABELS, PROFICIENCY_LABELS, VALID_PROFICIENCY_LEVELS } from "@/validators/student/skillsSchema";
+import { PROFICIENCY_LABELS, VALID_PROFICIENCY_LEVELS } from "@/validators/student/skillsSchema";
+import { SKILL_CATEGORY_LABELS, SKILL_CATEGORY_GROUPED_OPTIONS } from "@/constants/skillCategories";
 import { Plus, X, Search, Check } from "lucide-react";
 import { useState } from "react";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
-import FloatingSelect from "@/components/ui/FloatingSelect";
 
 const SkillsForm = () => {
     const {
@@ -25,18 +25,17 @@ const SkillsForm = () => {
         isSelected,
         handleAddSkill,
         handleSave,
-        VALID_SKILL_CATEGORIES,
     } = useSkills();
 
     const [search, setSearch] = useState("");
     const [filterCategory, setFilterCategory] = useState("all");
     const [displayLimit, setDisplayLimit] = useState(20);
 
-    // Filter catalog skills by search + category
+    // Filter catalog skills by search + category, excluding already-selected skills
     const filteredSkills = catalogSkills.filter((skill) => {
         const matchesSearch = skill.skill_name.toLowerCase().includes(search.toLowerCase());
         const matchesCategory = filterCategory === "all" || skill.skill_category === filterCategory;
-        return matchesSearch && matchesCategory;
+        return matchesSearch && matchesCategory && !isSelected(skill.skill_id);
     });
 
     const visibleSkills = filteredSkills.slice(0, displayLimit);
@@ -253,7 +252,33 @@ const SkillsForm = () => {
             }>
                         <div className="p-6 space-y-5">
                             <FloatingInput label="Skill Name" name="skill_name" value={newSkillName} onChange={(e) => setNewSkillName(e.target.value)} error={addErrors.skill_name} required placeholder="e.g. Docker" />
-                            <FloatingSelect label="Category" name="skill_category" value={newSkillCategory} onChange={(e) => setNewSkillCategory(e.target.value)} error={addErrors.skill_category} required options={VALID_SKILL_CATEGORIES.map(cat => ({ value: cat, label: SKILL_CATEGORY_LABELS[cat] || cat }))} />
+                            <div>
+                                <label htmlFor="add-skill-category" className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Category <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    id="add-skill-category"
+                                    value={newSkillCategory}
+                                    onChange={(e) => setNewSkillCategory(e.target.value)}
+                                    className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-colors outline-none ${
+                                        addErrors.skill_category
+                                            ? "border-red-300 bg-red-50 text-red-900 dark:border-red-600 dark:bg-red-900/20 dark:text-red-300"
+                                            : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                    }`}
+                                >
+                                    <option value="">Select a category</option>
+                                    {SKILL_CATEGORY_GROUPED_OPTIONS.map((group) => (
+                                        <optgroup key={group.group} label={group.group}>
+                                            {group.options.map((opt) => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
+                                </select>
+                                {addErrors.skill_category && (
+                                    <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{addErrors.skill_category}</p>
+                                )}
+                            </div>
                         </div>
             </ModalWrapper>
         </div>

@@ -213,11 +213,12 @@ const AcademicInfoCard = ({ info }: { info: AcademicInfo | null }) => {
         return "text-red-600 dark:text-red-400";
     };
 
+    const displayPercent = info.twelfth_percentage ?? info.diploma_percentage;
     const stats = [
         { label: "CGPA", value: info.overall_cgpa === null ? "—" : String(info.overall_cgpa), color: cgpaColor(info.overall_cgpa) },
-        { label: "Live KTs", value: info.live_kts === null ? "—" : String(info.live_kts), color: ktColor(info.live_kts) },
+        { label: "Live KTs", value: info.total_live_kts === null ? "—" : String(info.total_live_kts), color: ktColor(info.total_live_kts) },
         { label: "10th %", value: info.tenth_percentage === null ? "—" : `${info.tenth_percentage}%`, color: percentColor(info.tenth_percentage) },
-        { label: "12th / Diploma %", value: info.twelfth_percentage === null ? "—" : `${info.twelfth_percentage}%`, color: percentColor(info.twelfth_percentage) },
+        { label: "12th / Diploma %", value: displayPercent === null ? "—" : `${displayPercent}%`, color: percentColor(displayPercent) },
     ];
 
     return (
@@ -276,12 +277,12 @@ const AnswersTab = ({ answers }: { answers: ApplicationAnswer[] }) => {
                         </div>
                         <div className="px-5 py-3">
                             {(() => {
-                                const isMCQ = (answer.question_type === "mcq_single" || answer.question_type === "mcq_multiple") && Array.isArray(answer.selected_options) && answer.selected_options.length > 0;
+                                const isMCQ = (answer.question_type === "mcq_single" || answer.question_type === "mcq_multiple") && Array.isArray(answer.answer_options) && answer.answer_options.length > 0;
                                 if (isMCQ) {
                                     const MCQIcon = answer.question_type === "mcq_single" ? CircleDot : CheckSquare;
                                     return (
                                         <div className="flex flex-wrap gap-2">
-                                            {answer.selected_options!.map((opt) => (
+                                            {answer.answer_options!.map((opt) => (
                                                 <span key={opt} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-sm text-blue-700 dark:text-blue-400 font-medium">
                                                     <MCQIcon className="h-3.5 w-3.5" />
                                                     {opt}
@@ -292,6 +293,13 @@ const AnswersTab = ({ answers }: { answers: ApplicationAnswer[] }) => {
                                 }
                                 if (answer.answer_text) {
                                     return <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{answer.answer_text}</p>;
+                                }
+                                if (answer.answer_boolean !== null && answer.answer_boolean !== undefined) {
+                                    return (
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium ${answer.answer_boolean ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400" : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"}`}>
+                                            {answer.answer_boolean ? "Yes" : "No"}
+                                        </span>
+                                    );
                                 }
                                 return <p className="text-sm text-gray-300 dark:text-gray-600 italic">Not answered</p>;
                             })()}
@@ -502,7 +510,7 @@ const StatusActionModal = ({
             titleIcon={<Icon className={`h-5 w-5 ${config.iconColor}`} />}
             size="md"
         >
-            <div className="space-y-5">
+            <div className="p-6 space-y-5">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                     Change <span className="font-semibold text-gray-800 dark:text-gray-100">{application.student_name}</span>&apos;s
                     application from <StatusBadge status={application.application_status} /> to <StatusBadge status={targetStatus} />?

@@ -45,17 +45,6 @@ function extractErrorMessage(err: unknown): string {
 }
 
 function redirectStudentAfterLogin(navigate: ReturnType<typeof useNavigate>) {
-  const stored = localStorage.getItem("student_user")
-  if (stored) {
-    const user = JSON.parse(stored) as {
-      profileComplete?: boolean
-      profileIsApproved?: boolean
-    }
-    if (!user.profileComplete || !user.profileIsApproved) {
-      navigate("/student/profile", { replace: true })
-      return
-    }
-  }
   navigate("/student/dashboard", { replace: true })
 }
 

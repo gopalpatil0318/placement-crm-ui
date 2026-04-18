@@ -19,6 +19,7 @@ export interface JobListItem {
     passout_years: number[];
     application_deadline: string;
     job_status: string;
+    drive_type: string;
     positions_count: number;
     applications_count: number;
     created_by_name: string | null;
@@ -47,6 +48,7 @@ export const useViewJobs = () => {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [jobTypeFilter, setJobTypeFilter] = useState("");
+    const [driveTypeFilter, setDriveTypeFilter] = useState("");
     const [companyFilter, setCompanyFilter] = useState("");
     const [sortBy, setSortBy] = useState("created_at");
     const [sortOrder, setSortOrder] = useState("desc");
@@ -59,11 +61,12 @@ export const useViewJobs = () => {
         search: debouncedSearch || undefined,
         job_status: statusFilter || undefined,
         job_type: jobTypeFilter || undefined,
+        drive_type: driveTypeFilter || undefined,
         passout_year: selectedYear,
         company_id: companyFilter || undefined,
         sort_by: sortBy || undefined,
         sort_order: sortOrder || undefined,
-    }), [page, limit, debouncedSearch, statusFilter, jobTypeFilter, selectedYear, companyFilter, sortBy, sortOrder]);
+    }), [page, limit, debouncedSearch, statusFilter, jobTypeFilter, driveTypeFilter, selectedYear, companyFilter, sortBy, sortOrder]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.jobs.all(queryFilters),
@@ -74,7 +77,11 @@ export const useViewJobs = () => {
     const jobs: JobListItem[] = Array.isArray(data?.data) ? data.data : [];
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
     const loading = isLoading || isFetching;
-    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch jobs") : null;
+
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch jobs";
+    }
 
     // Prefetch next page
     useEffect(() => {
@@ -120,6 +127,11 @@ export const useViewJobs = () => {
         setPage(1);
     }, []);
 
+    const handleDriveTypeFilterChange = useCallback((value: string) => {
+        setDriveTypeFilter(value);
+        setPage(1);
+    }, []);
+
     const handleCompanyFilterChange = useCallback((value: string) => {
         setCompanyFilter(value);
         setPage(1);
@@ -145,6 +157,7 @@ export const useViewJobs = () => {
         search,
         statusFilter,
         jobTypeFilter,
+        driveTypeFilter,
         companyFilter,
         sortBy,
         sortOrder,
@@ -153,6 +166,7 @@ export const useViewJobs = () => {
         handleLimitChange,
         handleStatusFilterChange,
         handleJobTypeFilterChange,
+        handleDriveTypeFilterChange,
         handleCompanyFilterChange,
         handleSortChange,
         refresh: refetch,

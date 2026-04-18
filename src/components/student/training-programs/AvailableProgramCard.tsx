@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import {
   Calendar,
   Clock,
+  IndianRupee,
   User,
   Users,
   AlertTriangle,
@@ -58,6 +59,13 @@ function getDisabledReason(program: StudentAvailableProgram): string | undefined
   return "This program is full"
 }
 
+const feeFormatter = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+})
+
 // ─── Component ──────────────────────────────────────────────────────────────────
 
 interface AvailableProgramCardProps {
@@ -86,6 +94,16 @@ export default memo(function AvailableProgramCard({ program, onEnroll }: Readonl
           <span className={`inline-block mt-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400`}>
             {PROGRAM_TYPE_LABELS[program.program_type] ?? program.program_type}
           </span>
+          {program.program_fee === 0 ? (
+            <span className="inline-block mt-1.5 ml-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
+              Free
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-0.5 mt-1.5 ml-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
+              <IndianRupee size={10} />
+              {feeFormatter.format(program.program_fee).replace("₹", "")}
+            </span>
+          )}
         </div>
         {deadline && (
           <span
@@ -134,6 +152,12 @@ export default memo(function AvailableProgramCard({ program, onEnroll }: Readonl
                 ? ` · ${program.session_duration_hours}h each`
                 : ""}
             </span>
+          </div>
+        )}
+        {program.min_attendance_pct > 0 && (
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={14} className="shrink-0 text-amber-500" />
+            <span className="text-amber-600 dark:text-amber-400">Min attendance: {program.min_attendance_pct}%</span>
           </div>
         )}
       </div>

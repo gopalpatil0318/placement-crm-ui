@@ -19,6 +19,7 @@ export interface TrainingProgram {
     end_date: string | null;
     total_sessions: number | null;
     program_status: string;
+    allow_enrollments: boolean;
     target_passout_year: number | null;
     max_enrollment: number | null;
     enrollment_deadline: string | null;

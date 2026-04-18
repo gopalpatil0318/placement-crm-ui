@@ -1,4 +1,4 @@
-import { AlertTriangle, Calendar, Clock, Loader2, User, Users } from "lucide-react"
+import { AlertTriangle, Calendar, Clock, IndianRupee, Loader2, User, Users } from "lucide-react"
 import ModalWrapper from "@/components/ui/ModalWrapper"
 import {
   PROGRAM_TYPE_LABELS,
@@ -31,6 +31,13 @@ function formatDeadline(d: string | null, isPassed: boolean): { text: string; ur
   if (diff <= 3) return { text: `${formatted} (${diff} day${diff === 1 ? "" : "s"} left)`, urgent: true }
   return { text: formatted, urgent: false }
 }
+
+const feeFormatter = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+})
 
 // ─── Component ──────────────────────────────────────────────────────────────────
 
@@ -135,6 +142,14 @@ export default function EnrollConfirmModal({
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
               <Users size={14} className="text-gray-400" />
               <span>{spotsLabel}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <IndianRupee size={14} className="text-gray-400" />
+              <span>
+                {program.program_fee === 0
+                  ? "Free"
+                  : `Fee: ${feeFormatter.format(program.program_fee)}`}
+              </span>
             </div>
           </div>
         </div>

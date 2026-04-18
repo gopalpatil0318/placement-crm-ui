@@ -1,26 +1,13 @@
 import { z } from "zod";
+import { SKILL_CATEGORIES } from "@/constants/skillCategories";
 
-export const VALID_SKILL_CATEGORIES = [
-    "programming_language", "framework", "database", "devops",
-    "cloud", "design", "testing", "soft_skill", "tool", "other",
-] as const;
+export const VALID_SKILL_CATEGORIES = SKILL_CATEGORIES;
 
 export const VALID_PROFICIENCY_LEVELS = [
     "beginner", "intermediate", "advanced", "expert",
 ] as const;
 
-export const SKILL_CATEGORY_LABELS: Record<string, string> = {
-    programming_language: "Programming Language",
-    framework: "Framework",
-    database: "Database",
-    devops: "DevOps",
-    cloud: "Cloud",
-    design: "Design",
-    testing: "Testing",
-    soft_skill: "Soft Skill",
-    tool: "Tool",
-    other: "Other",
-};
+export { SKILL_CATEGORY_LABELS } from "@/constants/skillCategories";
 
 export const PROFICIENCY_LABELS: Record<string, string> = {
     beginner: "Beginner",

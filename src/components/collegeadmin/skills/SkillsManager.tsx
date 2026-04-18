@@ -12,6 +12,7 @@ import {
     ChevronRight,
     Loader2,
     Trash2,
+    Pencil,
     X,
     AlertCircle,
     AlertTriangle,
@@ -21,26 +22,22 @@ import {
     RefreshCw,
 } from "lucide-react";
 import { staggerContainer, staggerItem } from "@/lib/animations";
-import { useViewSkills, type Skill, type SkillCategory } from "@/hooks/collegeadmin/skills/useViewSkills";
+import { useViewSkills, type Skill } from "@/hooks/collegeadmin/skills/useViewSkills";
 import { useCreateSkill } from "@/hooks/collegeadmin/skills/useCreateSkill";
 import { useDeleteSkill } from "@/hooks/collegeadmin/skills/useDeleteSkill";
+import { useUpdateSkill } from "@/hooks/collegeadmin/skills/useUpdateSkill";
 import ModalWrapper from "@/components/ui/ModalWrapper";
+import {
+    SKILL_CATEGORY_COLORS,
+    SKILL_CATEGORY_LABELS,
+    SKILL_CATEGORY_GROUPED_OPTIONS,
+    type SkillCategoryValue,
+} from "@/constants/skillCategories";
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 
 const LIMIT_OPTIONS = [25, 50, 100];
 const SKELETON_KEYS = ["sk-1", "sk-2", "sk-3", "sk-4", "sk-5", "sk-6", "sk-7", "sk-8"] as const;
-
-const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
-    Frontend: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300" },
-    Backend: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-700 dark:text-green-300" },
-    Database: { bg: "bg-orange-50 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300" },
-    Cloud: { bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300" },
-    DevOps: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-700 dark:text-red-300" },
-    Programming: { bg: "bg-cyan-50 dark:bg-cyan-900/30", text: "text-cyan-700 dark:text-cyan-300" },
-    "AI/ML": { bg: "bg-violet-50 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-300" },
-    "Soft Skills": { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-300" },
-};
 
 const DEFAULT_CATEGORY_COLOR = { bg: "bg-gray-50 dark:bg-gray-800", text: "text-gray-700 dark:text-gray-300" };
 
@@ -100,14 +97,15 @@ function CategoryBadge({ category }: Readonly<{ category: string | null }>) {
         );
     }
 
-    const colors = CATEGORY_COLORS[category] ?? DEFAULT_CATEGORY_COLOR;
+    const colors = SKILL_CATEGORY_COLORS[category as SkillCategoryValue] ?? DEFAULT_CATEGORY_COLOR;
+    const label = SKILL_CATEGORY_LABELS[category as SkillCategoryValue] ?? category;
 
     return (
         <span
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${colors.bg} ${colors.text}`}
         >
             <Tag size={10} />
-            {category}
+            {label}
         </span>
     );
 }
@@ -129,10 +127,9 @@ function formatDate(dateStr: string) {
 interface AddSkillModalProps {
     isOpen: boolean;
     onClose: () => void;
-    categories: SkillCategory[];
 }
 
-function AddSkillModal({ isOpen, onClose, categories }: Readonly<AddSkillModalProps>) {
+function AddSkillModal({ isOpen, onClose }: Readonly<AddSkillModalProps>) {
     const { formData, errors, loading, handleChange, handleSubmit, resetForm } =
         useCreateSkill(() => {
             onClose();
@@ -200,28 +197,28 @@ function AddSkillModal({ isOpen, onClose, categories }: Readonly<AddSkillModalPr
                             htmlFor="skill_category"
                             className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
                         >
-                            Category
+                            Category <span className="text-red-500">*</span>
                         </label>
-                        <input
+                        <select
                             id="skill_category"
                             name="skill_category"
-                            type="text"
-                            list="skill-categories"
                             value={formData.skill_category}
                             onChange={handleChange}
-                            maxLength={100}
-                            placeholder="e.g. Frontend, Backend, Cloud"
                             className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-colors outline-none
                                 ${errors.skill_category
                                     ? "border-red-300 bg-red-50 text-red-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 dark:border-red-600 dark:bg-red-900/20 dark:text-red-300"
                                     : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                 }`}
-                        />
-                        <datalist id="skill-categories">
-                            {categories.map((cat) => (
-                                <option key={cat.category} value={cat.category} />
+                        >
+                            <option value="">Select a category</option>
+                            {SKILL_CATEGORY_GROUPED_OPTIONS.map((group) => (
+                                <optgroup key={group.group} label={group.group}>
+                                    {group.options.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </optgroup>
                             ))}
-                        </datalist>
+                        </select>
                         <AnimatePresence mode="wait">
                             {errors.skill_category && (
                                 <motion.p
@@ -235,9 +232,6 @@ function AddSkillModal({ isOpen, onClose, categories }: Readonly<AddSkillModalPr
                                 </motion.p>
                             )}
                         </AnimatePresence>
-                        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                            Select from existing or type a new category
-                        </p>
                     </div>
                 </div>
 
@@ -331,15 +325,146 @@ function DeleteSkillModal({ skill, onClose, onConfirm, loading }: Readonly<Delet
     );
 }
 
+// ─── Edit Skill Modal ───────────────────────────────────────────────────────
+
+interface EditSkillModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    formData: { skill_name: string; skill_category: string };
+    errors: Partial<Record<"skill_name" | "skill_category", string>>;
+    loading: boolean;
+    handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+    handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+}
+
+function EditSkillModal({ isOpen, onClose, formData, errors, loading, handleChange, handleSubmit }: Readonly<EditSkillModalProps>) {
+    return (
+        <ModalWrapper
+            isOpen={isOpen}
+            onClose={onClose}
+            disabled={loading}
+            size="sm"
+            title="Edit Skill"
+            titleIcon={<Pencil size={18} className="text-blue-500" />}
+        >
+            <form onSubmit={handleSubmit}>
+                <div className="space-y-4 px-6 py-5">
+                    {/* Skill Name */}
+                    <div>
+                        <label
+                            htmlFor="edit_skill_name"
+                            className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                            Skill Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            id="edit_skill_name"
+                            name="skill_name"
+                            type="text"
+                            value={formData.skill_name}
+                            onChange={handleChange}
+                            maxLength={100}
+                            autoFocus
+                            placeholder="e.g. React.js, Python, AWS"
+                            className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-colors outline-none
+                                ${errors.skill_name
+                                    ? "border-red-300 bg-red-50 text-red-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 dark:border-red-600 dark:bg-red-900/20 dark:text-red-300"
+                                    : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                }`}
+                        />
+                        <AnimatePresence mode="wait">
+                            {errors.skill_name && (
+                                <motion.p
+                                    initial={{ opacity: 0, y: -4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -4 }}
+                                    className="mt-1.5 flex items-center gap-1 text-xs text-red-600 dark:text-red-400"
+                                >
+                                    <AlertCircle size={12} />
+                                    {errors.skill_name}
+                                </motion.p>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    {/* Category */}
+                    <div>
+                        <label
+                            htmlFor="edit_skill_category"
+                            className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                            Category <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                            id="edit_skill_category"
+                            name="skill_category"
+                            value={formData.skill_category}
+                            onChange={handleChange}
+                            className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-colors outline-none
+                                ${errors.skill_category
+                                    ? "border-red-300 bg-red-50 text-red-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 dark:border-red-600 dark:bg-red-900/20 dark:text-red-300"
+                                    : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                }`}
+                        >
+                            <option value="">Select a category</option>
+                            {SKILL_CATEGORY_GROUPED_OPTIONS.map((group) => (
+                                <optgroup key={group.group} label={group.group}>
+                                    {group.options.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </optgroup>
+                            ))}
+                        </select>
+                        <AnimatePresence mode="wait">
+                            {errors.skill_category && (
+                                <motion.p
+                                    initial={{ opacity: 0, y: -4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -4 }}
+                                    className="mt-1.5 flex items-center gap-1 text-xs text-red-600 dark:text-red-400"
+                                >
+                                    <AlertCircle size={12} />
+                                    {errors.skill_category}
+                                </motion.p>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={loading}
+                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                    >
+                        {loading && <Loader2 size={14} className="animate-spin" />}
+                        {loading ? "Saving…" : "Save Changes"}
+                    </button>
+                </div>
+            </form>
+        </ModalWrapper>
+    );
+}
+
 // ─── Mobile Skill Card ──────────────────────────────────────────────────────────
 
 interface MobileSkillCardProps {
     skill: Skill;
     rowNum: number;
     onDelete: (skill: Skill) => void;
+    onEdit: (skill: Skill) => void;
 }
 
-function MobileSkillCard({ skill, rowNum, onDelete }: Readonly<MobileSkillCardProps>) {
+function MobileSkillCard({ skill, rowNum, onDelete, onEdit }: Readonly<MobileSkillCardProps>) {
     return (
         <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800/50">
             <div className="flex items-start justify-between">
@@ -364,14 +489,24 @@ function MobileSkillCard({ skill, rowNum, onDelete }: Readonly<MobileSkillCardPr
                         </span>
                     </div>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => onDelete(skill)}
-                    aria-label={`Delete skill ${skill.skill_name}`}
-                    className="ml-2 inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                >
-                    <Trash2 size={14} />
-                </button>
+                <div className="ml-2 flex items-center gap-1">
+                    <button
+                        type="button"
+                        onClick={() => onEdit(skill)}
+                        aria-label={`Edit skill ${skill.skill_name}`}
+                        className="inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                    >
+                        <Pencil size={14} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onDelete(skill)}
+                        aria-label={`Delete skill ${skill.skill_name}`}
+                        className="inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -409,6 +544,23 @@ export default function SkillsManager() {
     const { deleteSkill, loading: deleteLoading } = useDeleteSkill(() => {
         setDeleteTarget(null);
     });
+
+    const {
+        formData: editFormData,
+        errors: editErrors,
+        loading: editLoading,
+        editingSkillId,
+        handleChange: handleEditChange,
+        handleSubmit: handleEditSubmit,
+        startEditing,
+        resetForm: resetEditForm,
+    } = useUpdateSkill(() => {
+        // onSuccess — modal will close
+    });
+
+    const handleEditClose = useCallback(() => {
+        if (!editLoading) resetEditForm();
+    }, [editLoading, resetEditForm]);
 
     const Wrapper = shouldReduce ? "div" : motion.div;
     const wrapperProps = shouldReduce
@@ -488,7 +640,7 @@ export default function SkillsManager() {
                 <option value="">All Categories</option>
                 {categories.map((cat) => (
                     <option key={cat.category} value={cat.category}>
-                        {cat.category} ({cat.count})
+                        {SKILL_CATEGORY_LABELS[cat.category as SkillCategoryValue] ?? cat.category} ({cat.count})
                     </option>
                 ))}
             </select>
@@ -606,14 +758,24 @@ export default function SkillsManager() {
                                     </span>
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                    <button
-                                        type="button"
-                                        onClick={() => setDeleteTarget(skill)}
-                                        aria-label={`Delete skill ${skill.skill_name}`}
-                                        className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    <div className="inline-flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => startEditing(skill)}
+                                            aria-label={`Edit skill ${skill.skill_name}`}
+                                            className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                                        >
+                                            <Pencil size={14} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDeleteTarget(skill)}
+                                            aria-label={`Delete skill ${skill.skill_name}`}
+                                            className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
                                 </td>
                             </Row>
                         );
@@ -685,6 +847,7 @@ export default function SkillsManager() {
                 skill={skill}
                 rowNum={rowNum}
                 onDelete={setDeleteTarget}
+                onEdit={startEditing}
             />
         );
     });
@@ -718,13 +881,21 @@ export default function SkillsManager() {
             <AddSkillModal
                 isOpen={showAddModal}
                 onClose={() => setShowAddModal(false)}
-                categories={categories}
             />
             <DeleteSkillModal
                 skill={deleteTarget}
                 onClose={() => setDeleteTarget(null)}
                 onConfirm={deleteSkill}
                 loading={deleteLoading}
+            />
+            <EditSkillModal
+                isOpen={editingSkillId !== null}
+                onClose={handleEditClose}
+                formData={editFormData}
+                errors={editErrors}
+                loading={editLoading}
+                handleChange={handleEditChange}
+                handleSubmit={handleEditSubmit}
             />
         </Wrapper>
     );

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Loader2, Star, MessageSquare } from "lucide-react"
 import ModalWrapper from "@/components/ui/ModalWrapper"
 import { useSubmitTrainingFeedback } from "@/hooks/student/training-programs/useSubmitTrainingFeedback"
@@ -31,19 +31,29 @@ export default function FeedbackModal({ enrollment, isOpen, onClose }: Readonly<
     submitFeedback,
     isSubmitting,
     resetForm,
+    prefill,
   } = useSubmitTrainingFeedback()
 
+  const isEdit = !!(enrollment?.has_submitted_feedback)
+
   const [hoverRating, setHoverRating] = useState(0)
+
+  // Prefill when opening in edit mode
+  useEffect(() => {
+    if (isOpen && isEdit && enrollment) {
+      prefill(enrollment.student_rating ?? 0, enrollment.student_feedback ?? "")
+    }
+  }, [isOpen, isEdit, enrollment, prefill])
 
   const handleSubmit = useCallback(() => {
     if (!enrollment) return
     const data = validate()
     if (!data) return
     submitFeedback(
-      { enrollmentId: enrollment.enrollment_id, data },
+      { enrollmentId: enrollment.enrollment_id, data, isEdit },
       { onSuccess: () => onClose() },
     )
-  }, [enrollment, validate, submitFeedback, onClose])
+  }, [enrollment, validate, submitFeedback, onClose, isEdit])
 
   const handleClose = useCallback(() => {
     if (!isSubmitting) {
@@ -54,6 +64,9 @@ export default function FeedbackModal({ enrollment, isOpen, onClose }: Readonly<
   }, [isSubmitting, resetForm, onClose])
 
   const charCount = feedback.length
+
+  const submitLabel = isEdit ? "Update Feedback" : "Submit Feedback"
+  const submittingLabel = isEdit ? "Updating…" : "Submitting…"
 
   const footer = (
     <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
@@ -72,7 +85,7 @@ export default function FeedbackModal({ enrollment, isOpen, onClose }: Readonly<
         className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-60 cursor-pointer"
       >
         {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-        {isSubmitting ? "Submitting…" : "Submit Feedback"}
+        {isSubmitting ? submittingLabel : submitLabel}
       </button>
     </div>
   )
@@ -83,7 +96,7 @@ export default function FeedbackModal({ enrollment, isOpen, onClose }: Readonly<
       onClose={handleClose}
       disabled={isSubmitting}
       size="md"
-      title="Submit Feedback"
+      title={isEdit ? "Update Feedback" : "Submit Feedback"}
       titleIcon={
         <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
           <MessageSquare size={18} className="text-amber-600 dark:text-amber-400" />

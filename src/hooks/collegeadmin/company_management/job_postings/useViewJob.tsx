@@ -76,6 +76,9 @@ export interface JobDetail {
     application_deadline: string;
     job_status: string;
     allow_applications: boolean;
+    tier_id: string | null;
+    tier_name: string | null;
+    tier_level: number | null;
     created_by: string;
     created_at: string;
     updated_at: string;
@@ -110,7 +113,11 @@ export const useViewJob = (jobId: string | undefined) => {
 
     const job: JobDetail | null = data ?? null;
     const loading = isLoading;
-    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch job") : null;
+
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch job";
+    }
 
     return { job, loading, error, refresh: refetch };
 };

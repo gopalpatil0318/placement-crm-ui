@@ -94,6 +94,7 @@ export function SysAdminAuthProvider({ children }: Readonly<{ children: ReactNod
             queryClient.clear();
             setUser(null);
             localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem("placenex_selected_year");
         }
     }, []);
 

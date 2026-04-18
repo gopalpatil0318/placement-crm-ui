@@ -341,7 +341,7 @@ const NotifyModal = ({
             titleIcon={<Bell className="h-5 w-5 text-blue-600" />}
             size="md"
         >
-            <div className="space-y-5">
+            <div className="p-6 space-y-5">
                 {/* Result banner */}
                 {notifyResult && (
                     <div className="rounded-xl border border-emerald-100 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4">
@@ -864,7 +864,7 @@ const StudentRow = ({
             {/* CGPA (color-coded) */}
             <td className="px-4 py-3.5">
                 <span className={`text-sm font-semibold ${cgpaColor(student.overall_cgpa)}`}>
-                    {student.overall_cgpa?.toFixed(2) ?? "—"}
+                    {student.overall_cgpa == null ? "—" : Number(student.overall_cgpa).toFixed(2)}
                 </span>
             </td>
 

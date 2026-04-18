@@ -4,12 +4,15 @@ import {
     GraduationCap,
     BookOpen,
     Lock,
+    AlertCircle,
+    Clock,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { fadeInUp } from "@/lib/animations";
 import AnimatedPage from "@/components/ui/AnimatedPage";
 import PageHeader from "@/components/student/PageHeader";
 import { useStudentProfile } from "@/hooks/student/useStudentProfile";
+import { useStudentProfileById } from "@/hooks/collegeadmin/useStudentProfileById";
 import ProfileSkeleton from "@/components/student/profile/ProfileSkeleton";
 
 // Profile sections (always visible)
@@ -56,14 +59,38 @@ type ViewMode = "student" | "college" | "interviewer";
 interface StudentProfileProps {
     viewMode?: ViewMode;
     studentId?: string;
+    onApproveExperience?: (id: string) => void;
+    onRejectExperience?: (id: string) => void;
+    processingExpId?: string | null;
+    onApproveAchievement?: (id: string) => void;
+    onRejectAchievement?: (id: string) => void;
+    processingAchId?: string | null;
+    onApproveCertificate?: (id: string) => void;
+    onRejectCertificate?: (id: string) => void;
+    processingCertId?: string | null;
 }
 
 export default function StudentProfile({
     viewMode = "student",
-}: StudentProfileProps) {
+    studentId,
+    onApproveExperience,
+    onRejectExperience,
+    processingExpId,
+    onApproveAchievement,
+    onRejectAchievement,
+    processingAchId,
+    onApproveCertificate,
+    onRejectCertificate,
+    processingCertId,
+}: Readonly<StudentProfileProps>) {
     const isOwnProfile = viewMode === "student";
+    const isCollegeView = viewMode === "college" && !!studentId;
 
-    // TODO: When studentId is provided, use useStudentProfileById(studentId) instead
+    // Use college-admin API when viewing another student's profile, own-profile hook otherwise
+    const selfProfile = useStudentProfile(!isCollegeView);
+    const collegeProfile = useStudentProfileById(studentId || "", isCollegeView);
+    const profileSource = isCollegeView ? collegeProfile : selfProfile;
+
     const {
         student,
         profileCompletion,
@@ -80,7 +107,7 @@ export default function StudentProfile({
         isLoading,
         error,
         refetch,
-    } = useStudentProfile();
+    } = profileSource;
 
     const [activeTab, setActiveTab] = useState<PrivateTab>(null);
     const shouldReduce = useReducedMotion();
@@ -137,17 +164,44 @@ export default function StudentProfile({
     return (
         <AnimatedPage>
             <div className="space-y-6">
-                {/* ─── Page Header ─── */}
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                    <PageHeader
-                        title="Student Profile"
-                        breadcrumbs={[
-                            { label: "Home" },
-                            { label: "Student" },
-                            { label: "Profile", active: true },
-                        ]}
-                    />
-                </div>
+                {/* ─── Page Header (own profile only, hidden when embedded in college view) ─── */}
+                {isOwnProfile && (
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                        <PageHeader
+                            title="Student Profile"
+                            breadcrumbs={[
+                                { label: "Home" },
+                                { label: "Student" },
+                                { label: "Profile", active: true },
+                            ]}
+                        />
+                    </div>
+                )}
+
+                {/* ─── Profile Approval Status Banner ─── */}
+                {isOwnProfile && profileCompletion?.profile_approval_status === "rejected" && (
+                    <div className="flex items-center gap-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 px-4 py-3">
+                        <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
+                        <div className="flex-1">
+                            <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                                Your profile was rejected by your TPO. Please update the required sections and resubmit.
+                            </p>
+                            {profileCompletion.profile_rejection_reason && (
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                                    Reason: {profileCompletion.profile_rejection_reason}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
+                {isOwnProfile && profileCompletion?.profile_complete && !profileCompletion?.profile_is_approved && profileCompletion?.profile_approval_status !== "rejected" && (
+                    <div className="flex items-center gap-3 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 px-4 py-3">
+                        <Clock className="h-5 w-5 text-blue-500 shrink-0" />
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-300 flex-1">
+                            Your profile is pending approval by your TPO. You'll be able to apply for jobs once approved.
+                        </p>
+                    </div>
+                )}
 
                 {/* ═══════════════════════ Profile Header ═══════════════════════ */}
                 <ProfileHeader
@@ -180,16 +234,28 @@ export default function StudentProfile({
                         <Wrapper {...sectionProps}>
                             <ExperienceSection
                                 experiences={{ total_experience: experiences.length, max_experience: 10, experience: experiences }}
+                                viewMode={viewMode}
+                                onApproveItem={onApproveExperience}
+                                onRejectItem={onRejectExperience}
+                                processingId={processingExpId}
                             />
                         </Wrapper>
                         <Wrapper {...sectionProps}>
                             <CertificatesSection
                                 certificates={{ total_certificates: certificates.length, max_certificates: 15, certificates }}
+                                viewMode={viewMode}
+                                onApproveItem={onApproveCertificate}
+                                onRejectItem={onRejectCertificate}
+                                processingId={processingCertId}
                             />
                         </Wrapper>
                         <Wrapper {...sectionProps}>
                             <AchievementsSection
                                 achievements={{ total_achievements: achievements.length, max_achievements: 10, achievements }}
+                                viewMode={viewMode}
+                                onApproveItem={onApproveAchievement}
+                                onRejectItem={onRejectAchievement}
+                                processingId={processingAchId}
                             />
                         </Wrapper>
                         <Wrapper {...sectionProps}>
@@ -198,8 +264,8 @@ export default function StudentProfile({
                     </div>
                 </div>
 
-                {/* ═══════════════════════ Private Info (own-view only) ═══════════════════════ */}
-                {isOwnProfile && (
+                {/* ═══════════════════════ Private Info (own-view + college-view) ═══════════════════════ */}
+                {(isOwnProfile || isCollegeView) && (
                     <div className="mt-2">
                         {/* Section divider */}
                         <div className="flex items-center gap-4 mb-6">
@@ -207,7 +273,7 @@ export default function StudentProfile({
                             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                                 <Lock className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                                 <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                                    Private Information
+                                    {isCollegeView ? "Confidential Information" : "Private Information"}
                                 </span>
                             </div>
                             <div className="h-px flex-1 bg-gradient-to-r from-gray-200 dark:from-gray-700 via-gray-200 dark:via-gray-700 to-transparent" />

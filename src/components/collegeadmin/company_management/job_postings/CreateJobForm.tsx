@@ -1,7 +1,6 @@
-﻿import { useState, useEffect } from "react";
-import { useCreateJob, STEP_LABELS } from "@/hooks/collegeadmin/company_management/job_postings/useCreateJob";
+﻿import { useCreateJob, STEP_LABELS } from "@/hooks/collegeadmin/company_management/job_postings/useCreateJob";
 import { useViewCompanies } from "@/hooks/collegeadmin/company_management/useViewCompanies";
-import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { useAuth } from "@/hooks/collegeadmin/useAuth";
 import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingSelect from "@/components/ui/FloatingSelect";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
@@ -10,6 +9,8 @@ import {
     ROUND_TYPE_OPTIONS,
     QUESTION_TYPE_OPTIONS,
     GENDER_OPTIONS,
+    DRIVE_TYPE_OPTIONS,
+    DRIVE_TYPE_LABELS,
 } from "@/validators/JobPostingSchema";
 import {
     Plus,
@@ -42,6 +43,22 @@ const STEP_ICONS: Record<number, React.ComponentType<{ className?: string }>> = 
 };
 
 // ========================
+// STEP CLASS HELPERS
+// ========================
+
+function getStepBtnClass(i: number, currentStep: number): string {
+    if (i === currentStep) return "bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/40";
+    if (i < currentStep) return "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30";
+    return "bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700";
+}
+
+function getStepBadgeClass(i: number, currentStep: number): string {
+    if (i === currentStep) return "bg-white/20 text-white";
+    if (i < currentStep) return "bg-emerald-500 text-white";
+    return "bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500";
+}
+
+// ========================
 // STEP INDICATOR
 // ========================
 
@@ -54,22 +71,10 @@ const StepIndicator = ({ currentStep, goToStep }: { currentStep: number; goToSte
                     key={label}
                     type="button"
                     onClick={() => goToStep(i)}
-                    className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                        i === currentStep
-                            ? "bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/40"
-                            : i < currentStep
-                            ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
-                            : "bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    }`}
+                    className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${getStepBtnClass(i, currentStep)}`}
                 >
                     <span
-                        className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                            i === currentStep
-                                ? "bg-white/20 text-white"
-                                : i < currentStep
-                                ? "bg-emerald-500 text-white"
-                                : "bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500"
-                        }`}
+                        className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${getStepBadgeClass(i, currentStep)}`}
                     >
                         {i < currentStep ? <Check size={11} /> : <Icon className="h-3 w-3" />}
                     </span>
@@ -86,6 +91,17 @@ const StepIndicator = ({ currentStep, goToStep }: { currentStep: number; goToSte
 
 const currentYear = new Date().getFullYear();
 const PASSOUT_YEARS = Array.from({ length: 21 }, (_, i) => currentYear - 5 + i);
+
+// ========================
+// STABLE KEY GENERATOR (module-level to avoid ref-during-render)
+// ========================
+
+const _itemKeyMap = new WeakMap<object, string>();
+function getStableKey(obj: object): string {
+    let k = _itemKeyMap.get(obj);
+    if (!k) { k = crypto.randomUUID(); _itemKeyMap.set(obj, k); }
+    return k;
+}
 
 // ========================
 // FIELD WRAPPER HELPERS
@@ -155,23 +171,30 @@ const CreateJobForm = () => {
 
     const { companies: activeCompanies, loading: companiesLoading } = useViewCompanies({ limit: 100, status: "active" });
 
-    // Fetch all active departments for eligibility dropdown
-    const [departments, setDepartments] = useState<{ dept_id: string; dept_name: string }[]>([]);
-    const [deptsLoading, setDeptsLoading] = useState(true);
+    // Use departments from auth context (already loaded at login)
+    const { user } = useAuth();
+    const departments = user?.departments ?? [];
 
-    useEffect(() => {
-        const fetchDepts = async () => {
-            try {
-                const res = await CollegeAdminService.getDepartments({ limit: 100, is_active: true });
-                setDepartments(Array.isArray(res.data) ? res.data : []);
-            } catch {
-                // Department fetch is optional — silent fail
-            } finally {
-                setDeptsLoading(false);
-            }
-        };
-        fetchDepts();
-    }, []);
+    // Extracted handlers to reduce function nesting depth
+    const handleRemoveYear = (year: number) =>
+        updateField("passout_years", formData.passout_years.filter((v) => v !== year));
+    const handleToggleGender = (gender: string, checked: boolean) => {
+        const current = formData.eligibility_criteria.allowed_genders || [];
+        updateEligibility("allowed_genders", checked ? [...current, gender] : current.filter((v) => v !== gender));
+    };
+    const handleRemoveDept = (dept: string) =>
+        updateEligibility("allowed_departments", formData.eligibility_criteria.allowed_departments!.filter((v) => v !== dept));
+    const handleUpdateOption = (qIdx: number, optIdx: number, value: string) => {
+        const q = formData.questions[qIdx];
+        const updated = [...(q.question_options || [])];
+        updated[optIdx] = value;
+        updateQuestion(qIdx, "question_options", updated);
+    };
+    const handleRemoveOption = (qIdx: number, optIdx: number) => {
+        const q = formData.questions[qIdx];
+        const updated = (q.question_options || []).filter((_, idx) => idx !== optIdx);
+        updateQuestion(qIdx, "question_options", updated);
+    };
 
     const showInternshipFields =
         formData.job_type === "internship" || formData.job_type === "both";
@@ -217,7 +240,7 @@ const CreateJobForm = () => {
                 />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                 <FloatingSelect
                     label="Job Type"
                     name="job_type"
@@ -226,9 +249,17 @@ const CreateJobForm = () => {
                     options={JOB_TYPE_OPTIONS.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1).replace("-", " ") }))}
                     required
                 />
+                <FloatingSelect
+                    label="Drive Type"
+                    name="drive_type"
+                    value={formData.drive_type}
+                    onChange={handleChange}
+                    options={DRIVE_TYPE_OPTIONS.map((t) => ({ value: t, label: DRIVE_TYPE_LABELS[t] }))}
+                />
                 <div>
-                    <label className={labelClass}>Passout Year(s) <span className="text-red-500">*</span></label>
+                    <label htmlFor="passout-years-select" className={labelClass}>Passout Year(s) <span className="text-red-500">*</span></label>
                     <select
+                        id="passout-years-select"
                         value=""
                         onChange={(e) => {
                             const year = Number(e.target.value);
@@ -248,7 +279,7 @@ const CreateJobForm = () => {
                             {formData.passout_years.map((y) => (
                                 <span key={y} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
                                     {y}
-                                    <button type="button" onClick={() => updateField("passout_years", formData.passout_years.filter((v) => v !== y))} className="hover:text-red-600 dark:hover:text-red-400 transition-colors"></button>
+                                    <button type="button" onClick={() => handleRemoveYear(y)} className="hover:text-red-600 dark:hover:text-red-400 transition-colors">×</button>
                                 </span>
                             ))}
                         </div>
@@ -366,7 +397,7 @@ const CreateJobForm = () => {
             </div>
 
             {formData.positions.map((pos, i) => (
-                <div key={i} className="p-5 bg-gray-50/70 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
+                <div key={getStableKey(pos)} className="p-5 bg-gray-50/70 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">Position #{i + 1}</span>
                         {formData.positions.length > 1 && (
@@ -377,16 +408,16 @@ const CreateJobForm = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Position Name *</label>
-                            <input value={pos.position_name} onChange={(e) => updatePosition(i, "position_name", e.target.value)} placeholder="e.g. Software Developer" className={inputClass(false)} />
+                            <label htmlFor={`pos-name-${i}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Position Name *</label>
+                            <input id={`pos-name-${i}`} value={pos.position_name} onChange={(e) => updatePosition(i, "position_name", e.target.value)} placeholder="e.g. Software Developer" className={inputClass(false)} />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</label>
-                            <input value={pos.position_description || ""} onChange={(e) => updatePosition(i, "position_description", e.target.value)} placeholder="Brief description..." className={inputClass(false)} />
+                            <label htmlFor={`pos-desc-${i}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</label>
+                            <input id={`pos-desc-${i}`} value={pos.position_description || ""} onChange={(e) => updatePosition(i, "position_description", e.target.value)} placeholder="Brief description..." className={inputClass(false)} />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Vacancies</label>
-                            <input type="number" inputMode="numeric" value={pos.vacancies || ""} onChange={(e) => updatePosition(i, "vacancies", e.target.value ? Number(e.target.value) : undefined)} min={1} className={inputClass(false)} />
+                            <label htmlFor={`pos-vac-${i}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Vacancies</label>
+                            <input id={`pos-vac-${i}`} type="number" inputMode="numeric" value={pos.vacancies || ""} onChange={(e) => updatePosition(i, "vacancies", e.target.value ? Number(e.target.value) : undefined)} min={1} className={inputClass(false)} />
                         </div>
                     </div>
                 </div>
@@ -406,27 +437,27 @@ const CreateJobForm = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div>
-                        <label className={labelClass}>Min CGPA (0-10)</label>
-                        <input type="number" inputMode="decimal" value={ec.min_overall_cgpa ?? ""} onChange={(e) => updateEligibility("min_overall_cgpa", e.target.value ? Number(e.target.value) : undefined)} step={0.1} min={0} max={10} className={inputClass(false)} />
+                        <label htmlFor="elig-cgpa" className={labelClass}>Min CGPA (0-10)</label>
+                        <input id="elig-cgpa" type="number" inputMode="decimal" value={ec.min_overall_cgpa ?? ""} onChange={(e) => updateEligibility("min_overall_cgpa", e.target.value ? Number(e.target.value) : undefined)} step={0.1} min={0} max={10} className={inputClass(false)} />
                     </div>
                     <div>
-                        <label className={labelClass}>Max Live KTs (0-20)</label>
-                        <input type="number" inputMode="numeric" value={ec.max_live_kts ?? ""} onChange={(e) => updateEligibility("max_live_kts", e.target.value ? Number(e.target.value) : undefined)} min={0} max={20} className={inputClass(false)} />
+                        <label htmlFor="elig-kts" className={labelClass}>Max Live KTs (0-20)</label>
+                        <input id="elig-kts" type="number" inputMode="numeric" value={ec.max_live_kts ?? ""} onChange={(e) => updateEligibility("max_live_kts", e.target.value ? Number(e.target.value) : undefined)} min={0} max={20} className={inputClass(false)} />
                     </div>
                     <div>
-                        <label className={labelClass}>Min 10th %</label>
-                        <input type="number" inputMode="decimal" value={ec.min_tenth_percentage ?? ""} onChange={(e) => updateEligibility("min_tenth_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
+                        <label htmlFor="elig-10th" className={labelClass}>Min 10th %</label>
+                        <input id="elig-10th" type="number" inputMode="decimal" value={ec.min_tenth_percentage ?? ""} onChange={(e) => updateEligibility("min_tenth_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div>
-                        <label className={labelClass}>Min 12th %</label>
-                        <input type="number" inputMode="decimal" value={ec.min_twelfth_percentage ?? ""} onChange={(e) => updateEligibility("min_twelfth_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
+                        <label htmlFor="elig-12th" className={labelClass}>Min 12th %</label>
+                        <input id="elig-12th" type="number" inputMode="decimal" value={ec.min_twelfth_percentage ?? ""} onChange={(e) => updateEligibility("min_twelfth_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
                     </div>
                     <div>
-                        <label className={labelClass}>Min Diploma %</label>
-                        <input type="number" inputMode="decimal" value={ec.min_diploma_percentage ?? ""} onChange={(e) => updateEligibility("min_diploma_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
+                        <label htmlFor="elig-diploma" className={labelClass}>Min Diploma %</label>
+                        <input id="elig-diploma" type="number" inputMode="decimal" value={ec.min_diploma_percentage ?? ""} onChange={(e) => updateEligibility("min_diploma_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
                     </div>
                     <div className="flex items-end">
                         <label className="flex items-center gap-2.5 cursor-pointer select-none">
@@ -437,17 +468,14 @@ const CreateJobForm = () => {
                 </div>
 
                 <div>
-                    <label className={labelClass}>Allowed Genders</label>
+                    <span className={labelClass}>Allowed Genders</span>
                     <div className="flex flex-wrap gap-3">
                         {GENDER_OPTIONS.map((g) => (
                             <label key={g} className="flex items-center gap-2 cursor-pointer select-none">
                                 <input
                                     type="checkbox"
                                     checked={ec.allowed_genders?.includes(g) || false}
-                                    onChange={(e) => {
-                                        const current = ec.allowed_genders || [];
-                                        updateEligibility("allowed_genders", e.target.checked ? [...current, g] : current.filter((v) => v !== g));
-                                    }}
+                                    onChange={(e) => handleToggleGender(g, e.target.checked)}
                                     className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                                 />
                                 <span className="text-sm text-gray-700 dark:text-gray-300">{g}</span>
@@ -457,12 +485,8 @@ const CreateJobForm = () => {
                 </div>
 
                 <div>
-                    <label className={labelClass}>Allowed Departments</label>
-                    {deptsLoading ? (
-                        <div className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500 py-2.5">
-                            <Loader2 className="h-4 w-4 animate-spin" /> Loading departments...
-                        </div>
-                    ) : departments.length === 0 ? (
+                    <span className={labelClass}>Allowed Departments</span>
+                    {departments.length === 0 ? (
                         <p className="text-sm text-gray-500 dark:text-gray-400 py-2.5">No departments available. Add departments in Department Management first.</p>
                     ) : (
                         <select
@@ -488,7 +512,7 @@ const CreateJobForm = () => {
                             {ec.allowed_departments!.map((d) => (
                                 <span key={d} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 border border-purple-100 dark:border-purple-800">
                                     {d}
-                                    <button type="button" onClick={() => updateEligibility("allowed_departments", ec.allowed_departments!.filter((v) => v !== d))} className="hover:text-red-600 dark:hover:text-red-400 transition-colors">×</button>
+                                    <button type="button" onClick={() => handleRemoveDept(d)} className="hover:text-red-600 dark:hover:text-red-400 transition-colors">×</button>
                                 </span>
                             ))}
                         </div>
@@ -518,7 +542,7 @@ const CreateJobForm = () => {
             )}
 
             {formData.rounds.map((round, i) => (
-                <div key={i} className="p-5 bg-gray-50/70 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
+                <div key={round.round_number} className="p-5 bg-gray-50/70 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">Round #{round.round_number}</span>
                         <button type="button" onClick={() => removeRound(i)} className="text-red-400 hover:text-red-600 transition-colors p-1">
@@ -527,23 +551,23 @@ const CreateJobForm = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Round Name *</label>
-                            <input value={round.round_name} onChange={(e) => updateRound(i, "round_name", e.target.value)} placeholder="e.g. Aptitude Test" className={inputClass(false)} />
+                            <label htmlFor={`round-name-${round.round_number}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Round Name *</label>
+                            <input id={`round-name-${round.round_number}`} value={round.round_name} onChange={(e) => updateRound(i, "round_name", e.target.value)} placeholder="e.g. Aptitude Test" className={inputClass(false)} />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Round Type</label>
-                            <select value={round.round_type || ""} onChange={(e) => updateRound(i, "round_type", e.target.value)} className={selectClass(false)}>
+                            <label htmlFor={`round-type-${round.round_number}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Round Type</label>
+                            <select id={`round-type-${round.round_number}`} value={round.round_type || ""} onChange={(e) => updateRound(i, "round_type", e.target.value)} className={selectClass(false)}>
                                 <option value="">Select Type</option>
                                 {ROUND_TYPE_OPTIONS.map((t) => (<option key={t} value={t}>{t}</option>))}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Date</label>
-                            <input type="datetime-local" value={round.round_date || ""} onChange={(e) => updateRound(i, "round_date", e.target.value)} className={inputClass(false)} />
+                            <label htmlFor={`round-date-${round.round_number}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Date</label>
+                            <input id={`round-date-${round.round_number}`} type="datetime-local" value={round.round_date || ""} onChange={(e) => updateRound(i, "round_date", e.target.value)} className={inputClass(false)} />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Venue</label>
-                            <input value={round.round_venue || ""} onChange={(e) => updateRound(i, "round_venue", e.target.value)} placeholder="e.g. College Exam Hall" className={inputClass(false)} />
+                            <label htmlFor={`round-venue-${round.round_number}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Venue</label>
+                            <input id={`round-venue-${round.round_number}`} value={round.round_venue || ""} onChange={(e) => updateRound(i, "round_venue", e.target.value)} placeholder="e.g. College Exam Hall" className={inputClass(false)} />
                         </div>
                     </div>
                 </div>
@@ -554,6 +578,24 @@ const CreateJobForm = () => {
     // ========================
     // STEP 6 — Questions
     // ========================
+    // Extracted to reduce nesting depth (options are inside questions.map)
+    const renderOptionsList = (q: typeof formData.questions[number], qIdx: number) => (
+        <div className="mt-3 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
+            <span className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Options (min 2)</span>
+            {(q.question_options || []).map((opt, oi) => (
+                <div key={`${q.question_order}-${opt || oi}`} className="flex items-center gap-2 mb-2">
+                    <input value={opt} onChange={(e) => handleUpdateOption(qIdx, oi, e.target.value)} className={`flex-1 ${inputClass(false)}`} placeholder={`Option ${oi + 1}`} />
+                    <button type="button" onClick={() => handleRemoveOption(qIdx, oi)} className="text-red-400 hover:text-red-600 transition-colors p-1">
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            ))}
+            <button type="button" onClick={() => updateQuestion(qIdx, "question_options", [...(q.question_options || []), ""])} className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 mt-1 transition-colors">
+                <Plus size={12} /> Add Option
+            </button>
+        </div>
+    );
+
     const renderQuestions = () => (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -571,7 +613,7 @@ const CreateJobForm = () => {
             )}
 
             {formData.questions.map((q, i) => (
-                <div key={i} className="p-5 bg-gray-50/70 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
+                <div key={q.question_order} className="p-5 bg-gray-50/70 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">Question #{q.question_order}</span>
                         <button type="button" onClick={() => removeQuestion(i)} className="text-red-400 hover:text-red-600 transition-colors p-1">
@@ -580,12 +622,12 @@ const CreateJobForm = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                         <div className="md:col-span-2">
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Question Text *</label>
-                            <textarea value={q.question_text} onChange={(e) => updateQuestion(i, "question_text", e.target.value)} placeholder="Enter question..." rows={2} className={`${inputClass(false)} resize-none`} />
+                            <label htmlFor={`q-text-${q.question_order}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Question Text *</label>
+                            <textarea id={`q-text-${q.question_order}`} value={q.question_text} onChange={(e) => updateQuestion(i, "question_text", e.target.value)} placeholder="Enter question..." rows={2} className={`${inputClass(false)} resize-none`} />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Question Type *</label>
-                            <select value={q.question_type} onChange={(e) => updateQuestion(i, "question_type", e.target.value)} className={selectClass(false)}>
+                            <label htmlFor={`q-type-${q.question_order}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Question Type *</label>
+                            <select id={`q-type-${q.question_order}`} value={q.question_type} onChange={(e) => updateQuestion(i, "question_type", e.target.value)} className={selectClass(false)}>
                                 {QUESTION_TYPE_OPTIONS.map((t) => (<option key={t} value={t}>{t.replace("_", " ")}</option>))}
                             </select>
                             <label className="flex items-center gap-2 mt-2.5 cursor-pointer select-none">
@@ -595,22 +637,7 @@ const CreateJobForm = () => {
                         </div>
                     </div>
 
-                    {(q.question_type === "mcq_single" || q.question_type === "mcq_multiple") && (
-                        <div className="mt-3 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Options (min 2)</label>
-                            {(q.question_options || []).map((opt, oi) => (
-                                <div key={oi} className="flex items-center gap-2 mb-2">
-                                    <input value={opt} onChange={(e) => { const updated = [...(q.question_options || [])]; updated[oi] = e.target.value; updateQuestion(i, "question_options", updated); }} className={`flex-1 ${inputClass(false)}`} placeholder={`Option ${oi + 1}`} />
-                                    <button type="button" onClick={() => { const updated = (q.question_options || []).filter((_, idx) => idx !== oi); updateQuestion(i, "question_options", updated); }} className="text-red-400 hover:text-red-600 transition-colors p-1">
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-                            ))}
-                            <button type="button" onClick={() => updateQuestion(i, "question_options", [...(q.question_options || []), ""])} className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 mt-1 transition-colors">
-                                <Plus size={12} /> Add Option
-                            </button>
-                        </div>
-                    )}
+                    {(q.question_type === "mcq_single" || q.question_type === "mcq_multiple") && renderOptionsList(q, i)}
                 </div>
             ))}
         </div>
@@ -646,8 +673,8 @@ const CreateJobForm = () => {
                 )}
 
                 <ReviewSection title={`Positions (${formData.positions.length})`}>
-                    {formData.positions.map((p, i) => (
-                        <div key={i} className="text-sm text-gray-700 dark:text-gray-300">
+                    {formData.positions.map((p) => (
+                        <div key={getStableKey(p)} className="text-sm text-gray-700 dark:text-gray-300">
                             <span className="font-medium">{p.position_name || "Untitled"}</span>
                             {p.vacancies && <span className="text-gray-400 dark:text-gray-500 ml-2">({p.vacancies} vacancies)</span>}
                             {p.position_description && <span className="text-gray-400 dark:text-gray-500 ml-2">— {p.position_description}</span>}
@@ -668,8 +695,8 @@ const CreateJobForm = () => {
 
                 {formData.rounds.length > 0 && (
                     <ReviewSection title={`Rounds (${formData.rounds.length})`}>
-                        {formData.rounds.map((r, i) => (
-                            <div key={i} className="text-sm text-gray-700 dark:text-gray-300">
+                        {formData.rounds.map((r) => (
+                            <div key={r.round_number} className="text-sm text-gray-700 dark:text-gray-300">
                                 Round {r.round_number}: <span className="font-medium">{r.round_name}</span>
                                 {r.round_type && <span className="text-gray-400 dark:text-gray-500 ml-1">({r.round_type})</span>}
                                 {r.round_venue && <span className="text-gray-400 dark:text-gray-500 ml-1">— {r.round_venue}</span>}
@@ -680,8 +707,8 @@ const CreateJobForm = () => {
 
                 {formData.questions.length > 0 && (
                     <ReviewSection title={`Questions (${formData.questions.length})`}>
-                        {formData.questions.map((q, i) => (
-                            <div key={i} className="text-sm text-gray-700 dark:text-gray-300">
+                        {formData.questions.map((q) => (
+                            <div key={q.question_order} className="text-sm text-gray-700 dark:text-gray-300">
                                 Q{q.question_order}: <span className="font-medium">{q.question_text}</span>
                                 <span className="text-gray-400 dark:text-gray-500 ml-1">({q.question_type})</span>
                                 {q.is_required && <span className="text-red-500 ml-1">*</span>}

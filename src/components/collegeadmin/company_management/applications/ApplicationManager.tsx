@@ -68,6 +68,7 @@ const STATUS_PILL_ORDER: (keyof StatusSummary)[] = [
     "shortlisted",
     "selected",
     "offered",
+    "waitlisted",
     "rejected",
     "withdrawn",
 ];
@@ -131,15 +132,28 @@ const STATUS_MODAL_CONFIG: Record<string, {
             "This action cannot be undone",
         ],
     },
+    waitlisted: {
+        iconBg: "bg-orange-50", iconColor: "text-orange-600",
+        boxBg: "bg-orange-50", boxBorder: "border-orange-100", boxText: "text-orange-700",
+        confirmBg: "bg-orange-600 hover:bg-orange-700",
+        consequences: [
+            "Student will be placed on the waitlist for this job",
+            "Waitlist rank must be assigned separately",
+            "Auto-promotion occurs when a selected candidate declines",
+        ],
+    },
 };
 
 // ========================
 // STATUS BADGE
 // ========================
 
-const StatusBadge = ({ status }: { status: string }) => {
+const StatusBadge = ({ status, waitlistRank }: { status: string; waitlistRank?: number | null }) => {
     const colors = APPLICATION_STATUS_COLORS[status] || APPLICATION_STATUS_COLORS.pending;
-    const label = APPLICATION_STATUS_LABELS[status] || status;
+    let label = APPLICATION_STATUS_LABELS[status] || status;
+    if (status === "waitlisted" && waitlistRank) {
+        label = `Waitlisted (#${waitlistRank})`;
+    }
     return (
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${colors.dot}`} />
@@ -426,7 +440,7 @@ const StatusChangeModal = ({
             titleIcon={<CheckCircle2 className={`h-5 w-5 ${config.iconColor}`} />}
             size="md"
         >
-            <div className="space-y-5">
+            <div className="p-6 space-y-5">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                     Are you sure you want to change <span className="font-semibold text-gray-800 dark:text-gray-200">{studentName}</span>&apos;s
                     application from <StatusBadge status={currentStatus} /> to <StatusBadge status={targetStatus} />?
@@ -500,7 +514,7 @@ const BulkResultModal = ({
             titleIcon={<Info className="h-5 w-5 text-blue-600" />}
             size="md"
         >
-            <div className="space-y-5">
+            <div className="p-6 space-y-5">
                 {/* Summary counts */}
                 <div className="grid grid-cols-3 gap-3">
                     <div className="text-center p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
@@ -685,7 +699,7 @@ const BulkActionBar = ({
                     titleIcon={<CheckCircle2 className="h-5 w-5 text-blue-600" />}
                     size="md"
                 >
-                    <div className="space-y-5">
+                    <div className="p-6 space-y-5">
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                             You are about to update{" "}
                             <span className="font-semibold text-gray-800 dark:text-gray-200">{selectedIds.size}</span>{" "}
@@ -782,7 +796,7 @@ const CreatePlacementFromAppModal = ({
             titleIcon={<Award className="h-5 w-5 text-emerald-600" />}
             size="md"
         >
-            <div className="space-y-4">
+            <div className="p-6 space-y-4">
                 {/* Student info banner */}
                 <div className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                     <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
@@ -800,7 +814,7 @@ const CreatePlacementFromAppModal = ({
                             {application.dept_name && ` · ${application.dept_name}`}
                         </p>
                     </div>
-                    <StatusBadge status={application.application_status} />
+                    <StatusBadge status={application.application_status} waitlistRank={application.waitlist_rank} />
                 </div>
 
                 {/* Placement Type */}
@@ -1329,7 +1343,7 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                                         {/* Status + Quick action */}
                                         <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center gap-2">
-                                                <StatusBadge status={app.application_status} />
+                                                <StatusBadge status={app.application_status} waitlistRank={app.waitlist_rank} />
                                                 {transitions.length > 0 && !isJobInactive && (
                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <select
@@ -1426,7 +1440,7 @@ const ApplicationManager = ({ jobId, jobStatus, positions, onRefresh }: Applicat
                                         >
                                             <div className="flex items-center justify-between gap-2">
                                                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{app.student_name}</p>
-                                                <StatusBadge status={app.application_status} />
+                                                <StatusBadge status={app.application_status} waitlistRank={app.waitlist_rank} />
                                             </div>
                                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
                                                 {app.student_email}

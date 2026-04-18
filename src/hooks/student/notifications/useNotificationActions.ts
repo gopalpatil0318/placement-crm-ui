@@ -25,7 +25,7 @@ export function useNotificationActions() {
     onSuccess: (_data, notificationId) => {
       // Check if the notification was actually unread before decrementing
       const allCaches = queryClient.getQueriesData<StudentNotificationsResponse>({
-        queryKey: ["notifications", "student", "list"],
+        queryKey: queryKeys.notifications.studentList(),
       })
       const wasUnread = allCaches.some(([, cached]) =>
         cached?.notifications.some(
@@ -35,7 +35,7 @@ export function useNotificationActions() {
 
       // Update is_read in all cached notification lists
       queryClient.setQueriesData<StudentNotificationsResponse>(
-        { queryKey: ["notifications", "student", "list"] },
+        { queryKey: queryKeys.notifications.studentList() },
         (old) => {
           if (!old) return old
           return {
@@ -93,7 +93,7 @@ export function useNotificationActions() {
       )
       // Optimistic: mark all cached notifications as read instantly
       queryClient.setQueriesData<StudentNotificationsResponse>(
-        { queryKey: ["notifications", "student", "list"] },
+        { queryKey: queryKeys.notifications.studentList() },
         (old) => {
           if (!old) return old
           return {

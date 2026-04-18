@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { ApiError } from "@/lib/api";
 import { showToast, getErrorTitle } from "@/utils/ToastUtils";
@@ -33,11 +32,10 @@ export function useVerifyItem(category: VerificationCategory) {
     const [processingId, setProcessingId] = useState<string | null>(null);
 
     const invalidateCache = useCallback(() => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.verifications.counts() });
-        queryClient.invalidateQueries({
-            queryKey: queryKeys.verifications[category](),
-        });
-    }, [queryClient, category]);
+        // Invalidate all verification-related queries: counts, category lists,
+        // and embedded student profile data so changes reflect everywhere
+        queryClient.invalidateQueries({ queryKey: ["verifications"] });
+    }, [queryClient]);
 
     const approveMutation = useMutation({
         mutationFn: (itemId: string) =>

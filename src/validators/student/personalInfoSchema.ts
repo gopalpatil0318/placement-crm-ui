@@ -21,7 +21,14 @@ export const personalInfoSchema = z
         alternate_mobile: optionalIndianMobile,
 
         // Personal
-        birth_date: z.string().min(1, { message: "Date of birth is required" }),
+        birth_date: z.string().min(1, { message: "Date of birth is required" })
+            .refine(
+                (val) => {
+                    const d = new Date(val);
+                    return !Number.isNaN(d.getTime()) && d <= new Date() && d >= new Date('1970-01-01');
+                },
+                { message: 'Birth date must be a valid date in the past (after 1970)' }
+            ),
         gender: z.enum(["Male", "Female", "Other", "Prefer not to say"], {
             message: "Please select a valid gender",
         }),
@@ -43,8 +50,8 @@ export const personalInfoSchema = z
         father_occupation: z.string().min(1, { message: "Father's occupation is required" }),
         father_annual_income: z
             .union([z.number(), z.string()])
-            .transform((val) => Number(val))
-            .refine((val) => !isNaN(val) && val >= 0, { message: "Must be a valid income amount" }),
+            .transform(Number)
+            .refine((val) => !Number.isNaN(val) && val >= 0, { message: "Must be a valid income amount" }),
 
         // Mother
         mother_name: z.string().min(2, { message: "Mother's name is required" }),
@@ -52,8 +59,8 @@ export const personalInfoSchema = z
         mother_occupation: z.string().min(1, { message: "Mother's occupation is required" }),
         mother_annual_income: z
             .union([z.number(), z.string()])
-            .transform((val) => Number(val))
-            .refine((val) => !isNaN(val) && val >= 0, { message: "Must be a valid income amount" }),
+            .transform(Number)
+            .refine((val) => !Number.isNaN(val) && val >= 0, { message: "Must be a valid income amount" }),
 
         // Guardian
         guardian_name: z.string().optional().or(z.literal("")),

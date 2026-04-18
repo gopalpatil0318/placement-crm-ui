@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import {
     Calendar,
     Clock,
@@ -13,10 +13,13 @@ import {
     RefreshCw,
     Loader2,
     AlertTriangle,
+    DoorOpen,
+    DoorClosed,
 } from "lucide-react";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import { useViewTrainingProgram } from "@/hooks/collegeadmin/training_programs/useViewTrainingProgram";
 import { useToggleTrainingStatus } from "@/hooks/collegeadmin/training_programs/useToggleTrainingStatus";
+import { useToggleEnrollmentAccess } from "@/hooks/collegeadmin/training_programs/useToggleEnrollmentAccess";
 import {
     PROGRAM_STATUS_COLORS,
     PROGRAM_STATUS_LABELS,
@@ -143,6 +146,12 @@ const TrainingProgramDetailView = ({ programId, onProgramLoaded }: Readonly<Trai
                                     {statusLabel}
                                 </span>
                             )}
+                            {program.allow_enrollments && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                                    {"Enrollment Open"}
+                                </span>
+                            )}
                         </div>
                         <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
                             <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md text-xs font-medium">{typeLabel}</span>
@@ -161,6 +170,7 @@ const TrainingProgramDetailView = ({ programId, onProgramLoaded }: Readonly<Trai
                                 <Edit className="h-4 w-4" /> Edit
                             </Link>
                         )}
+                        <EnrollmentToggleButton programId={programId} currentStatus={program.program_status} allowEnrollments={program.allow_enrollments ?? false} />
                         <StatusToggleDropdown programId={programId} currentStatus={program.program_status} />
                     </div>
                 </div>
@@ -242,12 +252,20 @@ const TrainingProgramDetailView = ({ programId, onProgramLoaded }: Readonly<Trai
                             <Users className="h-4 w-4 text-gray-400" />
                             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Enrollment Statistics</span>
                         </div>
-                        <Link
-                            to={`/college/training-program/${programId}/enrollments`}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-                        >
-                            View Enrollments <ArrowRight className="h-3.5 w-3.5" />
-                        </Link>
+                        <div className="flex items-center gap-4">
+                            <Link
+                                to={`/college/training-program/${programId}/enrollments`}
+                                className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                            >
+                                View Enrollments <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                            <Link
+                                to={`/college/training-program/${programId}/sessions`}
+                                className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                            >
+                                Manage Sessions <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -333,6 +351,44 @@ const StatBox = ({ label, value, color }: Readonly<StatBoxProps>) => (
         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{label}</p>
     </div>
 );
+
+// ── Enrollment Access Toggle Button ──
+
+interface EnrollmentToggleButtonProps {
+    programId: string;
+    currentStatus: string;
+    allowEnrollments: boolean;
+}
+
+const EnrollmentToggleButton = ({ programId, currentStatus, allowEnrollments }: Readonly<EnrollmentToggleButtonProps>) => {
+    const { toggle, loading } = useToggleEnrollmentAccess(programId);
+
+    const handleClick = useCallback(() => {
+        toggle(!allowEnrollments);
+    }, [toggle, allowEnrollments]);
+
+    // Cannot toggle enrollment for draft, completed, or cancelled
+    const blockedStatuses = ["draft", "completed", "cancelled"];
+    if (blockedStatuses.includes(currentStatus)) return null;
+
+    const Icon = allowEnrollments ? DoorOpen : DoorClosed;
+
+    return (
+        <button
+            type="button"
+            onClick={handleClick}
+            disabled={loading}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-colors disabled:opacity-60 ${
+                allowEnrollments
+                    ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                    : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+        >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
+            {allowEnrollments ? "Close Enrollment" : "Open Enrollment"}
+        </button>
+    );
+};
 
 // ── Status Toggle Dropdown ──
 

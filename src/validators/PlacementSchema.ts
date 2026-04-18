@@ -5,6 +5,7 @@ import {
     XCircle,
     PartyPopper,
     Ban,
+    Clock,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -29,7 +30,9 @@ export const PLACEMENT_TYPE_LABELS: Record<PlacementType, string> = {
 export const PLACEMENT_STATUS_OPTIONS = [
     "offered",
     "accepted",
-    "rejected",
+    "declined",
+    "revoked",
+    "expired",
     "joined",
     "cancelled",
 ] as const;
@@ -39,7 +42,9 @@ export type PlacementStatus = (typeof PLACEMENT_STATUS_OPTIONS)[number];
 export const PLACEMENT_STATUS_LABELS: Record<PlacementStatus, string> = {
     offered: "Offered",
     accepted: "Accepted",
-    rejected: "Rejected",
+    declined: "Declined by Student",
+    revoked: "Revoked by College",
+    expired: "Expired",
     joined: "Joined",
     cancelled: "Cancelled by College",
 };
@@ -51,7 +56,9 @@ export const PLACEMENT_STATUS_COLORS: Record<
     offered:   { bg: "bg-cyan-50 dark:bg-cyan-900/20",      text: "text-cyan-700 dark:text-cyan-400",       dot: "bg-cyan-500" },
     accepted:  { bg: "bg-emerald-50 dark:bg-emerald-900/20",  text: "text-emerald-700 dark:text-emerald-400",  dot: "bg-emerald-500" },
     joined:    { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500" },
-    rejected:  { bg: "bg-red-50 dark:bg-red-900/20",        text: "text-red-600 dark:text-red-400",         dot: "bg-red-400" },
+    declined:  { bg: "bg-red-50 dark:bg-red-900/20",        text: "text-red-600 dark:text-red-400",         dot: "bg-red-400" },
+    revoked:   { bg: "bg-orange-50 dark:bg-orange-900/20",  text: "text-orange-600 dark:text-orange-400",   dot: "bg-orange-400" },
+    expired:   { bg: "bg-amber-50 dark:bg-amber-900/20",    text: "text-amber-600 dark:text-amber-400",     dot: "bg-amber-400" },
     cancelled: { bg: "bg-gray-100 dark:bg-gray-800",         text: "text-gray-600 dark:text-gray-400",       dot: "bg-gray-400" },
 };
 
@@ -74,10 +81,12 @@ export const ACCEPTANCE_STATUS_LABELS: Record<AcceptanceStatus, string> = {
 // ========================
 
 export const PLACEMENT_STATUS_TRANSITIONS: Record<PlacementStatus, PlacementStatus[]> = {
-    offered: ["accepted", "rejected", "cancelled"],
+    offered: ["accepted", "declined", "revoked", "expired", "cancelled"],
     accepted: ["joined", "cancelled"],
     joined: ["cancelled"],
-    rejected: [],
+    declined: [],
+    revoked: [],
+    expired: [],
     cancelled: [],
 };
 
@@ -148,7 +157,7 @@ export const createPlacementSchema = z
         (data) => {
             if (data.fulltime_package && data.fulltime_package !== "") {
                 const num = Number(data.fulltime_package);
-                return !isNaN(num) && num >= 0;
+                return !Number.isNaN(num) && num >= 0;
             }
             return true;
         },
@@ -158,7 +167,7 @@ export const createPlacementSchema = z
         (data) => {
             if (data.internship_stipend && data.internship_stipend !== "") {
                 const num = Number(data.internship_stipend);
-                return !isNaN(num) && num >= 0;
+                return !Number.isNaN(num) && num >= 0;
             }
             return true;
         },
@@ -205,7 +214,7 @@ export const updatePlacementSchema = z
         (data) => {
             if (data.fulltime_package && data.fulltime_package !== "") {
                 const num = Number(data.fulltime_package);
-                return !isNaN(num) && num >= 0;
+                return !Number.isNaN(num) && num >= 0;
             }
             return true;
         },
@@ -215,7 +224,7 @@ export const updatePlacementSchema = z
         (data) => {
             if (data.internship_stipend && data.internship_stipend !== "") {
                 const num = Number(data.internship_stipend);
-                return !isNaN(num) && num >= 0;
+                return !Number.isNaN(num) && num >= 0;
             }
             return true;
         },
@@ -223,13 +232,32 @@ export const updatePlacementSchema = z
     );
 
 export const verifyOfferLetterSchema = z.object({
-    offer_letter_verified: z.boolean(),
-    remarks: z
+    action: z.enum(["approved", "rejected"], {
+        error: "Action must be approved or rejected",
+    }),
+    rejection_reason: z
         .string()
-        .max(2000, "Remarks cannot exceed 2000 characters")
+        .max(1000, "Rejection reason cannot exceed 1000 characters")
         .optional()
         .or(z.literal("")),
-});
+}).refine(
+    (data) => data.action !== "rejected" || (data.rejection_reason && data.rejection_reason.trim().length > 0),
+    { message: "Rejection reason is required when rejecting", path: ["rejection_reason"] },
+);
+
+export const verifyJoiningLetterSchema = z.object({
+    action: z.enum(["approved", "rejected"], {
+        error: "Action must be approved or rejected",
+    }),
+    rejection_reason: z
+        .string()
+        .max(1000, "Rejection reason cannot exceed 1000 characters")
+        .optional()
+        .or(z.literal("")),
+}).refine(
+    (data) => data.action !== "rejected" || (data.rejection_reason && data.rejection_reason.trim().length > 0),
+    { message: "Rejection reason is required when rejecting", path: ["rejection_reason"] },
+);
 
 export const updatePlacementStatusSchema = z.object({
     placement_status: z.enum(PLACEMENT_STATUS_OPTIONS, {
@@ -249,6 +277,7 @@ export const updatePlacementStatusSchema = z.object({
 export type CreatePlacementInput = z.infer<typeof createPlacementSchema>;
 export type UpdatePlacementInput = z.infer<typeof updatePlacementSchema>;
 export type VerifyOfferLetterInput = z.infer<typeof verifyOfferLetterSchema>;
+export type VerifyJoiningLetterInput = z.infer<typeof verifyJoiningLetterSchema>;
 export type UpdatePlacementStatusInput = z.infer<typeof updatePlacementStatusSchema>;
 
 // ========================
@@ -267,13 +296,27 @@ export interface StudentPlacement {
     internship_start_date: string | null;
     offer_letter_url: string | null;
     offer_letter_verified: boolean;
+    offer_letter_rejection_reason: string | null;
+    offer_letter_rejected_at: string | null;
+    offer_letter_uploaded_by: string | null;
+    verified_by_name: string | null;
+    verified_at: string | null;
+    joining_letter_url: string | null;
+    joining_letter_verified: boolean;
+    joining_letter_verified_by_name: string | null;
+    joining_letter_verified_at: string | null;
+    joining_letter_rejection_reason: string | null;
+    joining_letter_rejected_at: string | null;
+    joining_letter_uploaded_by: string | null;
     placement_status: PlacementStatus;
     acceptance_status: AcceptanceStatus;
+    offer_expires_at: string | null;
     passout_year: number;
     created_at: string;
     updated_at: string;
     company_id: string;
     company_name: string;
+    company_logo: string | null;
     company_website: string | null;
     industry_type: string | null;
     job_id: string;
@@ -288,7 +331,9 @@ export interface PlacementStatusSummary {
     total: number;
     offered: number;
     accepted: number;
-    rejected: number;
+    declined: number;
+    revoked: number;
+    expired: number;
     joined: number;
     cancelled: number;
 }
@@ -324,11 +369,11 @@ export interface AcceptPlacementResponse {
 
 export interface RejectPlacementResponse {
     placement_id: string;
-    placement_status: "rejected";
+    placement_status: "declined";
     acceptance_status: "rejected";
     previous_status: string;
     previous_acceptance: string;
-    rejection_reason: string;
+    declined_reason: string;
     updated_at: string;
     job_title: string;
     company_name: string;
@@ -369,7 +414,9 @@ export const PLACEMENT_STATUS_TABS: { key: PlacementStatusFilter; label: string 
     { key: "all", label: "All" },
     { key: "offered", label: "Offered" },
     { key: "accepted", label: "Accepted" },
-    { key: "rejected", label: "Rejected" },
+    { key: "declined", label: "Declined" },
+    { key: "revoked", label: "Revoked" },
+    { key: "expired", label: "Expired" },
     { key: "joined", label: "Joined" },
     { key: "cancelled", label: "Cancelled" },
 ];
@@ -408,7 +455,9 @@ export const PLACEMENT_STATUS_ICONS: Record<
 > = {
     offered: Briefcase,
     accepted: CheckCircle,
-    rejected: XCircle,
+    declined: XCircle,
+    revoked: Ban,
+    expired: Clock,
     joined: PartyPopper,
     cancelled: Ban,
 };

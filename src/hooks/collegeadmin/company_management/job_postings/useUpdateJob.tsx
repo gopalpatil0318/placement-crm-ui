@@ -22,6 +22,8 @@ interface UpdateJobFormData {
     bond_details: string;
     application_deadline: string;
     passout_years: number[];
+    drive_type: string;
+    allow_applications: boolean;
 }
 
 type FormErrors = Partial<Record<keyof UpdateJobFormData, string>>;
@@ -41,42 +43,43 @@ function coerceInputValue(type: string, value: string): string | number {
     return value;
 }
 
+function diffTrimmed(payload: Record<string, unknown>, key: string, current: string, original: string): void {
+    if (current.trim() !== original.trim()) {
+        payload[key] = current.trim();
+    }
+}
+
 function computePayloadDiff(
     formData: UpdateJobFormData,
     orig: UpdateJobFormData | null,
 ): Record<string, unknown> {
     const payload: Record<string, unknown> = {};
-    if (formData.job_title.trim() !== orig?.job_title.trim()) {
-        payload.job_title = formData.job_title.trim();
-    }
-    if (formData.job_description.trim() !== orig?.job_description.trim()) {
-        payload.job_description = formData.job_description.trim();
-    }
-    if (formData.job_location.trim() !== orig?.job_location.trim()) {
-        payload.job_location = formData.job_location.trim();
-    }
-    if (formData.salary_package.trim() !== orig?.salary_package.trim()) {
-        payload.salary_package = formData.salary_package.trim();
-    }
-    if (formData.salary_min !== orig?.salary_min) {
+    const o = orig ?? ({} as UpdateJobFormData);
+    diffTrimmed(payload, "job_title", formData.job_title, o.job_title ?? "");
+    diffTrimmed(payload, "job_description", formData.job_description, o.job_description ?? "");
+    diffTrimmed(payload, "job_location", formData.job_location, o.job_location ?? "");
+    diffTrimmed(payload, "salary_package", formData.salary_package, o.salary_package ?? "");
+    if (formData.salary_min !== o.salary_min) {
         payload.salary_min = formData.salary_min === "" ? null : formData.salary_min;
     }
-    if (formData.salary_max !== orig?.salary_max) {
+    if (formData.salary_max !== o.salary_max) {
         payload.salary_max = formData.salary_max === "" ? null : formData.salary_max;
     }
-    if (formData.bond_duration.trim() !== orig?.bond_duration.trim()) {
-        payload.bond_duration = formData.bond_duration.trim();
-    }
-    if (formData.bond_details.trim() !== orig?.bond_details.trim()) {
-        payload.bond_details = formData.bond_details.trim();
-    }
-    if (formData.application_deadline !== orig?.application_deadline) {
+    diffTrimmed(payload, "bond_duration", formData.bond_duration, o.bond_duration ?? "");
+    diffTrimmed(payload, "bond_details", formData.bond_details, o.bond_details ?? "");
+    if (formData.application_deadline !== o.application_deadline) {
         payload.application_deadline = formData.application_deadline;
     }
     const currentYears = [...formData.passout_years].sort((a, b) => a - b).join(",");
     const origYears = orig ? [...orig.passout_years].sort((a, b) => a - b).join(",") : "";
     if (currentYears !== origYears) {
         payload.passout_years = formData.passout_years;
+    }
+    if (formData.drive_type !== o.drive_type) {
+        payload.drive_type = formData.drive_type;
+    }
+    if (formData.allow_applications !== o.allow_applications) {
+        payload.allow_applications = formData.allow_applications;
     }
     return payload;
 }
@@ -102,9 +105,12 @@ export const useUpdateJob = (
         bond_details: "",
         application_deadline: "",
         passout_years: [],
+        drive_type: "on_campus",
+        allow_applications: true,
     });
     const [originalData, setOriginalData] = useState<UpdateJobFormData | null>(null);
     const [fetchedJobTitle, setFetchedJobTitle] = useState("");
+    const [applicationCount, setApplicationCount] = useState(0);
     const [errors, setErrors] = useState<FormErrors>({});
     const [fetchError] = useState<string | null>(null);
 
@@ -133,6 +139,8 @@ export const useUpdateJob = (
                     ? toLocalDatetimeValue(data.application_deadline)
                     : "",
                 passout_years: Array.isArray(data.passout_years) ? data.passout_years : [],
+                drive_type: data.drive_type || "on_campus",
+                allow_applications: data.allow_applications !== false,
             };
             return { loaded, title: data.job_title || "" };
         },
@@ -158,11 +166,15 @@ export const useUpdateJob = (
                 ? toLocalDatetimeValue(queryData.application_deadline as string)
                 : "",
             passout_years: Array.isArray(queryData.passout_years) ? queryData.passout_years as number[] : [],
+            drive_type: (queryData.drive_type as string) || "on_campus",
+            allow_applications: queryData.allow_applications !== false,
         };
         // eslint-disable-next-line react-hooks/set-state-in-effect -- data prefill from query
         setFormData(loaded);
         setOriginalData(loaded);
         setFetchedJobTitle((queryData.job_title as string) || "");
+        const appStats = queryData.application_stats as { total?: number } | undefined;
+        setApplicationCount(appStats?.total ?? 0);
         onItemLoaded?.((queryData.job_title as string) || "");
     }, [queryData, onItemLoaded]);
 
@@ -315,6 +327,7 @@ export const useUpdateJob = (
     return {
         formData,
         fetchedJobTitle,
+        applicationCount,
         errors,
         loading: mutation.isPending,
         fetching,

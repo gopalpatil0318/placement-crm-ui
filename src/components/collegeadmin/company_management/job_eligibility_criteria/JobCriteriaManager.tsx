@@ -1,8 +1,6 @@
 import { useEffect } from "react";
 import { useSetJobCriteria } from "@/hooks/collegeadmin/company_management/Job_eligibility_criteria/useSetJobCriteria";
-import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
-import { useState, useCallback } from "react";
-import { showToast } from "@/utils/ToastUtils";
+import { useAuth } from "@/hooks/collegeadmin/useAuth";
 import { ShieldCheck, Loader2, AlertTriangle } from "lucide-react";
 
 // ========================
@@ -28,6 +26,21 @@ const GAP_OPTIONS = [
 ];
 
 // ========================
+// STYLE HELPERS
+// ========================
+
+function getChipClass(isDisabled: boolean, isSelected: boolean): string {
+    if (isDisabled) return "opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-800";
+    if (isSelected) return "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400 shadow-sm";
+    return "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-900/10";
+}
+
+function getButtonLabel(isLoading: boolean, isUpdate: boolean): string {
+    if (isLoading) return isUpdate ? "Updating..." : "Setting...";
+    return isUpdate ? "Update Criteria" : "Set Criteria";
+}
+
+// ========================
 // MAIN COMPONENT
 // ========================
 
@@ -45,28 +58,11 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
         loadExisting,
     } = useSetJobCriteria(jobId, onSuccess);
 
-    const [departments, setDepartments] = useState<Department[]>([]);
-    const [loadingDepts, setLoadingDepts] = useState(false);
+    // Use departments from auth context (already loaded at login)
+    const { user } = useAuth();
+    const departments: Department[] = user?.departments ?? [];
 
     const isCancelled = jobStatus === "cancelled";
-
-    // Load departments for the multi-select
-    const fetchDepartments = useCallback(async () => {
-        setLoadingDepts(true);
-        try {
-            const response = await CollegeAdminService.getDepartments({ limit: 100, is_active: true });
-            const depts = Array.isArray(response.data) ? response.data : [];
-            setDepartments(depts);
-        } catch {
-            showToast({ type: "error", title: "Error", description: "Failed to load departments" });
-        } finally {
-            setLoadingDepts(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchDepartments();
-    }, [fetchDepartments]);
 
     // Load existing criteria if available
     useEffect(() => {
@@ -307,13 +303,10 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         {GENDER_OPTIONS.map((g) => (
                             <label
                                 key={g}
-                                className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${
-                                    !toggles.allowed_genders || isCancelled
-                                        ? "opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
-                                        : formData.allowed_genders.includes(g)
-                                        ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400 shadow-sm"
-                                        : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-900/10"
-                                }`}
+                                className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${getChipClass(
+                                    !toggles.allowed_genders || isCancelled,
+                                    formData.allowed_genders.includes(g)
+                                )}`}
                             >
                                 <input
                                     type="checkbox"
@@ -341,13 +334,10 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         {GAP_OPTIONS.map((g) => (
                             <label
                                 key={g.value}
-                                className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${
-                                    !toggles.allowed_gap_statuses || isCancelled
-                                        ? "opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
-                                        : formData.allowed_gap_statuses.includes(g.value)
-                                        ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400 shadow-sm"
-                                        : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-900/10"
-                                }`}
+                                className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${getChipClass(
+                                    !toggles.allowed_gap_statuses || isCancelled,
+                                    formData.allowed_gap_statuses.includes(g.value)
+                                )}`}
                             >
                                 <input
                                     type="checkbox"
@@ -371,36 +361,29 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                     error={errors.allowed_departments}
                     disabled={isCancelled}
                 >
-                    {loadingDepts ? (
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Loading departments...</p>
-                    ) : (
-                        <div className="flex flex-wrap gap-2 mt-1 max-h-40 overflow-y-auto">
-                            {departments.map((d) => (
+                    <div className="flex flex-wrap gap-2 mt-1 max-h-40 overflow-y-auto">
+                        {departments.map((d) => (
                                 <label
                                     key={d.dept_id}
-                                    className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${
-                                        !toggles.allowed_departments || isCancelled
-                                            ? "opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
-                                            : formData.allowed_departments.includes(d.dept_name)
-                                            ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400 shadow-sm"
-                                            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-900/10"
-                                    }`}
+                                    className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${getChipClass(
+                                        !toggles.allowed_departments || isCancelled,
+                                        formData.allowed_departments.includes(d.dept_name)
+                                    )}`}
                                 >
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.allowed_departments.includes(d.dept_name)}
-                                        onChange={() => handleMultiSelect("allowed_departments", d.dept_name)}
-                                        disabled={!toggles.allowed_departments || isCancelled}
-                                        className="sr-only"
-                                    />
-                                    {d.dept_name}
-                                </label>
-                            ))}
-                            {departments.length === 0 && (
-                                <p className="text-xs text-gray-400 dark:text-gray-500">No departments found</p>
-                            )}
-                        </div>
-                    )}
+                                <input
+                                    type="checkbox"
+                                    checked={formData.allowed_departments.includes(d.dept_name)}
+                                    onChange={() => handleMultiSelect("allowed_departments", d.dept_name)}
+                                    disabled={!toggles.allowed_departments || isCancelled}
+                                    className="sr-only"
+                                />
+                                {d.dept_name}
+                            </label>
+                        ))}
+                        {departments.length === 0 && (
+                            <p className="text-xs text-gray-400 dark:text-gray-500">No departments found</p>
+                        )}
+                    </div>
                 </CriteriaField>
             </div>
 
@@ -414,9 +397,7 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all active:scale-[0.98] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {loading
-                            ? isUpdate ? "Updating..." : "Setting..."
-                            : isUpdate ? "Update Criteria" : "Set Criteria"}
+                        {getButtonLabel(loading, isUpdate)}
                     </button>
                 </div>
             )}
@@ -427,6 +408,12 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
 // ========================
 // CRITERIA FIELD WRAPPER
 // ========================
+
+function getCriteriaFieldClass(disabled: boolean | undefined, enabled: boolean): string {
+    if (disabled) return "bg-gray-50/50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 opacity-60";
+    if (enabled) return "bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-800 shadow-sm";
+    return "bg-gray-50/50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600";
+}
 
 const CriteriaField = ({
     label,
@@ -445,13 +432,7 @@ const CriteriaField = ({
     disabled?: boolean;
     children: React.ReactNode;
 }) => (
-    <div className={`p-4 rounded-xl border transition-all duration-200 ${
-        disabled
-            ? "bg-gray-50/50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 opacity-60"
-            : enabled
-            ? "bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-800 shadow-sm"
-            : "bg-gray-50/50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600"
-    }`}>
+    <div className={`p-4 rounded-xl border transition-all duration-200 ${getCriteriaFieldClass(disabled, enabled)}`}>
         <div className="flex items-start justify-between mb-2">
             <div>
                 <p className={`text-sm font-semibold transition-colors ${enabled && !disabled ? "text-gray-800 dark:text-gray-100" : "text-gray-400 dark:text-gray-500"}`}>{label}</p>
@@ -482,13 +463,13 @@ const CriteriaField = ({
 // HELPER
 // ========================
 
-const inputClass = (enabled: boolean, error?: string) =>
-    `w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
-        !enabled
-            ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed"
-            : error
-            ? "border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/10 text-gray-900 dark:text-gray-100"
-            : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-    }`;
+function getInputClass(enabled: boolean, error?: string): string {
+    const base = "w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition";
+    if (enabled && error) return `${base} border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/10 text-gray-900 dark:text-gray-100`;
+    if (enabled) return `${base} border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500`;
+    return `${base} bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed`;
+}
+
+const inputClass = getInputClass;
 
 export default JobCriteriaManager;

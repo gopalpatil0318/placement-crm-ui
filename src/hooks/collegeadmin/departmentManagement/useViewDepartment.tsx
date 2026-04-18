@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
+import { useYearFilter } from "@/context/YearFilterContext";
 
 // ========================
 // TYPES
@@ -24,17 +25,18 @@ export interface DepartmentDetail {
 // ========================
 
 export const useViewDepartment = (deptId: string | undefined) => {
+    const { selectedYear } = useYearFilter();
+
     const { data, isLoading, error: queryError, refetch } = useQuery({
-        queryKey: queryKeys.departments.detail(deptId ?? ""),
-        queryFn: () => CollegeAdminService.getDepartment(deptId!),
+        queryKey: queryKeys.departments.detail(deptId ?? "", selectedYear),
+        queryFn: () => CollegeAdminService.getDepartment(deptId!, { passout_year: selectedYear }),
         enabled: !!deptId,
     });
 
     const department: DepartmentDetail | null = data?.data ?? data ?? null;
     const loading = isLoading;
-    const error = queryError
-        ? (queryError instanceof Error ? queryError.message : "Failed to fetch department")
-        : null;
+    const errorMessage = queryError instanceof Error ? queryError.message : "Failed to fetch department";
+    const error = queryError ? errorMessage : null;
 
     return { department, loading, error, refresh: refetch };
 };

@@ -44,6 +44,8 @@ const DIFF_FIELDS: FieldDef[] = [
     { key: "target_passout_year", transform: (v) => (v ? Number(v) : undefined) },
     { key: "max_enrollment", transform: (v) => (v ? Number(v) : undefined) },
     { key: "enrollment_deadline", transform: (v) => v || undefined },
+    { key: "program_fee", transform: (v) => (v ? Number(v) : undefined) },
+    { key: "min_attendance_pct", transform: (v) => (v ? Number(v) : undefined) },
 ];
 
 function buildDiffPayload(
@@ -66,7 +68,7 @@ function buildDiffPayload(
 
 function getStepForField(field: string): number {
     if (["program_name", "program_type", "program_description"].includes(field)) return 1;
-    if (["trainer_name", "trainer_organization", "total_sessions", "session_duration_hours"].includes(field)) return 2;
+    if (["trainer_name", "trainer_organization", "total_sessions", "session_duration_hours", "program_fee", "min_attendance_pct"].includes(field)) return 2;
     return 3;
 }
 
@@ -92,6 +94,9 @@ export const useUpdateTrainingProgram = (programId: string | undefined) => {
         target_passout_year: "",
         max_enrollment: "",
         enrollment_deadline: "",
+        program_fee: "",
+        fee_currency: "",
+        min_attendance_pct: "",
     });
     const [originalData, setOriginalData] = useState<UpdateTrainingProgramInput | null>(null);
     const [fetchedProgramName, setFetchedProgramName] = useState("");
@@ -123,6 +128,9 @@ export const useUpdateTrainingProgram = (programId: string | undefined) => {
                 target_passout_year: program.target_passout_year == null ? "" : String(program.target_passout_year),
                 max_enrollment: program.max_enrollment == null ? "" : String(program.max_enrollment),
                 enrollment_deadline: program.enrollment_deadline || "",
+                program_fee: program.program_fee == null ? "" : String(program.program_fee),
+                fee_currency: program.fee_currency || "",
+                min_attendance_pct: program.min_attendance_pct == null ? "" : String(program.min_attendance_pct),
             };
             setFormData(loaded);
             setOriginalData(loaded);
@@ -191,7 +199,7 @@ export const useUpdateTrainingProgram = (programId: string | undefined) => {
     }, []);
 
     const handleSubmit = useCallback(() => {
-        if (!programId) return;
+        if (!programId || mutation.isPending) return;
 
         const result = updateTrainingProgramSchema.safeParse(formData);
         if (!result.success) {

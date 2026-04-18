@@ -36,9 +36,11 @@ import {
     type PlacementStats,
 } from "@/hooks/collegeadmin/placements/useViewPlacements";
 import { useCreatePlacement } from "@/hooks/collegeadmin/placements/useCreatePlacement";
+import { useBulkCreatePlacements, type BulkPlacementItem } from "@/hooks/collegeadmin/placements/useBulkCreatePlacements";
 import { useUpdatePlacement } from "@/hooks/collegeadmin/placements/useUpdatePlacement";
 import { useUpdatePlacementStatus } from "@/hooks/collegeadmin/placements/useUpdatePlacementStatus";
 import { useVerifyOfferLetter } from "@/hooks/collegeadmin/placements/useVerifyOfferLetter";
+import { useVerifyJoiningLetter } from "@/hooks/collegeadmin/placements/useVerifyJoiningLetter";
 import {
     PLACEMENT_STATUS_COLORS,
     PLACEMENT_STATUS_LABELS,
@@ -100,8 +102,8 @@ const STATUS_MODAL_CONFIG: Record<
             "Can be cancelled if the student leaves later",
         ],
     },
-    rejected: {
-        title: "Reject Placement",
+    declined: {
+        title: "Decline Placement",
         iconBg: "bg-red-50",
         iconColor: "text-red-600",
         boxBg: "bg-red-50",
@@ -109,9 +111,21 @@ const STATUS_MODAL_CONFIG: Record<
         boxText: "text-red-700",
         confirmBg: "bg-red-600 hover:bg-red-700",
         consequences: [
-            "Student's offer will be marked as rejected",
-            "Acceptance status will be set to 'rejected'",
+            "Student's offer will be marked as declined",
             "This action is permanent and cannot be reversed",
+        ],
+    },
+    revoked: {
+        title: "Revoke Placement",
+        iconBg: "bg-orange-50",
+        iconColor: "text-orange-600",
+        boxBg: "bg-orange-50",
+        boxBorder: "border-orange-200",
+        boxText: "text-orange-700",
+        confirmBg: "bg-orange-600 hover:bg-orange-700",
+        consequences: [
+            "Student's offer will be revoked by college",
+            "Application will return to selected status",
         ],
     },
     cancelled: {
@@ -199,8 +213,8 @@ const MiniStats = ({ stats, loading: statsLoading }: { stats: PlacementStats | n
     if (statsLoading) {
         return (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-pulse">
-                {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 flex items-center gap-2.5">
+                {[1, 2, 3, 4].map((n) => (
+                    <div key={n} className="rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 flex items-center gap-2.5">
                         <div className="h-9 w-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
                         <div className="space-y-1">
                             <div className="h-4 w-10 bg-gray-100 dark:bg-gray-700 rounded" />
@@ -216,8 +230,8 @@ const MiniStats = ({ stats, loading: statsLoading }: { stats: PlacementStats | n
     const cards = [
         { bg: "bg-blue-50", border: "border-blue-100", iconBg: "bg-blue-100", iconColor: "text-blue-600", value: stats.total_placements, label: "Total", Icon: Award },
         { bg: "bg-emerald-50", border: "border-emerald-100", iconBg: "bg-emerald-100", iconColor: "text-emerald-600", value: stats.unique_students, label: "Students", Icon: Users },
-        { bg: "bg-orange-50", border: "border-orange-100", iconBg: "bg-orange-100", iconColor: "text-orange-600", value: stats.avg_package !== null ? formatPackage(stats.avg_package) : "—", label: "Avg Package", Icon: BarChart3 },
-        { bg: "bg-cyan-50", border: "border-cyan-100", iconBg: "bg-cyan-100", iconColor: "text-cyan-600", value: stats.highest_package !== null ? formatPackage(stats.highest_package) : "—", label: "Highest", Icon: TrendingUp },
+        { bg: "bg-orange-50", border: "border-orange-100", iconBg: "bg-orange-100", iconColor: "text-orange-600", value: stats.avg_package === null ? "—" : formatPackage(stats.avg_package), label: "Avg Package", Icon: BarChart3 },
+        { bg: "bg-cyan-50", border: "border-cyan-100", iconBg: "bg-cyan-100", iconColor: "text-cyan-600", value: stats.highest_package === null ? "—" : formatPackage(stats.highest_package), label: "Highest", Icon: TrendingUp },
     ];
 
     return (
@@ -256,7 +270,9 @@ const StatusPills = ({
         { key: "offered", label: "Offered", count: stats.offered_count },
         { key: "accepted", label: "Accepted", count: stats.accepted_count },
         { key: "joined", label: "Joined", count: stats.joined_count },
-        { key: "rejected", label: "Rejected", count: stats.rejected_count },
+        { key: "declined", label: "Declined", count: stats.declined_count },
+        { key: "revoked", label: "Revoked", count: stats.revoked_count },
+        { key: "expired", label: "Expired", count: stats.expired_count },
         { key: "cancelled", label: "Cancelled", count: stats.cancelled_count },
     ];
 
@@ -266,13 +282,15 @@ const StatusPills = ({
                 type="button"
                 onClick={() => onFilter("")}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    !activeFilter ? "bg-gray-900 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    activeFilter ? "bg-gray-100 text-gray-600 hover:bg-gray-200" : "bg-gray-900 text-white shadow-sm"
                 }`}
             >
-                All
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                    !activeFilter ? "bg-white/20 text-white" : "bg-gray-200 text-gray-600"
-                }`}>
+                All{" "}
+                <span
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    activeFilter ? "bg-gray-200 text-gray-600" : "bg-white/20 text-white"
+                }`}
+                >
                     {stats.total_placements}
                 </span>
             </button>
@@ -325,6 +343,12 @@ const SortHeader = ({
     onSort: (field: string) => void;
 }) => {
     const isActive = currentSort === field;
+    let SortIcon = ArrowUpDown;
+    let sortIconClass = "h-3 w-3 text-gray-300 group-hover:text-gray-400";
+    if (isActive) {
+        SortIcon = currentOrder === "asc" ? ArrowUp : ArrowDown;
+        sortIconClass = "h-3 w-3 text-blue-600";
+    }
     return (
         <button
             type="button"
@@ -332,11 +356,7 @@ const SortHeader = ({
             className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider hover:text-blue-600 transition-colors group"
         >
             {label}
-            {isActive ? (
-                currentOrder === "asc" ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
-            ) : (
-                <ArrowUpDown className="h-3 w-3 text-gray-300 group-hover:text-gray-400" />
-            )}
+            <SortIcon className={sortIconClass} />
         </button>
     );
 };
@@ -358,13 +378,13 @@ const PaginationControls = ({
 }) => {
     if (totalPages <= 1) return null;
 
-    const pages: (number | "ellipsis")[] = [];
+    const pages: (number | string)[] = [];
     const addPage = (p: number) => { if (!pages.includes(p)) pages.push(p); };
 
     addPage(1);
-    if (page > 3) pages.push("ellipsis");
+    if (page > 3) pages.push("ellipsis-start");
     for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) addPage(i);
-    if (page < totalPages - 2) pages.push("ellipsis");
+    if (page < totalPages - 2) pages.push("ellipsis-end");
     if (totalPages > 1) addPage(totalPages);
 
     return (
@@ -372,9 +392,9 @@ const PaginationControls = ({
             <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || pLoading} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition" aria-label="Previous page">
                 <ChevronLeft className="h-4 w-4" />
             </button>
-            {pages.map((p, idx) =>
-                p === "ellipsis" ? (
-                    <span key={`ell-${idx}`} className="px-1.5 text-gray-400 text-sm select-none">...</span>
+            {pages.map((p) =>
+                typeof p === "string" ? (
+                    <span key={p} className="px-1.5 text-gray-400 text-sm select-none">...</span>
                 ) : (
                     <button
                         key={p}
@@ -428,8 +448,8 @@ const EmptyState = ({ hasFilters }: { hasFilters: boolean }) =>
 
 const SkeletonTable = () => (
     <>
-        {Array.from({ length: 6 }).map((_, i) => (
-            <tr key={`skel-${i}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
+        {[1, 2, 3, 4, 5, 6].map((n) => (
+            <tr key={n} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
                 <td className="px-4 py-3.5 w-10"><div className="h-4 bg-gray-100 dark:bg-gray-700 rounded w-5" /></td>
                 <td className="px-4 py-3.5">
                     <div className="space-y-1.5">
@@ -496,12 +516,13 @@ const ApplicationPickerDropdown = ({
 
     return (
         <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="picker-student-search" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Select Student <span className="text-red-500">*</span>
             </label>
             <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
+                    id="picker-student-search"
                     type="text"
                     value={pickerSearch}
                     onChange={(e) => setPickerSearch(e.target.value)}
@@ -510,15 +531,17 @@ const ApplicationPickerDropdown = ({
                 />
             </div>
             <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                {pickerLoading ? (
+                {pickerLoading && (
                     <div className="flex items-center justify-center py-6">
                         <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
                     </div>
-                ) : applications.length === 0 ? (
+                )}
+                {!pickerLoading && applications.length === 0 && (
                     <div className="text-center py-6 text-sm text-gray-400 dark:text-gray-500">
                         {pickerSearch ? "No matching students" : "No eligible students (selected/offered)"}
                     </div>
-                ) : (
+                )}
+                {!pickerLoading && applications.length > 0 &&
                     applications.map((app) => (
                         <button
                             key={app.application_id}
@@ -545,8 +568,7 @@ const ApplicationPickerDropdown = ({
                                 {app.application_status}
                             </span>
                         </button>
-                    ))
-                )}
+                    ))}
             </div>
         </div>
     );
@@ -590,7 +612,7 @@ const CreatePlacementModal = ({
             titleIcon={<Award className="h-5 w-5 text-emerald-600" />}
             size="xl"
         >
-            <div className="space-y-4">
+            <div className="p-6 space-y-4">
                 {/* Application picker */}
                 <ApplicationPickerDropdown
                     jobId={jobId}
@@ -619,10 +641,11 @@ const CreatePlacementModal = ({
                         </p>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                <label htmlFor="create-fulltime-package" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                                     Package (₹) <span className="text-red-500">*</span>
                                 </label>
                                 <input
+                                    id="create-fulltime-package"
                                     type="number"
                                     name="fulltime_package"
                                     value={formData.fulltime_package}
@@ -638,8 +661,9 @@ const CreatePlacementModal = ({
                                 {errors.fulltime_package && <p className="text-xs text-red-500 mt-1">{errors.fulltime_package}</p>}
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Designation</label>
+                                <label htmlFor="create-fulltime-designation" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Designation</label>
                                 <input
+                                    id="create-fulltime-designation"
                                     type="text"
                                     name="fulltime_designation"
                                     value={formData.fulltime_designation}
@@ -652,8 +676,9 @@ const CreatePlacementModal = ({
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Joining Date</label>
+                            <label htmlFor="create-fulltime-joining-date" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Joining Date</label>
                             <input
+                                id="create-fulltime-joining-date"
                                 type="date"
                                 name="fulltime_joining_date"
                                 value={formData.fulltime_joining_date}
@@ -674,10 +699,11 @@ const CreatePlacementModal = ({
                         </p>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                <label htmlFor="create-internship-stipend" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                                     Stipend (₹/month) <span className="text-red-500">*</span>
                                 </label>
                                 <input
+                                    id="create-internship-stipend"
                                     type="number"
                                     name="internship_stipend"
                                     value={formData.internship_stipend}
@@ -692,8 +718,9 @@ const CreatePlacementModal = ({
                                 {errors.internship_stipend && <p className="text-xs text-red-500 mt-1">{errors.internship_stipend}</p>}
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Duration</label>
+                                <label htmlFor="create-internship-duration" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Duration</label>
                                 <input
+                                    id="create-internship-duration"
                                     type="text"
                                     name="internship_duration"
                                     value={formData.internship_duration}
@@ -706,8 +733,9 @@ const CreatePlacementModal = ({
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
+                            <label htmlFor="create-internship-start-date" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
                             <input
+                                id="create-internship-start-date"
                                 type="date"
                                 name="internship_start_date"
                                 value={formData.internship_start_date}
@@ -725,6 +753,17 @@ const CreatePlacementModal = ({
                     name="offer_letter_url"
                     type="url"
                     value={formData.offer_letter_url}
+                    onChange={handleChange}
+                    placeholder="https://..."
+                    disabled={loading}
+                />
+
+                {/* Joining letter URL */}
+                <FloatingInput
+                    label="Joining Letter URL"
+                    name="joining_letter_url"
+                    type="url"
+                    value={formData.joining_letter_url}
                     onChange={handleChange}
                     placeholder="https://..."
                     disabled={loading}
@@ -787,7 +826,7 @@ const EditPlacementModal = ({
             titleIcon={<Pencil className="h-5 w-5 text-amber-600" />}
             size="xl"
         >
-            <div className="space-y-4">
+            <div className="p-6 space-y-4">
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                     <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                         <span className="text-sm font-bold text-blue-700 dark:text-blue-400">{placement.student_name.charAt(0).toUpperCase()}</span>
@@ -812,18 +851,18 @@ const EditPlacementModal = ({
                         <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Full-Time</p>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Package (₹)</label>
-                                <input type="number" name="fulltime_package" value={formData.fulltime_package} onChange={handleChange} placeholder="(clear to remove)" min={0} step="0.01" disabled={loading} className={`w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50 ${errors.fulltime_package ? "border-red-300 dark:border-red-600" : "border-gray-200 dark:border-gray-700"}`} />
+                                <label htmlFor="edit-fulltime-package" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Package (₹)</label>
+                                <input id="edit-fulltime-package" type="number" name="fulltime_package" value={formData.fulltime_package} onChange={handleChange} placeholder="(clear to remove)" min={0} step="0.01" disabled={loading} className={`w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50 ${errors.fulltime_package ? "border-red-300 dark:border-red-600" : "border-gray-200 dark:border-gray-700"}`} />
                                 {errors.fulltime_package && <p className="text-xs text-red-500 mt-1">{errors.fulltime_package}</p>}
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Designation</label>
-                                <input type="text" name="fulltime_designation" value={formData.fulltime_designation} onChange={handleChange} maxLength={200} disabled={loading} className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50" />
+                                <label htmlFor="edit-fulltime-designation" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Designation</label>
+                                <input id="edit-fulltime-designation" type="text" name="fulltime_designation" value={formData.fulltime_designation} onChange={handleChange} maxLength={200} disabled={loading} className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50" />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Joining Date</label>
-                            <input type="date" name="fulltime_joining_date" value={formData.fulltime_joining_date} onChange={handleChange} disabled={loading} className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50" />
+                            <label htmlFor="edit-fulltime-joining-date" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Joining Date</label>
+                            <input id="edit-fulltime-joining-date" type="date" name="fulltime_joining_date" value={formData.fulltime_joining_date} onChange={handleChange} disabled={loading} className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50" />
                         </div>
                     </div>
                 )}
@@ -833,18 +872,18 @@ const EditPlacementModal = ({
                         <p className="text-xs font-semibold text-purple-700 dark:text-purple-400 uppercase tracking-wider">Internship</p>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Stipend (₹/month)</label>
-                                <input type="number" name="internship_stipend" value={formData.internship_stipend} onChange={handleChange} min={0} disabled={loading} className={`w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50 ${errors.internship_stipend ? "border-red-300 dark:border-red-600" : "border-gray-200 dark:border-gray-700"}`} />
+                                <label htmlFor="edit-internship-stipend" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Stipend (₹/month)</label>
+                                <input id="edit-internship-stipend" type="number" name="internship_stipend" value={formData.internship_stipend} onChange={handleChange} min={0} disabled={loading} className={`w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50 ${errors.internship_stipend ? "border-red-300 dark:border-red-600" : "border-gray-200 dark:border-gray-700"}`} />
                                 {errors.internship_stipend && <p className="text-xs text-red-500 mt-1">{errors.internship_stipend}</p>}
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Duration</label>
-                                <input type="text" name="internship_duration" value={formData.internship_duration} onChange={handleChange} maxLength={100} disabled={loading} className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50" />
+                                <label htmlFor="edit-internship-duration" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Duration</label>
+                                <input id="edit-internship-duration" type="text" name="internship_duration" value={formData.internship_duration} onChange={handleChange} maxLength={100} disabled={loading} className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50" />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
-                            <input type="date" name="internship_start_date" value={formData.internship_start_date} onChange={handleChange} disabled={loading} className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50" />
+                            <label htmlFor="edit-internship-start-date" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
+                            <input id="edit-internship-start-date" type="date" name="internship_start_date" value={formData.internship_start_date} onChange={handleChange} disabled={loading} className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50" />
                         </div>
                     </div>
                 )}
@@ -854,6 +893,16 @@ const EditPlacementModal = ({
                     name="offer_letter_url"
                     type="url"
                     value={formData.offer_letter_url}
+                    onChange={handleChange}
+                    placeholder="https://..."
+                    disabled={loading}
+                />
+
+                <FloatingInput
+                    label="Joining Letter URL"
+                    name="joining_letter_url"
+                    type="url"
+                    value={formData.joining_letter_url}
                     onChange={handleChange}
                     placeholder="https://..."
                     disabled={loading}
@@ -901,7 +950,7 @@ const StatusChangeModal = ({
             titleIcon={<AlertTriangle className={`h-5 w-5 ${config.iconColor}`} />}
             size="lg"
         >
-            <div className="space-y-4">
+            <div className="p-6 space-y-4">
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                     Are you sure you want to change the status of <span className="font-semibold">{placement.student_name}</span>&apos;s
                     placement to <span className="font-semibold">{PLACEMENT_STATUS_LABELS[newStatus]}</span>?
@@ -910,8 +959,8 @@ const StatusChangeModal = ({
                 <div className={`rounded-xl border p-4 ${config.boxBg} ${config.boxBorder}`}>
                     <p className={`text-xs font-semibold ${config.boxText} mb-2`}>This action will:</p>
                     <ul className={`space-y-1 text-xs ${config.boxText}`}>
-                        {config.consequences.map((c, i) => (
-                            <li key={i} className="flex items-start gap-1.5">
+                        {config.consequences.map((c) => (
+                            <li key={c} className="flex items-start gap-1.5">
                                 <span className="mt-0.5">•</span>
                                 <span>{c}</span>
                             </li>
@@ -961,19 +1010,21 @@ const VerifyOfferModal = ({
     onSuccess: () => void;
 }) => {
     const { loading, verifyOffer } = useVerifyOfferLetter(onSuccess);
-    const [remarks, setRemarks] = useState("");
-    const willVerify = !placement.offer_letter_verified;
+    const [rejectionReason, setRejectionReason] = useState("");
+    const [action, setAction] = useState<"approved" | "rejected">(
+        placement.offer_letter_verified ? "rejected" : "approved",
+    );
 
     return (
         <ModalWrapper
             isOpen
             onClose={onClose}
             disabled={loading}
-            title={willVerify ? "Verify Offer Letter" : "Remove Verification"}
-            titleIcon={<ShieldCheck className={`h-5 w-5 ${willVerify ? "text-emerald-600" : "text-gray-600"}`} />}
+            title={action === "approved" ? "Verify Offer Letter" : "Reject Offer Letter"}
+            titleIcon={<ShieldCheck className={`h-5 w-5 ${action === "approved" ? "text-emerald-600" : "text-red-600"}`} />}
             size="lg"
         >
-            <div className="space-y-4">
+            <div className="p-6 space-y-4">
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                     <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                         <span className="text-sm font-bold text-blue-700 dark:text-blue-400">{placement.student_name.charAt(0).toUpperCase()}</span>
@@ -1000,29 +1051,144 @@ const VerifyOfferModal = ({
                     </div>
                 )}
 
-                <FloatingTextarea
-                    label="Remarks"
-                    name="remarks"
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    placeholder={willVerify ? "Verified with HR department..." : "Reason for removing verification..."}
-                    rows={2}
-                    maxLength={2000}
-                    disabled={loading}
-                />
+                {/* Action toggle */}
+                <div className="flex gap-2">
+                    <button type="button" onClick={() => setAction("approved")} className={`flex-1 px-3 py-2 text-sm font-medium rounded-xl transition ${action === "approved" ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-300 dark:ring-emerald-700" : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"}`}>
+                        Approve
+                    </button>
+                    <button type="button" onClick={() => setAction("rejected")} className={`flex-1 px-3 py-2 text-sm font-medium rounded-xl transition ${action === "rejected" ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-red-300 dark:ring-red-700" : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"}`}>
+                        Reject
+                    </button>
+                </div>
+
+                {action === "rejected" && (
+                    <FloatingTextarea
+                        label="Rejection Reason"
+                        name="rejection_reason"
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        rows={2}
+                        maxLength={1000}
+                        disabled={loading}
+                        required
+                    />
+                )}
 
                 <div className="flex items-center gap-3 pt-2">
                     <button type="button" onClick={onClose} disabled={loading} className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50">Cancel</button>
                     <button
                         type="button"
-                        onClick={() => verifyOffer(placement.placement_id, willVerify, remarks)}
-                        disabled={loading || (!placement.offer_letter_url && willVerify)}
+                        onClick={() => verifyOffer(placement.placement_id, action, rejectionReason)}
+                        disabled={loading || (action === "approved" && !placement.offer_letter_url) || (action === "rejected" && !rejectionReason.trim())}
                         className={`flex-1 px-4 py-2.5 text-sm font-semibold text-white rounded-xl transition disabled:opacity-50 inline-flex items-center justify-center gap-2 ${
-                            willVerify ? "bg-emerald-600 hover:bg-emerald-700" : "bg-gray-600 hover:bg-gray-700"
+                            action === "approved" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"
                         }`}
                     >
                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {loading ? "Processing..." : willVerify ? "Verify" : "Remove Verification"}
+                        {(() => {
+                            if (loading) return "Processing...";
+                            return action === "approved" ? "Approve" : "Reject";
+                        })()}
+                    </button>
+                </div>
+            </div>
+        </ModalWrapper>
+    );
+};
+
+// ========================
+// VERIFY JOINING LETTER MODAL
+// ========================
+
+const VerifyJoiningLetterModal = ({
+    placement,
+    onClose,
+    onSuccess,
+}: {
+    placement: PlacementListItem;
+    onClose: () => void;
+    onSuccess: () => void;
+}) => {
+    const { loading, verifyJoining } = useVerifyJoiningLetter(onSuccess);
+    const [rejectionReason, setRejectionReason] = useState("");
+    const [action, setAction] = useState<"approved" | "rejected">(
+        placement.joining_letter_verified ? "rejected" : "approved",
+    );
+
+    return (
+        <ModalWrapper
+            isOpen
+            onClose={onClose}
+            disabled={loading}
+            title={action === "approved" ? "Verify Joining Letter" : "Reject Joining Letter"}
+            titleIcon={<ShieldCheck className={`h-5 w-5 ${action === "approved" ? "text-emerald-600" : "text-red-600"}`} />}
+            size="lg"
+        >
+            <div className="p-6 space-y-4">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+                    <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <span className="text-sm font-bold text-blue-700 dark:text-blue-400">{placement.student_name.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{placement.student_name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{placement.enrollment_number} · {placement.dept_name}</p>
+                    </div>
+                </div>
+
+                {placement.joining_letter_url && /^https?:\/\//i.test(placement.joining_letter_url) ? (
+                    <a
+                        href={placement.joining_letter_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition"
+                    >
+                        <ExternalLink className="h-4 w-4" />
+                        View Joining Letter
+                    </a>
+                ) : (
+                    <div className="px-4 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-400">
+                        No joining letter URL uploaded yet.
+                    </div>
+                )}
+
+                {/* Action toggle */}
+                <div className="flex gap-2">
+                    <button type="button" onClick={() => setAction("approved")} className={`flex-1 px-3 py-2 text-sm font-medium rounded-xl transition ${action === "approved" ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-300 dark:ring-emerald-700" : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"}`}>
+                        Approve
+                    </button>
+                    <button type="button" onClick={() => setAction("rejected")} className={`flex-1 px-3 py-2 text-sm font-medium rounded-xl transition ${action === "rejected" ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-red-300 dark:ring-red-700" : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"}`}>
+                        Reject
+                    </button>
+                </div>
+
+                {action === "rejected" && (
+                    <FloatingTextarea
+                        label="Rejection Reason"
+                        name="rejection_reason"
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        rows={2}
+                        maxLength={1000}
+                        disabled={loading}
+                        required
+                    />
+                )}
+
+                <div className="flex items-center gap-3 pt-2">
+                    <button type="button" onClick={onClose} disabled={loading} className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50">Cancel</button>
+                    <button
+                        type="button"
+                        onClick={() => verifyJoining(placement.placement_id, action, rejectionReason)}
+                        disabled={loading || (action === "approved" && !placement.joining_letter_url) || (action === "rejected" && !rejectionReason.trim())}
+                        className={`flex-1 px-4 py-2.5 text-sm font-semibold text-white rounded-xl transition disabled:opacity-50 inline-flex items-center justify-center gap-2 ${
+                            action === "approved" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"
+                        }`}
+                    >
+                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {(() => {
+                            if (loading) return "Processing...";
+                            return action === "approved" ? "Approve" : "Reject";
+                        })()}
                     </button>
                 </div>
             </div>
@@ -1042,6 +1208,7 @@ const PlacementRow = ({
     onEdit,
     onStatusChange,
     onVerify,
+    onVerifyJoining,
 }: {
     placement: PlacementListItem;
     index: number;
@@ -1050,6 +1217,7 @@ const PlacementRow = ({
     onEdit: (p: PlacementListItem) => void;
     onStatusChange: (p: PlacementListItem, status: PlacementStatus) => void;
     onVerify: (p: PlacementListItem) => void;
+    onVerifyJoining: (p: PlacementListItem) => void;
 }) => {
     const transitions = PLACEMENT_STATUS_TRANSITIONS[placement.placement_status as PlacementStatus] || [];
     const isTerminal = transitions.length === 0;
@@ -1134,6 +1302,7 @@ const PlacementRow = ({
                     placement={placement}
                     onStatusChange={(s) => onStatusChange(placement, s)}
                     onVerify={() => onVerify(placement)}
+                    onVerifyJoining={() => onVerifyJoining(placement)}
                     onEdit={() => onEdit(placement)}
                 />
             )}
@@ -1149,11 +1318,13 @@ const PlacementDetailPanel = ({
     placement,
     onStatusChange,
     onVerify,
+    onVerifyJoining,
     onEdit,
 }: {
     placement: PlacementListItem;
     onStatusChange: (status: PlacementStatus) => void;
     onVerify: () => void;
+    onVerifyJoining: () => void;
     onEdit: () => void;
 }) => {
     const transitions = PLACEMENT_STATUS_TRANSITIONS[placement.placement_status as PlacementStatus] || [];
@@ -1162,7 +1333,8 @@ const PlacementDetailPanel = ({
     const STATUS_ACTION_COLORS: Record<string, { bg: string; text: string; hover: string }> = {
         accepted: { bg: "bg-amber-50", text: "text-amber-700", hover: "hover:bg-amber-100" },
         joined: { bg: "bg-emerald-50", text: "text-emerald-700", hover: "hover:bg-emerald-100" },
-        rejected: { bg: "bg-red-50", text: "text-red-700", hover: "hover:bg-red-100" },
+        declined: { bg: "bg-red-50", text: "text-red-700", hover: "hover:bg-red-100" },
+        revoked: { bg: "bg-orange-50", text: "text-orange-700", hover: "hover:bg-orange-100" },
         cancelled: { bg: "bg-gray-100", text: "text-gray-700", hover: "hover:bg-gray-200" },
     };
 
@@ -1191,7 +1363,7 @@ const PlacementDetailPanel = ({
                         </div>
                         <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                             <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Package</p>
-                            <p className={`text-base font-bold ${placement.fulltime_package !== null ? "text-emerald-700 dark:text-emerald-400" : "text-gray-300 dark:text-gray-600"}`}>
+                            <p className={`text-base font-bold ${placement.fulltime_package === null ? "text-gray-300 dark:text-gray-600" : "text-emerald-700 dark:text-emerald-400"}`}>
                                 {formatPackage(placement.fulltime_package)}
                             </p>
                         </div>
@@ -1258,6 +1430,21 @@ const PlacementDetailPanel = ({
                         </a>
                     )}
 
+                    {placement.joining_letter_url && /^https?:\/\//i.test(placement.joining_letter_url) && (
+                        <a
+                            href={placement.joining_letter_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition"
+                        >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            View Joining Letter
+                            {placement.joining_letter_verified && (
+                                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                            )}
+                        </a>
+                    )}
+
                     {placement.remarks && (
                         <div className="rounded-xl border border-blue-100 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 p-4">
                             <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1.5">Remarks</p>
@@ -1273,8 +1460,14 @@ const PlacementDetailPanel = ({
                         )}
                         <button type="button" onClick={onVerify} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 rounded-lg hover:bg-emerald-50 hover:text-emerald-700 transition">
                             <ShieldCheck className="h-3.5 w-3.5" />
-                            {placement.offer_letter_verified ? "Un-verify" : "Verify Offer"}
+                            {placement.offer_letter_verified ? "Re-verify Offer" : "Verify Offer"}
                         </button>
+                        {["accepted", "joined"].includes(placement.placement_status) && (
+                            <button type="button" onClick={onVerifyJoining} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 rounded-lg hover:bg-emerald-50 hover:text-emerald-700 transition">
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                {placement.joining_letter_verified ? "Re-verify Joining" : "Verify Joining"}
+                            </button>
+                        )}
                         {transitions.map((status) => {
                             const colors = STATUS_ACTION_COLORS[status] || { bg: "bg-gray-100", text: "text-gray-700", hover: "hover:bg-gray-200" };
                             return (
@@ -1329,9 +1522,11 @@ const JobPlacementsTab = ({ jobId, jobStatus, onRefresh }: JobPlacementsTabProps
 
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showBulkCreateModal, setShowBulkCreateModal] = useState(false);
     const [editingPlacement, setEditingPlacement] = useState<PlacementListItem | null>(null);
     const [statusChangeModal, setStatusChangeModal] = useState<{ placement: PlacementListItem; status: PlacementStatus } | null>(null);
     const [verifyModal, setVerifyModal] = useState<PlacementListItem | null>(null);
+    const [verifyJoiningModal, setVerifyJoiningModal] = useState<PlacementListItem | null>(null);
 
     const isJobInactive = jobStatus === "cancelled";
 
@@ -1351,9 +1546,11 @@ const JobPlacementsTab = ({ jobId, jobStatus, onRefresh }: JobPlacementsTabProps
 
     const handleSuccess = useCallback(() => {
         setShowCreateModal(false);
+        setShowBulkCreateModal(false);
         setEditingPlacement(null);
         setStatusChangeModal(null);
         setVerifyModal(null);
+        setVerifyJoiningModal(null);
         refresh();
         onRefresh();
     }, [refresh, onRefresh]);
@@ -1385,14 +1582,24 @@ const JobPlacementsTab = ({ jobId, jobStatus, onRefresh }: JobPlacementsTabProps
                     <MiniStats stats={stats} loading={loading} />
                 </div>
                 {!isJobInactive && (
-                    <button
-                        type="button"
-                        onClick={() => setShowCreateModal(true)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition shadow-sm flex-shrink-0"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Create Placement
-                    </button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => setShowBulkCreateModal(true)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/40 transition"
+                        >
+                            <Users className="h-4 w-4" />
+                            Bulk Create Offers
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowCreateModal(true)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition shadow-sm"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Create Placement
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -1425,6 +1632,7 @@ const JobPlacementsTab = ({ jobId, jobStatus, onRefresh }: JobPlacementsTabProps
 
                 <div className="text-sm text-gray-600 dark:text-gray-400 font-medium flex items-center gap-2 ml-auto">
                     Show
+                    {" "}
                     <select
                         value={pagination.limit}
                         onChange={(e) => handleLimitChange(Number(e.target.value))}
@@ -1470,9 +1678,10 @@ const JobPlacementsTab = ({ jobId, jobStatus, onRefresh }: JobPlacementsTabProps
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? (
+                        {loading && (
                             <SkeletonTable />
-                        ) : placements.length > 0 ? (
+                        )}
+                        {!loading && placements.length > 0 &&
                             placements.map((p, i) => (
                                 <PlacementRow
                                     key={p.placement_id}
@@ -1483,9 +1692,11 @@ const JobPlacementsTab = ({ jobId, jobStatus, onRefresh }: JobPlacementsTabProps
                                     onEdit={setEditingPlacement}
                                     onStatusChange={(placement, status) => setStatusChangeModal({ placement, status })}
                                     onVerify={setVerifyModal}
+                                    onVerifyJoining={setVerifyJoiningModal}
                                 />
                             ))
-                        ) : (
+                        }
+                        {!loading && placements.length === 0 && (
                             <tr>
                                 <td colSpan={8}>
                                     <EmptyState hasFilters={hasFilters} />
@@ -1548,8 +1759,277 @@ const JobPlacementsTab = ({ jobId, jobStatus, onRefresh }: JobPlacementsTabProps
                     onSuccess={handleSuccess}
                 />
             )}
+
+            {verifyJoiningModal && (
+                <VerifyJoiningLetterModal
+                    placement={verifyJoiningModal}
+                    onClose={() => setVerifyJoiningModal(null)}
+                    onSuccess={handleSuccess}
+                />
+            )}
+
+            {showBulkCreateModal && (
+                <BulkCreatePlacementsModal
+                    jobId={jobId}
+                    existingApplicationIds={existingApplicationIds}
+                    onClose={() => setShowBulkCreateModal(false)}
+                    onSuccess={handleSuccess}
+                />
+            )}
         </div>
     );
 };
+
+// ========================
+// BULK CREATE PLACEMENTS MODAL
+// ========================
+
+const BULK_PICKER_STATUSES = ["selected"];
+
+function BulkCreatePlacementsModal({
+    jobId,
+    existingApplicationIds,
+    onClose,
+    onSuccess: _onSuccess,
+}: Readonly<{
+    jobId: string;
+    existingApplicationIds: Set<string>;
+    onClose: () => void;
+    onSuccess: () => void;
+}>) {
+    const { applications, search: pickerSearch, setSearch, loading: pickerLoading } =
+        useApplicationPicker(jobId, BULK_PICKER_STATUSES, existingApplicationIds);
+
+    const { submit, loading: submitting, result, reset } = useBulkCreatePlacements(jobId, _onSuccess);
+
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [placementType, setPlacementType] = useState("full-time");
+    const [sharedFields, setSharedFields] = useState({
+        fulltime_package: "",
+        fulltime_designation: "",
+        fulltime_joining_date: "",
+        internship_stipend: "",
+        internship_duration: "",
+        internship_start_date: "",
+        offer_letter_url: "",
+        joining_letter_url: "",
+    });
+
+    const isFullTime = placementType === "full-time" || placementType === "both";
+    const isInternship = placementType === "internship" || placementType === "both";
+
+    const toggleId = useCallback((id: string) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
+
+    const toggleAll = useCallback(() => {
+        setSelectedIds((prev) => {
+            if (prev.size === applications.length) return new Set();
+            return new Set(applications.map((a) => a.application_id));
+        });
+    }, [applications]);
+
+    const handleFieldChange = useCallback((field: string, value: string) => {
+        setSharedFields((prev) => ({ ...prev, [field]: value }));
+    }, []);
+
+    const handleSubmit = useCallback(() => {
+        const items: BulkPlacementItem[] = Array.from(selectedIds).map((appId) => ({
+            application_id: appId,
+            placement_type: placementType,
+            ...sharedFields,
+        }));
+        submit(items);
+    }, [selectedIds, placementType, sharedFields, submit]);
+
+    const handleClose = useCallback(() => {
+        reset();
+        onClose();
+    }, [reset, onClose]);
+
+    // ── Result view ──
+    if (result) {
+        return (
+            <ModalWrapper isOpen onClose={handleClose} title="Bulk Create Results" size="lg"
+                titleIcon={<Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+            >
+                <div className="px-6 py-5 space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
+                            <p className="text-xs font-medium opacity-70">Created</p>
+                            <p className="text-2xl font-bold">{result.created_count}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
+                            <p className="text-xs font-medium opacity-70">Skipped</p>
+                            <p className="text-2xl font-bold">{result.skipped_count}</p>
+                        </div>
+                    </div>
+
+                    {result.skipped.length > 0 && (
+                        <div className="rounded-xl border border-amber-200 dark:border-amber-800 p-3 space-y-2">
+                            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Skipped Items</p>
+                            <div className="max-h-32 overflow-y-auto space-y-1">
+                                {result.skipped.map((s) => (
+                                    <div key={s.application_id} className="text-xs p-2 rounded bg-amber-50/50 dark:bg-amber-900/10">
+                                        <span className="font-mono">{s.application_id.slice(0, 8)}…</span>{" "}
+                                        <span className="text-amber-600 dark:text-amber-400">{s.reason}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <button type="button" onClick={handleClose}
+                        className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition"
+                    >
+                        Done
+                    </button>
+                </div>
+            </ModalWrapper>
+        );
+    }
+
+    // ── Selection + Form view ──
+    return (
+        <ModalWrapper isOpen onClose={handleClose} title="Bulk Create Placement Offers" size="xl"
+            titleIcon={<Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />}
+            disabled={submitting}
+        >
+            <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+                {/* Student picker */}
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            Select Students ({selectedIds.size} selected)
+                        </h3>
+                        {applications.length > 0 && (
+                            <button type="button" onClick={toggleAll}
+                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                                {selectedIds.size === applications.length ? "Deselect All" : "Select All"}
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="relative">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search students…"
+                            value={pickerSearch}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-100 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
+                        {pickerLoading && (
+                            <div className="flex items-center justify-center py-6">
+                                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                            </div>
+                        )}
+
+                        {!pickerLoading && applications.length === 0 && (
+                            <div className="py-6 text-center text-sm text-gray-400">
+                                {pickerSearch ? "No matching students" : "No eligible students (selected status)"}
+                            </div>
+                        )}
+
+                        {!pickerLoading && applications.length > 0 && applications.map((app) => (
+                                <label key={app.application_id}
+                                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.has(app.application_id)}
+                                        onChange={() => toggleId(app.application_id)}
+                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{app.student_name}</p>
+                                        <p className="text-xs text-gray-400 truncate">{app.student_email} · {app.dept_name}</p>
+                                    </div>
+                                    {app.position_name && (
+                                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">{app.position_name}</span>
+                                    )}
+                                </label>
+                            ))}
+                    </div>
+                </div>
+
+                {/* Shared form fields */}
+                {selectedIds.size > 0 && (
+                    <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Offer Details (shared for all)</h3>
+
+                        <FloatingSelect
+                            name="bulk-placement-type"
+                            label="Placement Type"
+                            value={placementType}
+                            onChange={(e) => setPlacementType(e.target.value)}
+                            options={PLACEMENT_TYPE_OPTIONS.map((t) => ({ value: t, label: PLACEMENT_TYPE_LABELS[t] }))}
+                        />
+
+                        {isFullTime && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <FloatingInput name="bulk-ft-package" label="Package (₹)" type="number" value={sharedFields.fulltime_package}
+                                    onChange={(e) => handleFieldChange("fulltime_package", e.target.value)} />
+                                <FloatingInput name="bulk-ft-designation" label="Designation" value={sharedFields.fulltime_designation}
+                                    onChange={(e) => handleFieldChange("fulltime_designation", e.target.value)} />
+                                <FloatingInput name="bulk-ft-joining" label="Joining Date" type="date" value={sharedFields.fulltime_joining_date}
+                                    onChange={(e) => handleFieldChange("fulltime_joining_date", e.target.value)} />
+                            </div>
+                        )}
+
+                        {isInternship && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <FloatingInput name="bulk-int-stipend" label="Stipend (₹)" type="number" value={sharedFields.internship_stipend}
+                                    onChange={(e) => handleFieldChange("internship_stipend", e.target.value)} />
+                                <FloatingInput name="bulk-int-duration" label="Duration" value={sharedFields.internship_duration}
+                                    onChange={(e) => handleFieldChange("internship_duration", e.target.value)} />
+                                <FloatingInput name="bulk-int-start" label="Start Date" type="date" value={sharedFields.internship_start_date}
+                                    onChange={(e) => handleFieldChange("internship_start_date", e.target.value)} />
+                            </div>
+                        )}
+
+                        <FloatingInput name="bulk-offer-url" label="Offer Letter URL (optional)" value={sharedFields.offer_letter_url}
+                            onChange={(e) => handleFieldChange("offer_letter_url", e.target.value)} />
+                        <FloatingInput name="bulk-joining-url" label="Joining Letter URL (optional)" value={sharedFields.joining_letter_url}
+                            onChange={(e) => handleFieldChange("joining_letter_url", e.target.value)} />
+                    </div>
+                )}
+
+                {/* Warning + submit */}
+                {selectedIds.size > 0 && (
+                    <div className="space-y-3 pt-2">
+                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
+                            This will create <span className="font-bold">{selectedIds.size}</span> placement offer(s).
+                            Policy checks (max offers, vacancies) will be applied for each student.
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button type="button" onClick={handleClose} disabled={submitting}
+                                className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button type="button" onClick={handleSubmit} disabled={submitting}
+                                className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                            >
+                                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Award className="h-4 w-4" />}
+                                {submitting ? "Creating…" : `Create ${selectedIds.size} Offer(s)`}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </ModalWrapper>
+    );
+}
 
 export default JobPlacementsTab;

@@ -67,7 +67,8 @@ export const useViewDenials = (jobId: string) => {
     const job: DenialJob | null = responseData?.job ?? null;
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
     const loading = isLoading || isFetching;
-    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch denials") : null;
+    const errorMessage = queryError instanceof Error ? queryError.message : "Failed to fetch denials";
+    const error = queryError ? errorMessage : null;
 
     const handleSearchChange = useCallback((value: string) => {
         setSearch(value);

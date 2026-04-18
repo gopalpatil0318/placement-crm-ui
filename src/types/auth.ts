@@ -44,6 +44,9 @@ export interface ApiLoginResponse {
       college_id: string
       college_name: string
       dept_id: string | null
+      default_academic_year: number | null
+      college_type: string | null
+      departments: Department[]
     }
   }
 }
@@ -74,4 +77,5 @@ export interface StudentAuthContextType {
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  refreshUser: () => Promise<void>
 }

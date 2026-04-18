@@ -6,7 +6,7 @@ import {
     ShieldCheck, UserCheck, Briefcase, Trophy, Award,
     Search, ChevronDown, Check, X, AlertTriangle,
     Loader2, Square, CheckSquare, Minus, ArrowUpDown,
-    ArrowUp, ArrowDown, PartyPopper,
+    ArrowUp, ArrowDown, PartyPopper, FileText,
 } from "lucide-react";
 import { fadeInUp } from "@/lib/animations";
 import { AnimatedTableBody, AnimatedRow } from "@/components/ui/AnimatedList";
@@ -29,6 +29,7 @@ import {
     VERIFICATION_CATEGORIES,
     CATEGORY_LABELS,
 } from "@/validators/VerificationSchema";
+import PendingItemSheet from "./PendingItemSheet";
 
 // ========================
 // CONSTANTS
@@ -100,6 +101,35 @@ const formatDate = (dateStr: string | undefined | null) => {
         day: "numeric",
         year: "numeric",
     });
+};
+
+const formatDateRange = (start: string, end: string | null, isCurrent: boolean) => {
+    const s = new Date(start).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+    let e: string;
+    if (isCurrent) {
+        e = "Present";
+    } else if (end) {
+        e = new Date(end).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+    } else {
+        e = "—";
+    }
+    return `${s} – ${e}`;
+};
+
+const countDocs = (item: PendingItem, category: VerificationCategory): number => {
+    if (category === "experiences") {
+        const exp = item as PendingExperience;
+        return (exp.offer_letter_url ? 1 : 0) + (exp.completion_certificate_url ? 1 : 0);
+    }
+    if (category === "achievements") {
+        const ach = item as PendingAchievement;
+        return (ach.certificate_url ? 1 : 0) + (ach.proof_url ? 1 : 0);
+    }
+    if (category === "certificates") {
+        const cert = item as PendingCertificate;
+        return cert.certificate_url ? 1 : 0;
+    }
+    return 0;
 };
 
 // ========================
@@ -607,14 +637,36 @@ export default function VerificationCenter() {
     const navigate = useNavigate();
     const shouldReduce = useReducedMotion();
 
+    // ─── Verification Settings (hide bypassed categories) ──────────────
+    const settingsQuery = useQuery<{ data: { bypass: Record<string, boolean> } }>({
+        queryKey: queryKeys.verifications.settings(),
+        queryFn: () => CollegeAdminService.getVerificationSettings(),
+        staleTime: 5 * 60 * 1000,
+    });
+    const settingsBypass = settingsQuery.data?.data?.bypass;
+    const enabledCategories = useMemo(() => {
+        if (!settingsBypass) return VERIFICATION_CATEGORIES;
+        return VERIFICATION_CATEGORIES.filter((cat) => {
+            // Backend uses singular "experience"; frontend uses plural "experiences"
+            const key = cat === "experiences" ? "experience" : cat;
+            return !settingsBypass[key];
+        });
+    }, [settingsBypass]);
+
     // ─── State ───────────────────────────────────────────────────────────
-    const [activeCategory, setActiveCategory] = useState<VerificationCategory>("profiles");
+    const [selectedCategory, setSelectedCategory] = useState<VerificationCategory>("profiles");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [rejectTarget, setRejectTarget] = useState<{
         type: "single" | "bulk";
         id?: string;
     } | null>(null);
+    const [sheetItem, setSheetItem] = useState<PendingItem | null>(null);
+
+    // Derive active category: use selected if it's still enabled, otherwise first enabled
+    const activeCategory: VerificationCategory = enabledCategories.includes(selectedCategory)
+        ? selectedCategory
+        : (enabledCategories[0] ?? "profiles");
 
     // ─── Hooks ───────────────────────────────────────────────────────────
     const { counts, isLoading: countsLoading } = useVerificationCounts();
@@ -658,9 +710,10 @@ export default function VerificationCenter() {
     );
 
     // ─── Selection handlers ──────────────────────────────────────────────
+
     const handleCategoryChange = useCallback(
         (cat: VerificationCategory) => {
-            setActiveCategory(cat);
+            setSelectedCategory(cat);
             setSelectedIds(new Set());
         },
         [],
@@ -732,6 +785,31 @@ export default function VerificationCenter() {
         [navigate],
     );
 
+    // ─── Sheet handlers ──────────────────────────────────────────────────
+    const openSheet = useCallback((item: PendingItem) => {
+        setSheetItem(item);
+    }, []);
+
+    const closeSheet = useCallback(() => {
+        setSheetItem(null);
+    }, []);
+
+    const handleSheetApprove = useCallback(
+        (id: string) => {
+            approve(id);
+            closeSheet();
+        },
+        [approve, closeSheet],
+    );
+
+    const handleSheetReject = useCallback(
+        (id: string) => {
+            openRejectSingle(id);
+            closeSheet();
+        },
+        [openRejectSingle, closeSheet],
+    );
+
     // ─── Check states ────────────────────────────────────────────────────
     const allOnPageSelected = useMemo(
         () =>
@@ -762,12 +840,12 @@ export default function VerificationCenter() {
             const itemId = getItemId(item, activeCategory);
             const studentId = getStudentId(item, activeCategory);
             const isSelected = selectedIds.has(itemId);
-            const isProcessingItem = processingId === itemId;
 
             return (
                 <AnimatedRow
                     key={itemId}
-                    className={`group transition-colors ${
+                    onClick={() => openSheet(item)}
+                    className={`group transition-colors cursor-pointer ${
                         isSelected
                             ? "bg-blue-50/50 dark:bg-blue-900/10"
                             : "hover:bg-gray-50/80 dark:hover:bg-gray-800/50"
@@ -825,114 +903,107 @@ export default function VerificationCenter() {
                         </>
                     )}
 
-                    {activeCategory === "experiences" && (
+                    {activeCategory === "experiences" && (() => { const exp = item as PendingExperience; const docs = countDocs(item, activeCategory); return (
                         <>
                             <td className="px-3 py-3 text-xs font-medium text-gray-700 dark:text-gray-300">
-                                {(item as PendingExperience).company_name}
+                                {exp.company_name}
                             </td>
                             <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                                {(item as PendingExperience).position_title}
+                                {exp.position_title}
                             </td>
                             <td className="px-3 py-3">
                                 <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                                    {(item as PendingExperience).employment_type?.replace("_", " ")}
+                                    {exp.employment_type?.replace("_", " ")}
                                 </span>
                             </td>
+                            <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                {formatDateRange(exp.start_date, exp.end_date, exp.is_current)}
+                            </td>
                             <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400">
-                                {(item as PendingExperience).dept_name}
+                                {exp.dept_name}
+                            </td>
+                            <td className="px-3 py-3">
+                                {docs > 0 && (
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
+                                        <FileText className="h-3 w-3" /> {docs}
+                                    </span>
+                                )}
                             </td>
                         </>
-                    )}
+                    ); })()}
 
-                    {activeCategory === "achievements" && (
+                    {activeCategory === "achievements" && (() => { const ach = item as PendingAchievement; const docs = countDocs(item, activeCategory); return (
                         <>
                             <td className="px-3 py-3 text-xs font-medium text-gray-700 dark:text-gray-300">
-                                {(item as PendingAchievement).achievement_title}
+                                {ach.achievement_title}
                             </td>
                             <td className="px-3 py-3">
                                 <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                                    {(item as PendingAchievement).achievement_type?.replace("_", " ")}
+                                    {ach.achievement_type?.replace("_", " ")}
                                 </span>
                             </td>
                             <td className="px-3 py-3">
                                 <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
-                                    {(item as PendingAchievement).achievement_level}
+                                    {ach.achievement_level}
                                 </span>
                             </td>
+                            <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                {formatDate(ach.achievement_date)}
+                            </td>
                             <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400">
-                                {(item as PendingAchievement).dept_name}
+                                {ach.dept_name}
+                            </td>
+                            <td className="px-3 py-3">
+                                {docs > 0 && (
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
+                                        <FileText className="h-3 w-3" /> {docs}
+                                    </span>
+                                )}
                             </td>
                         </>
-                    )}
+                    ); })()}
 
-                    {activeCategory === "certificates" && (
+                    {activeCategory === "certificates" && (() => { const cert = item as PendingCertificate; const docs = countDocs(item, activeCategory); return (
                         <>
                             <td className="px-3 py-3 text-xs font-medium text-gray-700 dark:text-gray-300">
-                                {(item as PendingCertificate).certificate_name}
+                                {cert.certificate_name}
                             </td>
                             <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                                {(item as PendingCertificate).issuing_organization}
+                                {cert.issuing_organization}
                             </td>
                             <td className="px-3 py-3">
                                 <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                                    {(item as PendingCertificate).certificate_type?.replace("_", " ")}
+                                    {cert.certificate_type?.replace("_", " ")}
                                 </span>
                             </td>
+                            <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                {formatDate(cert.issue_date)}
+                            </td>
                             <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400">
-                                {(item as PendingCertificate).dept_name}
+                                {cert.dept_name}
+                            </td>
+                            <td className="px-3 py-3">
+                                {docs > 0 && (
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
+                                        <FileText className="h-3 w-3" /> {docs}
+                                    </span>
+                                )}
                             </td>
                         </>
-                    )}
+                    ); })()}
 
-                    {/* Actions */}
-                    <td
-                        className="px-3 py-3"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                type="button"
-                                onClick={() => approve(itemId)}
-                                disabled={isProcessingItem || isApproving}
-                                className="min-h-[44px] min-w-[44px] rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50 cursor-pointer"
-                                aria-label="Approve"
-                            >
-                                {isProcessingItem && isApproving ? (
-                                    <Loader2 className="h-3.5 w-3.5 text-emerald-600 animate-spin" />
-                                ) : (
-                                    <Check className="h-3.5 w-3.5 text-emerald-600" />
-                                )}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => openRejectSingle(itemId)}
-                                disabled={isProcessingItem || isRejecting}
-                                className="min-h-[44px] min-w-[44px] rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 cursor-pointer"
-                                aria-label="Reject"
-                            >
-                                {isProcessingItem && isRejecting ? (
-                                    <Loader2 className="h-3.5 w-3.5 text-red-600 animate-spin" />
-                                ) : (
-                                    <X className="h-3.5 w-3.5 text-red-600" />
-                                )}
-                            </button>
-                        </div>
-                    </td>
+                    {/* Actions removed — use bulk action bar or side sheet */}
                 </AnimatedRow>
             );
         },
         [
             activeCategory,
             selectedIds,
-            processingId,
-            isApproving,
-            isRejecting,
             page,
             limit,
             toggleSelect,
-            approve,
-            openRejectSingle,
             navigateToReview,
+            openSheet,
         ],
     );
 
@@ -957,7 +1028,9 @@ export default function VerificationCenter() {
                     { label: "Company", field: "company_name", sortable: false, width: "min-w-[120px]" },
                     { label: "Position", field: "position_title", sortable: false, width: "min-w-[120px]" },
                     { label: "Type", field: "", sortable: false, width: "w-24" },
+                    { label: "Duration", field: "", sortable: false, width: "w-32" },
                     { label: "Department", field: "", sortable: false, width: "" },
+                    { label: "Docs", field: "", sortable: false, width: "w-14" },
                 ];
             case "achievements":
                 return [
@@ -965,7 +1038,9 @@ export default function VerificationCenter() {
                     { label: "Title", field: "", sortable: false, width: "min-w-[150px]" },
                     { label: "Type", field: "", sortable: false, width: "w-24" },
                     { label: "Level", field: "", sortable: false, width: "w-24" },
+                    { label: "Date", field: "", sortable: false, width: "w-28" },
                     { label: "Department", field: "", sortable: false, width: "" },
+                    { label: "Docs", field: "", sortable: false, width: "w-14" },
                 ];
             case "certificates":
                 return [
@@ -973,7 +1048,9 @@ export default function VerificationCenter() {
                     { label: "Certificate", field: "", sortable: false, width: "min-w-[150px]" },
                     { label: "Organization", field: "", sortable: false, width: "min-w-[120px]" },
                     { label: "Type", field: "", sortable: false, width: "w-24" },
+                    { label: "Issued", field: "", sortable: false, width: "w-28" },
                     { label: "Department", field: "", sortable: false, width: "" },
+                    { label: "Docs", field: "", sortable: false, width: "w-14" },
                 ];
             default:
                 return base;
@@ -1018,10 +1095,10 @@ export default function VerificationCenter() {
             <Wrapper {...wrapperProps}>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {countsLoading
-                        ? VERIFICATION_CATEGORIES.map((cat) => (
+                        ? enabledCategories.map((cat) => (
                               <CountCardSkeleton key={cat} />
                           ))
-                        : VERIFICATION_CATEGORIES.map((cat) => (
+                        : enabledCategories.map((cat) => (
                               <CountCard
                                   key={cat}
                                   category={cat}
@@ -1044,7 +1121,7 @@ export default function VerificationCenter() {
                         className="flex border-b border-gray-100 dark:border-gray-800 overflow-x-auto"
                         role="tablist"
                     >
-                        {VERIFICATION_CATEGORIES.map((cat) => {
+                        {enabledCategories.map((cat) => {
                             const Icon = CATEGORY_ICONS[cat];
                             const isActive = activeCategory === cat;
                             const count = counts[cat];
@@ -1189,9 +1266,6 @@ export default function VerificationCenter() {
                                                 )}
                                             </th>
                                         ))}
-                                        <th scope="col" className="px-3 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-24">
-                                            Actions
-                                        </th>
                                     </tr>
                                 </thead>
                                 <AnimatedTableBody>
@@ -1236,6 +1310,19 @@ export default function VerificationCenter() {
                 onConfirm={handleRejectConfirm}
                 entityLabel={rejectEntityLabel}
                 isLoading={isRejecting || isProcessing}
+            />
+
+            {/* ═══════════════════════ Detail Sheet ═══════════════════════ */}
+            <PendingItemSheet
+                open={!!sheetItem}
+                onClose={closeSheet}
+                item={sheetItem}
+                category={activeCategory}
+                onApprove={handleSheetApprove}
+                onReject={handleSheetReject}
+                isApproving={isApproving}
+                isRejecting={isRejecting}
+                processingId={processingId}
             />
         </div>
     );

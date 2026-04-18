@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { queryKeys } from "@/lib/queryKeys"
 import { ApiError } from "@/lib/api"
 import { showToast, getErrorTitle } from "@/utils/ToastUtils"
 import { PlacementService } from "@/services/student/placement.service"
@@ -42,20 +43,20 @@ export function useRejectPlacement() {
 
       // Optimistic: update placement status in cached lists
       queryClient.setQueriesData<StudentPlacementsResponse>(
-        { queryKey: ["studentPortal", "placements"] },
+        { queryKey: queryKeys.studentPortal.myPlacements() },
         (old) => {
           if (!old) return old
           return {
             ...old,
             placements: old.placements.map((p) =>
               p.placement_id === data.placement_id
-                ? { ...p, placement_status: "rejected" as const, acceptance_status: "rejected" as const, updated_at: data.updated_at }
+                ? { ...p, placement_status: "declined" as const, acceptance_status: "rejected" as const, updated_at: data.updated_at }
                 : p,
             ),
             statusSummary: {
               ...old.statusSummary,
               offered: Math.max(0, old.statusSummary.offered - 1),
-              rejected: old.statusSummary.rejected + 1,
+              declined: old.statusSummary.declined + 1,
             },
           }
         },

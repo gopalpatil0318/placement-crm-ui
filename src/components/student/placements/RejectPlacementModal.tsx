@@ -70,7 +70,7 @@ export default function RejectPlacementModal({
         ) : (
           <XCircle size={16} />
         )}
-        {isRejecting ? "Rejecting…" : "Decline Offer"}
+        {isRejecting ? "Declining…" : "Decline Offer"}
       </button>
     </div>
   )

@@ -3,8 +3,13 @@ import { motion, useReducedMotion } from "framer-motion"
 import {
   Award,
   Calendar,
-  CheckCircle,
+  CalendarDays,
+  Clock,
+  CreditCard,
   Download,
+  Edit3,
+  IndianRupee,
+  LogOut,
   MessageSquare,
   Star,
   User,
@@ -14,7 +19,10 @@ import {
   PROGRAM_TYPE_LABELS,
   ENROLLMENT_STATUS_LABELS,
   ENROLLMENT_STATUS_COLORS,
+  PAYMENT_STATUS_LABELS,
+  PAYMENT_STATUS_COLORS,
   type StudentEnrollment,
+  type StudentSessionSchedule,
 } from "@/validators/TrainingProgramSchema"
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
@@ -43,11 +51,69 @@ function canSubmitFeedback(e: StudentEnrollment): boolean {
   )
 }
 
+function canWithdraw(e: StudentEnrollment): boolean {
+  return e.completion_status === "enrolled" || e.completion_status === "in_progress"
+}
+
+const feeFormatter = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+})
+
+// ─── Session Timeline ───────────────────────────────────────────────────────────
+
+function SessionTimeline({ sessions }: Readonly<{ sessions: StudentSessionSchedule["sessions"] }>) {
+  if (!sessions || sessions.length === 0) return null
+  const shown = sessions.slice(0, 8)
+  const remaining = sessions.length - shown.length
+
+  return (
+    <div className="mb-3">
+      <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-1.5">
+        <CalendarDays size={12} />
+        <span>Session Schedule</span>
+      </div>
+      <div className="flex items-center gap-1 flex-wrap">
+        {shown.map((s) => {
+          let bg = "bg-gray-300 dark:bg-gray-600"
+          let statusPart = " — Not marked"
+          if (s.present === true) {
+            bg = "bg-emerald-500"
+            statusPart = " — Present"
+          } else if (s.present === false) {
+            bg = "bg-red-500"
+            statusPart = " — Absent"
+          }
+          const topicPart = s.session_topic ? `: ${s.session_topic}` : ""
+          const title = `Session ${s.session_number}${topicPart}${statusPart}`
+          return (
+            <div
+              key={s.session_id}
+              title={title}
+              className={`w-5 h-5 rounded-full ${bg} flex items-center justify-center text-[9px] font-medium text-white`}
+            >
+              {s.session_number}
+            </div>
+          )
+        })}
+        {remaining > 0 && (
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-0.5">+{remaining}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────────
 
 interface EnrollmentCardProps {
   enrollment: StudentEnrollment
+  sessionSchedule?: StudentSessionSchedule | null
   onFeedback: (enrollment: StudentEnrollment) => void
+  onWithdraw?: (enrollment: StudentEnrollment) => void
+  onViewSessions?: (enrollment: StudentEnrollment) => void
 }
 
 function CertificateSection({ enrollment }: Readonly<{ enrollment: StudentEnrollment }>) {
@@ -90,18 +156,24 @@ function FeedbackSection({ enrollment, onFeedback }: Readonly<{ enrollment: Stud
   }
   if (enrollment.has_submitted_feedback) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-        <CheckCircle size={13} />
-        Feedback Submitted
-      </span>
+      <button
+        type="button"
+        onClick={() => onFeedback(enrollment)}
+        className="inline-flex items-center gap-1.5 px-3 min-h-[44px] text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors cursor-pointer"
+      >
+        <Edit3 size={13} />
+        Edit Feedback
+      </button>
     )
   }
   return null
 }
 
-export default memo(function EnrollmentCard({ enrollment, onFeedback }: Readonly<EnrollmentCardProps>) {
+export default memo(function EnrollmentCard({ enrollment, sessionSchedule, onFeedback, onWithdraw, onViewSessions }: Readonly<EnrollmentCardProps>) {
   const shouldReduce = useReducedMotion()
   const statusColor = ENROLLMENT_STATUS_COLORS[enrollment.completion_status]
+  const paymentColor = PAYMENT_STATUS_COLORS[enrollment.payment_status]
+  const showPaymentBadge = enrollment.payment_status !== "not_applicable"
 
   return (
     <motion.div
@@ -122,8 +194,35 @@ export default memo(function EnrollmentCard({ enrollment, onFeedback }: Readonly
               <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
               {ENROLLMENT_STATUS_LABELS[enrollment.completion_status]}
             </span>
+            {enrollment.program_fee === 0 ? (
+              <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
+                Free
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-0.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
+                <IndianRupee size={10} />
+                {feeFormatter.format(enrollment.program_fee).replace("₹", "")}
+              </span>
+            )}
+            {showPaymentBadge && (
+              <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full ${paymentColor.bg} ${paymentColor.text}`}>
+                <CreditCard size={10} />
+                {PAYMENT_STATUS_LABELS[enrollment.payment_status]}
+                {enrollment.amount_paid > 0 && ` (${feeFormatter.format(enrollment.amount_paid)})`}
+              </span>
+            )}
           </div>
         </div>
+        {canWithdraw(enrollment) && onWithdraw && (
+          <button
+            type="button"
+            onClick={() => onWithdraw(enrollment)}
+            title="Withdraw from program"
+            className="shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
+          >
+            <LogOut size={16} />
+          </button>
+        )}
       </div>
 
       {/* Info */}
@@ -159,22 +258,43 @@ export default memo(function EnrollmentCard({ enrollment, onFeedback }: Readonly
         </div>
       </div>
 
-      {/* Attendance */}
+      {/* Attendance with min threshold */}
       {enrollment.attendance_percentage !== null && (
-        <div className="mb-4">
+        <div className="mb-3">
           <div className="flex items-center justify-between text-xs mb-1">
-            <span className="text-gray-500 dark:text-gray-400">Attendance</span>
+            <span className="text-gray-500 dark:text-gray-400">
+              Attendance
+              {enrollment.min_attendance_pct > 0 && (
+                <span className="text-amber-600 dark:text-amber-400 ml-1">(Min: {enrollment.min_attendance_pct}%)</span>
+              )}
+            </span>
             <span className="font-medium text-gray-700 dark:text-gray-300">
               {enrollment.sessions_attended}/{enrollment.total_sessions ?? "?"} sessions
             </span>
           </div>
-          <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+          <div className="relative h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
             <div
-              className="h-full rounded-full bg-blue-500 transition-all duration-500"
+              className={`h-full rounded-full transition-all duration-500 ${
+                enrollment.min_attendance_pct > 0 && enrollment.attendance_percentage < enrollment.min_attendance_pct
+                  ? "bg-red-500"
+                  : "bg-blue-500"
+              }`}
               style={{ width: `${Math.min(100, enrollment.attendance_percentage)}%` }}
             />
+            {enrollment.min_attendance_pct > 0 && (
+              <div
+                className="absolute top-0 bottom-0 w-0.5 bg-amber-500"
+                style={{ left: `${enrollment.min_attendance_pct}%` }}
+                title={`Minimum: ${enrollment.min_attendance_pct}%`}
+              />
+            )}
           </div>
         </div>
+      )}
+
+      {/* Session Timeline */}
+      {sessionSchedule && (
+        <SessionTimeline sessions={sessionSchedule.sessions} />
       )}
 
       {/* Rating (read-only) */}
@@ -193,7 +313,19 @@ export default memo(function EnrollmentCard({ enrollment, onFeedback }: Readonly
 
       {/* Footer Actions */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700 gap-2 flex-wrap">
-        <CertificateSection enrollment={enrollment} />
+        <div className="flex items-center gap-2">
+          <CertificateSection enrollment={enrollment} />
+          {onViewSessions && (
+            <button
+              type="button"
+              onClick={() => onViewSessions(enrollment)}
+              className="inline-flex items-center gap-1.5 px-3 min-h-[44px] text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors cursor-pointer"
+            >
+              <Clock size={13} />
+              {sessionSchedule ? "Hide Sessions" : "View Sessions"}
+            </button>
+          )}
+        </div>
         <FeedbackSection enrollment={enrollment} onFeedback={onFeedback} />
       </div>
     </motion.div>

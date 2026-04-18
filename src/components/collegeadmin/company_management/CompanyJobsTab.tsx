@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import TierBadge from "@/components/collegeadmin/TierBadge";
 import {
     Briefcase,
     Search,
@@ -82,8 +83,8 @@ const TypeBadge = ({ type }: { type: string }) => {
 
 const TableSkeleton = () => (
     <div className="animate-pulse">
-        {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-4 py-4 border-b border-gray-50 dark:border-gray-800">
+        {[1, 2, 3, 4, 5].map((n) => (
+            <div key={n} className="flex items-center gap-4 px-4 py-4 border-b border-gray-50 dark:border-gray-800">
                 <div className="h-4 w-6 bg-gray-100 dark:bg-gray-800 rounded" />
                 <div className="flex-1 space-y-1.5">
                     <div className="h-4 w-48 bg-gray-100 dark:bg-gray-800 rounded" />
@@ -231,13 +232,14 @@ const CompanyJobsTab = ({ companyId, companyName }: CompanyJobsTabProps) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {loading ? (
+                            {loading && (
                                 <tr>
                                     <td colSpan={8}>
                                         <TableSkeleton />
                                     </td>
                                 </tr>
-                            ) : jobs.length === 0 ? (
+                            )}
+                            {!loading && jobs.length === 0 && (
                                 <tr>
                                     <td colSpan={8}>
                                         <div className="flex flex-col items-center py-16 text-center">
@@ -269,8 +271,8 @@ const CompanyJobsTab = ({ companyId, companyName }: CompanyJobsTabProps) => {
                                         </div>
                                     </td>
                                 </tr>
-                            ) : (
-                                jobs.map((job, idx) => (
+                            )}
+                            {!loading && jobs.length > 0 && jobs.map((job, idx) => (
                                     <tr
                                         key={job.job_id}
                                         onClick={() => navigate(`/college/job/${job.job_id}`)}
@@ -283,6 +285,7 @@ const CompanyJobsTab = ({ companyId, companyName }: CompanyJobsTabProps) => {
                                             <div>
                                                 <p className="text-sm font-medium text-gray-800 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                                     {job.job_title}
+                                                    <TierBadge tierName={job.tier_name} tierLevel={job.tier_level} />
                                                 </p>
                                                 {job.salary_package && (
                                                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
@@ -322,8 +325,7 @@ const CompanyJobsTab = ({ companyId, companyName }: CompanyJobsTabProps) => {
                                             </span>
                                         </td>
                                     </tr>
-                                ))
-                            )}
+                                ))}
                         </tbody>
                     </table>
                 </div>
@@ -364,21 +366,21 @@ const CompanyJobsTab = ({ companyId, companyName }: CompanyJobsTabProps) => {
                                     const current = pagination.page;
                                     return p === 1 || p === pagination.totalPages || Math.abs(p - current) <= 1;
                                 })
-                                .reduce<(number | "ellipsis")[]>((acc, p, i, arr) => {
-                                    if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("ellipsis");
+                                .reduce<(number | string)[]>((acc, p, i, arr) => {
+                                    if (i > 0 && p - arr[i - 1] > 1) acc.push(`ellipsis-${p}`);
                                     acc.push(p);
                                     return acc;
                                 }, [])
-                                .map((item, i) =>
-                                    item === "ellipsis" ? (
-                                        <span key={`e-${i}`} className="px-1 text-gray-400 dark:text-gray-500">
+                                .map((item) =>
+                                    typeof item === "string" ? (
+                                        <span key={item} className="px-1 text-gray-400 dark:text-gray-500">
                                             …
                                         </span>
                                     ) : (
                                         <button
                                             key={item}
                                             type="button"
-                                            onClick={() => handlePageChange(item as number)}
+                                            onClick={() => handlePageChange(item)}
                                             className={`min-w-[44px] min-h-[44px] rounded-lg text-xs font-medium transition ${
                                                 pagination.page === item
                                                     ? "bg-blue-600 text-white"

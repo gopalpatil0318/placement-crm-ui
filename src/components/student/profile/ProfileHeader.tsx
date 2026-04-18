@@ -9,6 +9,7 @@ import {
     CheckCircle2,
     Clock,
     ShieldCheck,
+    XCircle,
 } from "lucide-react";
 import {
     Tooltip,
@@ -143,6 +144,18 @@ export default function ProfileHeader({
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase bg-emerald-500/15 text-emerald-400">
                                         <ShieldCheck className="h-3 w-3" />
                                         Approved
+                                    </span>
+                                )}
+                                {!isApproved && viewMode === "college" && profileCompletion?.profile_approval_status === "pending" && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase bg-amber-500/15 text-amber-400">
+                                        <Clock className="h-3 w-3" />
+                                        Pending Review
+                                    </span>
+                                )}
+                                {!isApproved && viewMode === "college" && profileCompletion?.profile_approval_status === "rejected" && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase bg-red-500/15 text-red-400">
+                                        <XCircle className="h-3 w-3" />
+                                        Rejected
                                     </span>
                                 )}
                             </div>
@@ -291,6 +304,15 @@ export default function ProfileHeader({
                                     <p className="text-xs font-medium text-green-700 dark:text-green-400">
                                         Profile is complete and approved.
                                     </p>
+                                </div>
+                            )}
+                            {viewMode === "college" && profileCompletion?.profile_approval_status === "rejected" && profileCompletion.profile_rejection_reason && (
+                                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 mt-2">
+                                    <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                                    <div>
+                                        <p className="text-xs font-semibold text-red-700 dark:text-red-400">Profile rejected</p>
+                                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{profileCompletion.profile_rejection_reason}</p>
+                                    </div>
                                 </div>
                             )}
                         </div>

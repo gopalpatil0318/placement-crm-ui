@@ -18,6 +18,7 @@ import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
 import { useViewJobs, type JobListItem } from "@/hooks/collegeadmin/company_management/job_postings/useViewJobs";
 import { useViewCompanies } from "@/hooks/collegeadmin/company_management/useViewCompanies";
+import { DRIVE_TYPE_LABELS } from "@/validators/JobPostingSchema";
 
 // ========================
 // CONSTANTS
@@ -35,6 +36,12 @@ const STATUS_BADGE: Record<string, { bg: string; text: string; dot: string }> = 
     published: { bg: "bg-emerald-50 dark:bg-emerald-900/20",   text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500" },
     closed:    { bg: "bg-blue-50 dark:bg-blue-900/20",         text: "text-blue-700 dark:text-blue-400",       dot: "bg-blue-500" },
     cancelled: { bg: "bg-red-50 dark:bg-red-900/20",           text: "text-red-600 dark:text-red-400",         dot: "bg-red-400" },
+};
+
+const DRIVE_TYPE_BADGE: Record<string, string> = {
+    on_campus:   "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400",
+    off_campus:  "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400",
+    pool_campus: "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400",
 };
 
 // ========================
@@ -275,6 +282,7 @@ const ViewJobs = () => {
         search,
         statusFilter,
         jobTypeFilter,
+        driveTypeFilter,
         companyFilter,
         sortBy,
         sortOrder,
@@ -283,13 +291,14 @@ const ViewJobs = () => {
         handleLimitChange,
         handleStatusFilterChange,
         handleJobTypeFilterChange,
+        handleDriveTypeFilterChange,
         handleCompanyFilterChange,
         handleSortChange,
     } = useViewJobs();
 
     const { companies: activeCompanies, loading: companiesLoading } = useViewCompanies({ limit: 100, status: "active" });
 
-    const hasFilters = !!(search || statusFilter || jobTypeFilter || companyFilter);
+    const hasFilters = !!(search || statusFilter || jobTypeFilter || driveTypeFilter || companyFilter);
     const startEntry = jobs.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
     const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
 
@@ -357,6 +366,14 @@ const ViewJobs = () => {
                                 <option value="full-time">Full-time</option>
                                 <option value="internship">Internship</option>
                                 <option value="both">Both</option>
+                            </select>
+
+                            {/* Drive Type */}
+                            <select value={driveTypeFilter} onChange={(e) => handleDriveTypeFilterChange(e.target.value)} aria-label="Filter by drive type" className={selectClass}>
+                                <option value="">All Drives</option>
+                                <option value="on_campus">On Campus</option>
+                                <option value="off_campus">Off Campus</option>
+                                <option value="pool_campus">Pool Campus</option>
                             </select>
 
                             {/* Company */}
@@ -432,6 +449,11 @@ const ViewJobs = () => {
                                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400">
                                                         {job.job_type}
                                                     </span>
+                                                    {job.drive_type && job.drive_type !== "on_campus" && (
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${DRIVE_TYPE_BADGE[job.drive_type] || DRIVE_TYPE_BADGE.on_campus}`}>
+                                                            {DRIVE_TYPE_LABELS[job.drive_type] || job.drive_type}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
                                                     <span className="inline-flex items-center gap-1">
@@ -513,9 +535,16 @@ const ViewJobs = () => {
                                                     <CompanyCell job={job} />
                                                 </td>
                                                 <td className="px-4 py-3.5">
-                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400">
-                                                        {job.job_type}
-                                                    </span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400">
+                                                            {job.job_type}
+                                                        </span>
+                                                        {job.drive_type && job.drive_type !== "on_campus" && (
+                                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${DRIVE_TYPE_BADGE[job.drive_type] || DRIVE_TYPE_BADGE.on_campus}`}>
+                                                                {DRIVE_TYPE_LABELS[job.drive_type] || job.drive_type}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3.5">
                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>

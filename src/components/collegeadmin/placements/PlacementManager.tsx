@@ -26,6 +26,7 @@ import {
     Briefcase,
     Clock,
     IndianRupee,
+    Plus,
 } from "lucide-react";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
@@ -39,6 +40,7 @@ import {
 import { useUpdatePlacement } from "@/hooks/collegeadmin/placements/useUpdatePlacement";
 import { useUpdatePlacementStatus } from "@/hooks/collegeadmin/placements/useUpdatePlacementStatus";
 import { useVerifyOfferLetter } from "@/hooks/collegeadmin/placements/useVerifyOfferLetter";
+import { useVerifyJoiningLetter } from "@/hooks/collegeadmin/placements/useVerifyJoiningLetter";
 import {
     PLACEMENT_STATUS_COLORS,
     PLACEMENT_STATUS_LABELS,
@@ -48,6 +50,7 @@ import {
     type PlacementStatus,
     type PlacementType,
 } from "@/validators/PlacementSchema";
+import RecordExternalPlacementModal from "@/components/collegeadmin/placements/RecordExternalPlacementModal";
 
 // ========================
 // CONSTANTS
@@ -330,7 +333,9 @@ const StatusPills = ({
         { key: "offered", label: "Offered", count: stats.offered_count },
         { key: "accepted", label: "Accepted", count: stats.accepted_count },
         { key: "joined", label: "Joined", count: stats.joined_count },
-        { key: "rejected", label: "Rejected", count: stats.rejected_count },
+        { key: "declined", label: "Declined", count: stats.declined_count },
+        { key: "revoked", label: "Revoked", count: stats.revoked_count },
+        { key: "expired", label: "Expired", count: stats.expired_count },
         { key: "cancelled", label: "Cancelled", count: stats.cancelled_count },
     ];
 
@@ -776,16 +781,18 @@ const VerifyOfferModal = ({
     onSuccess: () => void;
 }) => {
     const { loading, verifyOffer } = useVerifyOfferLetter(onSuccess);
-    const [remarks, setRemarks] = useState("");
-    const willVerify = !placement.offer_letter_verified;
+    const [rejectionReason, setRejectionReason] = useState("");
+    const [action, setAction] = useState<"approved" | "rejected">(
+        placement.offer_letter_verified ? "rejected" : "approved",
+    );
 
     return (
         <ModalWrapper
             isOpen
             onClose={onClose}
             disabled={loading}
-            title={willVerify ? "Verify Offer Letter" : "Remove Verification"}
-            titleIcon={<div className={`h-9 w-9 rounded-xl ${willVerify ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-gray-100 dark:bg-gray-800"} flex items-center justify-center`}><ShieldCheck className={`h-5 w-5 ${willVerify ? "text-emerald-600 dark:text-emerald-400" : "text-gray-600 dark:text-gray-400"}`} /></div>}
+            title={action === "approved" ? "Verify Offer Letter" : "Reject Offer Letter"}
+            titleIcon={<div className={`h-9 w-9 rounded-xl ${action === "approved" ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-red-50 dark:bg-red-900/20"} flex items-center justify-center`}><ShieldCheck className={`h-5 w-5 ${action === "approved" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`} /></div>}
             size="md"
         >
             <div className="px-6 py-5 space-y-4">
@@ -815,30 +822,143 @@ const VerifyOfferModal = ({
                     </div>
                 )}
 
-                <FloatingTextarea
-                    label="Remarks (optional)"
-                    name="remarks"
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    rows={2}
-                    maxLength={2000}
-                    disabled={loading}
-                />
+                {/* Action toggle */}
+                <div className="flex gap-2">
+                    <button type="button" onClick={() => setAction("approved")} className={`flex-1 px-3 py-2 text-sm font-medium rounded-xl transition ${action === "approved" ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-300 dark:ring-emerald-700" : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"}`}>
+                        Approve
+                    </button>
+                    <button type="button" onClick={() => setAction("rejected")} className={`flex-1 px-3 py-2 text-sm font-medium rounded-xl transition ${action === "rejected" ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-red-300 dark:ring-red-700" : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"}`}>
+                        Reject
+                    </button>
+                </div>
+
+                {action === "rejected" && (
+                    <FloatingTextarea
+                        label="Rejection Reason"
+                        name="rejection_reason"
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        rows={2}
+                        maxLength={1000}
+                        disabled={loading}
+                        required
+                    />
+                )}
 
                 <div className="flex items-center gap-3 pt-2">
                     <button type="button" onClick={onClose} disabled={loading} className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition disabled:opacity-50">Cancel</button>
                     <button
                         type="button"
-                        onClick={() => verifyOffer(placement.placement_id, willVerify, remarks)}
-                        disabled={loading || (!placement.offer_letter_url && willVerify)}
+                        onClick={() => verifyOffer(placement.placement_id, action, rejectionReason)}
+                        disabled={loading || (action === "approved" && !placement.offer_letter_url) || (action === "rejected" && !rejectionReason.trim())}
                         className={`flex-1 px-4 py-2.5 text-sm font-semibold text-white rounded-xl transition disabled:opacity-50 inline-flex items-center justify-center gap-2 ${
-                            willVerify ? "bg-emerald-600 hover:bg-emerald-700" : "bg-gray-600 hover:bg-gray-700"
+                            action === "approved" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"
                         }`}
                     >
                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                         {(() => {
                             if (loading) return "Processing...";
-                            return willVerify ? "Verify" : "Remove Verification";
+                            return action === "approved" ? "Approve" : "Reject";
+                        })()}
+                    </button>
+                </div>
+            </div>
+        </ModalWrapper>
+    );
+};
+
+// ========================
+// VERIFY JOINING LETTER MODAL
+// ========================
+
+const VerifyJoiningLetterModal = ({
+    placement,
+    onClose,
+    onSuccess,
+}: {
+    placement: PlacementListItem;
+    onClose: () => void;
+    onSuccess: () => void;
+}) => {
+    const { loading, verifyJoining } = useVerifyJoiningLetter(onSuccess);
+    const [rejectionReason, setRejectionReason] = useState("");
+    const [action, setAction] = useState<"approved" | "rejected">(
+        placement.joining_letter_verified ? "rejected" : "approved",
+    );
+
+    return (
+        <ModalWrapper
+            isOpen
+            onClose={onClose}
+            disabled={loading}
+            title={action === "approved" ? "Verify Joining Letter" : "Reject Joining Letter"}
+            titleIcon={<div className={`h-9 w-9 rounded-xl ${action === "approved" ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-red-50 dark:bg-red-900/20"} flex items-center justify-center`}><ShieldCheck className={`h-5 w-5 ${action === "approved" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`} /></div>}
+            size="md"
+        >
+            <div className="px-6 py-5 space-y-4">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700">
+                    <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <span className="text-sm font-bold text-blue-700 dark:text-blue-400">{placement.student_name.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{placement.student_name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{placement.company_name} · {placement.job_title}</p>
+                    </div>
+                </div>
+
+                {placement.joining_letter_url && /^https?:\/\//i.test(placement.joining_letter_url) ? (
+                    <a
+                        href={placement.joining_letter_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 text-sm text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition"
+                    >
+                        <ExternalLink className="h-4 w-4" />
+                        View Joining Letter
+                    </a>
+                ) : (
+                    <div className="px-4 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/40 text-sm text-amber-700 dark:text-amber-400">
+                        No joining letter URL uploaded yet.
+                    </div>
+                )}
+
+                {/* Action toggle */}
+                <div className="flex gap-2">
+                    <button type="button" onClick={() => setAction("approved")} className={`flex-1 px-3 py-2 text-sm font-medium rounded-xl transition ${action === "approved" ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-300 dark:ring-emerald-700" : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"}`}>
+                        Approve
+                    </button>
+                    <button type="button" onClick={() => setAction("rejected")} className={`flex-1 px-3 py-2 text-sm font-medium rounded-xl transition ${action === "rejected" ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-red-300 dark:ring-red-700" : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"}`}>
+                        Reject
+                    </button>
+                </div>
+
+                {action === "rejected" && (
+                    <FloatingTextarea
+                        label="Rejection Reason"
+                        name="rejection_reason"
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        rows={2}
+                        maxLength={1000}
+                        disabled={loading}
+                        required
+                    />
+                )}
+
+                <div className="flex items-center gap-3 pt-2">
+                    <button type="button" onClick={onClose} disabled={loading} className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition disabled:opacity-50">Cancel</button>
+                    <button
+                        type="button"
+                        onClick={() => verifyJoining(placement.placement_id, action, rejectionReason)}
+                        disabled={loading || (action === "approved" && !placement.joining_letter_url) || (action === "rejected" && !rejectionReason.trim())}
+                        className={`flex-1 px-4 py-2.5 text-sm font-semibold text-white rounded-xl transition disabled:opacity-50 inline-flex items-center justify-center gap-2 ${
+                            action === "approved" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"
+                        }`}
+                    >
+                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {(() => {
+                            if (loading) return "Processing...";
+                            return action === "approved" ? "Approve" : "Reject";
                         })()}
                     </button>
                 </div>
@@ -859,6 +979,7 @@ const PlacementRow = ({
     onEdit,
     onStatusChange,
     onVerify,
+    onVerifyJoining,
     onNavigate,
 }: {
     placement: PlacementListItem;
@@ -868,6 +989,7 @@ const PlacementRow = ({
     onEdit: (p: PlacementListItem) => void;
     onStatusChange: (p: PlacementListItem, status: PlacementStatus) => void;
     onVerify: (p: PlacementListItem) => void;
+    onVerifyJoining: (p: PlacementListItem) => void;
     onNavigate: (p: PlacementListItem) => void;
 }) => {
     const transitions = PLACEMENT_STATUS_TRANSITIONS[placement.placement_status as PlacementStatus] || [];
@@ -973,6 +1095,7 @@ const PlacementRow = ({
                     placement={placement}
                     onStatusChange={(s) => onStatusChange(placement, s)}
                     onVerify={() => onVerify(placement)}
+                    onVerifyJoining={() => onVerifyJoining(placement)}
                     onEdit={() => onEdit(placement)}
                 />
             )}
@@ -988,11 +1111,13 @@ const PlacementDetailPanel = ({
     placement,
     onStatusChange,
     onVerify,
+    onVerifyJoining,
     onEdit,
 }: {
     placement: PlacementListItem;
     onStatusChange: (status: PlacementStatus) => void;
     onVerify: () => void;
+    onVerifyJoining: () => void;
     onEdit: () => void;
 }) => {
     const transitions = PLACEMENT_STATUS_TRANSITIONS[placement.placement_status as PlacementStatus] || [];
@@ -1102,6 +1227,22 @@ const PlacementDetailPanel = ({
                         </a>
                     )}
 
+                    {/* Joining letter link */}
+                    {placement.joining_letter_url && /^https?:\/\//i.test(placement.joining_letter_url) && (
+                        <a
+                            href={placement.joining_letter_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 text-sm text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition"
+                        >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            View Joining Letter
+                            {placement.joining_letter_verified && (
+                                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                            )}
+                        </a>
+                    )}
+
                     {/* Remarks */}
                     {placement.remarks && (
                         <div className="rounded-xl border border-blue-100 dark:border-blue-800/40 bg-blue-50/50 dark:bg-blue-900/10 p-4">
@@ -1128,8 +1269,18 @@ const PlacementDetailPanel = ({
                             className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 transition"
                         >
                             <ShieldCheck className="h-3.5 w-3.5" />
-                            {placement.offer_letter_verified ? "Un-verify" : "Verify Offer"}
+                            {placement.offer_letter_verified ? "Re-verify Offer" : "Verify Offer"}
                         </button>
+                        {["accepted", "joined"].includes(placement.placement_status) && (
+                            <button
+                                type="button"
+                                onClick={onVerifyJoining}
+                                className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 transition"
+                            >
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                {placement.joining_letter_verified ? "Re-verify Joining" : "Verify Joining"}
+                            </button>
+                        )}
                         {transitions.map((status) => {
                             const colors = STATUS_ACTION_COLORS[status] || { bg: "bg-gray-100", text: "text-gray-700", hover: "hover:bg-gray-200" };
                             return (
@@ -1185,6 +1336,8 @@ const PlacementManager = () => {
     const [editingPlacement, setEditingPlacement] = useState<PlacementListItem | null>(null);
     const [statusChangeModal, setStatusChangeModal] = useState<{ placement: PlacementListItem; status: PlacementStatus } | null>(null);
     const [verifyModal, setVerifyModal] = useState<PlacementListItem | null>(null);
+    const [verifyJoiningModal, setVerifyJoiningModal] = useState<PlacementListItem | null>(null);
+    const [showExternalModal, setShowExternalModal] = useState(false);
 
     const validExpandedId = expandedId && placements.some(p => p.placement_id === expandedId) ? expandedId : null;
 
@@ -1196,6 +1349,8 @@ const PlacementManager = () => {
         setEditingPlacement(null);
         setStatusChangeModal(null);
         setVerifyModal(null);
+        setVerifyJoiningModal(null);
+        setShowExternalModal(false);
         refresh();
     }, [refresh]);
 
@@ -1244,6 +1399,14 @@ const PlacementManager = () => {
                                 </p>
                             </div>
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowExternalModal(true)}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition shadow-sm"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Record External Placement
+                        </button>
                     </div>
                     <StatsDashboard stats={stats} loading={loading} />
                 </div>
@@ -1380,6 +1543,7 @@ const PlacementManager = () => {
                                             onEdit={setEditingPlacement}
                                             onStatusChange={(placement, status) => setStatusChangeModal({ placement, status })}
                                             onVerify={setVerifyModal}
+                                            onVerifyJoining={setVerifyJoiningModal}
                                             onNavigate={handleNavigate}
                                         />
                                     ));
@@ -1492,6 +1656,20 @@ const PlacementManager = () => {
                     onSuccess={handleSuccess}
                 />
             )}
+
+            {verifyJoiningModal && (
+                <VerifyJoiningLetterModal
+                    placement={verifyJoiningModal}
+                    onClose={() => setVerifyJoiningModal(null)}
+                    onSuccess={handleSuccess}
+                />
+            )}
+
+            <RecordExternalPlacementModal
+                isOpen={showExternalModal}
+                onClose={() => setShowExternalModal(false)}
+                onSuccess={handleSuccess}
+            />
         </div>
     );
 };

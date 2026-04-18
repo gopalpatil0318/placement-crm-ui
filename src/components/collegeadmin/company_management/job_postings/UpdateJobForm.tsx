@@ -1,8 +1,12 @@
 ﻿import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useUpdateJob } from "@/hooks/collegeadmin/company_management/job_postings/useUpdateJob";
+import { DRIVE_TYPE_OPTIONS, DRIVE_TYPE_LABELS } from "@/validators/JobPostingSchema";
 import FloatingInput from "@/components/ui/FloatingInput";
+import FloatingSelect from "@/components/ui/FloatingSelect";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
-import { Briefcase, DollarSign, FileText, Loader2, X } from "lucide-react";
+import ModalWrapper from "@/components/ui/ModalWrapper";
+import { Briefcase, DollarSign, FileText, Loader2, X, AlertCircle, Users } from "lucide-react";
 
 // ========================
 // TYPES
@@ -113,9 +117,11 @@ const UpdateJobSkeleton = () => (
 
 const UpdateJobForm = ({ jobId, onItemLoaded }: UpdateJobFormProps) => {
     const navigate = useNavigate();
+    const [showConfirm, setShowConfirm] = useState(false);
     const {
         formData,
         fetchedJobTitle,
+        applicationCount,
         errors,
         loading,
         fetching,
@@ -125,6 +131,19 @@ const UpdateJobForm = ({ jobId, onItemLoaded }: UpdateJobFormProps) => {
         handleSubmit,
         handleCancel,
     } = useUpdateJob(jobId, onItemLoaded);
+
+    const hasApplications = applicationCount > 0;
+
+    // Intercept form submit: if applications exist, show confirmation first
+    const onFormSubmit = () => {
+        setShowConfirm(true);
+    };
+
+    const confirmAndSubmit = () => {
+        setShowConfirm(false);
+        const form = document.getElementById("update-job-form") as HTMLFormElement;
+        if (form) form.requestSubmit();
+    };
 
     // ========================
     // FETCHING / ERROR
@@ -161,7 +180,23 @@ const UpdateJobForm = ({ jobId, onItemLoaded }: UpdateJobFormProps) => {
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Update the core job details below. Changes are saved only when you submit.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="px-8 py-8 space-y-8">
+            <form id="update-job-form" onSubmit={handleSubmit} className="px-8 py-8 space-y-8">
+                {/* Application Warning Banner */}
+                {hasApplications && (
+                    <div className="flex gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 p-4">
+                        <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-medium text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                                <Users className="h-4 w-4" />
+                                {applicationCount} student{applicationCount === 1 ? " has" : "s have"} already applied
+                            </p>
+                            <p className="mt-1 text-amber-700 dark:text-amber-400">
+                                Changing salary, deadline, or eligibility criteria may affect students who applied based on the original details.
+                                You will be asked to confirm before saving.
+                            </p>
+                        </div>
+                    </div>
+                )}
                 {/* Section 1 — Core Details */}
                 <div>
                     <SectionHeader icon={Briefcase} title="Core Details" />
@@ -219,6 +254,17 @@ const UpdateJobForm = ({ jobId, onItemLoaded }: UpdateJobFormProps) => {
                             </div>
                         )}
                         <FieldError message={errors.passout_years} />
+                    </div>
+
+                    {/* Drive Type */}
+                    <div className="mt-5 max-w-xs">
+                        <FloatingSelect
+                            label="Drive Type"
+                            name="drive_type"
+                            value={formData.drive_type}
+                            onChange={handleChange}
+                            options={DRIVE_TYPE_OPTIONS.map((t) => ({ value: t, label: DRIVE_TYPE_LABELS[t] }))}
+                        />
                     </div>
                 </div>
 
@@ -280,6 +326,28 @@ const UpdateJobForm = ({ jobId, onItemLoaded }: UpdateJobFormProps) => {
                             rows={2}
                             maxLength={1000}
                         />
+
+                        {/* Allow Applications Toggle */}
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 px-4 py-3">
+                            <div>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Allow Applications</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    {formData.allow_applications
+                                        ? "Students can apply to this job"
+                                        : "Applications are paused — students cannot apply"}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={formData.allow_applications}
+                                aria-label="Allow applications"
+                                onClick={() => updateField("allow_applications", !formData.allow_applications)}
+                                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${formData.allow_applications ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"}`}
+                            >
+                                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${formData.allow_applications ? "translate-x-5" : "translate-x-0.5"} mt-0.5`} />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -303,7 +371,8 @@ const UpdateJobForm = ({ jobId, onItemLoaded }: UpdateJobFormProps) => {
                         Cancel
                     </button>
                     <button
-                        type="submit"
+                        type={hasApplications ? "button" : "submit"}
+                        onClick={hasApplications ? onFormSubmit : undefined}
                         disabled={loading}
                         className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-60"
                     >
@@ -311,6 +380,41 @@ const UpdateJobForm = ({ jobId, onItemLoaded }: UpdateJobFormProps) => {
                     </button>
                 </div>
             </form>
+
+            {/* Confirmation Modal for editing jobs with existing applications */}
+            <ModalWrapper isOpen={showConfirm} onClose={() => setShowConfirm(false)} title="Confirm Job Update">
+                <div className="p-6 space-y-4">
+                    <div className="flex gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 p-4">
+                        <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="text-sm text-amber-800 dark:text-amber-300">
+                            <p className="font-medium">{applicationCount} student{applicationCount === 1 ? " has" : "s have"} already applied to this job.</p>
+                            <p className="mt-1.5 text-amber-700 dark:text-amber-400">
+                                Changes to salary, deadline, or eligibility criteria may affect students who applied based on the original job details.
+                                Students will not be automatically notified of these changes.
+                            </p>
+                        </div>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Are you sure you want to update this job?
+                    </p>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirm(false)}
+                            className="px-5 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={confirmAndSubmit}
+                            className="px-5 py-2.5 text-sm font-bold bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-colors"
+                        >
+                            Yes, Update Job
+                        </button>
+                    </div>
+                </div>
+            </ModalWrapper>
         </div>
     );
 };

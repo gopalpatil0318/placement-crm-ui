@@ -25,6 +25,8 @@ export interface Enrollment {
     student_feedback: string | null;
     student_rating: number | null;
     completed_at: string | null;
+    payment_status: string;
+    amount_paid: number;
     created_at: string;
     updated_at: string;
 }
@@ -110,6 +112,13 @@ export const useViewEnrollments = (programId: string | undefined) => {
             });
         }
     }, [page, pagination.totalPages, queryClient, queryFilters, programId]);
+
+    // Cleanup debounce timer on unmount
+    useEffect(() => {
+        return () => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        };
+    }, []);
 
     const handleSearchChange = useCallback((value: string) => {
         setSearch(value);

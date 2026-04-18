@@ -16,7 +16,10 @@ import {
     ENROLLMENT_STATUS_OPTIONS,
     ENROLLMENT_STATUS_LABELS,
     ENROLLMENT_STATUS_COLORS,
+    PAYMENT_STATUS_LABELS,
+    PAYMENT_STATUS_COLORS,
     type EnrollmentStatus,
+    type PaymentStatus,
 } from "@/validators/TrainingProgramSchema";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -29,9 +32,12 @@ interface EnrollmentTableProps {
     programId: string;
     onEditEnrollment: (enrollment: Enrollment, totalSessions?: number) => void;
     onProgramLoaded?: (name: string, totalSessions?: number) => void;
+    selectedIds?: Set<string>;
+    onToggleId?: (id: string) => void;
+    onToggleAll?: (ids: string[]) => void;
 }
 
-const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Readonly<EnrollmentTableProps>) => {
+const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded, selectedIds, onToggleId, onToggleAll }: Readonly<EnrollmentTableProps>) => {
     const {
         enrollments,
         summary,
@@ -204,11 +210,23 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Reado
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                                    {onToggleAll && (
+                                        <th scope="col" className="w-10 px-3 py-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={enrollments.length > 0 && enrollments.every((e) => selectedIds?.has(e.enrollment_id))}
+                                                onChange={() => onToggleAll(enrollments.map((e) => e.enrollment_id))}
+                                                aria-label="Select all enrollments"
+                                                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500/30"
+                                            />
+                                        </th>
+                                    )}
                                     <th scope="col" className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student</th>
                                     <th scope="col" className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Department</th>
                                     <th scope="col" className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sessions</th>
                                     <th scope="col" className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Completion</th>
                                     <th scope="col" className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                    <th scope="col" className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment</th>
                                     <th scope="col" className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Certificate</th>
                                     <th scope="col" className="text-center px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rating</th>
                                     <th scope="col" className="text-right px-5 py-3 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
@@ -220,6 +238,17 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Reado
                                     const statusLabel = ENROLLMENT_STATUS_LABELS[enrollment.completion_status as EnrollmentStatus] ?? enrollment.completion_status;
                                     return (
                                         <AnimatedRow key={enrollment.enrollment_id} className="border-b border-gray-50 dark:border-gray-800/60 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                                            {onToggleId && (
+                                                <td className="w-10 px-3 py-3.5">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds?.has(enrollment.enrollment_id) ?? false}
+                                                        onChange={() => onToggleId(enrollment.enrollment_id)}
+                                                        aria-label={`Select ${enrollment.student_name}`}
+                                                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500/30"
+                                                    />
+                                                </td>
+                                            )}
                                             <td className="px-5 py-3.5">
                                                 <div>
                                                     <p className="font-medium text-gray-900 dark:text-gray-100">{enrollment.student_name}</p>
@@ -262,6 +291,23 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded }: Reado
                                                         {statusLabel}
                                                     </span>
                                                 )}
+                                            </td>
+                                            {/* Payment */}
+                                            <td className="px-5 py-3.5 text-center">
+                                                {(() => {
+                                                    const ps = enrollment.payment_status as PaymentStatus | undefined;
+                                                    if (!ps || ps === "not_applicable") {
+                                                        return <span className="text-xs text-gray-400 dark:text-gray-500">—</span>;
+                                                    }
+                                                    const pc = PAYMENT_STATUS_COLORS[ps];
+                                                    return (
+                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${pc.bg} ${pc.text}`}>
+                                                            <span className={`h-1.5 w-1.5 rounded-full ${pc.dot}`} />
+                                                            {PAYMENT_STATUS_LABELS[ps]}
+                                                            {enrollment.amount_paid > 0 && ` ₹${enrollment.amount_paid}`}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="px-5 py-3.5 text-center">
                                                 {!enrollment.certificate_issued && (

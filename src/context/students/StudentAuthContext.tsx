@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
+import { createContext, useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from "react";
 import api from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { clearOtherSessions } from "@/lib/clearAllAuthSessions";
@@ -11,6 +11,8 @@ export const StudentAuthContext = createContext<StudentAuthContextType | null>(n
 export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const userRef = useRef(user);
+  userRef.current = user;
 
   // Initialize from LocalStorage on mount
   useEffect(() => {
@@ -50,7 +52,6 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
       deptId: studentData.dept_id,
       deptName: studentData.dept_name,
       passoutYear: studentData.student_passout_year,
-      defaultAcademicYear: studentData.default_academic_year,
       studentStatus: studentData.student_status,
       profileComplete: studentData.profile_complete ?? false,
       profileIsApproved: studentData.profile_is_approved ?? false,
@@ -88,12 +89,32 @@ export const StudentAuthProvider = ({ children }: { children: ReactNode }) => {
       queryClient.clear();
       setUser(null);
       localStorage.removeItem("student_user");
+      localStorage.removeItem("placenex_selected_year");
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const current = userRef.current;
+    if (!current) return;
+    try {
+      const res = await api.get("/student/get_profile_completion");
+      const pc = res.data?.data;
+      if (!pc) return;
+      const updated: User = {
+        ...current,
+        profileComplete: pc.profile_complete ?? current.profileComplete,
+        profileIsApproved: pc.profile_is_approved ?? current.profileIsApproved,
+      };
+      setUser(updated);
+      localStorage.setItem("student_user", JSON.stringify(updated));
+    } catch {
+      // Silently fail — non-critical refresh
+    }
+  }, []); // stable ref — no [user] dependency
+
   const contextValue = useMemo(
-    () => ({ user, isAuthenticated: !!user, isLoading, login, logout }),
-    [user, isLoading, login, logout]
+    () => ({ user, isAuthenticated: !!user, isLoading, login, logout, refreshUser }),
+    [user, isLoading, login, logout, refreshUser]
   );
 
   return (

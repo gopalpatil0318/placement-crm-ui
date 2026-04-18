@@ -21,6 +21,7 @@ interface CreatePlacementForm {
     internship_duration: string;
     internship_start_date: string;
     offer_letter_url: string;
+    joining_letter_url: string;
 }
 
 type FormErrors = Partial<Record<keyof CreatePlacementForm, string>>;
@@ -35,6 +36,7 @@ const INITIAL_FORM: CreatePlacementForm = {
     internship_duration: "",
     internship_start_date: "",
     offer_letter_url: "",
+    joining_letter_url: "",
 };
 
 // ========================
@@ -70,6 +72,9 @@ function buildCreatePayload(formData: CreatePlacementForm): Record<string, unkno
 
     if (formData.offer_letter_url.trim())
         payload.offer_letter_url = formData.offer_letter_url.trim();
+
+    if (formData.joining_letter_url.trim())
+        payload.joining_letter_url = formData.joining_letter_url.trim();
 
     return payload;
 }

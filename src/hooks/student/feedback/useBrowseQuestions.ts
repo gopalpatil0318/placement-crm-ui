@@ -2,19 +2,14 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/queryKeys"
 import { FeedbackService } from "@/services/student/feedback.service"
-import {
-  SORT_OPTIONS_QUESTIONS,
-  type BrowseInterviewQuestion,
-} from "@/validators/FeedbackSchema"
+import type { BrowseInterviewQuestion } from "@/validators/FeedbackSchema"
 
 // ─── Hook ───────────────────────────────────────────────────────────────────────
 
-export function useBrowseQuestions(initialLimit = 10, enabled = true) {
+export function useBrowseQuestions(initialLimit = 10, enabled = true, companyId?: string) {
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [companyFilter, setCompanyFilter] = useState("")
-  const [topicFilter, setTopicFilter] = useState("")
-  const [sortIndex, setSortIndex] = useState(0)
+  const [roundTypeFilter, setRoundTypeFilter] = useState("")
   const [page, setPage] = useState(1)
   const [limit] = useState(initialLimit)
 
@@ -25,17 +20,15 @@ export function useBrowseQuestions(initialLimit = 10, enabled = true) {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [search])
 
-  const sort = SORT_OPTIONS_QUESTIONS[sortIndex]
-
   const queryFilters = useMemo(() => ({
-    ...(companyFilter ? { company_id: companyFilter } : {}),
-    ...(topicFilter ? { topic: topicFilter } : {}),
+    ...(companyId ? { company_id: companyId } : {}),
+    ...(roundTypeFilter ? { round_type: roundTypeFilter } : {}),
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
-    sort_by: sort.sort_by,
-    sort_order: sort.sort_order,
+    sort_by: "created_at" as const,
+    sort_order: "desc" as const,
     page,
     limit,
-  }), [companyFilter, topicFilter, debouncedSearch, sort, page, limit])
+  }), [companyId, roundTypeFilter, debouncedSearch, page, limit])
 
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: queryKeys.studentPortal.browseQuestions(queryFilters as Record<string, unknown>),
@@ -64,18 +57,8 @@ export function useBrowseQuestions(initialLimit = 10, enabled = true) {
     setPage(1)
   }, [])
 
-  const handleCompanyFilterChange = useCallback((id: string) => {
-    setCompanyFilter(id)
-    setPage(1)
-  }, [])
-
-  const handleTopicFilterChange = useCallback((value: string) => {
-    setTopicFilter((prev) => (prev === value ? "" : value))
-    setPage(1)
-  }, [])
-
-  const handleSortChange = useCallback((index: number) => {
-    setSortIndex(index)
+  const handleRoundTypeFilterChange = useCallback((value: string) => {
+    setRoundTypeFilter(value)
     setPage(1)
   }, [])
 
@@ -92,13 +75,9 @@ export function useBrowseQuestions(initialLimit = 10, enabled = true) {
     isError,
     refetch,
     search,
-    companyFilter,
-    topicFilter,
-    sortIndex,
+    roundTypeFilter,
     handleSearchChange,
-    handleCompanyFilterChange,
-    handleTopicFilterChange,
-    handleSortChange,
+    handleRoundTypeFilterChange,
     page,
     handlePageChange,
   }

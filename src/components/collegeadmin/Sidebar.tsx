@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Bell,
   ShieldAlert,
+  ScrollText,
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
@@ -78,7 +79,6 @@ const navItems: NavSection[] = [
       {
         icon: BriefcaseBusiness,
         label: "Placements",
-        badge: "Active",
         allowedRoles: ["collegeadmin", "tpo", "tpc"],
         subItems: [
           { label: "All Placements", path: "/college/placements" },
@@ -168,9 +168,18 @@ const navItems: NavSection[] = [
         ],
       },
       {
+        icon: ScrollText,
+        label: "Audit Trail",
+        path: "/college/audit-logs",
+        allowedRoles: ["collegeadmin"],
+      },
+      {
         icon: Settings,
         label: "Settings",
         subItems: [
+          { label: "Company Tiers", path: "/college/company-tiers" },
+          { label: "Placement Settings", path: "/college/placement-settings" },
+          { label: "Verification Settings", path: "/college/verification-settings" },
           { label: "Change Password", path: "/college/change-password" },
         ],
       },

@@ -13,8 +13,8 @@ export default function PageLoadingSkeleton() {
 
         {/* Nav items */}
         <div className="space-y-3">
-          {[140, 120, 160, 130, 110, 150].map((w, i) => (
-            <div key={i} className="flex items-center gap-3 px-2 py-2">
+          {[140, 120, 160, 130, 110, 150].map((w) => (
+            <div key={w} className="flex items-center gap-3 px-2 py-2">
               <div className="h-5 w-5 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
               <div
                 className="h-4 rounded bg-gray-200 dark:bg-gray-700 animate-pulse"
@@ -27,8 +27,8 @@ export default function PageLoadingSkeleton() {
         {/* Bottom nav */}
         <div className="mt-auto space-y-3">
           <div className="h-px bg-gray-100 dark:bg-gray-800" />
-          {[100, 80].map((w, i) => (
-            <div key={i} className="flex items-center gap-3 px-2 py-2">
+          {[100, 80].map((w) => (
+            <div key={w} className="flex items-center gap-3 px-2 py-2">
               <div className="h-5 w-5 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
               <div
                 className="h-4 rounded bg-gray-200 dark:bg-gray-700 animate-pulse"

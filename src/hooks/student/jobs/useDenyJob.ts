@@ -13,7 +13,7 @@ export function useDenyJob(jobId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.jobDetail(jobId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.eligibility(jobId) })
-      queryClient.invalidateQueries({ queryKey: ["studentPortal", "jobs"] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.availableJobs() })
     },
     onError: (error) => {
       showToast({

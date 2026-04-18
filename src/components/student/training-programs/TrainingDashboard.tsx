@@ -9,6 +9,7 @@ import {
   ChevronRight,
   GraduationCap,
   Loader2,
+  LogOut,
   RefreshCw,
   Search,
   TrendingUp,
@@ -18,10 +19,13 @@ import { staggerContainer } from "@/lib/animations"
 import { useAvailableTrainings } from "@/hooks/student/training-programs/useAvailableTrainings"
 import { useMyEnrollments } from "@/hooks/student/training-programs/useMyEnrollments"
 import { useEnrollInTraining } from "@/hooks/student/training-programs/useEnrollInTraining"
+import { useWithdrawFromTraining } from "@/hooks/student/training-programs/useWithdrawFromTraining"
+import { useMySessionSchedule } from "@/hooks/student/training-programs/useMySessionSchedule"
 import AvailableProgramCard from "@/components/student/training-programs/AvailableProgramCard"
 import EnrollmentCard from "@/components/student/training-programs/EnrollmentCard"
 import EnrollConfirmModal from "@/components/student/training-programs/EnrollConfirmModal"
 import FeedbackModal from "@/components/student/training-programs/FeedbackModal"
+import ModalWrapper from "@/components/ui/ModalWrapper"
 import {
   PROGRAM_TYPE_OPTIONS,
   PROGRAM_TYPE_LABELS,
@@ -71,9 +75,23 @@ export default function TrainingDashboard() {
   // ── Enroll Mutation ──
   const { enroll, isEnrolling } = useEnrollInTraining()
 
+  // ── Withdraw Mutation ──
+  const { withdraw, isWithdrawing } = useWithdrawFromTraining()
+
+  // ── Session Schedule (C1: wired for expanded enrollment) ──
+  const [expandedScheduleProgramId, setExpandedScheduleProgramId] = useState<string | null>(null)
+  const { schedule: sessionSchedule } = useMySessionSchedule(expandedScheduleProgramId)
+
+  const handleViewSessions = useCallback((enrollment: StudentEnrollment) => {
+    setExpandedScheduleProgramId(prev =>
+      prev === enrollment.program_id ? null : enrollment.program_id
+    )
+  }, [])
+
   // ── Modal State ──
   const [enrollTarget, setEnrollTarget] = useState<StudentAvailableProgram | null>(null)
   const [feedbackTarget, setFeedbackTarget] = useState<StudentEnrollment | null>(null)
+  const [withdrawTarget, setWithdrawTarget] = useState<StudentEnrollment | null>(null)
 
   const handleEnrollClick = useCallback((program: StudentAvailableProgram) => {
     setEnrollTarget(program)
@@ -89,6 +107,17 @@ export default function TrainingDashboard() {
   const handleFeedbackClick = useCallback((enrollment: StudentEnrollment) => {
     setFeedbackTarget(enrollment)
   }, [])
+
+  const handleWithdrawClick = useCallback((enrollment: StudentEnrollment) => {
+    setWithdrawTarget(enrollment)
+  }, [])
+
+  const handleConfirmWithdraw = useCallback(() => {
+    if (!withdrawTarget) return
+    withdraw(withdrawTarget.program_id, {
+      onSuccess: () => setWithdrawTarget(null),
+    })
+  }, [withdrawTarget, withdraw])
 
   // ── Summary helpers for enrolled ──
   const getTabCount = (tab: EnrollmentStatusFilter): number => {
@@ -142,6 +171,10 @@ export default function TrainingDashboard() {
             {...enrolled}
             shouldReduce={shouldReduce}
             onFeedback={handleFeedbackClick}
+            onWithdraw={handleWithdrawClick}
+            onViewSessions={handleViewSessions}
+            expandedScheduleProgramId={expandedScheduleProgramId}
+            sessionSchedule={sessionSchedule}
             getTabCount={getTabCount}
           />
         )}
@@ -160,6 +193,53 @@ export default function TrainingDashboard() {
         isOpen={feedbackTarget !== null}
         onClose={() => setFeedbackTarget(null)}
       />
+
+      {/* Withdraw Confirmation */}
+      <ModalWrapper
+        isOpen={withdrawTarget !== null}
+        onClose={() => !isWithdrawing && setWithdrawTarget(null)}
+        disabled={isWithdrawing}
+        size="sm"
+        title="Withdraw from Program"
+        titleIcon={
+          <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+            <LogOut size={18} className="text-red-600 dark:text-red-400" />
+          </div>
+        }
+        footer={
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => setWithdrawTarget(null)}
+              disabled={isWithdrawing}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors disabled:opacity-40 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmWithdraw}
+              disabled={isWithdrawing}
+              className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-60 cursor-pointer"
+            >
+              {isWithdrawing && <Loader2 size={16} className="animate-spin" />}
+              {isWithdrawing ? "Withdrawing…" : "Withdraw"}
+            </button>
+          </div>
+        }
+      >
+        {withdrawTarget && (
+          <div className="p-6 space-y-3">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Are you sure you want to withdraw from{" "}
+              <span className="font-semibold">{withdrawTarget.program_name}</span>?
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-400">
+              This action cannot be undone. You may not be able to re-enroll if the program is full or the deadline has passed.
+            </p>
+          </div>
+        )}
+      </ModalWrapper>
     </div>
   )
 }
@@ -351,6 +431,10 @@ interface EnrolledPanelProps {
   handlePageChange: (p: number) => void
   shouldReduce: boolean | null
   onFeedback: (e: StudentEnrollment) => void
+  onWithdraw: (e: StudentEnrollment) => void
+  onViewSessions: (e: StudentEnrollment) => void
+  expandedScheduleProgramId: string | null
+  sessionSchedule: import("@/validators/TrainingProgramSchema").StudentSessionSchedule | undefined
   getTabCount: (tab: EnrollmentStatusFilter) => number
 }
 
@@ -381,7 +465,7 @@ function EnrolledEmptyState({ statusFilter, handleStatusFilterChange }: Readonly
   )
 }
 
-function EnrolledPanelContent({ enrollments, pagination, handlePageChange, shouldReduce, onFeedback }: Readonly<Pick<EnrolledPanelProps, "enrollments" | "pagination" | "handlePageChange" | "shouldReduce" | "onFeedback">>) {
+function EnrolledPanelContent({ enrollments, pagination, handlePageChange, shouldReduce, onFeedback, onWithdraw, onViewSessions, expandedScheduleProgramId, sessionSchedule }: Readonly<Pick<EnrolledPanelProps, "enrollments" | "pagination" | "handlePageChange" | "shouldReduce" | "onFeedback" | "onWithdraw" | "onViewSessions" | "expandedScheduleProgramId" | "sessionSchedule">>) {
   return (
     <>
       <motion.div
@@ -391,7 +475,14 @@ function EnrolledPanelContent({ enrollments, pagination, handlePageChange, shoul
         className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
       >
         {enrollments.map((e) => (
-          <EnrollmentCard key={e.enrollment_id} enrollment={e} onFeedback={onFeedback} />
+          <EnrollmentCard
+            key={e.enrollment_id}
+            enrollment={e}
+            sessionSchedule={expandedScheduleProgramId === e.program_id ? (sessionSchedule ?? null) : null}
+            onFeedback={onFeedback}
+            onWithdraw={onWithdraw}
+            onViewSessions={onViewSessions}
+          />
         ))}
       </motion.div>
       {pagination.totalPages > 1 && (
@@ -418,6 +509,10 @@ function EnrolledPanel({
   handlePageChange,
   shouldReduce,
   onFeedback,
+  onWithdraw,
+  onViewSessions,
+  expandedScheduleProgramId,
+  sessionSchedule,
   getTabCount,
 }: Readonly<EnrolledPanelProps>) {
   const summaryCards = [
@@ -546,7 +641,7 @@ function EnrolledPanel({
     if (enrollments.length === 0) {
       return <EnrolledEmptyState statusFilter={statusFilter} handleStatusFilterChange={handleStatusFilterChange} />
     }
-    return <EnrolledPanelContent enrollments={enrollments} pagination={pagination} handlePageChange={handlePageChange} shouldReduce={shouldReduce} onFeedback={onFeedback} />
+    return <EnrolledPanelContent enrollments={enrollments} pagination={pagination} handlePageChange={handlePageChange} shouldReduce={shouldReduce} onFeedback={onFeedback} onWithdraw={onWithdraw} onViewSessions={onViewSessions} expandedScheduleProgramId={expandedScheduleProgramId} sessionSchedule={sessionSchedule} />
   }
 }
 

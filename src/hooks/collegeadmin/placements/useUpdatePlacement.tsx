@@ -21,6 +21,7 @@ interface UpdatePlacementForm {
     internship_duration: string;
     internship_start_date: string;
     offer_letter_url: string;
+    joining_letter_url: string;
 }
 
 type FormErrors = Partial<Record<keyof UpdatePlacementForm, string>>;
@@ -34,6 +35,7 @@ const INITIAL_FORM: UpdatePlacementForm = {
     internship_duration: "",
     internship_start_date: "",
     offer_letter_url: "",
+    joining_letter_url: "",
 };
 
 // ========================
@@ -51,7 +53,7 @@ function buildDiffPayload(
     }
     if (orig?.fulltime_package !== formData.fulltime_package) {
         payload.fulltime_package =
-            formData.fulltime_package !== "" ? Number(formData.fulltime_package) : null;
+            formData.fulltime_package === "" ? null : Number(formData.fulltime_package);
     }
     if (orig?.fulltime_designation.trim() !== formData.fulltime_designation.trim()) {
         payload.fulltime_designation = formData.fulltime_designation.trim() || null;
@@ -61,7 +63,7 @@ function buildDiffPayload(
     }
     if (orig?.internship_stipend !== formData.internship_stipend) {
         payload.internship_stipend =
-            formData.internship_stipend !== "" ? Number(formData.internship_stipend) : null;
+            formData.internship_stipend === "" ? null : Number(formData.internship_stipend);
     }
     if (orig?.internship_duration.trim() !== formData.internship_duration.trim()) {
         payload.internship_duration = formData.internship_duration.trim() || null;
@@ -71,6 +73,9 @@ function buildDiffPayload(
     }
     if (orig?.offer_letter_url.trim() !== formData.offer_letter_url.trim()) {
         payload.offer_letter_url = formData.offer_letter_url.trim() || null;
+    }
+    if (orig?.joining_letter_url.trim() !== formData.joining_letter_url.trim()) {
+        payload.joining_letter_url = formData.joining_letter_url.trim() || null;
     }
 
     return payload;
@@ -138,22 +143,23 @@ export const useUpdatePlacement = (onSuccess: () => void) => {
         const form: UpdatePlacementForm = {
             placement_type: placement.placement_type || "",
             fulltime_package:
-                placement.fulltime_package !== null
-                    ? String(placement.fulltime_package)
-                    : "",
+                placement.fulltime_package === null
+                    ? ""
+                    : String(placement.fulltime_package),
             fulltime_designation: placement.fulltime_designation || "",
             fulltime_joining_date: placement.fulltime_joining_date
                 ? placement.fulltime_joining_date.split("T")[0]
                 : "",
             internship_stipend:
-                placement.internship_stipend !== null
-                    ? String(placement.internship_stipend)
-                    : "",
+                placement.internship_stipend === null
+                    ? ""
+                    : String(placement.internship_stipend),
             internship_duration: placement.internship_duration || "",
             internship_start_date: placement.internship_start_date
                 ? placement.internship_start_date.split("T")[0]
                 : "",
             offer_letter_url: placement.offer_letter_url || "",
+            joining_letter_url: placement.joining_letter_url || "",
         };
         setFormData(form);
         setOriginalData({ ...form });

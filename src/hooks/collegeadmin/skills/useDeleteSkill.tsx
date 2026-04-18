@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 import { ApiError } from "@/lib/api";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast, getErrorTitle } from "@/utils/ToastUtils";
@@ -14,10 +15,10 @@ export const useDeleteSkill = (onSuccess?: () => void) => {
     const mutation = useMutation({
         mutationFn: (skillId: string) => CollegeAdminService.deleteSkill(skillId),
         onMutate: async (skillId: string) => {
-            await queryClient.cancelQueries({ queryKey: ["skills"] });
+            await queryClient.cancelQueries({ queryKey: queryKeys.skills.all() });
 
             const queries = queryClient.getQueriesData<unknown>({
-                queryKey: ["skills", "list"],
+                queryKey: queryKeys.skills.all(),
             });
 
             const snapshots = new Map<readonly unknown[], unknown>();
@@ -71,7 +72,7 @@ export const useDeleteSkill = (onSuccess?: () => void) => {
             onSuccess?.();
         },
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ["skills"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.skills.all() });
         },
     });
 

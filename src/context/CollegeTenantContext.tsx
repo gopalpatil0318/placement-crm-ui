@@ -119,7 +119,26 @@ export function CollegeTenantProvider({
 
   return (
     <CollegeTenantContext.Provider value={value}>
-      {children}
+      {/* College subdomain failed to resolve — show error instead of children */}
+      {shouldResolve && !isLoading && queryError ? (
+        <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+          <div className="text-center max-w-md">
+            <h1 className="text-6xl font-bold text-gray-200 dark:text-gray-700">404</h1>
+            <h2 className="mt-4 text-xl font-semibold text-gray-900 dark:text-gray-100">
+              College Not Found
+            </h2>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
+              The college portal <strong className="text-gray-800 dark:text-gray-200">{subdomain}.placenex.in</strong> doesn&apos;t exist or is not registered.
+            </p>
+            <a
+              href={MARKETING_URL}
+              className="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              Go to Placenex
+            </a>
+          </div>
+        </div>
+      ) : children}
     </CollegeTenantContext.Provider>
   )
 }

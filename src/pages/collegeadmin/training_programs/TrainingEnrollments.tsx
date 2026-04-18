@@ -2,7 +2,9 @@ import { useState, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import EnrollmentTable from "@/components/collegeadmin/training_programs/EnrollmentTable";
 import UpdateEnrollmentModal from "@/components/collegeadmin/training_programs/UpdateEnrollmentModal";
+import BulkActionBar from "@/components/collegeadmin/training_programs/BulkActionBar";
 import { useUpdateEnrollment } from "@/hooks/collegeadmin/training_programs/useUpdateEnrollment";
+import { useBulkUpdateEnrollments } from "@/hooks/collegeadmin/training_programs/useBulkUpdateEnrollments";
 import { type Enrollment } from "@/hooks/collegeadmin/training_programs/useViewEnrollments";
 import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
@@ -12,15 +14,15 @@ const TrainingEnrollments = () => {
     const [programName, setProgramName] = useState("");
     const [editingStudent, setEditingStudent] = useState<{ name: string; email: string; totalSessions?: number } | null>(null);
 
-    const handleProgramLoaded = useCallback((name: string, totalSessions?: number) => {
+    const handleProgramLoaded = useCallback((name: string) => {
         setProgramName(name);
-        // totalSessions stored via editingStudent when editing
-        void totalSessions;
     }, []);
 
     const enrollment = useUpdateEnrollment(programId!, () => {
         setEditingStudent(null);
     });
+
+    const bulk = useBulkUpdateEnrollments(programId!);
 
     const handleEditEnrollment = useCallback((e: Enrollment, totalSessions?: number) => {
         setEditingStudent({
@@ -47,6 +49,16 @@ const TrainingEnrollments = () => {
                     programId={programId!}
                     onEditEnrollment={handleEditEnrollment}
                     onProgramLoaded={handleProgramLoaded}
+                    selectedIds={bulk.selectedIds}
+                    onToggleId={bulk.toggleId}
+                    onToggleAll={bulk.toggleAll}
+                />
+
+                <BulkActionBar
+                    selectedCount={bulk.selectedIds.size}
+                    isUpdating={bulk.isBulkUpdating}
+                    onApply={bulk.applyBulkAction}
+                    onClear={bulk.clearSelection}
                 />
 
                 <UpdateEnrollmentModal
@@ -56,7 +68,7 @@ const TrainingEnrollments = () => {
                     loading={enrollment.loading}
                     studentName={editingStudent?.name}
                     studentEmail={editingStudent?.email}
-                    totalSessions={editingStudent?.totalSessions}
+                    currentStatus={enrollment.currentStatus}
                     handleChange={enrollment.handleChange}
                     handleSubmit={enrollment.handleSubmit}
                     handleClose={enrollment.handleClose}

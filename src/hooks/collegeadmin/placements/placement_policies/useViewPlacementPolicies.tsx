@@ -84,9 +84,8 @@ export const useViewPlacementPolicies = () => {
         totalPages: 0,
     };
     const loading = isLoading || isFetching;
-    const error = queryError
-        ? (queryError instanceof Error ? queryError.message : "Failed to load policies")
-        : null;
+    const errorMessage = queryError instanceof Error ? queryError.message : "Failed to load policies";
+    const error = queryError ? errorMessage : null;
 
     // ── Next-page prefetch ──
     useEffect(() => {

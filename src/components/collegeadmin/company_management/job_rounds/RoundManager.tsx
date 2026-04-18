@@ -627,7 +627,7 @@ const StatusChangeModal = ({
             titleIcon={<Icon className={`h-5 w-5 ${config.iconColor}`} />}
             size="md"
         >
-            <div className="space-y-4">
+            <div className="p-6 space-y-4">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                     Are you sure you want to{" "}
                     <span className="font-semibold text-gray-800 dark:text-gray-100">{config.confirmLabel.toLowerCase()}</span>{" "}
@@ -648,7 +648,7 @@ const StatusChangeModal = ({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-800">
                 <button
                     type="button"
                     onClick={onClose}
@@ -700,7 +700,7 @@ const AddRoundModal = ({
             titleIcon={<ListOrdered className="h-5 w-5 text-blue-600" />}
             size="md"
         >
-            <div className="space-y-5">
+            <div className="p-6 space-y-5">
                 {/* Round Name */}
                 <FloatingInput
                     label="Round Name"
@@ -819,7 +819,7 @@ const EditRoundModal = ({
             titleIcon={<Pencil className="h-5 w-5 text-amber-600" />}
             size="md"
         >
-            <div className="space-y-5">
+            <div className="p-6 space-y-5">
                 {/* Round Name */}
                 <FloatingInput
                     label="Round Name"

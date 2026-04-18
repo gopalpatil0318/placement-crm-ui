@@ -29,43 +29,100 @@ export interface PendingProfile {
 export interface PendingExperience {
     experience_id: string;
     student_id: string;
+    college_id: string;
     company_name: string;
+    company_website: string | null;
     position_title: string;
     employment_type: string;
+    job_description: string | null;
+    responsibilities: string | null;
+    technologies_used: string[] | null;
+    work_location: string | null;
+    work_mode: string | null;
     start_date: string;
     end_date: string | null;
+    is_current: boolean;
+    duration_months: number | null;
+    offer_letter_url: string | null;
+    completion_certificate_url: string | null;
+    is_verified: boolean;
     verification_status: string;
+    verified_by: string | null;
+    verified_at: string | null;
+    rejection_reason: string | null;
+    rejected_at: string | null;
+    created_at: string;
+    updated_at: string;
     first_name: string;
+    middle_name: string | null;
     last_name: string;
     student_email: string;
+    student_passout_year: number;
     dept_name: string;
 }
 
 export interface PendingAchievement {
     achievement_id: string;
     student_id: string;
+    college_id: string;
     achievement_title: string;
+    achievement_description: string | null;
     achievement_type: string;
+    issuing_organization: string | null;
+    event_name: string | null;
     achievement_level: string;
+    position_rank: string | null;
+    participants_count: number | null;
     achievement_date: string;
+    certificate_url: string | null;
+    proof_url: string | null;
+    is_verified: boolean;
     verification_status: string;
+    verified_by: string | null;
+    verified_at: string | null;
+    rejection_reason: string | null;
+    rejected_at: string | null;
+    is_featured: boolean;
+    display_order: number | null;
+    created_at: string;
+    updated_at: string;
     first_name: string;
+    middle_name: string | null;
     last_name: string;
     student_email: string;
+    student_passout_year: number;
     dept_name: string;
 }
 
 export interface PendingCertificate {
     certificate_id: string;
     student_id: string;
+    college_id: string;
     certificate_name: string;
-    issuing_organization: string;
+    certificate_description: string | null;
     certificate_type: string;
+    issuing_organization: string;
+    issuing_platform: string | null;
+    credential_id: string | null;
+    credential_url: string | null;
     issue_date: string;
+    expiry_date: string | null;
+    does_not_expire: boolean;
+    skills_covered: string[] | null;
+    certificate_url: string | null;
+    is_verified: boolean;
     verification_status: string;
+    verified_by: string | null;
+    verified_at: string | null;
+    rejection_reason: string | null;
+    rejected_at: string | null;
+    created_at: string;
+    updated_at: string;
     first_name: string;
+    middle_name: string | null;
     last_name: string;
     student_email: string;
+    student_passout_year: number;
     dept_name: string;
 }
 

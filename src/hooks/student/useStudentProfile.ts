@@ -4,21 +4,21 @@ import { queryKeys } from "@/lib/queryKeys";
 import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
 import { StudentProfileService } from "@/services/student/student.services";
-import type { FullProfileResponse, Skill } from "@/types/student";
+import type { FullProfileResponse } from "@/types/student";
 
-export const useStudentProfile = () => {
+export const useStudentProfile = (enabled = true) => {
 
     const { data, isLoading, error, refetch } = useQuery<FullProfileResponse>({
         queryKey: queryKeys.studentPortal.fullProfile(),
         queryFn: () => StudentProfileService.getFullProfile(),
         staleTime: 5 * 60 * 1000,
+        enabled,
     });
 
-    const errorMessage = error
-        ? error instanceof ApiError
-            ? error.message
-            : "Failed to load profile data"
-        : null;
+    let errorMessage: string | null = null;
+    if (error) {
+        errorMessage = error instanceof ApiError ? error.message : "Failed to load profile data";
+    }
 
     useEffect(() => {
         if (errorMessage) {
@@ -32,7 +32,7 @@ export const useStudentProfile = () => {
         personalInfo: data?.personal_information ?? null,
         academicInfo: data?.academic_information ?? null,
         semesterGrades: data?.semester_grades ?? [],
-        skills: (data?.skills ?? []) as Skill[],
+        skills: data?.skills ?? [],
         projects: data?.projects ?? [],
         experiences: data?.experience ?? [],
         achievements: data?.achievements ?? [],

@@ -135,6 +135,11 @@ export default memo(function OverrideRequestCard({ override }: Readonly<Override
             <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
             {OVERRIDE_STATUS_LABELS[override.override_status]}
           </span>
+          {(override.request_attempt ?? 1) >= 2 && (
+            <span className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
+              Attempt 2/2
+            </span>
+          )}
         </div>
 
         {/* Job Meta Chips */}
@@ -245,10 +250,12 @@ export default memo(function OverrideRequestCard({ override }: Readonly<Override
             </span>
           )}
           {override.override_status === "rejected" && (
-            <span className="text-[11px] text-gray-400 dark:text-gray-500 font-medium flex items-center gap-1">
-              <ShieldX size={12} />
-              No further action
-            </span>
+          <span className="text-[11px] text-gray-400 dark:text-gray-500 font-medium flex items-center gap-1">
+            <ShieldX size={12} />
+            {(override.request_attempt ?? 1) >= 2
+              ? "Maximum attempts reached"
+              : "You can re-request once more"}
+          </span>
           )}
         </div>
       </div>

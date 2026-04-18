@@ -732,7 +732,7 @@ const DeleteConfirmModal = ({
             titleIcon={<Trash2 className="h-5 w-5 text-red-600" />}
             size="md"
         >
-            <div className="space-y-4">
+            <div className="p-6 space-y-4">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                     Are you sure you want to delete{" "}
                     <span className="font-semibold text-gray-800 dark:text-gray-100">

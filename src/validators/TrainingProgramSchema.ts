@@ -33,9 +33,10 @@ export const PROGRAM_TYPE_LABELS: Record<ProgramType, string> = {
 // ========================
 
 export const PROGRAM_STATUS_OPTIONS = [
+    "draft",
     "upcoming",
-    "enrollment_open",
     "in_progress",
+    "on_hold",
     "completed",
     "cancelled",
 ] as const;
@@ -43,9 +44,10 @@ export const PROGRAM_STATUS_OPTIONS = [
 export type ProgramStatus = (typeof PROGRAM_STATUS_OPTIONS)[number];
 
 export const PROGRAM_STATUS_LABELS: Record<ProgramStatus, string> = {
+    draft: "Draft",
     upcoming: "Upcoming",
-    enrollment_open: "Enrollment Open",
     in_progress: "In Progress",
+    on_hold: "On Hold",
     completed: "Completed",
     cancelled: "Cancelled",
 };
@@ -54,9 +56,10 @@ export const PROGRAM_STATUS_COLORS: Record<
     ProgramStatus,
     { bg: string; text: string; dot: string }
 > = {
+    draft:           { bg: "bg-slate-50 dark:bg-slate-900/20",     text: "text-slate-600 dark:text-slate-400",     dot: "bg-slate-400" },
     upcoming:        { bg: "bg-blue-50 dark:bg-blue-900/20",      text: "text-blue-700 dark:text-blue-400",      dot: "bg-blue-500" },
-    enrollment_open: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500" },
     in_progress:     { bg: "bg-amber-50 dark:bg-amber-900/20",    text: "text-amber-700 dark:text-amber-400",    dot: "bg-amber-500" },
+    on_hold:         { bg: "bg-orange-50 dark:bg-orange-900/20",  text: "text-orange-700 dark:text-orange-400",  dot: "bg-orange-500" },
     completed:       { bg: "bg-gray-100 dark:bg-gray-800",         text: "text-gray-600 dark:text-gray-400",      dot: "bg-gray-400" },
     cancelled:       { bg: "bg-red-50 dark:bg-red-900/20",        text: "text-red-600 dark:text-red-400",        dot: "bg-red-400" },
 };
@@ -94,16 +97,58 @@ export const ENROLLMENT_STATUS_COLORS: Record<
     failed:      { bg: "bg-red-50 dark:bg-red-900/20",        text: "text-red-600 dark:text-red-400",        dot: "bg-red-400" },
 };
 
+export const ENROLLMENT_VALID_TRANSITIONS: Record<EnrollmentStatus, EnrollmentStatus[]> = {
+    enrolled: ["dropped"],
+    in_progress: ["completed", "dropped", "failed"],
+    completed: ["in_progress"],
+    dropped: ["in_progress"],
+    failed: ["in_progress"],
+};
+
+// ========================
+// PAYMENT STATUS CONFIG
+// ========================
+
+export const PAYMENT_STATUS_OPTIONS = [
+    "not_applicable",
+    "pending",
+    "paid",
+    "waived",
+    "refunded",
+] as const;
+
+export type PaymentStatus = (typeof PAYMENT_STATUS_OPTIONS)[number];
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+    not_applicable: "N/A",
+    pending: "Pending",
+    paid: "Paid",
+    waived: "Waived",
+    refunded: "Refunded",
+};
+
+export const PAYMENT_STATUS_COLORS: Record<
+    PaymentStatus,
+    { bg: string; text: string; dot: string }
+> = {
+    not_applicable: { bg: "bg-gray-100 dark:bg-gray-800",          text: "text-gray-600 dark:text-gray-400",      dot: "bg-gray-400" },
+    pending:        { bg: "bg-amber-50 dark:bg-amber-900/20",      text: "text-amber-700 dark:text-amber-400",    dot: "bg-amber-500" },
+    paid:           { bg: "bg-emerald-50 dark:bg-emerald-900/20",  text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500" },
+    waived:         { bg: "bg-blue-50 dark:bg-blue-900/20",        text: "text-blue-700 dark:text-blue-400",      dot: "bg-blue-500" },
+    refunded:       { bg: "bg-red-50 dark:bg-red-900/20",          text: "text-red-600 dark:text-red-400",        dot: "bg-red-400" },
+};
+
 // ========================
 // STATUS TRANSITIONS (from API state machine)
 // ========================
 
 export const PROGRAM_STATUS_TRANSITIONS: Record<ProgramStatus, ProgramStatus[]> = {
-    upcoming: ["enrollment_open", "cancelled"],
-    enrollment_open: ["in_progress", "cancelled"],
-    in_progress: ["completed", "cancelled"],
-    completed: [],
-    cancelled: ["upcoming"],
+    draft: ["upcoming", "cancelled"],
+    upcoming: ["in_progress", "on_hold", "cancelled"],
+    in_progress: ["on_hold", "completed", "cancelled"],
+    on_hold: ["in_progress", "cancelled"],
+    completed: ["in_progress"],
+    cancelled: ["draft"],
 };
 
 // ========================
@@ -167,6 +212,23 @@ export const createTrainingProgramSchema = z
                 { message: "Max enrollment must be between 1 and 10,000" },
             ),
         enrollment_deadline: z.string().optional().or(z.literal("")),
+        program_fee: z
+            .string()
+            .optional()
+            .or(z.literal(""))
+            .refine(
+                (val) => !val || Number(val) >= 0,
+                { message: "Program fee cannot be negative" },
+            ),
+        fee_currency: z.string().max(10).optional().or(z.literal("")),
+        min_attendance_pct: z
+            .string()
+            .optional()
+            .or(z.literal(""))
+            .refine(
+                (val) => !val || (Number(val) >= 0 && Number(val) <= 100),
+                { message: "Minimum attendance must be between 0 and 100" },
+            ),
     })
     .refine(
         (data) => {
@@ -237,6 +299,23 @@ export const updateTrainingProgramSchema = z
                 { message: "Max enrollment must be between 1 and 10,000" },
             ),
         enrollment_deadline: z.string().optional().or(z.literal("")),
+        program_fee: z
+            .string()
+            .optional()
+            .or(z.literal(""))
+            .refine(
+                (val) => !val || Number(val) >= 0,
+                { message: "Program fee cannot be negative" },
+            ),
+        fee_currency: z.string().max(10).optional().or(z.literal("")),
+        min_attendance_pct: z
+            .string()
+            .optional()
+            .or(z.literal(""))
+            .refine(
+                (val) => !val || (Number(val) >= 0 && Number(val) <= 100),
+                { message: "Minimum attendance must be between 0 and 100" },
+            ),
     })
     .refine(
         (data) => {
@@ -252,15 +331,7 @@ export type UpdateTrainingProgramInput = z.infer<typeof updateTrainingProgramSch
 
 export const updateEnrollmentSchema = z
     .object({
-        sessions_attended: z
-            .string()
-            .optional()
-            .or(z.literal("")),
         completion_status: z.enum(ENROLLMENT_STATUS_OPTIONS).optional(),
-        completion_percentage: z
-            .string()
-            .optional()
-            .or(z.literal("")),
         certificate_issued: z.boolean().optional(),
         certificate_url: z
             .string()
@@ -271,6 +342,15 @@ export const updateEnrollmentSchema = z
             )
             .optional()
             .or(z.literal("")),
+        payment_status: z.enum(PAYMENT_STATUS_OPTIONS).optional(),
+        amount_paid: z
+            .string()
+            .optional()
+            .or(z.literal(""))
+            .refine(
+                (val) => !val || Number(val) >= 0,
+                { message: "Amount paid cannot be negative" },
+            ),
     })
     .refine(
         (data) => {
@@ -310,6 +390,9 @@ export interface StudentAvailableProgram {
     enrollment_deadline: string | null
     enrolled_count: number
     spots_remaining: number | null
+    program_fee: number
+    fee_currency: string
+    min_attendance_pct: number
     is_deadline_passed: boolean
     created_by_name: string | null
     created_at: string
@@ -328,6 +411,9 @@ export interface StudentEnrollment {
     end_date: string | null
     total_sessions: number | null
     session_duration_hours: number | null
+    program_fee: number
+    fee_currency: string
+    min_attendance_pct: number
     enrolled_at: string
     sessions_attended: number
     completion_status: EnrollmentStatus
@@ -337,6 +423,8 @@ export interface StudentEnrollment {
     student_feedback: string | null
     student_rating: number | null
     completed_at: string | null
+    payment_status: PaymentStatus
+    amount_paid: number
     has_submitted_feedback: boolean
     attendance_percentage: number | null
     created_at: string
@@ -406,3 +494,157 @@ export const ENROLLMENT_SORT_OPTIONS = [
 export const ENROLLMENT_STATUS_TABS = ["all", ...ENROLLMENT_STATUS_OPTIONS] as const;
 
 export type EnrollmentStatusFilter = (typeof ENROLLMENT_STATUS_TABS)[number];
+
+// ========================
+// SESSION TYPES
+// ========================
+
+export interface TrainingSession {
+    session_id: string
+    program_id: string
+    session_number: number
+    session_date: string | null
+    session_topic: string | null
+    venue: string | null
+    created_by: string | null
+    created_at: string
+    updated_at: string
+    present_count?: number
+    absent_count?: number
+    total_marked?: number
+    total_enrolled?: number
+}
+
+export interface TrainingSessionsResponse {
+    sessions: TrainingSession[]
+    total_enrolled: number
+}
+
+export interface StudentSessionSchedule {
+    program_id: string
+    program_name: string
+    program_status: ProgramStatus
+    total_sessions: number
+    enrollment_id: string
+    completion_status: EnrollmentStatus
+    sessions_attended: number
+    attendance_percentage: number
+    sessions: {
+        session_id: string
+        session_number: number
+        session_date: string | null
+        session_topic: string | null
+        venue: string | null
+        present: boolean | null
+        marked_at: string | null
+    }[]
+}
+
+// ========================
+// ATTENDANCE TYPES
+// ========================
+
+export interface AttendanceRecord {
+    enrollment_id: string
+    present: boolean
+}
+
+export interface AttendanceResult {
+    session_id: string
+    session_number: number
+    program_id: string
+    total_marked: number
+    present_count: number
+    absent_count: number
+}
+
+// ========================
+// BULK UPDATE TYPES
+// ========================
+
+export interface BulkEnrollmentUpdate {
+    enrollment_id: string
+    completion_status?: EnrollmentStatus
+    sessions_attended?: number
+    payment_status?: PaymentStatus
+    amount_paid?: number
+    certificate_issued?: boolean
+    certificate_url?: string
+}
+
+export interface BulkUpdateResult {
+    program_id: string
+    total: number
+    updated: number
+    failed: number
+    results: { enrollment_id: string; status: string }[]
+    errors: { enrollment_id: string; error: string }[]
+}
+
+// ========================
+// STUDENT TRAINING REPORT
+// ========================
+
+export interface StudentTrainingReport {
+    student: {
+        student_id: string
+        student_name: string
+        student_email: string
+        dept_id: string
+        passout_year: number
+    }
+    enrollments: (StudentEnrollment & {
+        attendance_percentage: number | null
+    })[]
+    summary: {
+        total_enrollments: number
+        completed: number
+        in_progress: number
+        enrolled: number
+        dropped: number
+        failed: number
+        avg_completion_percentage: number
+        total_amount_paid: number
+        certificates_earned: number
+    }
+}
+
+// ========================
+// SESSION ZOD SCHEMAS (form validation)
+// ========================
+
+export const createSessionSchema = z.object({
+    session_number: z
+        .string()
+        .min(1, "Session number is required")
+        .refine(
+            (val) => Number(val) >= 1 && Number(val) <= 500 && Number.isInteger(Number(val)),
+            { message: "Session number must be between 1 and 500" },
+        ),
+    session_date: z.string().optional().or(z.literal("")),
+    session_topic: z.string().max(500, "Topic cannot exceed 500 characters").optional().or(z.literal("")),
+    venue: z.string().max(300, "Venue cannot exceed 300 characters").optional().or(z.literal("")),
+});
+
+export type CreateSessionInput = z.infer<typeof createSessionSchema>;
+
+export const updateSessionSchema = z
+    .object({
+        session_number: z
+            .string()
+            .optional()
+            .or(z.literal(""))
+            .refine(
+                (val) => !val || (Number(val) >= 1 && Number(val) <= 500 && Number.isInteger(Number(val))),
+                { message: "Session number must be between 1 and 500" },
+            ),
+        session_date: z.string().optional().or(z.literal("")),
+        session_topic: z.string().max(500, "Topic cannot exceed 500 characters").optional().or(z.literal("")),
+        venue: z.string().max(300, "Venue cannot exceed 300 characters").optional().or(z.literal("")),
+    })
+    .refine(
+        (data) => Object.values(data).some((v) => v !== undefined && v !== "" && v !== null),
+        { message: "At least one field must be provided" },
+    );
+
+export type UpdateSessionInput = z.infer<typeof updateSessionSchema>;

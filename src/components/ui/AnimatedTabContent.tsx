@@ -4,11 +4,11 @@ import { tabContentVariants } from "@/lib/animations"
 
 interface AnimatedTabContentProps {
   /** Current active tab key — used as the animation key */
-  activeTab: string
+  readonly activeTab: string
   /** Ordered array of all tab keys — used to determine slide direction */
-  tabKeys: readonly string[]
-  children: React.ReactNode
-  className?: string
+  readonly tabKeys: readonly string[]
+  readonly children: React.ReactNode
+  readonly className?: string
 }
 
 /**

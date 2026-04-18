@@ -16,6 +16,8 @@ import {
     APPROVAL_STATUS_LABELS,
     APPROVAL_STATUS_COLORS,
     SORT_OPTIONS_QUESTIONS,
+    INTERVIEW_ROUND_TYPE_OPTIONS,
+    INTERVIEW_ROUND_TYPE_LABELS,
     type InterviewQuestion,
 } from "@/validators/FeedbackSchema";
 
@@ -93,6 +95,16 @@ function TopicBadge({ topic }: Readonly<{ topic: string | null }>) {
         <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">
             <Tag className="h-3 w-3" />
             {topic}
+        </span>
+    );
+}
+
+function RoundTypeBadge({ roundType }: Readonly<{ roundType: string | null }>) {
+    if (!roundType) return null;
+    const label = INTERVIEW_ROUND_TYPE_LABELS[roundType] ?? roundType;
+    return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400">
+            {label}
         </span>
     );
 }
@@ -195,9 +207,10 @@ function QuestionCard({
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                    {/* Header: Topic + Status */}
+                    {/* Header: Topic + Round Type + Status */}
                     <div className="flex flex-wrap items-center gap-2 mb-2">
                         <TopicBadge topic={item.topic} />
+                        <RoundTypeBadge roundType={item.round_type} />
                         <StatusBadge isApproved={item.is_approved} />
                     </div>
 
@@ -443,6 +456,7 @@ export default function InterviewQuestionManager() {
         approvalFilter,
         companyFilter,
         topicFilter,
+        roundTypeFilter,
         sortIndex,
         handleSearchChange,
         handleTopicFilterChange,
@@ -450,6 +464,7 @@ export default function InterviewQuestionManager() {
         handleLimitChange,
         handleApprovalFilterChange,
         handleCompanyFilterChange,
+        handleRoundTypeFilterChange,
         handleSortChange,
     } = useViewInterviewQuestions();
 
@@ -475,7 +490,7 @@ export default function InterviewQuestionManager() {
     const pendingCount = useMemo(() => questions.filter((q) => !q.is_approved).length, [questions]);
     const approvedCount = useMemo(() => questions.filter((q) => q.is_approved).length, [questions]);
 
-    const hasFilters = !!(search || companyFilter || topicFilter || approvalFilter !== "pending");
+    const hasFilters = !!(search || companyFilter || topicFilter || roundTypeFilter || approvalFilter !== "pending");
 
     // Selection handlers
     const toggleSelect = useCallback((id: string) => {
@@ -607,6 +622,20 @@ export default function InterviewQuestionManager() {
                         ))}
                     </datalist>
                 </div>
+
+                {/* Round type filter */}
+                <select
+                    value={roundTypeFilter}
+                    onChange={(e) => handleRoundTypeFilterChange(e.target.value)}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                >
+                    <option value="">All Rounds</option>
+                    {INTERVIEW_ROUND_TYPE_OPTIONS.map((rt) => (
+                        <option key={rt} value={rt}>
+                            {INTERVIEW_ROUND_TYPE_LABELS[rt]}
+                        </option>
+                    ))}
+                </select>
 
                 {/* Sort */}
                 <select

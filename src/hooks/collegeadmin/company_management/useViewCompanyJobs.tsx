@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { queryKeys } from "@/lib/queryKeys";
+import { useYearFilter } from "@/context/YearFilterContext";
 
 // ========================
 // TYPES
@@ -20,6 +21,9 @@ export interface JobItem {
     positions_count: number;
     applications_count: number;
     created_at: string;
+    tier_id: string | null;
+    tier_name: string | null;
+    tier_level: number | null;
 }
 
 interface Pagination {
@@ -34,6 +38,8 @@ interface Pagination {
 // ========================
 
 export const useViewCompanyJobs = (companyId: string) => {
+    const { selectedYear } = useYearFilter();
+
     // ── Local filter / pagination state ──
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
@@ -45,16 +51,20 @@ export const useViewCompanyJobs = (companyId: string) => {
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // ── React Query ──
-    const queryFilters: Record<string, unknown> = {
-        company_id: companyId,
-        page,
-        limit,
-        sort_by: "created_at",
-        sort_order: "desc",
-    };
-    if (debouncedSearch) queryFilters.search = debouncedSearch;
-    if (statusFilter) queryFilters.job_status = statusFilter;
-    if (typeFilter) queryFilters.job_type = typeFilter;
+    const queryFilters = useMemo(() => {
+        const filters: Record<string, unknown> = {
+            company_id: companyId,
+            page,
+            limit,
+            passout_year: selectedYear,
+            sort_by: "created_at",
+            sort_order: "desc",
+        };
+        if (debouncedSearch) filters.search = debouncedSearch;
+        if (statusFilter) filters.job_status = statusFilter;
+        if (typeFilter) filters.job_type = typeFilter;
+        return filters;
+    }, [companyId, page, limit, selectedYear, debouncedSearch, statusFilter, typeFilter]);
 
     const { data, isLoading, isFetching, error: queryError } = useQuery({
         queryKey: queryKeys.jobs.all(queryFilters),
@@ -67,9 +77,8 @@ export const useViewCompanyJobs = (companyId: string) => {
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
     const loading = isLoading;
     const fetching = isFetching;
-    const error = queryError
-        ? (queryError instanceof Error ? queryError.message : "Failed to load jobs")
-        : null;
+    const errorMessage = queryError instanceof Error ? queryError.message : "Failed to load jobs";
+    const error = queryError ? errorMessage : null;
 
     // ── Handlers ──
 

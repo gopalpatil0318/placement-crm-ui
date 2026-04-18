@@ -172,6 +172,7 @@ export interface MyOverrideRequest {
   override_status: OverrideStatus;
   request_reason: string;
   ineligibility_reasons: string;
+  request_attempt: number;
   review_notes: string | null;
   rejection_reason: string | null;
   reviewed_by_name: string | null;

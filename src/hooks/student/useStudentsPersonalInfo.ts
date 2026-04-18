@@ -42,7 +42,7 @@ const initialFormData: PersonalInfoData = {
 
 type FormErrors = Partial<Record<string, string>>;
 
-export const usePersonalInfo = () => {
+export const usePersonalInfo = (options?: { onSaveSuccess?: () => void }) => {
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState<PersonalInfoData>(initialFormData);
     const [errors, setErrors] = useState<FormErrors>({});
@@ -138,6 +138,7 @@ export const usePersonalInfo = () => {
                 title: "Success",
                 description: response.message || "Personal info saved successfully",
             });
+            options?.onSaveSuccess?.();
         },
         onError: (error) => {
             showToast({

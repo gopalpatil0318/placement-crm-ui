@@ -24,8 +24,8 @@ export function useMyPlacements(initialLimit = 10) {
 
   // ── Build query filters ──
   const queryFilters = useMemo<PlacementFilters>(() => ({
-    ...(statusFilter !== "all" ? { placement_status: statusFilter } : {}),
-    ...(typeFilter !== "all" ? { placement_type: typeFilter } : {}),
+    ...(statusFilter === "all" ? {} : { placement_status: statusFilter }),
+    ...(typeFilter === "all" ? {} : { placement_type: typeFilter }),
     sort_by: sortBy,
     sort_order: sortOrder,
     page,
@@ -46,7 +46,9 @@ export function useMyPlacements(initialLimit = 10) {
     total: 0,
     offered: 0,
     accepted: 0,
-    rejected: 0,
+    declined: 0,
+    revoked: 0,
+    expired: 0,
     joined: 0,
     cancelled: 0,
   }

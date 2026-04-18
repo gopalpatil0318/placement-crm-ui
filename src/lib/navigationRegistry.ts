@@ -66,6 +66,8 @@ export const collegeAdminNav: NavEntry[] = [
   { label: "All Users", path: "/college/view-users", section: "Users", icon: GraduationCap, keywords: ["user", "admin", "tpo", "tpc"] },
   { label: "Create Users", path: "/college/create-user", section: "Users", icon: GraduationCap, keywords: ["new user", "add user"] },
   { label: "Change Password", path: "/college/change-password", section: "Settings", icon: Settings, keywords: ["password", "security"] },
+  { label: "Company Tiers", path: "/college/company-tiers", section: "Settings", icon: Settings, keywords: ["tier", "salary", "drive", "classification", "dream"] },
+  { label: "Placement Settings", path: "/college/placement-settings", section: "Settings", icon: Settings, keywords: ["settings", "placement", "rules", "policy", "offers"] },
 ]
 
 // ─── Student Navigation ─────────────────────────────────────────────────────────

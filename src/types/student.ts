@@ -241,6 +241,11 @@ export interface CompletionSection {
 export interface ProfileCompletion {
     total_percentage: number;
     is_complete: boolean;
+    profile_complete: boolean;
+    profile_approval_status: string | null;
+    profile_rejection_reason: string | null;
+    rejected_at: string | null;
+    profile_is_approved: boolean;
     sections: {
         personal_information: CompletionSection;
         academic_information: CompletionSection;
@@ -323,9 +328,8 @@ export interface ActivitiesResponse {
 export interface Skill {
     skill_id: string;
     skill_name: string;
-    skill_category?: string;
+    skill_category: string;
     proficiency_level?: "beginner" | "intermediate" | "advanced" | "expert";
-    name?: string;
     student_count?: number;
     created_at?: string;
     updated_at?: string;

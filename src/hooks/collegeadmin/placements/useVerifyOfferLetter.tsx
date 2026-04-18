@@ -14,7 +14,7 @@ export const useVerifyOfferLetter = (onSuccess: () => void) => {
             payload,
         }: {
             placementId: string;
-            payload: { offer_letter_verified: boolean; remarks?: string };
+            payload: { action: "approved" | "rejected"; rejection_reason?: string };
         }) => CollegeAdminService.verifyOfferLetter(placementId, payload),
         onSuccess: (response, { payload }) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.placements.all() });
@@ -23,9 +23,9 @@ export const useVerifyOfferLetter = (onSuccess: () => void) => {
                 title: "Success",
                 description:
                     response?.message ||
-                    (payload.offer_letter_verified
+                    (payload.action === "approved"
                         ? "Offer letter verified"
-                        : "Verification removed"),
+                        : "Offer letter rejected"),
             });
             onSuccess();
         },
@@ -45,16 +45,18 @@ export const useVerifyOfferLetter = (onSuccess: () => void) => {
     const verifyOffer = useCallback(
         (
             placementId: string,
-            verified: boolean,
-            remarks?: string,
+            action: "approved" | "rejected",
+            rejectionReason?: string,
         ) => {
             if (mutation.isPending) return;
 
             const payload: {
-                offer_letter_verified: boolean;
-                remarks?: string;
-            } = { offer_letter_verified: verified };
-            if (remarks?.trim()) payload.remarks = remarks.trim();
+                action: "approved" | "rejected";
+                rejection_reason?: string;
+            } = { action };
+            if (action === "rejected" && rejectionReason?.trim()) {
+                payload.rejection_reason = rejectionReason.trim();
+            }
 
             mutation.mutate({ placementId, payload });
         },

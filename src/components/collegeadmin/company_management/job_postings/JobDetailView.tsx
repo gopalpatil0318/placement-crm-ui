@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import TierBadge from "@/components/collegeadmin/TierBadge";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import AnimatedTabContent from "@/components/ui/AnimatedTabContent";
 import {
@@ -37,7 +38,7 @@ import DenialsManager from "@/components/collegeadmin/company_management/eligibl
 import OverrideManager from "@/components/collegeadmin/company_management/overrides/OverrideManager";
 import JobPlacementsTab from "@/components/collegeadmin/company_management/job_postings/JobPlacementsTab";
 import { useEligibleStudents } from "@/hooks/collegeadmin/company_management/Job_eligibility_criteria/useEligibleStudents";
-import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { useAuth } from "@/hooks/collegeadmin/useAuth";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 
 // ========================
@@ -503,7 +504,7 @@ const JobDetailView = ({ jobId, onJobLoaded }: JobDetailViewProps) => {
 
     return (
         <>
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-clip">
                 {/* ======================== HERO HEADER ======================== */}
                 <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800">
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
@@ -515,6 +516,7 @@ const JobDetailView = ({ jobId, onJobLoaded }: JobDetailViewProps) => {
                                     <span className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
                                         <Building2 className="h-3.5 w-3.5" /> {job.company_name}
                                     </span>
+                                    <TierBadge tierName={job.tier_name} tierLevel={job.tier_level} />
                                     <span className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
                                         <MapPin className="h-3.5 w-3.5" /> {job.job_location}
                                     </span>
@@ -579,7 +581,7 @@ const JobDetailView = ({ jobId, onJobLoaded }: JobDetailViewProps) => {
                 </div>
 
                 {/* ======================== TABS ======================== */}
-                <div className="px-8 border-b border-gray-100 dark:border-gray-800">
+                <div className="px-8 border-b border-gray-100 dark:border-gray-800 sticky top-16 z-20 bg-white dark:bg-gray-900">
                     <LayoutGroup>
                         <nav className="flex gap-1 overflow-x-auto -mb-px" aria-label="Job tabs">
                             {TABS.map((tab) => {
@@ -885,17 +887,9 @@ const EligibleStudentsPreview = ({
         refresh,
     } = useEligibleStudents(jobId);
 
-    // Fetch departments from API for the filter dropdown
-    const [departments, setDepartments] = useState<{ dept_id: string; dept_name: string }[]>([]);
-    useEffect(() => {
-        let cancelled = false;
-        CollegeAdminService.getDepartments({ limit: 100, is_active: true })
-            .then((res) => {
-                if (!cancelled) setDepartments(Array.isArray(res.data) ? res.data : []);
-            })
-            .catch(() => {});
-        return () => { cancelled = true; };
-    }, []);
+    // Use departments from auth context (already loaded at login)
+    const { user } = useAuth();
+    const departments = user?.departments ?? [];
     const deptOptions = departments.map((d) => d.dept_name).sort((a, b) => a.localeCompare(b));
 
     // Skeleton loading on first fetch
@@ -1101,7 +1095,7 @@ const EligibleStudentsPreview = ({
                                             </td>
                                             <td className="px-4 py-3.5">
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold ${cgpaColor}`}>
-                                                    {s.overall_cgpa?.toFixed(2) ?? "—"}
+                                                    {s.overall_cgpa == null ? "—" : Number(s.overall_cgpa).toFixed(2)}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3.5">
@@ -1146,7 +1140,7 @@ const EligibleStudentsPreview = ({
                                             {s.dept_name}
                                         </span>
                                         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold ${cgpaColor}`}>
-                                            CGPA: {s.overall_cgpa?.toFixed(2) ?? "—"}
+                                            CGPA: {s.overall_cgpa == null ? "—" : Number(s.overall_cgpa).toFixed(2)}
                                         </span>
                                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${ktsColor}`}>
                                             KTs: {s.total_live_kts}

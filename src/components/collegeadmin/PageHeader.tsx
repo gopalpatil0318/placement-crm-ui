@@ -11,8 +11,8 @@ interface Breadcrumb {
 }
 
 interface PageHeaderProps {
-  title: string
-  breadcrumbs: Breadcrumb[]
+  readonly title: string
+  readonly breadcrumbs: Breadcrumb[]
 }
 
 export default function PageHeader({ title, breadcrumbs }: PageHeaderProps) {

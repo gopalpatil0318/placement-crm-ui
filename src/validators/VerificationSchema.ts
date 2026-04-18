@@ -68,7 +68,7 @@ export const verifyItemSchema = z
             (!data.rejection_reason || data.rejection_reason.trim().length < 5)
         ) {
             ctx.addIssue({
-                code: z.ZodIssueCode.custom,
+                code: "custom",
                 message: "Rejection reason is required (at least 5 characters)",
                 path: ["rejection_reason"],
             });
@@ -78,7 +78,7 @@ export const verifyItemSchema = z
 export const bulkVerifySchema = z
     .object({
         ids: z
-            .array(z.string().uuid("Invalid ID format"))
+            .array(z.uuid())
             .min(1, "Select at least one item")
             .max(100, "Maximum 100 items per bulk action"),
         action: z.enum(VERIFICATION_ACTIONS, {
@@ -97,7 +97,7 @@ export const bulkVerifySchema = z
             (!data.rejection_reason || data.rejection_reason.trim().length < 5)
         ) {
             ctx.addIssue({
-                code: z.ZodIssueCode.custom,
+                code: "custom",
                 message: "Rejection reason is required (at least 5 characters)",
                 path: ["rejection_reason"],
             });

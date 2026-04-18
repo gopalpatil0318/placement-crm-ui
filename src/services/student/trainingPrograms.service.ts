@@ -6,6 +6,7 @@ import type {
   StudentTrainingFilters,
   StudentEnrollmentFilters,
   SubmitFeedbackInput,
+  StudentSessionSchedule,
 } from "@/validators/TrainingProgramSchema"
 
 // ─── Response Shapes ────────────────────────────────────────────────────────────
@@ -90,5 +91,35 @@ export const TrainingProgramsService = {
       data,
     )
     return response.data.data
+  },
+
+  /** B14.13 — Update previously submitted feedback */
+  updateTrainingFeedback: async (
+    enrollmentId: string,
+    data: SubmitFeedbackInput,
+  ) => {
+    const response = await api.put(
+      `/student/update_training_feedback/${encodeURIComponent(enrollmentId)}`,
+      data,
+    )
+    return response.data.data
+  },
+
+  /** B14.15 — Withdraw from a training program */
+  withdrawFromTraining: async (programId: string) => {
+    const response = await api.patch(
+      `/student/withdraw_from_training/${encodeURIComponent(programId)}`,
+    )
+    return response.data.data
+  },
+
+  /** GAP-2 — Get session schedule for a program */
+  getMySessionSchedule: async (
+    programId: string,
+  ): Promise<StudentSessionSchedule> => {
+    const response = await api.get(
+      `/student/training_sessions/${encodeURIComponent(programId)}`,
+    )
+    return response.data.data as StudentSessionSchedule
   },
 }

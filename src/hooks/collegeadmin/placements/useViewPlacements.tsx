@@ -34,8 +34,19 @@ export interface PlacementListItem {
     internship_start_date: string | null;
     offer_letter_url: string | null;
     offer_letter_verified: boolean;
+    offer_letter_rejection_reason: string | null;
+    offer_letter_rejected_at: string | null;
+    offer_letter_uploaded_by: string | null;
     verified_by: string | null;
+    verified_by_name: string | null;
     verified_at: string | null;
+    joining_letter_url: string | null;
+    joining_letter_verified: boolean;
+    joining_letter_verified_by_name: string | null;
+    joining_letter_verified_at: string | null;
+    joining_letter_rejection_reason: string | null;
+    joining_letter_rejected_at: string | null;
+    joining_letter_uploaded_by: string | null;
     remarks: string | null;
     created_at: string;
     updated_at: string;
@@ -51,9 +62,12 @@ export interface PlacementStats {
     offered_count: number;
     accepted_count: number;
     joined_count: number;
-    rejected_count: number;
+    declined_count: number;
+    revoked_count: number;
+    expired_count: number;
     cancelled_count: number;
     verified_offers: number;
+    verified_joining_letters: number;
 }
 
 // ========================

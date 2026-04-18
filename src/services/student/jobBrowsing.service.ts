@@ -19,17 +19,24 @@ export interface JobListItem {
   company_id: string
   company_name: string
   company_website: string | null
+  company_logo: string | null
   industry_type: string
   position_count: number
   total_applications: number
   application_status: string | null
   has_applied: boolean
   has_denied: boolean
+  is_eligible: boolean
+  tier_id: string | null
+  tier_name: string | null
+  tier_level: number | null
+  drive_type: string
 }
 
 export interface JobListFilters {
   search?: string
   job_type?: string
+  drive_type?: string
   company_name?: string
   sort_by?: string
   sort_order?: string
@@ -44,9 +51,19 @@ export interface Pagination {
   totalPages: number
 }
 
+export interface PlacementContext {
+  is_placed: boolean
+  company_name?: string
+  tier_name?: string | null
+  tier_level?: number | null
+  max_placements?: number
+  allow_dream_upgrade?: boolean
+}
+
 export interface JobListResponse {
   jobs: JobListItem[]
   pagination: Pagination
+  placement_context: PlacementContext
 }
 
 // ─── Job Detail ─────────────────────────────────────────────────────────────────
@@ -69,12 +86,16 @@ export interface JobDetailJob {
   job_status: string
   posted_at: string
   total_applications: number
+  tier_id: string | null
+  tier_name: string | null
+  tier_level: number | null
 }
 
 export interface JobCompany {
   company_id: string
   company_name: string
   company_website: string | null
+  company_logo: string | null
   industry_type: string
 }
 
@@ -83,6 +104,7 @@ export interface JobPosition {
   position_name: string
   position_description: string
   vacancies: number
+  position_status: string
 }
 
 export interface EligibilityCriteria {
@@ -91,6 +113,8 @@ export interface EligibilityCriteria {
   min_tenth_percentage: number | null
   min_twelfth_percentage: number | null
   min_diploma_percentage: number | null
+  min_existing_package: number | null
+  max_existing_package: number | null
   allowed_genders: string[] | null
   allowed_departments: string[] | null
   allowed_gap_statuses: string[] | null
@@ -152,6 +176,21 @@ export interface StudentSnapshot {
   profile_is_approved: boolean
 }
 
+export interface PlacementPolicyInfo {
+  is_placed: boolean
+  current_placement?: {
+    company_name: string
+    tier_name: string
+    tier_level: number | null
+  }
+  target_job?: {
+    tier_name: string
+    tier_level: number | null
+  }
+  allow_dream_upgrade?: boolean
+  upgrade?: boolean
+}
+
 export interface EligibilityResponse {
   job: {
     job_id: string
@@ -168,6 +207,7 @@ export interface EligibilityResponse {
   student_snapshot: StudentSnapshot
   blockers: string[]
   can_apply: boolean
+  policy: PlacementPolicyInfo | null
 }
 
 // ─── Apply ──────────────────────────────────────────────────────────────────────
@@ -225,6 +265,7 @@ export interface ApplicationListItem {
   application_status: string
   is_eligible: boolean
   eligibility_remarks: string | null
+  waitlist_rank: number | null
   applied_at: string
   last_updated_at: string
   job_title: string
@@ -237,6 +278,7 @@ export interface ApplicationListItem {
   application_deadline: string
   company_id: string
   company_name: string
+  company_logo: string | null
   position_name: string
   current_round_name: string | null
   current_round_number: number | null
@@ -252,6 +294,7 @@ export interface StatusSummary {
   rejected: number
   selected: number
   offered: number
+  waitlisted: number
   withdrawn: number
 }
 
@@ -326,6 +369,7 @@ export interface ApplicationDetailResponse {
     job_status: string
     application_deadline: string
     company_name: string
+    company_logo: string | null
     position_name: string | null
   }
   answers: ApplicationAnswer[]
@@ -353,18 +397,13 @@ export interface WithdrawResponse {
 // ─── Service ────────────────────────────────────────────────────────────────────
 
 export const JobBrowsingService = {
-  /** Get distinct years with active published jobs */
-  getAvailableJobYears: async (): Promise<number[]> => {
-    const response = await api.get("/student/get_available_job_years")
-    return response.data.data.years
-  },
-
   /** API #151 — List available jobs with search/filter/pagination */
   getAvailableJobs: async (filters: JobListFilters = {}): Promise<JobListResponse> => {
     const response = await api.get("/student/get_available_jobs", { params: filters })
     return {
       jobs: response.data.data,
       pagination: response.data.pagination,
+      placement_context: response.data.placement_context ?? { is_placed: false },
     }
   },
 

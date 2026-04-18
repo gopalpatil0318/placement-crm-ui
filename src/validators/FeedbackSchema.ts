@@ -80,6 +80,7 @@ export interface InterviewQuestion {
     question_description: string;
     topic: string | null;
     sample_answer: string | null;
+    round_type: string | null;
     is_approved: boolean;
     created_at: string;
     updated_at: string;
@@ -106,12 +107,12 @@ export interface InterviewQuestionFilters {
     company_id?: string;
     job_id?: string;
     topic?: string;
+    round_type?: string;
     search?: string;
     sort_by?: string;
     sort_order?: string;
     page?: number;
-    limit?: number;
-}
+    limit?: number;}
 
 export interface Pagination {
     total: number;
@@ -147,10 +148,11 @@ export interface BrowseInterviewQuestion {
     question_description: string;
     topic: string | null;
     sample_answer: string | null;
+    round_type: string | null;
     created_at: string;
     company_name: string;
     job_title: string;
-    passout_year: number;
+    passout_year: number | null;
 }
 
 // ========================
@@ -168,6 +170,7 @@ export interface BrowseQuestionsFilters {
     company_id?: string;
     job_id?: string;
     topic?: string;
+    round_type?: string;
     search?: string;
     sort_by?: string;
     sort_order?: string;
@@ -200,6 +203,54 @@ export const submitInterviewQuestionSchema = z.object({
 });
 
 export type SubmitInterviewQuestionPayload = z.infer<typeof submitInterviewQuestionSchema>;
+
+export const INTERVIEW_ROUND_TYPE_OPTIONS = [
+    "aptitude", "technical_interview", "hr_interview", "group_discussion",
+    "coding_test", "written_test", "case_study", "psychometric_test",
+    "managerial_round", "other",
+] as const;
+
+export const INTERVIEW_ROUND_TYPE_LABELS: Record<string, string> = {
+    aptitude: "Aptitude",
+    technical_interview: "Technical Interview",
+    hr_interview: "HR Interview",
+    group_discussion: "Group Discussion",
+    coding_test: "Coding Test",
+    written_test: "Written Test",
+    case_study: "Case Study",
+    psychometric_test: "Psychometric Test",
+    managerial_round: "Managerial Round",
+    other: "Other",
+};
+
+export const submitInterviewQuestionsSchema = z.object({
+    company_id: z.string().min(1, "Company is required"),
+    job_id: z.string().min(1, "Job is required"),
+    round_type: z.enum(INTERVIEW_ROUND_TYPE_OPTIONS, { message: "Round type is required" }),
+    questions: z.array(
+        z.object({
+            question_description: z.string().min(5, "Question must be at least 5 characters").max(2000, "Question must be at most 2000 characters"),
+            sample_answer: z.string().max(3000, "Answer must be at most 3000 characters").optional().or(z.literal("")),
+        })
+    ).min(1, "At least one question is required").max(10, "Maximum 10 questions per batch"),
+});
+
+export type SubmitInterviewQuestionsPayload = z.infer<typeof submitInterviewQuestionsSchema>;
+
+/** Company + jobs the student has applied to (for submit form dropdowns) */
+export interface AppliedJobOption {
+    company_id: string;
+    company_name: string;
+    jobs: { job_id: string; job_title: string }[];
+}
+
+/** Company with approved question counts (for browse directory) */
+export interface QuestionCompany {
+    company_id: string;
+    company_name: string;
+    question_count: number;
+    latest_date: string;
+}
 
 export const TOPIC_SUGGESTIONS = [
     "DSA", "DBMS", "OS", "CN", "HR", "Aptitude", "Coding", "System Design", "SQL", "OOP",

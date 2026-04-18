@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { useCertificates, VALID_CERTIFICATE_TYPES, CERTIFICATE_TYPE_LABELS } from "@/hooks/student/useCertificates";
 import type { CertificateData } from "@/services/student/certificate.service";
-import { Plus, X, Pencil, Trash2, Award, CheckCircle, ExternalLink, Link as LinkIcon, AlertCircle, Calendar, Infinity as InfinityIcon, ChevronDown } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Award, CheckCircle, ExternalLink, Link as LinkIcon, AlertCircle, XCircle, Clock, Calendar, Infinity as InfinityIcon, ChevronDown } from "lucide-react";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
@@ -351,17 +351,31 @@ const CertificateCard = memo(function CertificateCard({
                             <ExternalLink className="h-3.5 w-3.5" /> View Certificate
                         </a>
                     )}
-                    {cert.is_verified && (
+                    {cert.verification_status === "approved" && (
                         <output className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
                             <CheckCircle className="h-3.5 w-3.5" /> Verified
                         </output>
                     )}
-                    {cert.is_verified === false && (
+                    {cert.verification_status === "pending" && (
+                        <output className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                            <Clock className="h-3.5 w-3.5" /> Pending verification
+                        </output>
+                    )}
+                    {cert.verification_status === "rejected" && (
                         <output className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 font-medium">
-                            <AlertCircle className="h-3.5 w-3.5" /> Pending verification
+                            <XCircle className="h-3.5 w-3.5" /> Rejected
                         </output>
                     )}
                 </div>
+                {cert.verification_status === "rejected" && cert.rejection_reason && (
+                    <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40">
+                        <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                            <p className="text-xs font-medium text-red-700 dark:text-red-300">Reason: {cert.rejection_reason}</p>
+                            <p className="text-[11px] text-red-500 dark:text-red-400 mt-0.5">Edit this item to resubmit for review.</p>
+                        </div>
+                    </div>
+                )}
             </div>
         </motion.div>
     );

@@ -12,6 +12,14 @@ export const QUESTION_TYPE_OPTIONS = ["text", "essay", "yes_no", "mcq_single", "
 
 export const GENDER_OPTIONS = ["Male", "Female", "Other"] as const;
 
+export const DRIVE_TYPE_OPTIONS = ["on_campus", "off_campus", "pool_campus"] as const;
+
+export const DRIVE_TYPE_LABELS: Record<string, string> = {
+    on_campus: "On Campus",
+    off_campus: "Off Campus",
+    pool_campus: "Pool Campus",
+};
+
 // ========================
 // NESTED SCHEMAS
 // ========================
@@ -71,11 +79,20 @@ export const jobCreateSchema = z.object({
     internship_stipend: z.string().max(100).optional().or(z.literal("")).nullable(),
     passout_years: z.array(z.number()).min(1, "At least one passout year is required"),
     application_deadline: z.string().min(1, "Application deadline is required"),
+    drive_type: z.enum(DRIVE_TYPE_OPTIONS).optional().default("on_campus"),
     positions: z.array(positionSchema).min(1, "At least one position is required"),
     eligibility_criteria: eligibilityCriteriaSchema.optional(),
     rounds: z.array(roundSchema).optional(),
     questions: z.array(questionSchema).optional(),
-});
+}).refine(
+    (data) => {
+        if (data.salary_min != null && data.salary_max != null) {
+            return data.salary_min <= data.salary_max;
+        }
+        return true;
+    },
+    { message: 'Minimum salary cannot exceed maximum salary', path: ['salary_min'] }
+);
 
 // ========================
 // UPDATE JOB SCHEMA (core fields only, all optional)
@@ -92,7 +109,16 @@ export const jobUpdateSchema = z.object({
     bond_details: z.string().max(1000).optional().or(z.literal("")),
     application_deadline: z.string().optional(),
     passout_years: z.array(z.number()).min(1, "At least one passout year is required").optional(),
-});
+    drive_type: z.enum(DRIVE_TYPE_OPTIONS).optional(),
+}).refine(
+    (data) => {
+        if (data.salary_min != null && data.salary_max != null) {
+            return data.salary_min <= data.salary_max;
+        }
+        return true;
+    },
+    { message: 'Minimum salary cannot exceed maximum salary', path: ['salary_min'] }
+);
 
 // ========================
 // POSITION STANDALONE SCHEMAS (for add/edit after job creation)
@@ -183,7 +209,24 @@ export const setCriteriaSchema = z
 // ADD QUESTION SCHEMA (standalone add question)
 // ========================
 
-const MCQ_TYPES: readonly string[] = ["mcq_single", "mcq_multiple"];
+const MCQ_TYPES = new Set(["mcq_single", "mcq_multiple"]);
+
+/** Check for case-insensitive duplicate options and report via ctx */
+function checkDuplicateOptions(options: string[], ctx: z.RefinementCtx): void {
+    const seen = new Set<string>();
+    for (const opt of options) {
+        const normalized = opt.trim().toLowerCase();
+        if (seen.has(normalized)) {
+            ctx.addIssue({
+                code: "custom",
+                message: `Duplicate option: "${opt.trim()}"`,
+                path: ["question_options"],
+            });
+            return;
+        }
+        seen.add(normalized);
+    }
+}
 
 export const addQuestionSchema = z
     .object({
@@ -198,39 +241,24 @@ export const addQuestionSchema = z
         is_required: z.boolean().default(true),
     })
     .superRefine((data, ctx) => {
-        const isMcq = MCQ_TYPES.includes(data.question_type);
+        const isMcq = MCQ_TYPES.has(data.question_type);
 
         if (isMcq) {
             if (!data.question_options || data.question_options.length < 2) {
                 ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                    code: "custom",
                     message: "MCQ questions must have at least 2 options",
                     path: ["question_options"],
                 });
                 return;
             }
-            // Duplicate check (case-insensitive, trimmed)
-            const seen = new Set<string>();
-            for (let i = 0; i < data.question_options.length; i++) {
-                const normalized = data.question_options[i].trim().toLowerCase();
-                if (seen.has(normalized)) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: `Duplicate option: "${data.question_options[i].trim()}"`,
-                        path: ["question_options"],
-                    });
-                    return;
-                }
-                seen.add(normalized);
-            }
-        } else {
-            if (data.question_options && data.question_options.length > 0) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: "Options should not be provided for this question type",
-                    path: ["question_options"],
-                });
-            }
+            checkDuplicateOptions(data.question_options, ctx);
+        } else if (data.question_options && data.question_options.length > 0) {
+            ctx.addIssue({
+                code: "custom",
+                message: "Options should not be provided for this question type",
+                path: ["question_options"],
+            });
         }
     });
 
@@ -262,39 +290,14 @@ export const updateQuestionSchema = z
     )
     .superRefine((data, ctx) => {
         // If question_type is being changed TO an MCQ type, options must be provided
-        if (data.question_type && MCQ_TYPES.includes(data.question_type)) {
+        if (data.question_type && MCQ_TYPES.has(data.question_type)) {
             if (data.question_options) {
-                // Duplicate check
-                const seen = new Set<string>();
-                for (let i = 0; i < data.question_options.length; i++) {
-                    const normalized = data.question_options[i].trim().toLowerCase();
-                    if (seen.has(normalized)) {
-                        ctx.addIssue({
-                            code: z.ZodIssueCode.custom,
-                            message: `Duplicate option: "${data.question_options[i].trim()}"`,
-                            path: ["question_options"],
-                        });
-                        return;
-                    }
-                    seen.add(normalized);
-                }
+                checkDuplicateOptions(data.question_options, ctx);
             }
         }
         // If only options are updated (no type change), still check duplicates
         if (data.question_options && !data.question_type) {
-            const seen = new Set<string>();
-            for (let i = 0; i < data.question_options.length; i++) {
-                const normalized = data.question_options[i].trim().toLowerCase();
-                if (seen.has(normalized)) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: `Duplicate option: "${data.question_options[i].trim()}"`,
-                        path: ["question_options"],
-                    });
-                    return;
-                }
-                seen.add(normalized);
-            }
+            checkDuplicateOptions(data.question_options, ctx);
         }
     });
 

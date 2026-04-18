@@ -34,13 +34,15 @@ function buildCreatePayload(formData: CreateTrainingProgramInput): Record<string
     if (formData.target_passout_year) payload.target_passout_year = Number(formData.target_passout_year);
     if (formData.max_enrollment) payload.max_enrollment = Number(formData.max_enrollment);
     if (formData.enrollment_deadline) payload.enrollment_deadline = formData.enrollment_deadline;
+    if (formData.program_fee) payload.program_fee = Number(formData.program_fee);
+    if (formData.min_attendance_pct) payload.min_attendance_pct = Number(formData.min_attendance_pct);
 
     return payload;
 }
 
 function getStepForField(field: string): number {
     if (["program_name", "program_type", "program_description"].includes(field)) return 1;
-    if (["trainer_name", "trainer_organization", "total_sessions", "session_duration_hours"].includes(field)) return 2;
+    if (["trainer_name", "trainer_organization", "total_sessions", "session_duration_hours", "program_fee", "min_attendance_pct"].includes(field)) return 2;
     return 3;
 }
 
@@ -58,6 +60,9 @@ const INITIAL_FORM: CreateTrainingProgramInput = {
     target_passout_year: "",
     max_enrollment: "",
     enrollment_deadline: "",
+    program_fee: "",
+    fee_currency: "",
+    min_attendance_pct: "",
 };
 
 // ========================
@@ -116,6 +121,8 @@ export const useCreateTrainingProgram = () => {
     }, []);
 
     const handleSubmit = useCallback(() => {
+        if (mutation.isPending) return;
+
         const result = createTrainingProgramSchema.safeParse(formData);
         if (!result.success) {
             const fieldErrors: FormErrors = {};

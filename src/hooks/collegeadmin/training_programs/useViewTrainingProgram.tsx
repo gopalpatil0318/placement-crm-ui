@@ -24,6 +24,7 @@ export interface TrainingProgramDetail {
     max_enrollment: number | null;
     enrollment_deadline: string | null;
     program_status: string;
+    allow_enrollments: boolean;
     created_by: string;
     created_by_name: string | null;
     target_dept_names: { dept_id: string; dept_name: string }[] | null;

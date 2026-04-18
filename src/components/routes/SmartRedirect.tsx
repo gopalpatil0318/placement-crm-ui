@@ -24,10 +24,6 @@ export default function SmartRedirect() {
   }
 
   if (studentAuth?.isAuthenticated) {
-    const user = studentAuth.user
-    if (!user?.profileComplete || !user?.profileIsApproved) {
-      return <Navigate to="/student/profile" replace />
-    }
     return <Navigate to="/student/dashboard" replace />
   }
 

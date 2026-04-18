@@ -48,15 +48,39 @@ export const PlacementService = {
     return response.data.data as AcceptPlacementResponse
   },
 
-  /** API #161 — Reject a placement offer with reason */
+  /** API #161 — Decline a placement offer with reason */
   rejectPlacement: async (
     placementId: string,
     payload: { rejection_reason: string },
   ): Promise<RejectPlacementResponse> => {
     const response = await api.patch(
-      `/student/reject_placement/${placementId}`,
+      `/student/decline_placement/${placementId}`,
       payload,
     )
     return response.data.data as RejectPlacementResponse
+  },
+
+  /** Alias for rejectPlacement using the new endpoint name */
+  declinePlacement: async (
+    placementId: string,
+    payload: { rejection_reason: string },
+  ): Promise<RejectPlacementResponse> => {
+    const response = await api.patch(
+      `/student/decline_placement/${placementId}`,
+      payload,
+    )
+    return response.data.data as RejectPlacementResponse
+  },
+
+  /** Upload offer letter and/or joining letter URLs */
+  uploadPlacementDocuments: async (
+    placementId: string,
+    payload: { offer_letter_url?: string; joining_letter_url?: string },
+  ) => {
+    const response = await api.patch(
+      `/student/upload_placement_documents/${placementId}`,
+      payload,
+    )
+    return response.data
   },
 }

@@ -96,6 +96,7 @@ const navSections: NavSection[] = [
 interface SidebarProps {
   isOpen: boolean
   onToggle: () => void
+  onNavigate?: () => void
 }
 
 // ─── Helpers to reduce cognitive complexity ────────────────────────────────────
@@ -114,7 +115,7 @@ function getCollapseClass(isOpen: boolean): string {
     ${isOpen ? "px-6 py-3" : "justify-center py-3"}`
 }
 
-export default function StudentSidebar({ isOpen, onToggle }: Readonly<SidebarProps>) {
+export default function StudentSidebar({ isOpen, onToggle, onNavigate }: Readonly<SidebarProps>) {
   const location = useLocation()
   const { user, logout } = useStudentAuth()
   const { college } = useCollegeTenant()
@@ -254,6 +255,7 @@ export default function StudentSidebar({ isOpen, onToggle }: Readonly<SidebarPro
                   activePath={location.pathname}
                   isOpen={isOpen}
                   shouldReduce={shouldReduce}
+                  onNavigate={onNavigate}
                 />
               ))}
             </div>
@@ -318,6 +320,7 @@ interface NavItemProps {
   activePath: string
   isOpen: boolean
   shouldReduce: boolean | null
+  onNavigate?: () => void
 }
 
 // ─── NavItem style helpers ──────────────────────────────────────────────────────
@@ -356,7 +359,7 @@ function getSubDotClass(isSubActive: boolean): string {
     : "bg-gray-300 dark:bg-gray-600 group-hover:bg-indigo-500"
 }
 
-function SidebarNavItem({ item, isExpanded, onToggle, activePath, isOpen, shouldReduce }: Readonly<NavItemProps>) {
+function SidebarNavItem({ item, isExpanded, onToggle, activePath, isOpen, shouldReduce, onNavigate }: Readonly<NavItemProps>) {
   const { icon: Icon, label, path, subItems } = item
   const hasSubItems = subItems && subItems.length > 0
   const isActive = path === activePath || subItems?.some((sub) => sub.path === activePath)
@@ -402,6 +405,7 @@ function SidebarNavItem({ item, isExpanded, onToggle, activePath, isOpen, should
         <Link
           to={path || "#"}
           title={titleAttr}
+          onClick={onNavigate}
           className={getNavLinkClass(isOpen, activePath === path)}
         >
           {iconEl}
@@ -429,6 +433,7 @@ function SidebarNavItem({ item, isExpanded, onToggle, activePath, isOpen, should
                 <Link
                   key={sub.path}
                   to={sub.path}
+                  onClick={onNavigate}
                   className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-all duration-200 group text-[13px] ${getSubItemClass(activePath === sub.path)}`}
                 >
                   <span className={`h-1.5 w-1.5 rounded-full transition-all ${getSubDotClass(activePath === sub.path)}`} />

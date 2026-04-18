@@ -52,7 +52,7 @@ export default function ModalWrapper({
   children,
   hideCloseButton = false,
   footer,
-}: ModalWrapperProps) {
+}: Readonly<ModalWrapperProps>) {
   const shouldReduce = useReducedMotion()
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)

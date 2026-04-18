@@ -5,6 +5,14 @@ import { queryKeys } from "@/lib/queryKeys";
 import { type ResultStatus } from "@/validators/RoundResultSchema";
 
 // ========================
+// HELPERS
+// ========================
+
+function getErrorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : "Failed to fetch round results";
+}
+
+// ========================
 // TYPES
 // ========================
 
@@ -31,6 +39,7 @@ export interface RoundInfo {
     round_name: string;
     round_number: number;
     round_status: string;
+    is_processed: boolean;
     job_title: string;
     company_name: string;
 }
@@ -99,12 +108,13 @@ export const useViewRoundResults = (roundId: string) => {
         round_name: rawData.round_name || "",
         round_number: rawData.round_number ?? 0,
         round_status: rawData.round_status || "",
+        is_processed: !!rawData.is_processed,
         job_title: rawData.job_title || "",
         company_name: rawData.company_name || "",
     } : null;
     const statusSummary: StatusSummary | null = rawData?.status_summary || null;
     const pagination: Pagination = response?.pagination || { page, limit, total: 0, totalPages: 0 };
-    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch round results") : null;
+    const error = queryError ? getErrorMessage(queryError) : null;
 
     // Prefetch next page
     useEffect(() => {

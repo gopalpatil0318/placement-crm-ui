@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom"
 import StudentSidebar from "./StudentSidebar"
 import StudentTopBar from "./StudentTopBar"
 import StudentMobileBottomBar from "./StudentMobileBottomBar"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 
 const MD_BREAKPOINT = 768
 
@@ -42,11 +43,23 @@ export default function StudentLayout() {
 
   const toggleSidebar = useCallback(() => setIsSidebarOpen((prev) => !prev), [])
 
+  const closeSidebar = useCallback(() => setIsSidebarOpen(false), [])
+
   return (
     <div className="h-screen w-full flex bg-gray-50 dark:bg-gray-950 overflow-hidden">
       {/* Sidebar — desktop only */}
       {!isMobile && (
         <StudentSidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+      )}
+
+      {/* Sidebar — mobile sheet drawer */}
+      {isMobile && (
+        <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+          <SheetContent side="left" className="p-0 w-[280px] sm:max-w-[280px]">
+            <SheetTitle className="sr-only">Navigation</SheetTitle>
+            <StudentSidebar isOpen onToggle={closeSidebar} onNavigate={closeSidebar} />
+          </SheetContent>
+        </Sheet>
       )}
 
       {/* Main content area */}

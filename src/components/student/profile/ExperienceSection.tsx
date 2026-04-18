@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Briefcase, MapPin, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { Briefcase, MapPin, ChevronDown, ChevronUp, Clock, CheckCircle, XCircle, AlertCircle, Check, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { ExperienceResponse } from "@/types/student";
 
 interface ExperienceSectionProps {
     experiences: ExperienceResponse | null;
+    viewMode?: "student" | "college" | "interviewer";
+    onApproveItem?: (id: string) => void;
+    onRejectItem?: (id: string) => void;
+    processingId?: string | null;
 }
 
 function formatDateRange(start: string, end: string | null, isCurrent: boolean) {
@@ -20,7 +24,7 @@ function capitalizeType(type: string) {
 
 const INITIAL_VISIBLE = 3;
 
-export default function ExperienceSection({ experiences }: ExperienceSectionProps) {
+export default function ExperienceSection({ experiences, viewMode, onApproveItem, onRejectItem, processingId }: Readonly<ExperienceSectionProps>) {
     const list = experiences?.experience || [];
     const [showAll, setShowAll] = useState(false);
     const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -95,6 +99,37 @@ export default function ExperienceSection({ experiences }: ExperienceSectionProp
                                             <ChevronDown className={`h-4 w-4 text-gray-400 flex-shrink-0 mt-1 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                                         </button>
 
+                                        {/* Verification status bar (college view) */}
+                                        {viewMode === "college" && exp.verification_status && (
+                                            <div className="px-4 py-2 border-t border-gray-50 dark:border-gray-800 flex items-center justify-between gap-2">
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${(() => {
+                                                    if (exp.verification_status === "approved") return "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300";
+                                                    if (exp.verification_status === "rejected") return "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300";
+                                                    return "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300";
+                                                })()}`}>
+                                                    {exp.verification_status === "approved" && <CheckCircle className="h-3 w-3" />}
+                                                    {exp.verification_status === "rejected" && <XCircle className="h-3 w-3" />}
+                                                    {exp.verification_status === "pending" && <AlertCircle className="h-3 w-3" />}
+                                                    {exp.verification_status.charAt(0).toUpperCase() + exp.verification_status.slice(1)}
+                                                </span>
+                                                {exp.verification_status === "rejected" && exp.rejection_reason && (
+                                                    <span className="text-[11px] text-red-500 dark:text-red-400 truncate flex-1 text-right">
+                                                        {exp.rejection_reason}
+                                                    </span>
+                                                )}
+                                                {exp.verification_status === "pending" && onApproveItem && onRejectItem && (
+                                                    <div className="flex items-center gap-1">
+                                                        <button type="button" onClick={(e) => { e.stopPropagation(); onApproveItem(exp.experience_id); }} disabled={processingId === exp.experience_id} className="h-7 w-7 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Approve">
+                                                            <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                                        </button>
+                                                        <button type="button" onClick={(e) => { e.stopPropagation(); onRejectItem(exp.experience_id); }} disabled={processingId === exp.experience_id} className="h-7 w-7 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Reject">
+                                                            <X className="h-3.5 w-3.5 text-red-600" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                         <AnimatePresence>
                                             {isExpanded && (
                                                 shouldReduce ? (
@@ -141,7 +176,7 @@ export default function ExperienceSection({ experiences }: ExperienceSectionProp
     );
 }
 
-function ExpDetail({ exp }: { exp: ExperienceResponse["experience"][number] }) {
+function ExpDetail({ exp }: Readonly<{ exp: ExperienceResponse["experience"][number] }>) {
     return (
         <>
             {exp.work_location && (
@@ -156,8 +191,8 @@ function ExpDetail({ exp }: { exp: ExperienceResponse["experience"][number] }) {
             )}
             {exp.responsibilities && exp.responsibilities.length > 0 && (
                 <ul className="space-y-1">
-                    {exp.responsibilities.map((r, i) => (
-                        <li key={i} className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-1.5">
+                    {exp.responsibilities.map((r) => (
+                        <li key={r} className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-1.5">
                             <span className="text-violet-400 mt-0.5">•</span>
                             {r}
                         </li>

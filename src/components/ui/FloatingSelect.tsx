@@ -34,21 +34,20 @@ export default function FloatingSelect({
   required,
   disabled,
   className = "",
-}: FloatingSelectProps) {
+}: Readonly<FloatingSelectProps>) {
   const [focused, setFocused] = useState(false)
+
+  function getLabelColor() {
+    if (error) return "text-red-500 dark:text-red-400"
+    if (focused) return "text-blue-600 dark:text-blue-400"
+    return "text-gray-700 dark:text-gray-300"
+  }
 
   return (
     <div className={className}>
       <label
         htmlFor={name}
-        className={`block text-sm font-medium mb-1.5 transition-colors duration-200
-          ${error
-            ? "text-red-500 dark:text-red-400"
-            : focused
-              ? "text-blue-600 dark:text-blue-400"
-              : "text-gray-700 dark:text-gray-300"
-          }
-        `}
+        className={`block text-sm font-medium mb-1.5 transition-colors duration-200 ${getLabelColor()}`}
       >
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}

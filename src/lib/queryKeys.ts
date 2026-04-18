@@ -54,6 +54,8 @@ export const queryKeys = {
       filters
         ? (["jobs", "round", roundId, "results", filters] as const)
         : (["jobs", "round", roundId, "results"] as const),
+    roundProcessing: (roundId: string) =>
+      ["jobs", "round", roundId, "processing"] as const,
   },
 
   // ─── Overrides (Dashboard) ─────────────────────────────────────────────────
@@ -83,7 +85,10 @@ export const queryKeys = {
       filters
         ? (["departments", "list", filters] as const)
         : (["departments", "list"] as const),
-    detail: (id: string) => ["departments", "detail", id] as const,
+    detail: (id: string, year?: number) =>
+      year
+        ? (["departments", "detail", id, year] as const)
+        : (["departments", "detail", id] as const),
   },
 
   // ─── Users ──────────────────────────────────────────────────────────────────
@@ -100,7 +105,10 @@ export const queryKeys = {
         ? (["students", "list", filters] as const)
         : (["students", "list"] as const),
     detail: (id: string) => ["students", "detail", id] as const,
-    departments: () => ["students", "departments"] as const,
+    departments: (year?: number) =>
+      year
+        ? (["students", "departments", year] as const)
+        : (["students", "departments"] as const),
     eligible: (jobId: string, filters?: Record<string, unknown>) =>
       filters
         ? (["students", "eligible", jobId, filters] as const)
@@ -140,7 +148,11 @@ export const queryKeys = {
 
   // ─── Verifications ──────────────────────────────────────────────────────────
   verifications: {
-    counts: () => ["verifications", "counts"] as const,
+    settings: () => ["verifications", "settings"] as const,
+    counts: (year?: number) =>
+      year
+        ? (["verifications", "counts", year] as const)
+        : (["verifications", "counts"] as const),
     profiles: (filters?: Record<string, unknown>) =>
       filters
         ? (["verifications", "profiles", filters] as const)
@@ -185,7 +197,6 @@ export const queryKeys = {
     achievements: () => ["studentPortal", "achievements"] as const,
     activities: () => ["studentPortal", "activities"] as const,
     profileLinks: () => ["studentPortal", "profileLinks"] as const,
-    availableJobYears: () => ["studentPortal", "availableJobYears"] as const,
     availableJobs: (filters?: Record<string, unknown>) =>
       filters
         ? (["studentPortal", "jobs", filters] as const)
@@ -229,6 +240,10 @@ export const queryKeys = {
       filters
         ? (["studentPortal", "browseQuestions", filters] as const)
         : (["studentPortal", "browseQuestions"] as const),
+    appliedJobOptions: () => ["studentPortal", "appliedJobOptions"] as const,
+    questionCompanies: () => ["studentPortal", "questionCompanies"] as const,
+    mySessionSchedule: (programId: string) =>
+      ["studentPortal", "sessionSchedule", programId] as const,
   },
 
   // ─── Training Programs ──────────────────────────────────────────────────────
@@ -242,6 +257,12 @@ export const queryKeys = {
       filters
         ? (["trainingPrograms", programId, "enrollments", filters] as const)
         : (["trainingPrograms", programId, "enrollments"] as const),
+    sessions: (programId: string) =>
+      ["trainingPrograms", programId, "sessions"] as const,
+    sessionAttendance: (sessionId: string) =>
+      ["trainingPrograms", "sessionAttendance", sessionId] as const,
+    studentReport: (studentId: string) =>
+      ["trainingPrograms", "studentReport", studentId] as const,
   },
 
   // ─── Feedback ───────────────────────────────────────────────────────────────
@@ -284,5 +305,29 @@ export const queryKeys = {
       filters
         ? (["restrictions", "student", studentId, filters] as const)
         : (["restrictions", "student", studentId] as const),
+  },
+
+  // ─── Audit Logs (College Admin) ─────────────────────────────────────────────
+  auditLogs: {
+    all: (filters?: Record<string, unknown>) =>
+      filters
+        ? (["auditLogs", "list", filters] as const)
+        : (["auditLogs", "list"] as const),
+    detail: (id: string) => ["auditLogs", "detail", id] as const,
+  },
+
+  // ─── Company Tiers (College Admin) ──────────────────────────────────────────
+  companyTiers: {
+    all: (filters?: Record<string, unknown>) =>
+      filters
+        ? (["companyTiers", "list", filters] as const)
+        : (["companyTiers", "list"] as const),
+    detail: (id: string) => ["companyTiers", "detail", id] as const,
+  },
+
+  // ─── Placement Settings (College Admin) ─────────────────────────────────────
+  placementSettings: {
+    byYear: (passoutYear: number) =>
+      ["placementSettings", "year", passoutYear] as const,
   },
 } as const

@@ -20,15 +20,8 @@ import { showToast } from "@/utils/ToastUtils";
 import { useStudentReviewProfile } from "@/hooks/collegeadmin/verification/useStudentReviewProfile";
 import { useVerifyItem } from "@/hooks/collegeadmin/verification/useVerifyItem";
 import { useApproveStudentProfile } from "@/hooks/collegeadmin/verification/useApproveStudentProfile";
-import { VERIFICATION_STATUS_CONFIG } from "@/validators/VerificationSchema";
-import ExperienceSection from "@/components/student/profile/ExperienceSection";
-import AchievementsSection from "@/components/student/profile/AchievementsSection";
-import CertificatesSection from "@/components/student/profile/CertificatesSection";
-import SkillsSection from "@/components/student/profile/SkillsSection";
-import ProjectsSection from "@/components/student/profile/ProjectsSection";
-import AboutSection from "@/components/student/profile/AboutSection";
-import ActivitiesSection from "@/components/student/profile/ActivitiesSection";
 import StudentRestrictionsTab from "@/components/collegeadmin/student_management/restrictions/StudentRestrictionsTab";
+import StudentProfile from "@/pages/Students/StudentProfile";
 
 // ========================
 // CONSTANTS
@@ -327,52 +320,6 @@ const ReviewRejectModal = ({ isOpen, onClose, reason, onReasonChange, onSubmit }
     </ModalWrapper>
 );
 
-interface VerificationItemRowProps {
-    id: string;
-    title: string;
-    subtitle: string;
-    status: string;
-    rejectionReason?: string;
-    onApprove: (id: string) => void;
-    processingId: string | null;
-    onReject: (id: string) => void;
-}
-
-const VerificationItemRow = ({ id, title, subtitle, status, rejectionReason, onApprove, processingId, onReject }: Readonly<VerificationItemRowProps>) => {
-    const config = VERIFICATION_STATUS_CONFIG[status] || VERIFICATION_STATUS_CONFIG.pending;
-    return (
-        <div className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-            <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${config.bg}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
-                        {config.label}
-                    </span>
-                    {status === "pending" && (
-                        <div className="flex gap-1">
-                            <button type="button" onClick={() => onApprove(id)} disabled={processingId === id} className="h-6 w-6 rounded bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Approve">
-                                <CheckCircle className="h-3 w-3 text-emerald-600" />
-                            </button>
-                            <button type="button" onClick={() => onReject(id)} className="h-6 w-6 rounded bg-red-50 dark:bg-red-900/20 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 cursor-pointer" aria-label="Reject">
-                                <XCircle className="h-3 w-3 text-red-600" />
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-            {status === "rejected" && rejectionReason && (
-                <p className="mt-2 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/10 rounded px-2 py-1">
-                    Reason: {rejectionReason}
-                </p>
-            )}
-        </div>
-    );
-};
-
 // ========================
 // MAIN COMPONENT
 // ========================
@@ -552,6 +499,10 @@ export default function StudentDetail() {
                                     <Power className="h-4 w-4" />
                                     Change Status
                                 </button>
+                                <button type="button" onClick={() => navigate(`/college/student/${student.student_id}/training-report`)} className="inline-flex items-center gap-2 px-5 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm">
+                                    <BookOpen className="h-4 w-4" />
+                                    Training Report
+                                </button>
                                 {student.profile_complete && !student.profile_is_approved && (
                                     <button type="button" onClick={() => { setApproveAction(true); setShowApproveModal(true); }} className="inline-flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition shadow-sm">
                                         <CheckCircle className="h-4 w-4" />
@@ -718,86 +669,20 @@ export default function StudentDetail() {
                                                 </div>
                                             )}
 
-                                            {/* Verification Items with Status Badges */}
-                                            {isReviewMode && profileData.experience.length > 0 && (
-                                                <div>
-                                                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Experience</h4>
-                                                    <div className="space-y-3">
-                                                        {profileData.experience.map((exp) => (
-                                                            <VerificationItemRow
-                                                                key={exp.experience_id as string}
-                                                                id={exp.experience_id as string}
-                                                                title={exp.position_title as string}
-                                                                subtitle={exp.company_name as string}
-                                                                status={(exp as Record<string, unknown>).verification_status as string}
-                                                                rejectionReason={(exp as Record<string, unknown>).rejection_reason ? String((exp as Record<string, unknown>).rejection_reason) : undefined}
-                                                                onApprove={expVerify.approve}
-                                                                processingId={expVerify.processingId}
-                                                                onReject={(id) => { setReviewRejectTarget({ category: "experiences", id }); setReviewRejectOpen(true); }}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {isReviewMode && profileData.achievements.length > 0 && (
-                                                <div>
-                                                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Achievements</h4>
-                                                    <div className="space-y-3">
-                                                        {profileData.achievements.map((ach) => (
-                                                            <VerificationItemRow
-                                                                key={ach.achievement_id as string}
-                                                                id={ach.achievement_id as string}
-                                                                title={ach.achievement_title as string}
-                                                                subtitle={`${ach.achievement_type as string} • ${ach.achievement_level as string}`}
-                                                                status={(ach as Record<string, unknown>).verification_status as string}
-                                                                rejectionReason={(ach as Record<string, unknown>).rejection_reason ? String((ach as Record<string, unknown>).rejection_reason) : undefined}
-                                                                onApprove={achVerify.approve}
-                                                                processingId={achVerify.processingId}
-                                                                onReject={(id) => { setReviewRejectTarget({ category: "achievements", id }); setReviewRejectOpen(true); }}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {isReviewMode && profileData.certificates.length > 0 && (
-                                                <div>
-                                                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Certificates</h4>
-                                                    <div className="space-y-3">
-                                                        {profileData.certificates.map((cert) => (
-                                                            <VerificationItemRow
-                                                                key={cert.certificate_id as string}
-                                                                id={cert.certificate_id as string}
-                                                                title={cert.certificate_name as string}
-                                                                subtitle={cert.issuing_organization as string}
-                                                                status={(cert as Record<string, unknown>).verification_status as string}
-                                                                rejectionReason={(cert as Record<string, unknown>).rejection_reason ? String((cert as Record<string, unknown>).rejection_reason) : undefined}
-                                                                onApprove={certVerify.approve}
-                                                                processingId={certVerify.processingId}
-                                                                onReject={(id) => { setReviewRejectTarget({ category: "certificates", id }); setReviewRejectOpen(true); }}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Also show read-only profile sections when not in review mode */}
-                                            {!isReviewMode && (
-                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                                    <div className="space-y-6">
-                                                        <AboutSection profileLinks={profileData.profile_links as never} />
-                                                        <ProjectsSection projects={{ total_projects: profileData.projects.length, max_projects: 10, projects: profileData.projects as never[] }} />
-                                                        <SkillsSection mySkills={profileData.skills as never[]} />
-                                                        <ActivitiesSection activities={{ total_activities: profileData.activities.length, max_activities: 10, activities: profileData.activities as never[] }} />
-                                                    </div>
-                                                    <div className="space-y-6">
-                                                        <ExperienceSection experiences={{ total_experience: profileData.experience.length, max_experience: 10, experience: profileData.experience as never[] }} />
-                                                        <CertificatesSection certificates={{ total_certificates: profileData.certificates.length, max_certificates: 15, certificates: profileData.certificates as never[] }} />
-                                                        <AchievementsSection achievements={{ total_achievements: profileData.achievements.length, max_achievements: 10, achievements: profileData.achievements as never[] }} />
-                                                    </div>
-                                                </div>
-                                            )}
+                                            {/* Verification Items with Status Badges — rendered via embedded StudentProfile */}
+                                            <StudentProfile
+                                                viewMode="college"
+                                                studentId={studentId}
+                                                onApproveExperience={expVerify.approve}
+                                                onRejectExperience={(id) => { setReviewRejectTarget({ category: "experiences", id }); setReviewRejectOpen(true); }}
+                                                processingExpId={expVerify.processingId}
+                                                onApproveAchievement={achVerify.approve}
+                                                onRejectAchievement={(id) => { setReviewRejectTarget({ category: "achievements", id }); setReviewRejectOpen(true); }}
+                                                processingAchId={achVerify.processingId}
+                                                onApproveCertificate={certVerify.approve}
+                                                onRejectCertificate={(id) => { setReviewRejectTarget({ category: "certificates", id }); setReviewRejectOpen(true); }}
+                                                processingCertId={certVerify.processingId}
+                                            />
                                         </div>
                                     )}
                                     {!reviewLoading && !profileData && (

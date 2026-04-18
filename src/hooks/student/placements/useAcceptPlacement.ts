@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { queryKeys } from "@/lib/queryKeys"
 import { ApiError } from "@/lib/api"
 import { showToast, getErrorTitle } from "@/utils/ToastUtils"
 import { PlacementService } from "@/services/student/placement.service"
@@ -23,7 +24,7 @@ export function useAcceptPlacement() {
 
       // Optimistic: update placement status in cached lists
       queryClient.setQueriesData<StudentPlacementsResponse>(
-        { queryKey: ["studentPortal", "placements"] },
+        { queryKey: queryKeys.studentPortal.myPlacements() },
         (old) => {
           if (!old) return old
           return {

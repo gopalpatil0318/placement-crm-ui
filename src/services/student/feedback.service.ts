@@ -6,6 +6,9 @@ import type {
   BrowseQuestionsFilters,
   SubmitFeedbackPayload,
   SubmitInterviewQuestionPayload,
+  SubmitInterviewQuestionsPayload,
+  AppliedJobOption,
+  QuestionCompany,
   Pagination,
 } from "@/validators/FeedbackSchema"
 
@@ -19,6 +22,14 @@ export interface MyFeedbackResponse {
 export interface BrowseQuestionsResponse {
   questions: BrowseInterviewQuestion[]
   pagination: Pagination
+}
+
+export interface AppliedJobOptionsResponse {
+  companies: AppliedJobOption[]
+}
+
+export interface QuestionCompaniesResponse {
+  companies: QuestionCompany[]
 }
 
 // ─── Service ────────────────────────────────────────────────────────────────────
@@ -66,6 +77,7 @@ export const FeedbackService = {
     if (filters.company_id) params.append("company_id", filters.company_id)
     if (filters.job_id) params.append("job_id", filters.job_id)
     if (filters.topic) params.append("topic", filters.topic)
+    if (filters.round_type) params.append("round_type", filters.round_type)
     if (filters.search) params.append("search", filters.search)
     if (filters.sort_by) params.append("sort_by", filters.sort_by)
     if (filters.sort_order) params.append("sort_order", filters.sort_order)
@@ -82,5 +94,23 @@ export const FeedbackService = {
       questions: response.data.data as BrowseInterviewQuestion[],
       pagination: response.data.pagination,
     }
+  },
+
+  /** API #176 — Get applied companies & jobs (for submit form dropdowns) */
+  getAppliedJobOptions: async (): Promise<AppliedJobOptionsResponse> => {
+    const response = await api.get("/student/applied_job_options")
+    return response.data.data as AppliedJobOptionsResponse
+  },
+
+  /** API #177 — Batch submit interview questions */
+  submitInterviewQuestions: async (data: SubmitInterviewQuestionsPayload) => {
+    const response = await api.post("/student/submit_interview_questions", data)
+    return response.data.data
+  },
+
+  /** API #178 — Get companies with approved interview questions */
+  getInterviewQuestionCompanies: async (): Promise<QuestionCompaniesResponse> => {
+    const response = await api.get("/student/interview_question_companies")
+    return response.data.data as QuestionCompaniesResponse
   },
 }

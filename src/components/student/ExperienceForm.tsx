@@ -4,7 +4,7 @@ import { staggerContainer, staggerItem } from "@/lib/animations";
 import { useExperience } from "@/hooks/student/useExperience";
 import type { ExperienceData } from "@/services/student/experience.service";
 import { EMPLOYMENT_TYPE_LABELS, VALID_EMPLOYMENT_TYPES, WORK_MODE_LABELS, VALID_WORK_MODES } from "@/validators/student/experienceSchema";
-import { Plus, X, Pencil, Trash2, Briefcase, CheckCircle, ExternalLink, AlertCircle, Calendar, ChevronDown, MapPin } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Briefcase, CheckCircle, ExternalLink, AlertCircle, XCircle, Clock, Calendar, ChevronDown, MapPin } from "lucide-react";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
@@ -377,17 +377,31 @@ const ExperienceCard = memo(function ExperienceCard({
                             <ExternalLink className="h-3.5 w-3.5" /> Certificate
                         </a>
                     )}
-                    {exp.is_verified && (
+                    {exp.verification_status === "approved" && (
                         <output className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
                             <CheckCircle className="h-3.5 w-3.5" /> Verified
                         </output>
                     )}
-                    {exp.is_verified === false && (
+                    {exp.verification_status === "pending" && (
+                        <output className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                            <Clock className="h-3.5 w-3.5" /> Pending verification
+                        </output>
+                    )}
+                    {exp.verification_status === "rejected" && (
                         <output className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 font-medium">
-                            <AlertCircle className="h-3.5 w-3.5" /> Pending verification
+                            <XCircle className="h-3.5 w-3.5" /> Rejected
                         </output>
                     )}
                 </div>
+                {exp.verification_status === "rejected" && exp.rejection_reason && (
+                    <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40">
+                        <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                            <p className="text-xs font-medium text-red-700 dark:text-red-300">Reason: {exp.rejection_reason}</p>
+                            <p className="text-[11px] text-red-500 dark:text-red-400 mt-0.5">Edit this item to resubmit for review.</p>
+                        </div>
+                    </div>
+                )}
             </div>
         </motion.div>
     );

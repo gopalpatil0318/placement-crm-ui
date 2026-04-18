@@ -19,6 +19,7 @@ export const useViewInterviewQuestions = () => {
     const [companyFilter, setCompanyFilter] = useState("");
     const [topicFilter, setTopicFilter] = useState("");
     const [debouncedTopic, setDebouncedTopic] = useState("");
+    const [roundTypeFilter, setRoundTypeFilter] = useState("");
     const [sortIndex, setSortIndex] = useState(0);
 
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -44,9 +45,10 @@ export const useViewInterviewQuestions = () => {
         is_approved: isApprovedFilter,
         company_id: companyFilter || undefined,
         topic: debouncedTopic || undefined,
+        round_type: roundTypeFilter || undefined,
         sort_by: currentSort.sort_by,
         sort_order: currentSort.sort_order,
-    }), [page, limit, debouncedSearch, isApprovedFilter, companyFilter, debouncedTopic, currentSort]);
+    }), [page, limit, debouncedSearch, isApprovedFilter, companyFilter, debouncedTopic, roundTypeFilter, currentSort]);
 
     const { data, isLoading, isFetching, error: queryError, refetch } = useQuery({
         queryKey: queryKeys.interviewQuestions.all(queryFilters),
@@ -121,6 +123,11 @@ export const useViewInterviewQuestions = () => {
         setPage(1);
     }, []);
 
+    const handleRoundTypeFilterChange = useCallback((value: string) => {
+        setRoundTypeFilter(value);
+        setPage(1);
+    }, []);
+
     const handleSortChange = useCallback((index: number) => {
         setSortIndex(index);
         setPage(1);
@@ -136,6 +143,7 @@ export const useViewInterviewQuestions = () => {
         approvalFilter,
         companyFilter,
         topicFilter,
+        roundTypeFilter,
         sortIndex,
         handleSearchChange,
         handleTopicFilterChange,
@@ -143,6 +151,7 @@ export const useViewInterviewQuestions = () => {
         handleLimitChange,
         handleApprovalFilterChange,
         handleCompanyFilterChange,
+        handleRoundTypeFilterChange,
         handleSortChange,
         refresh: refetch,
     };

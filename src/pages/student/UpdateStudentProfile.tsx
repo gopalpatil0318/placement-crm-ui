@@ -252,7 +252,7 @@ export default function UpdateStudentProfile() {
                             </h2>
 
                             <AnimatedTabContent activeTab={activeSection} tabKeys={SECTION_IDS}>
-                                {activeSection === "personal" && <PersonalInfoForm />}
+                                {activeSection === "personal" && <PersonalInfoForm onSaveSuccess={() => setActiveSection("academic")} />}
                                 {activeSection === "academic" && <AcademicInfoForm />}
                                 {activeSection === "semester" && <SemInfoForm />}
                                 {activeSection === "skills" && <SkillsForm />}

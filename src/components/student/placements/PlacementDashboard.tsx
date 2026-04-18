@@ -7,19 +7,23 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
+  Clock,
   ExternalLink,
   FileText,
   Loader2,
   MapPin,
   RefreshCw,
   ShieldCheck,
+  ShieldX,
   Trophy,
+  Upload,
   XCircle,
 } from "lucide-react"
 import { staggerContainer, staggerItem } from "@/lib/animations"
 import { useMyPlacements } from "@/hooks/student/placements/useMyPlacements"
 import AcceptPlacementModal from "@/components/student/placements/AcceptPlacementModal"
 import RejectPlacementModal from "@/components/student/placements/RejectPlacementModal"
+import UploadDocumentModal from "@/components/student/placements/UploadDocumentModal"
 import {
   PLACEMENT_STATUS_TABS,
   PLACEMENT_STATUS_LABELS,
@@ -37,6 +41,26 @@ import {
   type PlacementTypeFilter,
   type PlacementFilters,
 } from "@/validators/PlacementSchema"
+
+// ─── Helpers ────────────────────────────────────────────────────────────────────
+
+function getOfferCountdown(expiresAt: string | null): { text: string; urgent: boolean; expired: boolean } | null {
+  if (!expiresAt) return null
+  const expiryDate = new Date(expiresAt)
+  if (Number.isNaN(expiryDate.getTime())) return null
+  const diff = expiryDate.getTime() - Date.now()
+  if (diff <= 0) return { text: "Expired", urgent: true, expired: true }
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  if (days > 3) return { text: `Expires in ${days}d ${hours}h`, urgent: false, expired: false }
+  if (days > 0) return { text: `Expires in ${days}d ${hours}h`, urgent: true, expired: false }
+  return { text: `Expires in ${hours}h`, urgent: true, expired: false }
+}
+
+/** Can the student upload/re-upload documents for this placement? */
+function canUploadDocuments(p: StudentPlacement): boolean {
+  return ["offered", "accepted", "joined"].includes(p.placement_status)
+}
 
 // ─── Component ──────────────────────────────────────────────────────────────────
 
@@ -65,6 +89,7 @@ export default function PlacementDashboard() {
   // Modal state
   const [acceptTarget, setAcceptTarget] = useState<StudentPlacement | null>(null)
   const [rejectTarget, setRejectTarget] = useState<StudentPlacement | null>(null)
+  const [uploadTarget, setUploadTarget] = useState<StudentPlacement | null>(null)
 
   // ── Pagination numbers ──
   const pageNumbers = useMemo(() => {
@@ -98,6 +123,10 @@ export default function PlacementDashboard() {
     setRejectTarget(placement)
   }, [])
 
+  const handleUpload = useCallback((placement: StudentPlacement) => {
+    setUploadTarget(placement)
+  }, [])
+
   const Wrapper = shouldReduce ? "div" : motion.div
   const wrapperProps = shouldReduce
     ? {}
@@ -113,7 +142,7 @@ export default function PlacementDashboard() {
             My Placements
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            {statusSummary.total} total placement{statusSummary.total !== 1 ? "s" : ""}
+            {statusSummary.total} total placement{statusSummary.total === 1 ? "" : "s"}
             {statusSummary.offered > 0 && (
               <span className="text-blue-600 dark:text-blue-400 font-medium">
                 {" · "}{statusSummary.offered} pending decision
@@ -142,7 +171,7 @@ export default function PlacementDashboard() {
           <SummaryCard label="Offered" count={statusSummary.offered} status="offered" />
           <SummaryCard label="Accepted" count={statusSummary.accepted} status="accepted" />
           <SummaryCard label="Joined" count={statusSummary.joined} status="joined" />
-          <SummaryCard label="Rejected" count={statusSummary.rejected} status="rejected" />
+          <SummaryCard label="Declined" count={statusSummary.declined} status="declined" />
           <SummaryCard label="Cancelled" count={statusSummary.cancelled} status="cancelled" />
         </div>
       )}
@@ -246,6 +275,7 @@ export default function PlacementDashboard() {
                       placement={placement}
                       onAccept={handleAccept}
                       onReject={handleReject}
+                      onUpload={handleUpload}
                     />
                   </ItemWrapper>
                 )
@@ -323,6 +353,11 @@ export default function PlacementDashboard() {
         isOpen={!!rejectTarget}
         onClose={() => setRejectTarget(null)}
       />
+      <UploadDocumentModal
+        placement={uploadTarget}
+        isOpen={!!uploadTarget}
+        onClose={() => setUploadTarget(null)}
+      />
     </div>
   )
 }
@@ -364,10 +399,12 @@ function PlacementCard({
   placement,
   onAccept,
   onReject,
+  onUpload,
 }: Readonly<{
   placement: StudentPlacement
   onAccept: (placement: StudentPlacement) => void
   onReject: (placement: StudentPlacement) => void
+  onUpload: (placement: StudentPlacement) => void
 }>) {
   const colors = PLACEMENT_STATUS_COLORS[placement.placement_status]
   const StatusIcon = PLACEMENT_STATUS_ICONS[placement.placement_status]
@@ -375,6 +412,7 @@ function PlacementCard({
 
   const isFullTime = placement.placement_type === "full-time" || placement.placement_type === "both"
   const isInternship = placement.placement_type === "internship" || placement.placement_type === "both"
+  const offerCountdown = placement.placement_status === "offered" ? getOfferCountdown(placement.offer_expires_at) : null
 
   const initials = placement.company_name
     .split(" ")
@@ -386,9 +424,17 @@ function PlacementCard({
   return (
     <div className="flex flex-col sm:flex-row items-start gap-4 px-5 py-5 border-b border-gray-50 dark:border-gray-800/50 last:border-b-0 transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
       {/* Company Avatar */}
-      <div className="shrink-0 h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
-        {initials}
-      </div>
+      {placement.company_logo ? (
+        <img
+          src={placement.company_logo}
+          alt={placement.company_name}
+          className="shrink-0 h-12 w-12 rounded-xl object-contain bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm"
+        />
+      ) : (
+        <div className="shrink-0 h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+          {initials}
+        </div>
+      )}
 
       {/* Content */}
       <div className="min-w-0 flex-1 space-y-3">
@@ -420,12 +466,27 @@ function PlacementCard({
             </p>
           </div>
           {/* Status Badge */}
-          <output
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
-          >
-            <StatusIcon size={12} />
-            {PLACEMENT_STATUS_LABELS[placement.placement_status]}
-          </output>
+          <div className="flex items-center gap-2 flex-wrap">
+            <output
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
+            >
+              <StatusIcon size={12} />
+              {PLACEMENT_STATUS_LABELS[placement.placement_status]}
+            </output>
+            {/* Offer Expiry Countdown */}
+            {offerCountdown && !offerCountdown.expired && (
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                  offerCountdown.urgent
+                    ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                    : "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                }`}
+              >
+                <Clock size={10} />
+                {offerCountdown.text}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Row 2: Key Details */}
@@ -493,22 +554,58 @@ function PlacementCard({
 
           {/* Offer Letter */}
           {placement.offer_letter_url && (
-            <a
-              href={placement.offer_letter_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors"
-            >
-              <FileText size={12} />
-              Offer Letter
-              <ExternalLink size={10} />
+            <span className="inline-flex items-center gap-1">
+              <a
+                href={placement.offer_letter_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors"
+              >
+                <FileText size={12} />
+                Offer Letter
+                <ExternalLink size={10} />
+              </a>
               {placement.offer_letter_verified && (
                 <span className="inline-flex items-center gap-0.5 ml-1 text-emerald-600 dark:text-emerald-400">
                   <ShieldCheck size={12} />
                   Verified
                 </span>
               )}
-            </a>
+              {!placement.offer_letter_verified && placement.offer_letter_rejection_reason && (
+                <span className="inline-flex items-center gap-0.5 ml-1 text-red-500 dark:text-red-400">
+                  <ShieldX size={12} />
+                  Rejected
+                </span>
+              )}
+            </span>
+          )}
+
+          {/* Joining Letter */}
+          {placement.joining_letter_url && (
+            <span className="inline-flex items-center gap-1">
+              <a
+                href={placement.joining_letter_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors"
+              >
+                <FileText size={12} />
+                Joining Letter
+                <ExternalLink size={10} />
+              </a>
+              {placement.joining_letter_verified && (
+                <span className="inline-flex items-center gap-0.5 ml-1 text-emerald-600 dark:text-emerald-400">
+                  <ShieldCheck size={12} />
+                  Verified
+                </span>
+              )}
+              {!placement.joining_letter_verified && placement.joining_letter_rejection_reason && (
+                <span className="inline-flex items-center gap-0.5 ml-1 text-red-500 dark:text-red-400">
+                  <ShieldX size={12} />
+                  Rejected
+                </span>
+              )}
+            </span>
           )}
 
           <span className="text-gray-400 dark:text-gray-500">
@@ -522,25 +619,59 @@ function PlacementCard({
           </span>
         </div>
 
+        {/* Row 3b: Document Rejection Alerts */}
+        {placement.offer_letter_rejection_reason && !placement.offer_letter_verified && (
+          <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/30">
+            <AlertCircle size={14} className="text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
+            <div className="text-xs text-red-600 dark:text-red-400">
+              <span className="font-medium">Offer letter rejected:</span>{" "}
+              {placement.offer_letter_rejection_reason}
+            </div>
+          </div>
+        )}
+        {placement.joining_letter_rejection_reason && !placement.joining_letter_verified && (
+          <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/30">
+            <AlertCircle size={14} className="text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
+            <div className="text-xs text-red-600 dark:text-red-400">
+              <span className="font-medium">Joining letter rejected:</span>{" "}
+              {placement.joining_letter_rejection_reason}
+            </div>
+          </div>
+        )}
+
         {/* Row 4: Actions */}
-        {showActions && (
+        {(showActions || canUploadDocuments(placement)) && (
           <div className="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => onAccept(placement)}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 rounded-xl transition-colors cursor-pointer"
-            >
-              <CheckCircle size={14} />
-              Accept
-            </button>
-            <button
-              type="button"
-              onClick={() => onReject(placement)}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl transition-colors cursor-pointer"
-            >
-              <XCircle size={14} />
-              Decline
-            </button>
+            {showActions && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onAccept(placement)}
+                  className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 rounded-xl transition-colors cursor-pointer"
+                >
+                  <CheckCircle size={14} />
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onReject(placement)}
+                  className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl transition-colors cursor-pointer"
+                >
+                  <XCircle size={14} />
+                  Decline
+                </button>
+              </>
+            )}
+            {canUploadDocuments(placement) && (
+              <button
+                type="button"
+                onClick={() => onUpload(placement)}
+                className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-xl transition-colors cursor-pointer"
+              >
+                <Upload size={14} />
+                Upload Documents
+              </button>
+            )}
           </div>
         )}
       </div>

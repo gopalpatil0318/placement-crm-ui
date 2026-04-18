@@ -30,6 +30,12 @@ export function useSubmitTrainingFeedback() {
     setErrors({})
   }, [])
 
+  const prefill = useCallback((existingRating: number, existingFeedback: string) => {
+    setRating(existingRating)
+    setFeedback(existingFeedback)
+    setErrors({})
+  }, [])
+
   const validate = useCallback((): { student_rating: number; student_feedback: string } | null => {
     const result = submitFeedbackSchema.safeParse({
       student_rating: rating,
@@ -54,13 +60,15 @@ export function useSubmitTrainingFeedback() {
   }, [rating, feedback])
 
   const mutation = useMutation({
-    mutationFn: ({ enrollmentId, data }: { enrollmentId: string; data: { student_rating: number; student_feedback: string } }) =>
-      TrainingProgramsService.submitTrainingFeedback(enrollmentId, data),
-    onSuccess: () => {
+    mutationFn: ({ enrollmentId, data, isEdit }: { enrollmentId: string; data: { student_rating: number; student_feedback: string }; isEdit?: boolean }) =>
+      isEdit
+        ? TrainingProgramsService.updateTrainingFeedback(enrollmentId, data)
+        : TrainingProgramsService.submitTrainingFeedback(enrollmentId, data),
+    onSuccess: (_data, variables) => {
       showToast({
         type: "success",
-        title: "Feedback Submitted",
-        description: "Thank you for your feedback!",
+        title: variables.isEdit ? "Feedback Updated" : "Feedback Submitted",
+        description: variables.isEdit ? "Your feedback has been updated." : "Thank you for your feedback!",
       })
       resetForm()
       queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.myEnrollments() })
@@ -88,5 +96,6 @@ export function useSubmitTrainingFeedback() {
     submitFeedback: mutation.mutate,
     isSubmitting: mutation.isPending,
     resetForm,
+    prefill,
   }
 }

@@ -120,13 +120,14 @@ export const CollegeAdminService = {
         limit?: number;
         is_active?: boolean;
         search?: string;
+        passout_year?: number;
     }) => {
         const response = await api.get("/college/get_all_departments", { params });
         return response.data;
     },
 
-    getDepartment: async (id: string) => {
-        const response = await api.get(`/college/get_department/${id}`);
+    getDepartment: async (id: string, params?: { passout_year?: number }) => {
+        const response = await api.get(`/college/get_department/${id}`, { params });
         return response.data;
     },
 
@@ -331,6 +332,7 @@ export const CollegeAdminService = {
         job_status?: string;
         company_id?: string;
         job_type?: string;
+        drive_type?: string;
         search?: string;
         sort_by?: string;
         sort_order?: string;
@@ -342,6 +344,7 @@ export const CollegeAdminService = {
         if (params.job_status) query.append("job_status", params.job_status);
         if (params.company_id) query.append("company_id", params.company_id);
         if (params.job_type) query.append("job_type", params.job_type);
+        if (params.drive_type) query.append("drive_type", params.drive_type);
         if (params.search) query.append("search", params.search);
         if (params.sort_by) query.append("sort_by", params.sort_by);
         if (params.sort_order) query.append("sort_order", params.sort_order);
@@ -751,10 +754,36 @@ export const CollegeAdminService = {
         return response.data;
     },
 
+    // ─── Round Processing ───
+
+    previewRoundProcessing: async (roundId: string) => {
+        const response = await api.get(
+            `/college/preview_round_processing/${roundId}`,
+        );
+        return response.data;
+    },
+
+    processRound: async (roundId: string) => {
+        const response = await api.post(
+            `/college/process_round/${roundId}`,
+        );
+        return response.data;
+    },
+
     // ─── Placement Results ───
 
     createPlacement: async (data: Record<string, unknown>) => {
         const response = await api.post("/college/create_placement", data);
+        return response.data;
+    },
+
+    bulkCreatePlacements: async (items: Record<string, unknown>[]) => {
+        const response = await api.post("/college/bulk_create_placements", { items });
+        return response.data;
+    },
+
+    recordExternalPlacement: async (data: Record<string, unknown>) => {
+        const response = await api.post("/college/record_external_placement", data);
         return response.data;
     },
 
@@ -810,10 +839,21 @@ export const CollegeAdminService = {
 
     verifyOfferLetter: async (
         placementId: string,
-        data: { offer_letter_verified: boolean; remarks?: string },
+        data: { action: "approved" | "rejected"; rejection_reason?: string },
     ) => {
         const response = await api.patch(
             `/college/verify_offer_letter/${placementId}`,
+            data,
+        );
+        return response.data;
+    },
+
+    verifyJoiningLetter: async (
+        placementId: string,
+        data: { action: "approved" | "rejected"; rejection_reason?: string },
+    ) => {
+        const response = await api.patch(
+            `/college/verify_joining_letter/${placementId}`,
             data,
         );
         return response.data;
@@ -1019,10 +1059,29 @@ export const CollegeAdminService = {
         return response.data;
     },
 
+    updateSkill: async (skillId: string, data: { skill_name?: string; skill_category?: string }) => {
+        const response = await api.put(`/college/update_skill/${skillId}`, data);
+        return response.data;
+    },
+
+    // ======================== Verification Settings ========================
+
+    getVerificationSettings: async () => {
+        const response = await api.get("/college/get_verification_settings");
+        return response.data;
+    },
+
+    updateVerificationSettings: async (data: Record<string, unknown>) => {
+        const response = await api.patch("/college/update_verification_settings", data);
+        return response.data;
+    },
+
     // ======================== Verification Center ========================
 
-    getPendingVerificationCounts: async () => {
-        const response = await api.get("/college/get_pending_verification_counts");
+    getPendingVerificationCounts: async (params?: {
+        student_passout_year?: number;
+    }) => {
+        const response = await api.get("/college/get_pending_verification_counts", { params });
         return response.data;
     },
 
@@ -1183,6 +1242,9 @@ export const CollegeAdminService = {
         target_passout_year?: number;
         max_enrollment?: number;
         enrollment_deadline?: string;
+        program_fee?: number;
+        fee_currency?: string;
+        min_attendance_pct?: number;
     }) => {
         const response = await api.post("/college/create_training_program", data);
         return response.data;
@@ -1233,6 +1295,9 @@ export const CollegeAdminService = {
         target_passout_year?: number;
         max_enrollment?: number;
         enrollment_deadline?: string;
+        program_fee?: number;
+        fee_currency?: string;
+        min_attendance_pct?: number;
     }) => {
         const response = await api.put(`/college/update_training_program/${programId}`, data);
         return response.data;
@@ -1241,6 +1306,13 @@ export const CollegeAdminService = {
     toggleTrainingStatus: async (programId: string, programStatus: string) => {
         const response = await api.patch(`/college/toggle_training_status/${programId}`, {
             program_status: programStatus,
+        });
+        return response.data;
+    },
+
+    toggleEnrollmentAccess: async (programId: string, allowEnrollments: boolean) => {
+        const response = await api.patch(`/college/toggle_enrollment_access/${programId}`, {
+            allow_enrollments: allowEnrollments,
         });
         return response.data;
     },
@@ -1270,13 +1342,95 @@ export const CollegeAdminService = {
     },
 
     updateEnrollment: async (enrollmentId: string, data: {
-        sessions_attended?: number;
         completion_status?: string;
-        completion_percentage?: number;
         certificate_issued?: boolean;
         certificate_url?: string;
+        payment_status?: string;
+        amount_paid?: number;
     }) => {
         const response = await api.patch(`/college/update_enrollment/${enrollmentId}`, data);
+        return response.data;
+    },
+
+    bulkUpdateEnrollments: async (programId: string, updates: {
+        enrollment_id: string;
+        completion_status?: string;
+        payment_status?: string;
+        amount_paid?: number;
+        certificate_issued?: boolean;
+        certificate_url?: string;
+    }[]) => {
+        const response = await api.patch(
+            `/college/bulk_update_enrollments/${encodeURIComponent(programId)}`,
+            { updates },
+        );
+        return response.data;
+    },
+
+    getStudentTrainingReport: async (studentId: string) => {
+        const response = await api.get(
+            `/college/student_training_report/${encodeURIComponent(studentId)}`,
+        );
+        return response.data;
+    },
+
+    // ─── Training Sessions ─────────────────────────────────────────────────────
+
+    createTrainingSession: async (programId: string, data: {
+        session_number: number;
+        session_date?: string;
+        session_topic?: string;
+        venue?: string;
+    }) => {
+        const response = await api.post(
+            `/college/training/${encodeURIComponent(programId)}/sessions`,
+            data,
+        );
+        return response.data;
+    },
+
+    getTrainingSessions: async (programId: string) => {
+        const response = await api.get(
+            `/college/training/${encodeURIComponent(programId)}/sessions`,
+        );
+        return response.data;
+    },
+
+    updateTrainingSession: async (sessionId: string, data: {
+        session_number?: number;
+        session_date?: string;
+        session_topic?: string;
+        venue?: string;
+    }) => {
+        const response = await api.put(
+            `/college/training/sessions/${encodeURIComponent(sessionId)}`,
+            data,
+        );
+        return response.data;
+    },
+
+    deleteTrainingSession: async (sessionId: string) => {
+        const response = await api.delete(
+            `/college/training/sessions/${encodeURIComponent(sessionId)}`,
+        );
+        return response.data;
+    },
+
+    markSessionAttendance: async (sessionId: string, attendance: {
+        enrollment_id: string;
+        present: boolean;
+    }[]) => {
+        const response = await api.post(
+            `/college/training/sessions/${encodeURIComponent(sessionId)}/attendance`,
+            { attendance },
+        );
+        return response.data;
+    },
+
+    getSessionAttendance: async (sessionId: string) => {
+        const response = await api.get(
+            `/college/training/sessions/${encodeURIComponent(sessionId)}/attendance`,
+        );
         return response.data;
     },
 
@@ -1479,6 +1633,110 @@ export const CollegeAdminService = {
         },
     ) => {
         const response = await api.patch(`/college/update_restriction/${restrictionId}`, data);
+        return response.data;
+    },
+
+    // ── Audit Logs ──────────────────────────────────────────────────────────
+    getAuditLogs: async (
+        filters: {
+            page?: number;
+            limit?: number;
+            action?: string;
+            resource_type?: string;
+            user_id?: string;
+            resource_id?: string;
+            date_from?: string;
+            date_to?: string;
+            search?: string;
+        } = {},
+    ) => {
+        const query = new URLSearchParams();
+        if (filters.page) query.append("page", String(filters.page));
+        if (filters.limit) query.append("limit", String(filters.limit));
+        if (filters.action) query.append("action", filters.action);
+        if (filters.resource_type) query.append("resource_type", filters.resource_type);
+        if (filters.user_id) query.append("user_id", filters.user_id);
+        if (filters.resource_id) query.append("resource_id", filters.resource_id);
+        if (filters.date_from) query.append("date_from", filters.date_from);
+        if (filters.date_to) query.append("date_to", filters.date_to);
+        if (filters.search) query.append("search", filters.search);
+
+        const queryStr = query.toString();
+        const url = queryStr ? `/college/audit_logs?${queryStr}` : "/college/audit_logs";
+        const response = await api.get(url);
+        return response.data;
+    },
+
+    getAuditLogDetail: async (auditId: string) => {
+        const response = await api.get(`/college/audit_logs/${auditId}`);
+        return response.data;
+    },
+
+    // ======================== Company Tiers ========================
+
+    createCompanyTier: async (data: {
+        passout_year: number;
+        tier_name: string;
+        tier_level: number;
+        min_package: number;
+        max_package?: number | null;
+        description?: string;
+        is_active?: boolean;
+    }) => {
+        const response = await api.post("/college/create_tier", data);
+        return response.data;
+    },
+
+    getAllCompanyTiers: async (
+        params: { passout_year?: number; is_active?: string } = {},
+    ) => {
+        const query = new URLSearchParams();
+        if (params.passout_year) query.append("passout_year", String(params.passout_year));
+        if (params.is_active) query.append("is_active", params.is_active);
+        const queryStr = query.toString();
+        const url = queryStr ? `/college/get_all_tiers?${queryStr}` : "/college/get_all_tiers";
+        return (await api.get(url)).data;
+    },
+
+    getCompanyTier: async (tierId: string) => {
+        return (await api.get(`/college/get_tier/${encodeURIComponent(tierId)}`)).data;
+    },
+
+    updateCompanyTier: async (
+        tierId: string,
+        data: Record<string, unknown>,
+    ) => {
+        const response = await api.put(
+            `/college/update_tier/${encodeURIComponent(tierId)}`,
+            data,
+        );
+        return response.data;
+    },
+
+    deleteCompanyTier: async (tierId: string) => {
+        const response = await api.delete(
+            `/college/delete_tier/${encodeURIComponent(tierId)}`,
+        );
+        return response.data;
+    },
+
+    // ======================== Placement Settings ========================
+
+    getPlacementSettings: async (passoutYear: number) => {
+        return (await api.get(`/college/get_placement_settings?passout_year=${passoutYear}`)).data;
+    },
+
+    upsertPlacementSettings: async (data: {
+        passout_year: number;
+        max_active_offers?: number;
+        allow_dream_upgrade?: boolean;
+        auto_withdrawal_rule?: string;
+        default_offer_days?: number;
+        exclude_placed_by_default?: boolean;
+        auto_reject_on_round_fail?: boolean;
+        allow_reapply_after_withdrawal?: boolean;
+    }) => {
+        const response = await api.put("/college/upsert_placement_settings", data);
         return response.data;
     },
 };

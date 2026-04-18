@@ -109,6 +109,12 @@ const TrainingProgramCard = ({ program }: Readonly<TrainingProgramCardProps>) =>
                         </span>
                     )}
                 </div>
+                {program.allow_enrollments && (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 mb-3">
+                        <span className="h-1 w-1 rounded-full bg-emerald-500" aria-hidden="true" />
+                        {"Enrollment Open"}
+                    </span>
+                )}
 
                 {/* Trainer Info */}
                 {(program.trainer_name || program.trainer_organization) && (

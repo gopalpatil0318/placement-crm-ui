@@ -23,6 +23,7 @@ export interface CreateJobFormData {
     job_title: string;
     job_location: string;
     job_type: string;
+    drive_type: string;
     passout_years: number[];
     application_deadline: string;
     job_description: string;
@@ -54,6 +55,7 @@ const INITIAL_FORM_DATA: CreateJobFormData = {
     job_title: "",
     job_location: "",
     job_type: "full-time",
+    drive_type: "on_campus",
     passout_years: [],
     application_deadline: "",
     job_description: "",
@@ -139,9 +141,13 @@ export const useCreateJob = () => {
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
             const { name, value, type } = e.target;
+            let resolved: string | number = value;
+            if (type === "number" && value !== "") {
+                resolved = Number(value);
+            }
             setFormData((prev) => ({
                 ...prev,
-                [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,
+                [name]: resolved,
             }));
             setErrors((prev) => {
                 if (!prev[name]) return prev;
@@ -306,6 +312,7 @@ export const useCreateJob = () => {
             bond_duration: formData.bond_duration.trim() || undefined,
             bond_details: formData.bond_details.trim() || undefined,
             job_type: formData.job_type,
+            drive_type: formData.drive_type || "on_campus",
             internship_duration: (formData.job_type === "internship" || formData.job_type === "both")
                 ? (formData.internship_duration.trim() || undefined)
                 : undefined,

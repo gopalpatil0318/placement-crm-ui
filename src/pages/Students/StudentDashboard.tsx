@@ -106,7 +106,7 @@ function CompletionRingSkeleton() {
 
 // ─── Profile Completion Ring ────────────────────────────────────────────────────
 
-function CompletionRing({ percentage }: { percentage: number }) {
+function CompletionRing({ percentage }: Readonly<{ percentage: number }>) {
   const radius = 42
   const circumference = 2 * Math.PI * radius
   const progress = circumference - (percentage / 100) * circumference
@@ -149,7 +149,7 @@ interface StatCardProps {
   bgColor: string
 }
 
-function StatCard({ icon, label, value, color, bgColor }: StatCardProps) {
+function StatCard({ icon, label, value, color, bgColor }: Readonly<StatCardProps>) {
   return (
     <motion.div
       variants={staggerItem}
@@ -226,6 +226,31 @@ export default function StudentDashboard() {
         </div>
       )}
 
+      {/* ── Profile Approval Banner ── */}
+      {!profileLoading && pct >= 100 && !user?.profileIsApproved && profileCompletion?.profile_approval_status === "rejected" && (
+        <div className="flex items-center gap-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 px-4 py-3">
+          <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-800 dark:text-red-300">
+              Your profile was rejected by your TPO. Please update the required sections and resubmit.
+            </p>
+            {profileCompletion.profile_rejection_reason && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                Reason: {profileCompletion.profile_rejection_reason}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      {!profileLoading && pct >= 100 && !user?.profileIsApproved && profileCompletion?.profile_approval_status !== "rejected" && (
+        <div className="flex items-center gap-3 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 px-4 py-3">
+          <Clock className="h-5 w-5 text-blue-500 shrink-0" />
+          <p className="text-sm font-medium text-blue-800 dark:text-blue-300 flex-1">
+            Your profile is pending approval by your TPO. You'll be able to apply for jobs once approved.
+          </p>
+        </div>
+      )}
+
       {/* ── Profile Completion ── */}
       {profileLoading ? (
         <CompletionRingSkeleton />
@@ -261,7 +286,7 @@ export default function StudentDashboard() {
       {/* ── Stat Cards ── */}
       {applicationsLoading || jobsLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
+          {["sk-stat-1", "sk-stat-2", "sk-stat-3", "sk-stat-4"].map((id) => <StatCardSkeleton key={id} />)}
         </div>
       ) : (
         <motion.div
@@ -321,15 +346,17 @@ export default function StudentDashboard() {
           </div>
 
           <div className="p-3 space-y-1.5">
-            {jobsLoading ? (
-              Array.from({ length: 3 }).map((_, i) => <JobCardSkeleton key={i} />)
-            ) : availableJobs.length === 0 ? (
+            {jobsLoading && (
+              ["sk-job-1", "sk-job-2", "sk-job-3"].map((id) => <JobCardSkeleton key={id} />)
+            )}
+            {!jobsLoading && availableJobs.length === 0 && (
               <div className="py-10 text-center">
                 <Briefcase size={32} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
                 <p className="text-sm text-gray-400 dark:text-gray-500">No upcoming jobs right now</p>
                 <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">Check back later for new opportunities</p>
               </div>
-            ) : (
+            )}
+            {!jobsLoading && availableJobs.length > 0 && (
               <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-1.5">
                 {availableJobs.slice(0, 5).map((job) => {
                   const { text: countdown, urgent } = getCountdown(job.application_deadline)
@@ -388,9 +415,10 @@ export default function StudentDashboard() {
           </div>
 
           <div className="p-3 space-y-1.5">
-            {applicationsLoading ? (
-              Array.from({ length: 3 }).map((_, i) => <JobCardSkeleton key={i} />)
-            ) : recentApplications.length === 0 ? (
+            {applicationsLoading && (
+              ["sk-app-1", "sk-app-2", "sk-app-3"].map((id) => <JobCardSkeleton key={id} />)
+            )}
+            {!applicationsLoading && recentApplications.length === 0 && (
               <div className="py-10 text-center">
                 <FileText size={32} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
                 <p className="text-sm text-gray-400 dark:text-gray-500">No applications yet</p>
@@ -401,7 +429,8 @@ export default function StudentDashboard() {
                   Browse jobs <ArrowRight size={12} />
                 </Link>
               </div>
-            ) : (
+            )}
+            {!applicationsLoading && recentApplications.length > 0 && (
               <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-1.5">
                 {recentApplications.slice(0, 5).map((app) => (
                   <motion.div key={app.application_id} variants={staggerItem}>
@@ -431,7 +460,7 @@ export default function StudentDashboard() {
                             <div className="flex gap-0.5">
                               {Array.from({ length: app.total_rounds }).map((_, i) => (
                                 <div
-                                  key={i}
+                                  key={`round-${app.application_id}-${i}`}
                                   className={`h-1 w-3 rounded-full ${i < app.rounds_passed ? "bg-emerald-500" : "bg-gray-200 dark:bg-gray-700"}`}
                                 />
                               ))}

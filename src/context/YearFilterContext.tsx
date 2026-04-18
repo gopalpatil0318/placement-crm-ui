@@ -5,7 +5,15 @@ import type { YearFilterContextType } from "@/types/auth"
 
 const YearFilterContext = createContext<YearFilterContextType | undefined>(undefined)
 
-export function YearFilterProvider({ children }: { children: React.ReactNode }) {
+const YEAR_STORAGE_KEY = "placenex_selected_year"
+
+/** Read persisted year from localStorage. Returns NaN if absent or invalid. */
+function readStoredYear(): number {
+  const stored = localStorage.getItem(YEAR_STORAGE_KEY)
+  return stored === null ? Number.NaN : Number(stored)
+}
+
+export function YearFilterProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -19,14 +27,29 @@ export function YearFilterProvider({ children }: { children: React.ReactNode }) 
     return options
   }, [defaultYear])
 
-  // Read year from URL, validate it's within range, fallback to default
+  // Priority: URL param → localStorage → defaultYear
   const urlYear = searchParams.get("year")
-  const parsed = urlYear !== null ? Number(urlYear) : NaN
-  const selectedYear =
-    !Number.isNaN(parsed) && yearOptions.includes(parsed) ? parsed : defaultYear
+  const parsedUrl = urlYear === null ? Number.NaN : Number(urlYear)
+  const parsedStored = readStoredYear()
+
+  let selectedYear: number
+  if (!Number.isNaN(parsedUrl) && yearOptions.includes(parsedUrl)) {
+    selectedYear = parsedUrl
+  } else if (!Number.isNaN(parsedStored) && yearOptions.includes(parsedStored)) {
+    selectedYear = parsedStored
+  } else {
+    selectedYear = defaultYear
+  }
 
   const setSelectedYear = useCallback(
     (year: number) => {
+      // Persist to localStorage for cross-route navigation
+      if (year === defaultYear) {
+        localStorage.removeItem(YEAR_STORAGE_KEY)
+      } else {
+        localStorage.setItem(YEAR_STORAGE_KEY, String(year))
+      }
+
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev)

@@ -31,6 +31,7 @@ export function useJobList(filters: JobListFilters = {}) {
   return {
     jobs: query.data?.jobs ?? [],
     pagination: query.data?.pagination ?? { page: 1, limit: 10, total: 0, totalPages: 0 },
+    placementContext: query.data?.placement_context ?? { is_placed: false },
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,

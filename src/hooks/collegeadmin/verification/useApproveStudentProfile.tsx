@@ -50,12 +50,9 @@ export function useApproveStudentProfile(studentId: string) {
     const queryClient = useQueryClient();
 
     const invalidateCache = useCallback(() => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.verifications.counts() });
-        queryClient.invalidateQueries({ queryKey: queryKeys.verifications.profiles() });
+        // Invalidate all verification-related queries + student detail
+        queryClient.invalidateQueries({ queryKey: ["verifications"] });
         queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(studentId) });
-        queryClient.invalidateQueries({
-            queryKey: queryKeys.verifications.studentReview(studentId),
-        });
     }, [queryClient, studentId]);
 
     const approveMutation = useMutation({

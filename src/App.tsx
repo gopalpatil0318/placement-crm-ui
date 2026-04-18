@@ -12,8 +12,9 @@ import { useOnlineStatus } from "./hooks/useOnlineStatus"
 import { sysadminRoutes } from "./routes/sysadminRoutes"
 import { collegeAdminRoutes } from "./routes/collegeAdminRoutes"
 import { studentRoutes } from "./routes/studentRoutes"
-import RootLanding from "./pages/RootLanding"
 import './App.css'
+
+const MARKETING_URL = "https://placenex.in"
 
 function UnauthorizedPage() {
   return (
@@ -62,7 +63,12 @@ function App() {
   // from throwing when their provider isn't in the tree.
   const subdomain = useMemo(() => getSubdomain(), [])
   const isAdmin = subdomain === "admin"
-  const isRoot = subdomain === null
+
+  // Bare domain (no subdomain) → redirect to marketing website
+  if (subdomain === null) {
+    globalThis.location.replace(MARKETING_URL)
+    return null
+  }
 
   return (
     <ErrorBoundary>
@@ -71,25 +77,15 @@ function App() {
           <Router>
             <Suspense fallback={<PageLoadingSkeleton />}>
               <Routes>
-                {isRoot ? (
-                  <>
-                    <Route path="/" element={<RootLanding />} />
-                    <Route path="*" element={<RootLanding />} />
-                  </>
-                ) : isAdmin ? sysadminRoutes : (
+                {isAdmin ? sysadminRoutes : (
                   <>
                     {collegeAdminRoutes}
                     {studentRoutes}
                   </>
                 )}
-
-                {!isRoot && (
-                  <>
-                    <Route path="/unauthorized" element={<UnauthorizedPage />} />
-                    <Route path="/" element={<SmartRedirect />} />
-                    <Route path="*" element={<SmartRedirect />} />
-                  </>
-                )}
+                <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                <Route path="/" element={<SmartRedirect />} />
+                <Route path="*" element={<SmartRedirect />} />
               </Routes>
             </Suspense>
           </Router>

@@ -254,20 +254,22 @@ function KPICard({
             <div className="flex items-start justify-between">
                 <div>
                     <div className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</div>
-                    <div className="mt-1.5 text-2xl font-bold text-gray-900 dark:text-gray-50">
-                        {prefix}
-                        {animateValue === undefined ? (
-                            value
-                        ) : (
-                            <AnimatedNumber value={animateValue} decimals={decimals} />
+                    <div className="mt-1.5 flex items-baseline gap-2.5 text-2xl font-bold text-gray-900 dark:text-gray-50">
+                        <span>
+                            {prefix}
+                            {animateValue === undefined ? (
+                                value
+                            ) : (
+                                <AnimatedNumber value={animateValue} decimals={decimals} />
+                            )}
+                            {suffix}
+                        </span>
+                        {subText && (
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                                {subText}
+                            </span>
                         )}
-                        {suffix}
                     </div>
-                    {subText && (
-                        <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                            {subText}
-                        </div>
-                    )}
                 </div>
                 <div className={`rounded-lg p-2 ${iconBg} transition-transform duration-200 group-hover:scale-110`}>
                     <Icon className={`h-4 w-4 ${iconColor}`} />
@@ -336,6 +338,12 @@ function OverviewSection({ data, loading }: Readonly<{ data?: DashboardOverview;
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
                 {/* Placement Hero Card */}
                 <div className={`relative overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br ${ringBg} p-5 shadow-sm lg:col-span-3 dark:border-gray-800`}>
+                    {unplacedPercent > 0 && (
+                        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 ring-1 ring-red-200 dark:ring-red-800">
+                            <AlertTriangle className="h-3 w-3" />
+                            <span className="font-medium">{unplacedPercent.toFixed(1)}% students unplaced</span>
+                        </div>
+                    )}
                     <div className="flex items-center gap-6">
                         <CircularProgress percentage={pct} ringColor={ringColor} />
                         <div className="flex-1 min-w-0">
@@ -405,58 +413,6 @@ function OverviewSection({ data, loading }: Readonly<{ data?: DashboardOverview;
                     ))}
                 </motion.div>
             )}
-        </div>
-    );
-}
-
-// ========================
-// PROBLEM INDICATORS
-// ========================
-
-function ProblemIndicators({
-    data,
-    onNavigate,
-}: Readonly<{
-    data: DashboardOverview;
-    onNavigate: (tab: DashboardTab) => void;
-}>) {
-    const alerts: { message: string; severity: "danger" | "warning"; tab: DashboardTab }[] = [];
-
-    const unplacedPercent = Number(data.total_students) > 0
-        ? (Number(data.unplaced_count) / Number(data.total_students)) * 100
-        : 0;
-    if (unplacedPercent > 30) {
-        alerts.push({
-            message: `${unplacedPercent.toFixed(1)}% students unplaced`,
-            severity: "danger",
-            tab: "students",
-        });
-    }
-
-    if (alerts.length === 0) return null;
-
-    return (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
-                <AlertTriangle className="h-4 w-4" />
-                Attention Required
-            </div>
-            <div className="flex flex-wrap gap-3">
-                {alerts.map((a) => (
-                    <button
-                        key={a.message}
-                        type="button"
-                        onClick={() => onNavigate(a.tab)}
-                        className={`min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                            a.severity === "danger"
-                                ? "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50"
-                                : "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
-                        }`}
-                    >
-                        {a.message}
-                    </button>
-                ))}
-            </div>
         </div>
     );
 }
@@ -704,7 +660,7 @@ function PlacementTab({ data, year }: Readonly<{ data?: PlacementStats; year: nu
                 <StatCard label="Accepted Offers" value={data.offer_breakdown.accepted_offers} color="text-emerald-600 dark:text-emerald-400" />
                 <StatCard label="Joined" value={data.offer_breakdown.joined_count} color="text-blue-600 dark:text-blue-400" />
                 <StatCard label="Pending" value={data.offer_breakdown.pending_offers} color="text-amber-600 dark:text-amber-400" />
-                <StatCard label="Rejected" value={data.offer_breakdown.rejected_offers} color="text-red-600 dark:text-red-400" />
+                <StatCard label="Declined/Lost" value={(data.offer_breakdown.declined_offers ?? 0) + (data.offer_breakdown.revoked_offers ?? 0) + (data.offer_breakdown.expired_offers ?? 0)} color="text-red-600 dark:text-red-400" />
                 <StatCard label="Cancelled" value={data.offer_breakdown.cancelled_offers} color="text-gray-500 dark:text-gray-400" />
                 <StatCard label="Multiple Offers" value={data.offer_breakdown.students_with_multiple_offers} color="text-violet-600 dark:text-violet-400" />
             </div>
@@ -1290,9 +1246,10 @@ function TrainingTab({ data, year }: Readonly<{ data?: TrainingStats; year: numb
     const { training: t, feedback: f } = data;
 
     const statusPieData = [
+        { name: "Draft", value: t.draft, fill: "#94A3B8" },
         { name: "Upcoming", value: t.upcoming, fill: "#3B82F6" },
-        { name: "Enrollment Open", value: t.enrollment_open, fill: "#10B981" },
         { name: "In Progress", value: t.in_progress, fill: "#F59E0B" },
+        { name: "On Hold", value: t.on_hold, fill: "#F97316" },
         { name: "Completed", value: t.completed, fill: "#6B7280" },
         { name: "Cancelled", value: t.cancelled, fill: "#EF4444" },
     ].filter((d) => d.value > 0);
@@ -1871,11 +1828,6 @@ export default function DashboardManager() {
 
             {/* KPI Cards */}
             <OverviewSection data={dash.overview.data} loading={dash.overview.isLoading} />
-
-            {/* Problem Indicators */}
-            {dash.overview.data && (
-                <ProblemIndicators data={dash.overview.data} onNavigate={dash.setActiveTab} />
-            )}
 
             {/* Tab Bar */}
             <TabBar

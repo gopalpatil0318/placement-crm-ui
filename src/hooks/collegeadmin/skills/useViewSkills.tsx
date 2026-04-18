@@ -10,13 +10,14 @@ import { queryKeys } from "@/lib/queryKeys";
 export interface Skill {
     skill_id: string;
     skill_name: string;
-    skill_category: string | null;
+    skill_category: string;
     student_count: number;
     created_at: string;
 }
 
 export interface SkillCategory {
     category: string;
+    label: string;
     count: number;
 }
 

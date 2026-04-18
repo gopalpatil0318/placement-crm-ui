@@ -91,13 +91,10 @@ export const useCreateSkill = (onSuccess?: () => void) => {
             }
 
             setErrors({});
-            const payload: { skill_name: string; skill_category?: string } = {
+            mutation.mutate({
                 skill_name: result.data.skill_name,
-            };
-            if (result.data.skill_category) {
-                payload.skill_category = result.data.skill_category;
-            }
-            mutation.mutate(payload);
+                skill_category: result.data.skill_category,
+            });
         },
         [formData, mutation],
     );

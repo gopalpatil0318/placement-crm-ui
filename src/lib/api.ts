@@ -24,32 +24,41 @@ const api = axios.create({
   },
 })
 
+function redirectToLogin() {
+  // Clear all auth sessions to prevent PublicRoute from redirecting back
+  localStorage.removeItem("student_user")
+  localStorage.removeItem("college_user")
+  localStorage.removeItem("sysadmin_user")
+  localStorage.removeItem("placenex_selected_year")
+  const path = globalThis.location.pathname
+  if (path.startsWith("/sysadmin")) {
+    globalThis.location.href = "/sysadmin/login"
+  } else {
+    globalThis.location.href = "/login"
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error.response?.status
-    const requestUrl = error.config?.url ?? ""
+    const originalRequest = error.config
 
     // Check if this is a login request — login 401s are credential errors, not session expiry
+    const requestUrl = originalRequest?.url ?? ""
     const requestPath = new URL(requestUrl, "http://localhost").pathname
     const isLoginRequest = /\/(college|student|sysadmin)\/login$/.test(requestPath)
 
     // 401 Unauthorized — for non-login requests, session expired → redirect to login
+    // NOTE: Token refresh (B21) not yet implemented — redirect immediately
     if (status === 401 && !isLoginRequest) {
-      const path = globalThis.location.pathname
-      if (path.startsWith("/sysadmin")) {
-        globalThis.location.href = "/sysadmin/login"
-      } else {
-        globalThis.location.href = "/login"
-      }
-      return Promise.reject(new ApiError("Session expired. Please log in again.", 401))
+      redirectToLogin()
+      throw new ApiError("Session expired. Please log in again.", 401)
     }
 
     // 429 Rate Limited — provide a clear user-friendly message
     if (status === 429) {
-      return Promise.reject(
-        new ApiError("Too many requests. Please wait a moment and try again.", 429),
-      )
+      throw new ApiError("Too many requests. Please wait a moment and try again.", 429)
     }
 
     const message =
@@ -57,7 +66,7 @@ api.interceptors.response.use(
       error.response?.data?.message ||
       error.message ||
       "An unexpected error occurred"
-    return Promise.reject(new ApiError(message, status))
+    throw new ApiError(message, status)
   },
 )
 

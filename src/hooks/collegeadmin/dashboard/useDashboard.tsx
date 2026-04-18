@@ -49,7 +49,9 @@ export type OfferBreakdown = Readonly<{
     pending_offers: number;
     accepted_offers: number;
     joined_count: number;
-    rejected_offers: number;
+    declined_offers: number;
+    revoked_offers: number;
+    expired_offers: number;
     cancelled_offers: number;
     students_with_multiple_offers: number;
 }>;
@@ -123,9 +125,10 @@ export type DiversityStats = Readonly<{
 export type TrainingStats = Readonly<{
     training: Readonly<{
         total_programs: number;
+        draft: number;
         upcoming: number;
-        enrollment_open: number;
         in_progress: number;
+        on_hold: number;
         completed: number;
         cancelled: number;
         total_enrolled: number;

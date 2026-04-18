@@ -190,7 +190,7 @@ export default function OverrideRequestModal({
           <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200/60 dark:border-red-800/30">
             <AlertTriangle size={16} className="text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
             <p className="text-xs text-red-700 dark:text-red-300">
-              Are you sure? This action is irrevocable. You can only submit one override request per job — once submitted, it cannot be edited or withdrawn.
+              Are you sure? Once submitted, your request cannot be edited or withdrawn. If rejected, you may submit one more attempt.
             </p>
           </div>
         )}

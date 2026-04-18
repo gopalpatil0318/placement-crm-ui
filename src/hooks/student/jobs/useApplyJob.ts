@@ -13,8 +13,8 @@ export function useApplyJob(jobId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.jobDetail(jobId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.eligibility(jobId) })
-      queryClient.invalidateQueries({ queryKey: ["studentPortal", "jobs"] })
-      queryClient.invalidateQueries({ queryKey: ["studentPortal", "applications"] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.availableJobs() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.studentPortal.myApplications() })
     },
     onError: (error) => {
       showToast({

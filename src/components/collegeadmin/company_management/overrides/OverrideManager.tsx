@@ -31,7 +31,7 @@ import {
     OVERRIDE_STATUS_LABELS,
     type OverrideStatus,
 } from "@/validators/OverrideSchema";
-import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { useAuth } from "@/hooks/collegeadmin/useAuth";
 import { type OverrideRequest, type OverrideSummary } from "@/hooks/collegeadmin/company_management/overrides/useViewJobOverrides";
 
 // ========================
@@ -419,7 +419,7 @@ const ReviewModal = ({
             titleIcon={config ? <ActionIcon className={`h-5 w-5 ${config.iconColor}`} /> : <ShieldAlert className="h-5 w-5 text-gray-600" />}
             size="lg"
         >
-            <div className="space-y-5">
+            <div className="p-6 space-y-5">
                 {/* Student info */}
                 <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -703,7 +703,7 @@ const BulkActionBar = ({
                         : <XCircle className="h-5 w-5 text-red-600" />}
                     size="lg"
                 >
-                    <div className="space-y-5">
+                    <div className="p-6 space-y-5">
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                             You are about to <span className="font-semibold text-gray-800 dark:text-gray-200">{action}</span>{" "}
                             <span className="font-semibold text-gray-800 dark:text-gray-200">{selectedIds.size}</span>{" "}
@@ -773,7 +773,7 @@ const BulkActionBar = ({
                     titleIcon={<ShieldAlert className="h-5 w-5 text-blue-600" />}
                     size="lg"
                 >
-                    <div className="space-y-5">
+                    <div className="p-6 space-y-5">
                         <div className="grid grid-cols-2 gap-3">
                             <div className="text-center p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
                                 <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{bulkResult.processed}</p>
@@ -1046,20 +1046,9 @@ const OverrideManager = ({ jobId, onRefresh }: OverrideManagerProps) => {
     const startEntry = overrides.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
     const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
 
-    // Fetch departments from API for filter dropdown
-    const [departments, setDepartments] = useState<string[]>([]);
-
-    useEffect(() => {
-        let cancelled = false;
-        CollegeAdminService.getDepartments({ is_active: true, limit: 500 }).then((res) => {
-            if (cancelled) return;
-            const depts: string[] = (res.data?.departments ?? res.departments ?? [])
-                .map((d: { dept_name: string }) => d.dept_name)
-                .sort();
-            setDepartments(depts);
-        }).catch(() => {});
-        return () => { cancelled = true; };
-    }, []);
+    // Use departments from auth context (already loaded at login)
+    const { user } = useAuth();
+    const departments: string[] = (user?.departments ?? []).map((d) => d.dept_name).sort((a, b) => a.localeCompare(b));
 
     // Error state
     if (error && !loading && overrides.length === 0) {

@@ -19,14 +19,15 @@ type FormErrors = Partial<Record<keyof UpdateEnrollmentInput, string>>;
 export const useUpdateEnrollment = (programId: string, onSuccess?: () => void) => {
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState<UpdateEnrollmentInput>({
-        sessions_attended: "",
         completion_status: undefined,
-        completion_percentage: "",
         certificate_issued: undefined,
         certificate_url: "",
+        payment_status: undefined,
+        amount_paid: "",
     });
     const [errors, setErrors] = useState<FormErrors>({});
     const [editingEnrollmentId, setEditingEnrollmentId] = useState<string | null>(null);
+    const [currentStatus, setCurrentStatus] = useState<string | undefined>(undefined);
 
     const mutation = useMutation({
         mutationFn: ({ enrollmentId, payload }: { enrollmentId: string; payload: Record<string, unknown> }) =>
@@ -58,31 +59,33 @@ export const useUpdateEnrollment = (programId: string, onSuccess?: () => void) =
 
     const handleOpen = useCallback((enrollment: {
         enrollment_id: string;
-        sessions_attended: number;
         completion_status: string;
-        completion_percentage: number;
         certificate_issued: boolean;
         certificate_url: string | null;
+        payment_status?: string;
+        amount_paid?: number;
     }) => {
         setEditingEnrollmentId(enrollment.enrollment_id);
+        setCurrentStatus(enrollment.completion_status);
         setFormData({
-            sessions_attended: String(enrollment.sessions_attended),
             completion_status: enrollment.completion_status as UpdateEnrollmentInput["completion_status"],
-            completion_percentage: String(enrollment.completion_percentage),
             certificate_issued: enrollment.certificate_issued,
             certificate_url: enrollment.certificate_url || "",
+            payment_status: (enrollment.payment_status || undefined) as UpdateEnrollmentInput["payment_status"],
+            amount_paid: enrollment.amount_paid ? String(enrollment.amount_paid) : "",
         });
         setErrors({});
     }, []);
 
     const handleClose = useCallback(() => {
         setEditingEnrollmentId(null);
+        setCurrentStatus(undefined);
         setFormData({
-            sessions_attended: "",
             completion_status: undefined,
-            completion_percentage: "",
             certificate_issued: undefined,
             certificate_url: "",
+            payment_status: undefined,
+            amount_paid: "",
         });
         setErrors({});
     }, []);
@@ -99,7 +102,7 @@ export const useUpdateEnrollment = (programId: string, onSuccess?: () => void) =
     );
 
     const handleSubmit = useCallback(() => {
-        if (!editingEnrollmentId) return;
+        if (!editingEnrollmentId || mutation.isPending) return;
 
         const result = updateEnrollmentSchema.safeParse(formData);
         if (!result.success) {
@@ -118,11 +121,11 @@ export const useUpdateEnrollment = (programId: string, onSuccess?: () => void) =
         setErrors({});
 
         const payload: Record<string, unknown> = {};
-        if (formData.sessions_attended !== "") payload.sessions_attended = Number(formData.sessions_attended);
         if (formData.completion_status) payload.completion_status = formData.completion_status;
-        if (formData.completion_percentage !== "") payload.completion_percentage = Number(formData.completion_percentage);
         if (formData.certificate_issued !== undefined) payload.certificate_issued = formData.certificate_issued;
         if (formData.certificate_url) payload.certificate_url = formData.certificate_url;
+        if (formData.payment_status) payload.payment_status = formData.payment_status;
+        if (formData.amount_paid !== undefined && formData.amount_paid !== "") payload.amount_paid = Number(formData.amount_paid);
 
         mutation.mutate({ enrollmentId: editingEnrollmentId, payload });
     }, [formData, editingEnrollmentId, mutation]);
@@ -133,6 +136,7 @@ export const useUpdateEnrollment = (programId: string, onSuccess?: () => void) =
         loading: mutation.isPending,
         isOpen: editingEnrollmentId !== null,
         editingEnrollmentId,
+        currentStatus,
         handleOpen,
         handleClose,
         handleChange,
