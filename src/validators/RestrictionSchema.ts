@@ -25,6 +25,7 @@ export const RESTRICTION_TYPE_LABELS: Record<RestrictionType, string> = {
 /** Whether this restriction type blocks job applications */
 export const BLOCKING_TYPES: ReadonlySet<RestrictionType> = new Set([
     "bar_from_placements",
+    "bar_from_company",
     "temporary_suspension",
 ]);
 
@@ -121,6 +122,8 @@ export interface StudentRestriction {
     resolved_by_name: string | null
     is_expired: boolean
     can_appeal: boolean
+    company_id: string | null
+    company_name: string | null
     created_at: string
     updated_at: string
 }
@@ -178,6 +181,10 @@ export const addRestrictionSchema = z.object({
         .string()
         .optional()
         .or(z.literal("")),
+    company_id: z
+        .uuid({ error: "Company ID must be a valid UUID" })
+        .optional()
+        .or(z.literal("")),
 });
 
 export type AddRestrictionInput = z.infer<typeof addRestrictionSchema>;
@@ -226,6 +233,8 @@ export interface CollegeRestrictionListItem {
     is_active: boolean;
     appeal_submitted: boolean;
     resolved_by_name: string | null;
+    company_id: string | null;
+    company_name: string | null;
     created_at: string;
 }
 

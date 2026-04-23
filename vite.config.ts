@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react-swc'
 import path from "node:path"
 import tailwindcss from "@tailwindcss/vite"
 
+/// <reference types="vitest/config" />
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
@@ -86,6 +88,13 @@ export default defineConfig(({ mode }) => {
           secure: false,
         },
       },
+    },
+    // ── Test config (Vitest) ────────────────────────────────────────────
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: ['./src/tests/setup.ts'],
+      include: ['src/tests/**/*.test.{ts,tsx}'],
     },
   }
 })

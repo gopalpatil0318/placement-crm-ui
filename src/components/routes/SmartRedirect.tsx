@@ -4,6 +4,7 @@ import { SysAdminAuthContext } from "@/context/SysAdminAuthContext"
 import { CollegeAuthContext } from "@/context/CollegeAuthContext"
 import { StudentAuthContext } from "@/context/students/StudentAuthContext"
 import { useCollegeTenant } from "@/context/CollegeTenantContext"
+import { getFirstAccessiblePath } from "@/constants/permissionMap"
 
 /**
  * Smart catch-all redirect that checks all three auth contexts
@@ -20,7 +21,12 @@ export default function SmartRedirect() {
   }
 
   if (collegeAuth?.isAuthenticated) {
-    return <Navigate to="/college/dashboard" replace />
+    const user = collegeAuth.user
+    const target = getFirstAccessiblePath(
+      user?.permissions ?? null,
+      user?.role ?? null,
+    )
+    return <Navigate to={target} replace />
   }
 
   if (studentAuth?.isAuthenticated) {

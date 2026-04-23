@@ -42,6 +42,8 @@ export const eligibilityCriteriaSchema = z.object({
     min_existing_package: z.number().min(0).optional(),
     max_existing_package: z.number().min(0).optional(),
     exclude_already_placed: z.boolean().optional(),
+    required_skills: z.array(z.object({ skill_id: z.uuid() })).max(50).optional(),
+    min_skill_match_percentage: z.number().int().min(0).max(100).optional(),
 });
 
 export const roundSchema = z.object({
@@ -188,6 +190,8 @@ export const setCriteriaSchema = z
         min_existing_package: z.number().min(0, "Package must be at least 0").optional(),
         max_existing_package: z.number().min(0, "Package must be at least 0").optional(),
         exclude_already_placed: z.boolean().optional(),
+        required_skills: z.array(z.object({ skill_id: z.uuid() })).max(50).optional(),
+        min_skill_match_percentage: z.number().int().min(0, "Must be 0-100").max(100, "Must be 0-100").optional(),
     })
     .refine(
         (data) =>
@@ -201,7 +205,9 @@ export const setCriteriaSchema = z
             data.allowed_gap_statuses !== undefined ||
             data.min_existing_package !== undefined ||
             data.max_existing_package !== undefined ||
-            data.exclude_already_placed !== undefined,
+            data.exclude_already_placed !== undefined ||
+            data.required_skills !== undefined ||
+            data.min_skill_match_percentage !== undefined,
         { message: "Enable and configure at least one eligibility criterion", path: ["min_overall_cgpa"] }
     );
 

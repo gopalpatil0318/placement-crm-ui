@@ -41,6 +41,7 @@ import {
 } from "@/hooks/collegeadmin/company_management/overrides/useViewAllOverrides";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // ========================
 // CONSTANTS
@@ -1018,7 +1019,7 @@ const OverrideRow = ({
     isExpanded: boolean;
     onToggleSelect: (id: string) => void;
     onToggleExpand: (id: string) => void;
-    onReview: (req: DashboardOverrideRequest, action: "approve" | "reject") => void;
+    onReview?: (req: DashboardOverrideRequest, action: "approve" | "reject") => void;
     onNavigateToJob: (jobId: string) => void;
 }) => {
     let rowBg = "hover:bg-blue-50/40 dark:hover:bg-blue-900/10";
@@ -1107,7 +1108,7 @@ const OverrideRow = ({
             <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-2">
                     <StatusBadge status={req.override_status} />
-                    {isPending && (
+                    {isPending && onReview && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                             <button
                                 type="button"
@@ -1155,6 +1156,8 @@ const OverrideRow = ({
 
 const OverrideDashboard = () => {
     const navigate = useNavigate();
+    const { hasPermission } = usePermissions();
+    const canReview = hasPermission("overrides.review");
 
     const {
         overrides,
@@ -1522,7 +1525,7 @@ const OverrideDashboard = () => {
                                         isExpanded={isExpanded}
                                         onToggleSelect={toggleSelect}
                                         onToggleExpand={toggleExpand}
-                                        onReview={handleReviewAction}
+                                        onReview={canReview ? handleReviewAction : undefined}
                                         onNavigateToJob={handleNavigateToJob}
                                     />
                                 );
@@ -1557,7 +1560,7 @@ const OverrideDashboard = () => {
                 )}
 
                 {/* Bulk action bar */}
-                {selectedIds.size > 0 && (
+                {canReview && selectedIds.size > 0 && (
                     <BulkActionBar
                         selectedIds={selectedIds}
                         pendingCount={Array.from(selectedIds).filter((id) => overrides.find((o) => o.override_id === id)?.override_status === "pending").length}
@@ -1570,7 +1573,7 @@ const OverrideDashboard = () => {
             </div>
 
             {/* Review modal */}
-            {reviewModal && (
+            {canReview && reviewModal && (
                 <ReviewModal
                     request={reviewModal.request}
                     initialAction={reviewModal.action}

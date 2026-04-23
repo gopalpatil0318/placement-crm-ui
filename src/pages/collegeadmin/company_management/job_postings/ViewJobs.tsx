@@ -1,5 +1,6 @@
 ﻿import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     Plus,
     ChevronLeft,
@@ -58,7 +59,7 @@ const AVATAR_COLORS = [
 ];
 
 const CompanyCell = ({ job }: { job: JobListItem }) => {
-    const colorIdx = job.company_name.charCodeAt(0) % AVATAR_COLORS.length;
+    const colorIdx = (job.company_name.codePointAt(0) ?? 0) % AVATAR_COLORS.length;
     const initials = job.company_name
         .split(" ")
         .map((w) => w[0])
@@ -109,15 +110,12 @@ const SortHeader = ({
             className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
         >
             {label}
-            {isActive ? (
-                currentOrder === "asc" ? (
-                    <ArrowUp className="h-3 w-3 text-blue-600" />
-                ) : (
-                    <ArrowDown className="h-3 w-3 text-blue-600" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500" />
-            )}
+            {(() => {
+                if (!isActive) return <ArrowUpDown className="h-3 w-3 text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500" />;
+                return currentOrder === "asc"
+                    ? <ArrowUp className="h-3 w-3 text-blue-600" />
+                    : <ArrowDown className="h-3 w-3 text-blue-600" />;
+            })()}
         </button>
     );
 };
@@ -166,7 +164,7 @@ const Pagination = ({
 
             {pages.map((p, idx) =>
                 p === "ellipsis" ? (
-                    <span key={`ellipsis-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
+                    <span key={`ellipsis-${idx < pages.length / 2 ? "start" : "end"}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">
                         ...
                     </span>
                 ) : (
@@ -208,7 +206,7 @@ const EmptyState = ({
     onCreateJob,
 }: {
     hasFilters: boolean;
-    onCreateJob: () => void;
+    onCreateJob?: () => void;
 }) =>
     hasFilters ? (
         <div className="text-center py-16">
@@ -225,13 +223,15 @@ const EmptyState = ({
             </div>
             <p className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-1">No job postings yet</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Get started by creating your first job posting for campus placements.</p>
-            <button
-                type="button"
-                onClick={onCreateJob}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
-            >
-                <Plus size={16} /> Create Job
-            </button>
+            {onCreateJob && (
+                <button
+                    type="button"
+                    onClick={onCreateJob}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                    <Plus size={16} /> Create Job
+                </button>
+            )}
         </div>
     );
 
@@ -242,7 +242,7 @@ const EmptyState = ({
 const SkeletonRows = () => (
     <>
         {Array.from({ length: 6 }).map((_, i) => (
-            <tr key={`skel-${i}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
+            <tr key={`skel-desk-${String(i)}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
                 <td className="px-4 py-3.5"><div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-6" /></td>
                 <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
@@ -303,6 +303,8 @@ const ViewJobs = () => {
     const endEntry = Math.min(pagination.page * pagination.limit, pagination.total);
 
     const handleCreateJob = useCallback(() => navigate("/college/create-job"), [navigate]);
+    const { hasPermission } = usePermissions();
+    const canCreate = hasPermission("jobs.create");
 
     const selectClass = "border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-colors appearance-none [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-800";
 
@@ -321,17 +323,19 @@ const ViewJobs = () => {
                             <div>
                                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Manage Jobs</h2>
                                 {!loading && (
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{pagination.total} total job posting{pagination.total !== 1 ? "s" : ""}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{pagination.total} total job posting{pagination.total === 1 ? "" : "s"}</p>
                                 )}
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            onClick={handleCreateJob}
-                            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm mt-4 sm:mt-0"
-                        >
-                            <Plus size={16} /> Create Job
-                        </button>
+                        {canCreate && (
+                            <button
+                                type="button"
+                                onClick={handleCreateJob}
+                                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm mt-4 sm:mt-0"
+                            >
+                                <Plus size={16} /> Create Job
+                            </button>
+                        )}
                     </div>
 
                     {/* Filters */}
@@ -386,7 +390,7 @@ const ViewJobs = () => {
 
                             {/* Page Size */}
                             <div className="text-sm text-gray-600 dark:text-gray-400 font-medium flex items-center gap-2 ml-auto">
-                                Show
+                                Show{" "}
                                 <select
                                     value={pagination.limit}
                                     onChange={(e) => handleLimitChange(Number(e.target.value))}
@@ -402,26 +406,30 @@ const ViewJobs = () => {
 
                     {/* Mobile card layout */}
                     <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
-                        {loading ? (
-                            Array.from({ length: 4 }).map((_, i) => (
-                                <div key={`mob-skel-${i}`} className="px-4 py-4 animate-pulse space-y-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-xl bg-gray-100 dark:bg-gray-800" />
-                                        <div className="flex-1 space-y-1.5">
-                                            <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-3/4" />
-                                            <div className="h-3 bg-gray-50 dark:bg-gray-800/50 rounded w-1/2" />
+                        {(() => {
+                            if (loading) {
+                                return Array.from({ length: 4 }).map((_, i) => (
+                                    <div key={`mob-skel-${String(i)}`} className="px-4 py-4 animate-pulse space-y-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-xl bg-gray-100 dark:bg-gray-800" />
+                                            <div className="flex-1 space-y-1.5">
+                                                <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-3/4" />
+                                                <div className="h-3 bg-gray-50 dark:bg-gray-800/50 rounded w-1/2" />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <div className="h-5 bg-gray-50 dark:bg-gray-800/50 rounded-full w-16" />
+                                            <div className="h-5 bg-gray-50 dark:bg-gray-800/50 rounded-full w-16" />
                                         </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <div className="h-5 bg-gray-50 dark:bg-gray-800/50 rounded-full w-16" />
-                                        <div className="h-5 bg-gray-50 dark:bg-gray-800/50 rounded-full w-16" />
-                                    </div>
-                                </div>
-                            ))
-                        ) : jobs.length > 0 ? (
-                            jobs.map((job) => {
+                                ));
+                            }
+                            if (jobs.length === 0) {
+                                return <EmptyState hasFilters={hasFilters} onCreateJob={canCreate ? handleCreateJob : undefined} />;
+                            }
+                            return jobs.map((job) => {
                                 const badge = STATUS_BADGE[job.job_status] || STATUS_BADGE.draft;
-                                const colorIdx = job.company_name.charCodeAt(0) % AVATAR_COLORS.length;
+                                const colorIdx = (job.company_name.codePointAt(0) ?? 0) % AVATAR_COLORS.length;
                                 const initials = job.company_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
                                 return (
                                     <button
@@ -472,10 +480,8 @@ const ViewJobs = () => {
                                         </div>
                                     </button>
                                 );
-                            })
-                        ) : (
-                            <EmptyState hasFilters={hasFilters} onCreateJob={handleCreateJob} />
-                        )}
+                            });
+                        })()}
                     </div>
 
                     {/* Desktop table layout */}
@@ -504,10 +510,18 @@ const ViewJobs = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {loading ? (
-                                    <SkeletonRows />
-                                ) : jobs.length > 0 ? (
-                                    jobs.map((job, index) => {
+                                {(() => {
+                                    if (loading) return <SkeletonRows />;
+                                    if (jobs.length === 0) {
+                                        return (
+                                            <tr>
+                                                <td colSpan={8}>
+                                                    <EmptyState hasFilters={hasFilters} onCreateJob={canCreate ? handleCreateJob : undefined} />
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+                                    return jobs.map((job, index) => {
                                         const badge = STATUS_BADGE[job.job_status] || STATUS_BADGE.draft;
                                         return (
                                             <tr
@@ -569,14 +583,8 @@ const ViewJobs = () => {
                                                 </td>
                                             </tr>
                                         );
-                                    })
-                                ) : (
-                                    <tr>
-                                        <td colSpan={8}>
-                                            <EmptyState hasFilters={hasFilters} onCreateJob={handleCreateJob} />
-                                        </td>
-                                    </tr>
-                                )}
+                                    });
+                                })()}
                             </tbody>
                         </table>
                     </div>

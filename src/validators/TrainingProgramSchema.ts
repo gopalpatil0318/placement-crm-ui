@@ -335,11 +335,7 @@ export const updateEnrollmentSchema = z
         certificate_issued: z.boolean().optional(),
         certificate_url: z
             .string()
-            .max(500, "URL cannot exceed 500 characters")
-            .refine(
-                (val) => val === "" || /^https?:\/\/.+/i.test(val),
-                "Must be a valid URL starting with http:// or https://",
-            )
+            .max(500, "Path cannot exceed 500 characters")
             .optional()
             .or(z.literal("")),
         payment_status: z.enum(PAYMENT_STATUS_OPTIONS).optional(),

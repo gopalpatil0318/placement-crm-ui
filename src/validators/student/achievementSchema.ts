@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const optionalUrl = z.string().url("Must be a valid URL").max(500).or(z.literal("")).optional();
+const optionalFilePath = z.string().max(500).or(z.literal("")).optional();
 
 export const achievementSchema = z.object({
     achievement_title: z.string().min(2, "Title must be at least 2 characters").max(300),
@@ -23,7 +23,7 @@ export const achievementSchema = z.object({
     participants_count: z
         .union([z.number(), z.string()])
         .transform((val) => (val === "" ? undefined : Number(val)))
-        .refine((val) => val === undefined || (!isNaN(val) && val >= 1 && val <= 1000000), {
+        .refine((val) => val === undefined || (!Number.isNaN(val) && val >= 1 && val <= 1000000), {
             message: "Must be between 1 and 1,000,000",
         })
         .optional(),
@@ -35,13 +35,13 @@ export const achievementSchema = z.object({
         )
         .optional()
         .or(z.literal("")),
-    certificate_url: optionalUrl,
-    proof_url: optionalUrl,
+    certificate_url: optionalFilePath,
+    proof_url: optionalFilePath,
     is_featured: z.boolean().default(false),
     display_order: z
         .union([z.number(), z.string()])
         .transform((val) => (val === "" ? undefined : Number(val)))
-        .refine((val) => val === undefined || (!isNaN(val) && val >= 1 && val <= 10), {
+        .refine((val) => val === undefined || (!Number.isNaN(val) && val >= 1 && val <= 10), {
             message: "Display order must be between 1 and 10",
         })
         .optional(),

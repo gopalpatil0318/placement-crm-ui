@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     Calendar,
     Clock,
@@ -129,6 +130,9 @@ const SessionList = ({
     onConfirmDelete,
     onMarkAttendance,
 }: Readonly<SessionListProps>) => {
+    const { hasPermission } = usePermissions();
+    const canManageSessions = hasPermission("training.sessions");
+    const canMarkAttendance = hasPermission("training.attendance");
     const nextNumber = sessions.length > 0
         ? Math.max(...sessions.map((s) => s.session_number)) + 1
         : 1;
@@ -159,7 +163,7 @@ const SessionList = ({
                         · {totalEnrolled} enrolled
                     </span>
                 </div>
-                {!showCreateForm && (
+                {!showCreateForm && canManageSessions && (
                     <button
                         type="button"
                         onClick={() => onShowCreateForm(true)}
@@ -242,6 +246,7 @@ const SessionList = ({
                                 </div>
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
+                                {canMarkAttendance && (
                                 <button
                                     type="button"
                                     onClick={() => onMarkAttendance(session.session_id)}
@@ -250,6 +255,8 @@ const SessionList = ({
                                 >
                                     <ClipboardCheck className="h-4 w-4" />
                                 </button>
+                                )}
+                                {canManageSessions && (<>
                                 <button
                                     type="button"
                                     onClick={() => onEditSession(session.session_id)}
@@ -266,6 +273,7 @@ const SessionList = ({
                                 >
                                     <Trash2 className="h-3.5 w-3.5" />
                                 </button>
+                                </>)}
                             </div>
                         </div>
                     </div>

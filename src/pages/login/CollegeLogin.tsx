@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { useAuth } from "@/hooks/collegeadmin/useAuth"
 import { useStudentAuth } from "@/hooks/student/useStudentAuth"
 import { useCollegeTenant } from "@/context/CollegeTenantContext"
+import { getFirstAccessiblePath } from "@/constants/permissionMap"
 
 import AuthLayout from "@/components/ui/AuthLayout"
 import { Button } from "@/components/ui/button"
@@ -99,8 +100,12 @@ export default function CollegeLogin() {
           await studentLogin(email.trim(), password)
           redirectStudentAfterLogin(navigate)
         } else {
-          await collegeLogin(email.trim(), password)
-          navigate("/college/dashboard", { replace: true })
+          const loggedInUser = await collegeLogin(email.trim(), password)
+          const target = getFirstAccessiblePath(
+            loggedInUser?.permissions ?? null,
+            loggedInUser?.role ?? null,
+          )
+          navigate(target, { replace: true })
         }
       } catch (err: unknown) {
         setFormError(extractErrorMessage(err))

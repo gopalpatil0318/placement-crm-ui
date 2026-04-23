@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useTheme } from "next-themes";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     Search,
     Plus,
@@ -63,7 +64,7 @@ function SkillsTableSkeleton() {
     );
 }
 
-function EmptyState({ onAdd }: Readonly<{ onAdd: () => void }>) {
+function EmptyState({ onAdd }: Readonly<{ onAdd?: () => void }>) {
     return (
         <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-900/20">
@@ -76,14 +77,16 @@ function EmptyState({ onAdd }: Readonly<{ onAdd: () => void }>) {
                 Start building your college&apos;s skill catalog. Students will be able
                 to add these skills to their profiles.
             </p>
-            <button
-                type="button"
-                onClick={onAdd}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 active:bg-blue-800"
-            >
-                <Plus size={16} />
-                Add your first skill
-            </button>
+            {onAdd && (
+                <button
+                    type="button"
+                    onClick={onAdd}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 active:bg-blue-800"
+                >
+                    <Plus size={16} />
+                    Add your first skill
+                </button>
+            )}
         </div>
     );
 }
@@ -460,8 +463,8 @@ function EditSkillModal({ isOpen, onClose, formData, errors, loading, handleChan
 interface MobileSkillCardProps {
     skill: Skill;
     rowNum: number;
-    onDelete: (skill: Skill) => void;
-    onEdit: (skill: Skill) => void;
+    onDelete?: (skill: Skill) => void;
+    onEdit?: (skill: Skill) => void;
 }
 
 function MobileSkillCard({ skill, rowNum, onDelete, onEdit }: Readonly<MobileSkillCardProps>) {
@@ -490,22 +493,26 @@ function MobileSkillCard({ skill, rowNum, onDelete, onEdit }: Readonly<MobileSki
                     </div>
                 </div>
                 <div className="ml-2 flex items-center gap-1">
-                    <button
-                        type="button"
-                        onClick={() => onEdit(skill)}
-                        aria-label={`Edit skill ${skill.skill_name}`}
-                        className="inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
-                    >
-                        <Pencil size={14} />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onDelete(skill)}
-                        aria-label={`Delete skill ${skill.skill_name}`}
-                        className="inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                    >
-                        <Trash2 size={14} />
-                    </button>
+                    {onEdit && (
+                        <button
+                            type="button"
+                            onClick={() => onEdit(skill)}
+                            aria-label={`Edit skill ${skill.skill_name}`}
+                            className="inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                        >
+                            <Pencil size={14} />
+                        </button>
+                    )}
+                    {onDelete && (
+                        <button
+                            type="button"
+                            onClick={() => onDelete(skill)}
+                            aria-label={`Delete skill ${skill.skill_name}`}
+                            className="inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -517,6 +524,8 @@ function MobileSkillCard({ skill, rowNum, onDelete, onEdit }: Readonly<MobileSki
 export default function SkillsManager() {
     const shouldReduce = useReducedMotion();
     useTheme();
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("skills.manage");
 
     const {
         skills,
@@ -588,15 +597,17 @@ export default function SkillsManager() {
                     </p>
                 </div>
             </div>
-            <motion.button
-                type="button"
-                onClick={() => setShowAddModal(true)}
-                whileTap={{ scale: 0.97 }}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 active:bg-blue-800"
-            >
-                <Plus size={16} />
-                Add Skill
-            </motion.button>
+            {canManage && (
+                <motion.button
+                    type="button"
+                    onClick={() => setShowAddModal(true)}
+                    whileTap={{ scale: 0.97 }}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 active:bg-blue-800"
+                >
+                    <Plus size={16} />
+                    Add Skill
+                </motion.button>
+            )}
         </div>
     );
 
@@ -759,22 +770,26 @@ export default function SkillsManager() {
                                 </td>
                                 <td className="px-4 py-3 text-center">
                                     <div className="inline-flex items-center gap-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => startEditing(skill)}
-                                            aria-label={`Edit skill ${skill.skill_name}`}
-                                            className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
-                                        >
-                                            <Pencil size={14} />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setDeleteTarget(skill)}
-                                            aria-label={`Delete skill ${skill.skill_name}`}
-                                            className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                        {canManage && (
+                                            <button
+                                                type="button"
+                                                onClick={() => startEditing(skill)}
+                                                aria-label={`Edit skill ${skill.skill_name}`}
+                                                className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                                            >
+                                                <Pencil size={14} />
+                                            </button>
+                                        )}
+                                        {canManage && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setDeleteTarget(skill)}
+                                                aria-label={`Delete skill ${skill.skill_name}`}
+                                                className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
                                     </div>
                                 </td>
                             </Row>
@@ -846,8 +861,8 @@ export default function SkillsManager() {
                 key={skill.skill_id}
                 skill={skill}
                 rowNum={rowNum}
-                onDelete={setDeleteTarget}
-                onEdit={startEditing}
+                onDelete={canManage ? setDeleteTarget : undefined}
+                onEdit={canManage ? startEditing : undefined}
             />
         );
     });
@@ -856,7 +871,7 @@ export default function SkillsManager() {
     if (loading) {
         content = <SkillsTableSkeleton />;
     } else if (skills.length === 0) {
-        content = <EmptyState onAdd={() => setShowAddModal(true)} />;
+        content = <EmptyState onAdd={canManage ? () => setShowAddModal(true) : undefined} />;
     } else {
         content = (
             <>

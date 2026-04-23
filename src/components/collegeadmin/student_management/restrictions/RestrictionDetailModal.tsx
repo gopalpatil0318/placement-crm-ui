@@ -4,6 +4,7 @@ import {
     Shield, AlertTriangle, Calendar, User, CheckCircle, Clock,
     ExternalLink, Pencil, ShieldCheck, MessageSquare,
 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import {
     RESTRICTION_TYPE_LABELS,
@@ -41,6 +42,8 @@ function getSeverityIcon(type: CollegeRestrictionListItem["restriction_type"]) {
 
 export default function RestrictionDetailModal({ restriction, onClose }: Readonly<RestrictionDetailModalProps>) {
     const navigate = useNavigate();
+    const { hasPermission } = usePermissions();
+    const canUpdate = hasPermission("restrictions.update");
     const [showResolve, setShowResolve] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
 
@@ -193,7 +196,7 @@ export default function RestrictionDetailModal({ restriction, onClose }: Readonl
                     >
                         Close
                     </button>
-                    {restriction.is_active && (
+                    {restriction.is_active && canUpdate && (
                         <>
                             <button
                                 type="button"

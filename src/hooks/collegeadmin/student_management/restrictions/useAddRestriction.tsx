@@ -11,6 +11,7 @@ interface AddRestrictionForm {
     reason: string;
     details: string;
     valid_until: string;
+    company_id: string;
 }
 
 type FormErrors = Partial<Record<keyof AddRestrictionForm, string>>;
@@ -22,6 +23,7 @@ export const useAddRestriction = (onSuccess?: () => void) => {
         reason: "",
         details: "",
         valid_until: "",
+        company_id: "",
     });
     const [errors, setErrors] = useState<FormErrors>({});
 
@@ -33,6 +35,7 @@ export const useAddRestriction = (onSuccess?: () => void) => {
                 reason: string;
                 details?: string;
                 valid_until?: string;
+                company_id?: string | null;
             };
         }) => CollegeAdminService.addStudentRestriction(payload.studentId, payload.data),
         onSuccess: (response) => {
@@ -114,6 +117,7 @@ export const useAddRestriction = (onSuccess?: () => void) => {
                     reason: formData.reason.trim(),
                     details: formData.details.trim() || undefined,
                     valid_until: formData.valid_until || undefined,
+                    company_id: formData.company_id || undefined,
                 },
             });
         },
@@ -121,7 +125,7 @@ export const useAddRestriction = (onSuccess?: () => void) => {
     );
 
     const resetForm = useCallback(() => {
-        setFormData({ restriction_type: "", reason: "", details: "", valid_until: "" });
+        setFormData({ restriction_type: "", reason: "", details: "", valid_until: "", company_id: "" });
         setErrors({});
     }, []);
 

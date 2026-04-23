@@ -39,6 +39,7 @@ import { useBulkAddRoundResults } from "@/hooks/collegeadmin/company_management/
 import { useUpdateRoundResult } from "@/hooks/collegeadmin/company_management/round_results/useUpdateRoundResult";
 import { useProcessRoundResults } from "@/hooks/collegeadmin/company_management/round_results/useProcessRoundResults";
 import { useApplicationPicker, type PickerApplication } from "@/hooks/collegeadmin/company_management/applications/useApplicationPicker";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     RESULT_STATUS_COLORS,
     RESULT_STATUS_LABELS,
@@ -1897,7 +1898,7 @@ const ResultRow = ({
     isCancelled: boolean;
     onToggleSelect: (id: string) => void;
     onToggleExpand: (id: string) => void;
-    onEdit: (result: RoundResult) => void;
+    onEdit?: (result: RoundResult) => void;
 }) => {
     let rowBg;
     if (isSelected) {
@@ -1984,7 +1985,7 @@ const ResultRow = ({
             {/* Actions + expand */}
             <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-1.5">
-                    {!isCancelled && (
+                    {!isCancelled && onEdit && (
                         <button
                             type="button"
                             onClick={() => onEdit(result)}
@@ -2025,6 +2026,9 @@ const RoundResultsManager = ({
     jobId,
     onResultLoaded,
 }: RoundResultsManagerProps) => {
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("round_results.manage");
+    const canProcess = hasPermission("round_results.process");
     const {
         results,
         roundInfo,
@@ -2187,7 +2191,7 @@ const RoundResultsManager = ({
                         {/* Action buttons */}
                         {!isReadOnly && !loading && (
                             <div className="flex items-center gap-2 flex-shrink-0">
-                                {roundInfo?.round_status === "completed" && !roundInfo.is_processed && (
+                                {canProcess && roundInfo?.round_status === "completed" && !roundInfo.is_processed && (
                                     <button
                                         type="button"
                                         onClick={() => setShowProcessModal(true)}
@@ -2203,6 +2207,7 @@ const RoundResultsManager = ({
                                         Processed
                                     </span>
                                 )}
+                                {canManage && (
                                 <button
                                     type="button"
                                     onClick={() => setShowBulkEntry(true)}
@@ -2211,6 +2216,8 @@ const RoundResultsManager = ({
                                     <ListChecks className="h-4 w-4" />
                                     Bulk Entry
                                 </button>
+                                )}
+                                {canManage && (
                                 <button
                                     type="button"
                                     onClick={() => setShowAddModal(true)}
@@ -2219,6 +2226,7 @@ const RoundResultsManager = ({
                                     <Plus className="h-4 w-4" />
                                     Add Result
                                 </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -2416,7 +2424,7 @@ const RoundResultsManager = ({
                                             isCancelled={!!isCancelled}
                                             onToggleSelect={toggleSelect}
                                             onToggleExpand={toggleExpand}
-                                            onEdit={handleEditResult}
+                                            onEdit={canManage ? handleEditResult : undefined}
                                         />
                                     ));
                                 }
@@ -2490,7 +2498,7 @@ const RoundResultsManager = ({
                                         {formatDate(result.created_at)}
                                     </span>
                                     <div className="flex items-center gap-1">
-                                        {!isCancelled && (
+                                        {!isCancelled && canManage && (
                                             <button
                                                 type="button"
                                                 onClick={() => handleEditResult(result)}

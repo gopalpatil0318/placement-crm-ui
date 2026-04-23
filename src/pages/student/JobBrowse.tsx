@@ -19,6 +19,9 @@ import {
   IndianRupee,
   GraduationCap,
   AlertCircle,
+  Zap,
+  ShieldCheck,
+  Filter,
   type LucideIcon,
 } from "lucide-react"
 import { staggerContainer, staggerItem } from "@/lib/animations"
@@ -91,6 +94,12 @@ const SORT_OPTIONS = [
   { value: "company_name", label: "Company" },
 ]
 
+const ELIGIBILITY_FILTER_OPTIONS: Array<{ value: string; label: string; icon?: LucideIcon }> = [
+  { value: "", label: "All Jobs" },
+  { value: "true", label: "Eligible", icon: ShieldCheck },
+  { value: "false", label: "Not Eligible", icon: Filter },
+]
+
 interface StatusBadgeCfg { className: string; label: string; icon: LucideIcon }
 
 const statusBadge: Record<string, StatusBadgeCfg> = {
@@ -140,6 +149,23 @@ function JobCardSkeleton() {
         <div className="h-6 w-20 rounded-full bg-gray-100 dark:bg-gray-800" />
       </div>
     </div>
+  )
+}
+
+// ─── Skill Match Badge ──────────────────────────────────────────────────────
+
+function getSkillMatchColor(pct: number): string {
+  if (pct >= 80) return "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+  if (pct >= 50) return "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+  return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+}
+
+function SkillMatchBadge({ percentage }: Readonly<{ percentage: number }>) {
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${getSkillMatchColor(percentage)}`}>
+      <Zap className="h-3 w-3" />
+      {percentage}% skill match
+    </span>
   )
 }
 
@@ -234,39 +260,50 @@ const JobCard = memo(function JobCard({
         </div>
 
         {/* ── Status overlay / action hint ── */}
-        {(badge || (!job.is_eligible && !job.has_applied) || job.has_denied) ? (
-          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <div className="flex flex-wrap gap-1.5">
-              {badge && BadgeIcon && (
-                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${badge.className}`}>
-                  <BadgeIcon className="h-3 w-3" />
-                  {badge.label}
-                </span>
-              )}
-              {!job.is_eligible && !job.has_applied && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
-                  <AlertCircle className="h-3 w-3" />
-                  Not Eligible
-                </span>
-              )}
-              {job.has_denied && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                  <Ban className="h-3 w-3" />
-                  Opted Out
-                </span>
-              )}
-            </div>
-            <span className="inline-flex items-center gap-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-              View Details <ChevronRightIcon className="h-3.5 w-3.5" />
-            </span>
+        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          <div className="flex flex-wrap gap-1.5 items-center">
+            {badge && BadgeIcon && (
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${badge.className}`}>
+                <BadgeIcon className="h-3 w-3" />
+                {badge.label}
+              </span>
+            )}
+            {!job.has_applied && !job.has_denied && job.is_eligible && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <ShieldCheck className="h-3 w-3" />
+                Eligible
+              </span>
+            )}
+            {!job.is_eligible && !job.has_applied && (
+              <span className="group/tip relative inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 cursor-help">
+                <AlertCircle className="h-3 w-3" />
+                Not Eligible
+                {job.eligibility_issues && job.eligibility_issues.length > 0 && (
+                  <span className="pointer-events-none absolute bottom-full left-0 mb-2 w-56 rounded-xl bg-gray-900 dark:bg-gray-800 text-white text-xs font-normal p-3 shadow-lg opacity-0 group-hover/tip:opacity-100 transition-opacity z-20">
+                    {job.eligibility_issues.map((issue) => (
+                      <span key={issue} className="flex items-start gap-1.5 mb-1 last:mb-0">
+                        <AlertCircle className="h-3 w-3 text-red-400 shrink-0 mt-0.5" />
+                        <span>{issue}</span>
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </span>
+            )}
+            {job.skill_match_percentage != null && (
+              <SkillMatchBadge percentage={job.skill_match_percentage} />
+            )}
+            {job.has_denied && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                <Ban className="h-3 w-3" />
+                Opted Out
+              </span>
+            )}
           </div>
-        ) : (
-          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end">
-            <span className="inline-flex items-center gap-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
-              View Details <ChevronRightIcon className="h-3.5 w-3.5" />
-            </span>
-          </div>
-        )}
+          <span className="inline-flex items-center gap-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            View Details <ChevronRightIcon className="h-3.5 w-3.5" />
+          </span>
+        </div>
       </Link>
     </motion.div>
   )
@@ -291,6 +328,7 @@ export default function JobBrowse() {
   const [page, setPage] = useState(1)
   const [companyName, setCompanyName] = useState("")
   const [driveType, setDriveType] = useState("")
+  const [eligibleOnly, setEligibleOnly] = useState("")
 
   const shouldReduceMotion = useReducedMotion()
 
@@ -316,15 +354,16 @@ export default function JobBrowse() {
     ...(jobType && { job_type: jobType }),
     ...(driveType && { drive_type: driveType }),
     ...(companyName && { company_name: companyName }),
+    ...(eligibleOnly && { eligible_only: eligibleOnly }),
     sort_by: sortBy,
     sort_order: sortOrder,
     page,
     limit,
-  }), [debouncedSearch, jobType, driveType, companyName, sortBy, sortOrder, page, limit])
+  }), [debouncedSearch, jobType, driveType, companyName, eligibleOnly, sortBy, sortOrder, page, limit])
 
   const { jobs, pagination, placementContext, isLoading, isFetching, isError, error } = useJobList(filters)
 
-  const hasActiveFilters = Boolean(jobType || driveType || debouncedSearch || companyName)
+  const hasActiveFilters = Boolean(jobType || driveType || debouncedSearch || companyName || eligibleOnly)
 
   const clearAllFilters = useCallback(() => {
     setJobType("")
@@ -332,6 +371,7 @@ export default function JobBrowse() {
     setSearch("")
     setDebouncedSearch("")
     setCompanyName("")
+    setEligibleOnly("")
     setPage(1)
   }, [])
 
@@ -443,6 +483,27 @@ export default function JobBrowse() {
                     : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"
                 }`}
               >
+                {opt.label}
+              </button>
+            )
+          })}
+
+          <span className="w-px h-6 bg-gray-200 dark:bg-gray-700 shrink-0" />
+
+          {/* Eligibility filter pills */}
+          {ELIGIBILITY_FILTER_OPTIONS.map((opt) => {
+            const isActive = eligibleOnly === opt.value
+            return (
+              <button
+                key={`ef-${opt.value}`}
+                onClick={() => { setEligibleOnly(opt.value); setPage(1) }}
+                className={`px-3.5 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition shrink-0 ${
+                  isActive
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                }`}
+              >
+                {opt.icon && <opt.icon className="h-3.5 w-3.5 inline-block mr-1 -mt-0.5" />}
                 {opt.label}
               </button>
             )

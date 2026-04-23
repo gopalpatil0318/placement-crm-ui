@@ -1,4 +1,5 @@
 import { useCallback } from "react"
+import { usePermissions } from "@/hooks/usePermissions"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/queryKeys"
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services"
@@ -184,6 +185,8 @@ function SettingsSkeleton() {
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 export default function VerificationSettings() {
+  const { hasPermission } = usePermissions()
+  const canManage = hasPermission("settings.manage")
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery<{ data: VerificationSettings }>({
@@ -251,7 +254,7 @@ export default function VerificationSettings() {
           label="Require Approved Profile for Jobs"
           description="Students need an approved profile to apply for jobs. When off, a completed profile is enough."
           checked={settings.require_profile_approval_for_jobs}
-          disabled={isSaving}
+          disabled={isSaving || !canManage}
           onChange={(val) => update({ require_profile_approval_for_jobs: val })}
         />
       </SectionCard>
@@ -272,7 +275,7 @@ export default function VerificationSettings() {
           label="Auto-Approve Profiles"
           description="Profiles are approved automatically when students complete them. No TPO review needed."
           checked={settings.bypass.profiles}
-          disabled={isSaving}
+          disabled={isSaving || !canManage}
           onChange={(val) => update({ bypass: { profiles: val } })}
         />
         <ToggleRow
@@ -282,7 +285,7 @@ export default function VerificationSettings() {
           label="Auto-Approve Experience"
           description="Experience entries are approved automatically. No TPO review needed."
           checked={settings.bypass.experience}
-          disabled={isSaving || bypassAll}
+          disabled={isSaving || bypassAll || !canManage}
           onChange={(val) => update({ bypass: { experience: val } })}
         />
         <ToggleRow
@@ -292,7 +295,7 @@ export default function VerificationSettings() {
           label="Auto-Approve Achievements"
           description="Achievements are approved automatically. No TPO review needed."
           checked={settings.bypass.achievements}
-          disabled={isSaving || bypassAll}
+          disabled={isSaving || bypassAll || !canManage}
           onChange={(val) => update({ bypass: { achievements: val } })}
         />
         <ToggleRow
@@ -302,7 +305,7 @@ export default function VerificationSettings() {
           label="Auto-Approve Certificates"
           description="Certificates are approved automatically. No TPO review needed."
           checked={settings.bypass.certificates}
-          disabled={isSaving || bypassAll}
+          disabled={isSaving || bypassAll || !canManage}
           onChange={(val) => update({ bypass: { certificates: val } })}
         />
       </SectionCard>
@@ -322,7 +325,7 @@ export default function VerificationSettings() {
           label="Personal Info"
           description="Editing personal details sends the profile back for re-approval."
           checked={settings.re_verify_on_edit.personal_info}
-          disabled={isSaving || bypassAll}
+          disabled={isSaving || bypassAll || !canManage}
           onChange={(val) => update({ re_verify_on_edit: { personal_info: val } })}
         />
         <ToggleRow
@@ -332,7 +335,7 @@ export default function VerificationSettings() {
           label="Academic Info"
           description="Editing academic details sends the profile back for re-approval."
           checked={settings.re_verify_on_edit.academic_info}
-          disabled={isSaving || bypassAll}
+          disabled={isSaving || bypassAll || !canManage}
           onChange={(val) => update({ re_verify_on_edit: { academic_info: val } })}
         />
         <ToggleRow
@@ -342,7 +345,7 @@ export default function VerificationSettings() {
           label="Semester Grades"
           description="Editing grades sends the profile back for re-approval."
           checked={settings.re_verify_on_edit.semester_grades}
-          disabled={isSaving || bypassAll}
+          disabled={isSaving || bypassAll || !canManage}
           onChange={(val) => update({ re_verify_on_edit: { semester_grades: val } })}
         />
         <ToggleRow
@@ -352,7 +355,7 @@ export default function VerificationSettings() {
           label="Experience"
           description="Editing an experience sends it back for TPO review."
           checked={settings.re_verify_on_edit.experience}
-          disabled={isSaving || settings.bypass.experience}
+          disabled={isSaving || settings.bypass.experience || !canManage}
           onChange={(val) => update({ re_verify_on_edit: { experience: val } })}
         />
         <ToggleRow
@@ -362,7 +365,7 @@ export default function VerificationSettings() {
           label="Achievements"
           description="Editing an achievement sends it back for TPO review."
           checked={settings.re_verify_on_edit.achievements}
-          disabled={isSaving || settings.bypass.achievements}
+          disabled={isSaving || settings.bypass.achievements || !canManage}
           onChange={(val) => update({ re_verify_on_edit: { achievements: val } })}
         />
         <ToggleRow
@@ -372,7 +375,7 @@ export default function VerificationSettings() {
           label="Certificates"
           description="Editing a certificate sends it back for TPO review."
           checked={settings.re_verify_on_edit.certificates}
-          disabled={isSaving || settings.bypass.certificates}
+          disabled={isSaving || settings.bypass.certificates || !canManage}
           onChange={(val) => update({ re_verify_on_edit: { certificates: val } })}
         />
       </SectionCard>

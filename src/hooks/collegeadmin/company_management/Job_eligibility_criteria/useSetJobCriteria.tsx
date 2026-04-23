@@ -22,6 +22,8 @@ export interface CriteriaFormData {
     allowed_departments: string[];
     allowed_gap_statuses: string[];
     exclude_already_placed: boolean;
+    required_skills: { skill_id: string; skill_name?: string; skill_category?: string }[];
+    min_skill_match_percentage: number | "";
 }
 
 export interface CriteriaToggles {
@@ -36,6 +38,8 @@ export interface CriteriaToggles {
     allowed_departments: boolean;
     allowed_gap_statuses: boolean;
     exclude_already_placed: boolean;
+    required_skills: boolean;
+    min_skill_match_percentage: boolean;
 }
 
 const INITIAL_FORM: CriteriaFormData = {
@@ -50,6 +54,8 @@ const INITIAL_FORM: CriteriaFormData = {
     allowed_departments: [],
     allowed_gap_statuses: [],
     exclude_already_placed: false,
+    required_skills: [],
+    min_skill_match_percentage: 100,
 };
 
 const INITIAL_TOGGLES: CriteriaToggles = {
@@ -64,6 +70,8 @@ const INITIAL_TOGGLES: CriteriaToggles = {
     allowed_departments: false,
     allowed_gap_statuses: false,
     exclude_already_placed: false,
+    required_skills: false,
+    min_skill_match_percentage: false,
 };
 
 const NUMERIC_FIELDS = [
@@ -74,6 +82,7 @@ const NUMERIC_FIELDS = [
     "min_diploma_percentage",
     "min_existing_package",
     "max_existing_package",
+    "min_skill_match_percentage",
 ] as const;
 
 const ARRAY_FIELDS = [
@@ -139,46 +148,33 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
             const newForm = { ...INITIAL_FORM };
             const newToggles = { ...INITIAL_TOGGLES };
 
-            if (criteria.min_overall_cgpa != null) {
-                newForm.min_overall_cgpa = Number(criteria.min_overall_cgpa);
-                newToggles.min_overall_cgpa = true;
-            }
-            if (criteria.max_live_kts != null) {
-                newForm.max_live_kts = Number(criteria.max_live_kts);
-                newToggles.max_live_kts = true;
-            }
-            if (criteria.min_tenth_percentage != null) {
-                newForm.min_tenth_percentage = Number(criteria.min_tenth_percentage);
-                newToggles.min_tenth_percentage = true;
-            }
-            if (criteria.min_twelfth_percentage != null) {
-                newForm.min_twelfth_percentage = Number(criteria.min_twelfth_percentage);
-                newToggles.min_twelfth_percentage = true;
-            }
-            if (criteria.min_diploma_percentage != null) {
-                newForm.min_diploma_percentage = Number(criteria.min_diploma_percentage);
-                newToggles.min_diploma_percentage = true;
-            }
-            if (criteria.min_existing_package != null) {
-                newForm.min_existing_package = Number(criteria.min_existing_package);
-                newToggles.min_existing_package = true;
-            }
-            if (criteria.max_existing_package != null) {
-                newForm.max_existing_package = Number(criteria.max_existing_package);
-                newToggles.max_existing_package = true;
-            }
-            if (Array.isArray(criteria.allowed_genders) && criteria.allowed_genders.length > 0) {
-                newForm.allowed_genders = criteria.allowed_genders as string[];
-                newToggles.allowed_genders = true;
-            }
-            if (Array.isArray(criteria.allowed_departments) && criteria.allowed_departments.length > 0) {
-                newForm.allowed_departments = criteria.allowed_departments as string[];
-                newToggles.allowed_departments = true;
-            }
-            if (Array.isArray(criteria.allowed_gap_statuses) && criteria.allowed_gap_statuses.length > 0) {
-                newForm.allowed_gap_statuses = criteria.allowed_gap_statuses as string[];
-                newToggles.allowed_gap_statuses = true;
-            }
+            const loadNumber = (key: keyof CriteriaFormData & keyof typeof INITIAL_TOGGLES) => {
+                if (criteria[key] != null) {
+                    (newForm as Record<string, unknown>)[key] = Number(criteria[key]);
+                    newToggles[key] = true;
+                }
+            };
+            const loadArray = (key: keyof CriteriaFormData & keyof typeof INITIAL_TOGGLES) => {
+                if (Array.isArray(criteria[key]) && (criteria[key] as unknown[]).length > 0) {
+                    (newForm as Record<string, unknown>)[key] = criteria[key];
+                    newToggles[key] = true;
+                }
+            };
+
+            loadNumber("min_overall_cgpa");
+            loadNumber("max_live_kts");
+            loadNumber("min_tenth_percentage");
+            loadNumber("min_twelfth_percentage");
+            loadNumber("min_diploma_percentage");
+            loadNumber("min_existing_package");
+            loadNumber("max_existing_package");
+            loadNumber("min_skill_match_percentage");
+
+            loadArray("allowed_genders");
+            loadArray("allowed_departments");
+            loadArray("allowed_gap_statuses");
+            loadArray("required_skills");
+
             if (criteria.exclude_already_placed === true) {
                 newForm.exclude_already_placed = true;
                 newToggles.exclude_already_placed = true;
@@ -247,6 +243,11 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
             payload.exclude_already_placed = formData.exclude_already_placed;
         }
 
+        // Skills — send as { skill_id }[] for API
+        if (toggles.required_skills && formData.required_skills.length > 0) {
+            payload.required_skills = formData.required_skills.map((s) => ({ skill_id: s.skill_id }));
+        }
+
         return { payload, emptyErrors };
     }, [formData, toggles]);
 
@@ -268,6 +269,7 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
         for (const field of NUMERIC_FIELDS) p[field] = null;
         for (const field of ARRAY_FIELDS) p[field] = null;
         p.exclude_already_placed = false;
+        p.required_skills = [];
         return p;
     }, []);
 
@@ -281,6 +283,9 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
         }
         if (!toggles.exclude_already_placed) {
             payload.exclude_already_placed = false;
+        }
+        if (!toggles.required_skills) {
+            payload.required_skills = [];
         }
     }, [toggles]);
 
@@ -320,6 +325,20 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
         mutation.mutate({ payload, isUpdate });
     }, [buildPayload, buildClearPayload, injectDisabledNulls, validatePayload, isUpdate, mutation]);
 
+    const addSkill = useCallback((skill: { skill_id: string; skill_name?: string; skill_category?: string }) => {
+        setFormData((prev) => {
+            if (prev.required_skills.some((s) => s.skill_id === skill.skill_id)) return prev;
+            return { ...prev, required_skills: [...prev.required_skills, skill] };
+        });
+    }, []);
+
+    const removeSkill = useCallback((skillId: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            required_skills: prev.required_skills.filter((s) => s.skill_id !== skillId),
+        }));
+    }, []);
+
     return {
         formData,
         toggles,
@@ -332,5 +351,7 @@ export const useSetJobCriteria = (jobId: string, onSuccess?: () => void) => {
         handleSubmit,
         loadExisting,
         resetForm,
+        addSkill,
+        removeSkill,
     };
 };

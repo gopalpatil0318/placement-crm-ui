@@ -431,22 +431,41 @@ const CreateJobForm = () => {
     // ========================
     const renderEligibility = () => {
         const ec = formData.eligibility_criteria;
+        const GAP_OPTIONS = [
+            { value: "no_gap", label: "No Gap" },
+            { value: "gap", label: "Gap" },
+        ];
+
+        const handleToggleGapStatus = (value: string, checked: boolean) => {
+            const current = ec.allowed_gap_statuses || [];
+            updateEligibility(
+                "allowed_gap_statuses",
+                checked ? [...current, value] : current.filter((v: string) => v !== value)
+            );
+        };
+
         return (
             <div className="space-y-6">
-                <SectionHeader icon={ShieldCheck} title="Eligibility Criteria" subtitle="Set academic and demographic requirements (optional)" />
+                <SectionHeader icon={ShieldCheck} title="Eligibility Criteria" subtitle="Set academic, demographic, and skill requirements (optional)" />
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <div>
-                        <label htmlFor="elig-cgpa" className={labelClass}>Min CGPA (0-10)</label>
-                        <input id="elig-cgpa" type="number" inputMode="decimal" value={ec.min_overall_cgpa ?? ""} onChange={(e) => updateEligibility("min_overall_cgpa", e.target.value ? Number(e.target.value) : undefined)} step={0.1} min={0} max={10} className={inputClass(false)} />
-                    </div>
-                    <div>
-                        <label htmlFor="elig-kts" className={labelClass}>Max Live KTs (0-20)</label>
-                        <input id="elig-kts" type="number" inputMode="numeric" value={ec.max_live_kts ?? ""} onChange={(e) => updateEligibility("max_live_kts", e.target.value ? Number(e.target.value) : undefined)} min={0} max={20} className={inputClass(false)} />
-                    </div>
-                    <div>
-                        <label htmlFor="elig-10th" className={labelClass}>Min 10th %</label>
-                        <input id="elig-10th" type="number" inputMode="decimal" value={ec.min_tenth_percentage ?? ""} onChange={(e) => updateEligibility("min_tenth_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
+                {/* Academic */}
+                <div>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Academic Criteria</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div>
+                            <label htmlFor="elig-cgpa" className={labelClass}>Min CGPA (0-10)</label>
+                            <input id="elig-cgpa" type="number" inputMode="decimal" value={ec.min_overall_cgpa ?? ""} onChange={(e) => updateEligibility("min_overall_cgpa", e.target.value ? Number(e.target.value) : undefined)} step={0.1} min={0} max={10} className={inputClass(false)} />
+                            <p className="text-[11px] text-gray-400 mt-1">Students below this CGPA cannot apply</p>
+                        </div>
+                        <div>
+                            <label htmlFor="elig-kts" className={labelClass}>Max Live KTs (0-20)</label>
+                            <input id="elig-kts" type="number" inputMode="numeric" value={ec.max_live_kts ?? ""} onChange={(e) => updateEligibility("max_live_kts", e.target.value ? Number(e.target.value) : undefined)} min={0} max={20} className={inputClass(false)} />
+                            <p className="text-[11px] text-gray-400 mt-1">Set 0 for no backlogs allowed</p>
+                        </div>
+                        <div>
+                            <label htmlFor="elig-10th" className={labelClass}>Min 10th %</label>
+                            <input id="elig-10th" type="number" inputMode="decimal" value={ec.min_tenth_percentage ?? ""} onChange={(e) => updateEligibility("min_tenth_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
+                        </div>
                     </div>
                 </div>
 
@@ -454,17 +473,41 @@ const CreateJobForm = () => {
                     <div>
                         <label htmlFor="elig-12th" className={labelClass}>Min 12th %</label>
                         <input id="elig-12th" type="number" inputMode="decimal" value={ec.min_twelfth_percentage ?? ""} onChange={(e) => updateEligibility("min_twelfth_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
+                        <p className="text-[11px] text-gray-400 mt-1">Applied only to 12th-pass students</p>
                     </div>
                     <div>
                         <label htmlFor="elig-diploma" className={labelClass}>Min Diploma %</label>
                         <input id="elig-diploma" type="number" inputMode="decimal" value={ec.min_diploma_percentage ?? ""} onChange={(e) => updateEligibility("min_diploma_percentage", e.target.value ? Number(e.target.value) : undefined)} min={0} max={100} className={inputClass(false)} />
+                        <p className="text-[11px] text-gray-400 mt-1">Applied only to diploma students</p>
                     </div>
-                    <div className="flex items-end">
-                        <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                            <input type="checkbox" checked={ec.exclude_already_placed || false} onChange={(e) => updateEligibility("exclude_already_placed", e.target.checked)} className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Exclude Already Placed</span>
-                        </label>
+                </div>
+
+                {/* Placement & Package */}
+                <div>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Placement & Package</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div>
+                            <label htmlFor="elig-min-pkg" className={labelClass}>Min Existing Package (₹ LPA)</label>
+                            <input id="elig-min-pkg" type="number" inputMode="decimal" value={ec.min_existing_package ?? ""} onChange={(e) => updateEligibility("min_existing_package", e.target.value ? Number(e.target.value) : undefined)} min={0} step={0.5} className={inputClass(false)} />
+                            <p className="text-[11px] text-gray-400 mt-1">For dream drives — filters low-package students</p>
+                        </div>
+                        <div>
+                            <label htmlFor="elig-max-pkg" className={labelClass}>Max Existing Package (₹ LPA)</label>
+                            <input id="elig-max-pkg" type="number" inputMode="decimal" value={ec.max_existing_package ?? ""} onChange={(e) => updateEligibility("max_existing_package", e.target.value ? Number(e.target.value) : undefined)} min={0} step={0.5} className={inputClass(false)} />
+                            <p className="text-[11px] text-gray-400 mt-1">Reserve for unplaced/lower-package students</p>
+                        </div>
+                        <div className="flex items-end">
+                            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                                <input type="checkbox" checked={ec.exclude_already_placed || false} onChange={(e) => updateEligibility("exclude_already_placed", e.target.checked)} className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Exclude Already Placed</span>
+                            </label>
+                        </div>
                     </div>
+                </div>
+
+                {/* Demographics */}
+                <div>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Demographic Filters</p>
                 </div>
 
                 <div>
@@ -482,6 +525,25 @@ const CreateJobForm = () => {
                             </label>
                         ))}
                     </div>
+                    <p className="text-[11px] text-gray-400 mt-1">Leave unchecked for no gender filter</p>
+                </div>
+
+                <div>
+                    <span className={labelClass}>Allowed Gap Statuses</span>
+                    <div className="flex flex-wrap gap-3">
+                        {GAP_OPTIONS.map((g) => (
+                            <label key={g.value} className="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={ec.allowed_gap_statuses?.includes(g.value) || false}
+                                    onChange={(e) => handleToggleGapStatus(g.value, e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{g.label}</span>
+                            </label>
+                        ))}
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1">Select both for no gap filter</p>
                 </div>
 
                 <div>
@@ -517,6 +579,31 @@ const CreateJobForm = () => {
                             ))}
                         </div>
                     )}
+                </div>
+
+                {/* Skills */}
+                <div>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Skill-Based Matching</p>
+                    <div className="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-700 space-y-4">
+                        <div>
+                            <label htmlFor="elig-skill-pct" className={labelClass}>Min Skill Match % (0-100)</label>
+                            <input
+                                id="elig-skill-pct"
+                                type="number"
+                                inputMode="numeric"
+                                value={ec.min_skill_match_percentage ?? ""}
+                                onChange={(e) => updateEligibility("min_skill_match_percentage", e.target.value ? Number(e.target.value) : undefined)}
+                                min={0}
+                                max={100}
+                                step={5}
+                                className={inputClass(false)}
+                            />
+                            <p className="text-[11px] text-gray-400 mt-1">Students must match this % of required skills. Set to 100 for exact match.</p>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Skills can be added after creation via the Eligibility tab on the job detail page.
+                        </p>
+                    </div>
                 </div>
             </div>
         );

@@ -10,6 +10,7 @@ import {
     LogOut,
     Lock,
     ClipboardList,
+    Send,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useStudentAuth } from "@/hooks/student/useStudentAuth";
@@ -95,6 +96,13 @@ export default function Sidebar({ isOpen }: Readonly<{ isOpen: boolean }>) {
                     icon: <Award size={18} />,
                     label: "Placement Status",
                     path: "/student/placements",
+                    disabled: !isProfileApproved,
+                    disabledMessage: "Complete and get your profile approved to access this section",
+                },
+                {
+                    icon: <Send size={18} />,
+                    label: "Report Off-Campus",
+                    path: "/student/report-placement",
                     disabled: !isProfileApproved,
                     disabledMessage: "Complete and get your profile approved to access this section",
                 },

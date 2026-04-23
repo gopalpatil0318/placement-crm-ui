@@ -61,6 +61,20 @@ api.interceptors.response.use(
       throw new ApiError("Too many requests. Please wait a moment and try again.", 429)
     }
 
+    // 403 Forbidden — differentiate permission vs department scope denials
+    if (status === 403) {
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || ""
+      const isDeptScopeDenial = /department scope|outside your department/i.test(errorMsg)
+      if (isDeptScopeDenial) {
+        globalThis.dispatchEvent(new CustomEvent("placenex:dept-scope-denied", { detail: { message: errorMsg } }))
+      } else {
+        const isPermissionDenial = /permission|not allowed|forbidden/i.test(errorMsg)
+        if (isPermissionDenial) {
+          globalThis.dispatchEvent(new CustomEvent("placenex:permission-denied", { detail: { message: errorMsg } }))
+        }
+      }
+    }
+
     const message =
       error.response?.data?.error ||
       error.response?.data?.message ||

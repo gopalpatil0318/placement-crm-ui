@@ -57,8 +57,7 @@ export const collegeSchemaUpdate = z.object({
 
   college_logo_url: z
     .string()
-    .regex(/^https?:\/\/.+/, { message: "Must be a valid URL" })
-    .max(2000, { message: "Logo URL cannot exceed 2000 characters" })
+    .max(2000, { message: "Logo path cannot exceed 2000 characters" })
     .optional()
     .or(z.literal("")),
 

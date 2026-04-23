@@ -429,6 +429,11 @@ export const CollegeAdminService = {
         return response.data;
     },
 
+    getCriteriaHistory: async (jobId: string) => {
+        const response = await api.get(`/college/get_job_criteria_history/${jobId}`);
+        return response.data;
+    },
+
     // ========================
     // JOB ROUNDS MANAGEMENT
     // ========================
@@ -1028,6 +1033,13 @@ export const CollegeAdminService = {
         return response.data;
     },
 
+    // ======================== Subscription (College-Side Read) ========================
+
+    getSubscriptionCurrent: async () => {
+        const response = await api.get("/college/subscription/current");
+        return response.data;
+    },
+
     // ======================== Skills Master ========================
 
     createSkill: async (data: { skill_name: string; skill_category?: string }) => {
@@ -1577,6 +1589,7 @@ export const CollegeAdminService = {
             reason: string;
             details?: string;
             valid_until?: string;
+            company_id?: string | null;
         },
     ) => {
         const response = await api.post(`/college/add_student_restriction/${studentId}`, data);
@@ -1735,8 +1748,64 @@ export const CollegeAdminService = {
         exclude_placed_by_default?: boolean;
         auto_reject_on_round_fail?: boolean;
         allow_reapply_after_withdrawal?: boolean;
+        max_active_applications?: number | null;
     }) => {
         const response = await api.put("/college/upsert_placement_settings", data);
+        return response.data;
+    },
+
+    // ── Self-Report Review ──────────────────────────────────────────────────
+
+    getSelfReports: async (
+        filters: {
+            page?: number;
+            limit?: number;
+            verification_status?: string;
+            search?: string;
+            passout_year?: number;
+        } = {},
+    ) => {
+        const query = new URLSearchParams();
+        if (filters.page != null) query.append("page", String(filters.page));
+        if (filters.limit != null) query.append("limit", String(filters.limit));
+        if (filters.verification_status) query.append("verification_status", filters.verification_status);
+        if (filters.search) query.append("search", filters.search);
+        if (filters.passout_year != null) query.append("passout_year", String(filters.passout_year));
+
+        const queryStr = query.toString();
+        const url = queryStr ? `/college/self-reports?${queryStr}` : "/college/self-reports";
+        const response = await api.get(url);
+        return response.data;
+    },
+
+    getSelfReportById: async (reportId: string) => {
+        const response = await api.get(`/college/self-reports/${reportId}`);
+        return response.data;
+    },
+
+    reviewSelfReport: async (reportId: string, data: { action: "approve" | "reject"; company_id?: string; job_id?: string; rejection_reason?: string }) => {
+        const response = await api.patch(`/college/self-reports/${reportId}/review`, data);
+        return response.data;
+    },
+
+    getSelfReportStats: async (passoutYear: number) => {
+        const response = await api.get(`/college/self-reports/stats?passout_year=${passoutYear}`);
+        return response.data;
+    },
+
+    // ======================== Profile (Self-Service) ========================
+
+    getMyProfile: async () => {
+        const response = await api.get("/college/my-profile");
+        return response.data;
+    },
+
+    updateMyProfile: async (data: {
+        user_name?: string;
+        phone_number?: string;
+        profile_picture_url?: string;
+    }) => {
+        const response = await api.put("/college/my-profile", data);
         return response.data;
     },
 };

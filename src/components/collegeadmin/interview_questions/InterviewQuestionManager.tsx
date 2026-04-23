@@ -11,6 +11,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { useViewInterviewQuestions } from "@/hooks/collegeadmin/interview_questions/useViewInterviewQuestions";
 import { useApproveInterviewQuestion } from "@/hooks/collegeadmin/interview_questions/useApproveInterviewQuestion";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     APPROVAL_STATUS_OPTIONS,
     APPROVAL_STATUS_LABELS,
@@ -174,8 +175,8 @@ function QuestionCard({
     item: InterviewQuestion;
     isSelected: boolean;
     onToggleSelect: (id: string) => void;
-    onApprove: (id: string) => void;
-    onReject: (id: string) => void;
+    onApprove?: (id: string) => void;
+    onReject?: (id: string) => void;
     isProcessing: boolean;
 }>) {
     const [answerExpanded, setAnswerExpanded] = useState(false);
@@ -268,7 +269,7 @@ function QuestionCard({
                         <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                     ) : (
                         <>
-                            {!item.is_approved && (
+                            {!item.is_approved && onApprove && (
                                 <button
                                     type="button"
                                     aria-label="Approve question"
@@ -278,6 +279,7 @@ function QuestionCard({
                                     <Check className="h-4 w-4" />
                                 </button>
                             )}
+                            {onReject && (
                             <button
                                 type="button"
                                 aria-label={item.is_approved ? "Revoke approval" : "Reject question"}
@@ -286,6 +288,7 @@ function QuestionCard({
                             >
                                 <X className="h-4 w-4" />
                             </button>
+                            )}
                         </>
                     )}
                 </div>
@@ -447,6 +450,8 @@ function PaginationBar({
 // ========================
 
 export default function InterviewQuestionManager() {
+    const { hasPermission } = usePermissions();
+    const canApprove = hasPermission("feedback.approve");
     const {
         questions,
         isLoading,
@@ -705,8 +710,8 @@ export default function InterviewQuestionManager() {
                                 item={item}
                                 isSelected={selectedIds.has(item.question_id)}
                                 onToggleSelect={toggleSelect}
-                                onApprove={approve}
-                                onReject={reject}
+                                onApprove={canApprove ? approve : undefined}
+                                onReject={canApprove ? reject : undefined}
                                 isProcessing={processingId === item.question_id}
                             />
                         ))}
@@ -726,7 +731,7 @@ export default function InterviewQuestionManager() {
 
             {/* Bulk action bar */}
             <AnimatePresence>
-                {selectedIds.size > 0 && (
+                {canApprove && selectedIds.size > 0 && (
                     <BulkActionBar
                         selectedCount={selectedIds.size}
                         onBulkApprove={handleBulkApprove}

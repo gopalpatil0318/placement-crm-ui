@@ -20,6 +20,7 @@ import AnimatedPage from "@/components/ui/AnimatedPage";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import { useViewDepartment } from "@/hooks/collegeadmin/departmentManagement/useViewDepartment";
 import { useToggleDepartmentStatus } from "@/hooks/collegeadmin/departmentManagement/useToggleDepartmentStatus";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // ========================
 // HELPERS
@@ -35,7 +36,7 @@ const AVATAR_COLORS = [
 ] as const;
 
 const getAvatarGradient = (name: string) =>
-    AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+    AVATAR_COLORS[(name.codePointAt(0) ?? 0) % AVATAR_COLORS.length];
 
 const getInitials = (name: string) => {
     const words = name.trim().split(/\s+/);
@@ -156,6 +157,96 @@ const DetailSkeleton = () => (
     </div>
 );
 
+/** Toggle-status confirmation modal (extracted for complexity) */
+const ToggleConfirmModal = ({ isOpen, onClose, department, isActive, toggling, onConfirm }: Readonly<{
+    isOpen: boolean;
+    onClose: () => void;
+    department: { dept_name: string; dept_code: string | null };
+    isActive: boolean;
+    toggling: boolean;
+    onConfirm: () => void;
+}>) => {
+    const actionLabel = isActive ? "Deactivate" : "Activate";
+    return (
+        <ModalWrapper
+            isOpen={isOpen}
+            onClose={onClose}
+            disabled={toggling}
+            title={`${actionLabel} Department`}
+            titleIcon={
+                <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${
+                    isActive ? "bg-red-50 dark:bg-red-900/20" : "bg-emerald-50 dark:bg-emerald-900/20"
+                }`}>
+                    <Power className={`h-4 w-4 ${
+                        isActive ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+                    }`} />
+                </div>
+            }
+            size="md"
+        >
+            <div className="px-6 py-5">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Are you sure you want to{" "}
+                    <span className="font-semibold">
+                        {isActive ? "deactivate" : "activate"}
+                    </span>
+                    {" "}
+                    <span className="font-semibold text-gray-800 dark:text-gray-100">
+                        {department.dept_name}
+                        {department.dept_code && ` (${department.dept_code})`}
+                    </span>
+                    {"?"}
+                </p>
+
+                {isActive ? (
+                    <div className="mt-4 flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                            <p className="font-medium">This action will:</p>
+                            <ul className="list-disc pl-4 space-y-0.5">
+                                <li>Mark this department as inactive across the system</li>
+                                <li>Students and users in this department will not be affected</li>
+                                <li>You can re-activate the department at any time</li>
+                            </ul>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="mt-4 flex items-start gap-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
+                        <GraduationCap className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                            This department will be available for new student registrations and visible across the platform.
+                        </p>
+                    </div>
+                )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-end gap-3">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={toggling}
+                    className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    onClick={onConfirm}
+                    disabled={toggling}
+                    className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed ${
+                        isActive
+                            ? "bg-red-600 hover:bg-red-700"
+                            : "bg-emerald-600 hover:bg-emerald-700"
+                    }`}
+                >
+                    {toggling && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {toggling ? "Updating..." : actionLabel}
+                </button>
+            </div>
+        </ModalWrapper>
+    );
+};
+
 // ========================
 // MAIN COMPONENT
 // ========================
@@ -165,6 +256,8 @@ const ViewDepartment = () => {
     const navigate = useNavigate();
     const { department, loading, error, refresh } = useViewDepartment(deptId);
     const { toggleStatus, loading: toggling } = useToggleDepartmentStatus();
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("departments.manage");
     const [showConfirm, setShowConfirm] = useState(false);
 
     const breadcrumbs = useMemo(
@@ -279,31 +372,33 @@ const ViewDepartment = () => {
                                 </div>
 
                                 {/* Right: Action buttons */}
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => navigate(`/college/update-department/${department.dept_id}`)}
-                                        aria-label="Edit department"
-                                        className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm"
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                        Edit
-                                    </button>
+                                {canManage && (
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate(`/college/update-department/${department.dept_id}`)}
+                                            aria-label="Edit department"
+                                            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm"
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                            Edit
+                                        </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowConfirm(true)}
-                                        aria-label={isActive ? "Deactivate department" : "Activate department"}
-                                        className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition shadow-sm ${
-                                            isActive
-                                                ? "bg-red-600 hover:bg-red-700 text-white"
-                                                : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                        }`}
-                                    >
-                                        <Power className="h-4 w-4" />
-                                        {isActive ? "Deactivate" : "Activate"}
-                                    </button>
-                                </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirm(true)}
+                                            aria-label={isActive ? "Deactivate department" : "Activate department"}
+                                            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition shadow-sm ${
+                                                isActive
+                                                    ? "bg-red-600 hover:bg-red-700 text-white"
+                                                    : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                            }`}
+                                        >
+                                            <Power className="h-4 w-4" />
+                                            {isActive ? "Deactivate" : "Activate"}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -379,84 +474,14 @@ const ViewDepartment = () => {
                 </div>
             </AnimatedPage>
 
-            {/* ── Toggle Confirmation Modal ── */}
-            <ModalWrapper
+            <ToggleConfirmModal
                 isOpen={showConfirm}
                 onClose={handleCloseConfirm}
-                disabled={toggling}
-                title={isActive ? "Deactivate Department" : "Activate Department"}
-                titleIcon={
-                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${
-                        isActive ? "bg-red-50 dark:bg-red-900/20" : "bg-emerald-50 dark:bg-emerald-900/20"
-                    }`}>
-                        <Power className={`h-4 w-4 ${
-                            isActive ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
-                        }`} />
-                    </div>
-                }
-                size="md"
-            >
-                {/* Modal body */}
-                <div className="px-6 py-5">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Are you sure you want to{" "}
-                        <span className="font-semibold">
-                            {isActive ? "deactivate" : "activate"}
-                        </span>{" "}
-                        <span className="font-semibold text-gray-800 dark:text-gray-100">
-                            {department.dept_name}
-                            {department.dept_code && ` (${department.dept_code})`}
-                        </span>
-                        ?
-                    </p>
-
-                    {isActive ? (
-                        <div className="mt-4 flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
-                            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                            <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
-                                <p className="font-medium">This action will:</p>
-                                <ul className="list-disc pl-4 space-y-0.5">
-                                    <li>Mark this department as inactive across the system</li>
-                                    <li>Students and users in this department will not be affected</li>
-                                    <li>You can re-activate the department at any time</li>
-                                </ul>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="mt-4 flex items-start gap-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
-                            <GraduationCap className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
-                            <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                                This department will be available for new student registrations and visible across the platform.
-                            </p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Modal footer */}
-                <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-end gap-3">
-                    <button
-                        type="button"
-                        onClick={handleCloseConfirm}
-                        disabled={toggling}
-                        className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleToggleStatus}
-                        disabled={toggling}
-                        className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed ${
-                            isActive
-                                ? "bg-red-600 hover:bg-red-700"
-                                : "bg-emerald-600 hover:bg-emerald-700"
-                        }`}
-                    >
-                        {toggling && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {toggling ? "Updating..." : isActive ? "Deactivate" : "Activate"}
-                    </button>
-                </div>
-            </ModalWrapper>
+                department={department}
+                isActive={isActive}
+                toggling={toggling}
+                onConfirm={handleToggleStatus}
+            />
         </>
     );
 };

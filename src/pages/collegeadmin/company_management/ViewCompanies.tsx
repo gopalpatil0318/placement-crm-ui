@@ -1,5 +1,6 @@
 ﻿import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     Plus,
     ChevronLeft,
@@ -162,7 +163,7 @@ const Pagination = ({
 };
 
 /** Empty state */
-const EmptyState = ({ hasFilters, onAdd }: Readonly<{ hasFilters: boolean; onAdd: () => void }>) => (
+const EmptyState = ({ hasFilters, onAdd }: Readonly<{ hasFilters: boolean; onAdd?: () => void }>) => (
     <div className="flex flex-col items-center py-16 text-center">
         <div className="h-16 w-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-5">
             <Building2 className="h-8 w-8 text-gray-400 dark:text-gray-500" />
@@ -175,7 +176,7 @@ const EmptyState = ({ hasFilters, onAdd }: Readonly<{ hasFilters: boolean; onAdd
                 ? "Try adjusting your search or filters to find what you're looking for."
                 : "Get started by registering your first company. You can add contacts and job postings later."}
         </p>
-        {!hasFilters && (
+        {!hasFilters && onAdd && (
             <button
                 type="button"
                 onClick={onAdd}
@@ -194,6 +195,8 @@ const EmptyState = ({ hasFilters, onAdd }: Readonly<{ hasFilters: boolean; onAdd
 
 const ViewCompanies = () => {
     const navigate = useNavigate();
+    const { hasPermission } = usePermissions();
+    const canCreate = hasPermission("companies.create");
     const {
         companies,
         loading,
@@ -267,14 +270,16 @@ const ViewCompanies = () => {
                             </div>
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={() => navigate("/college/create-company")}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition shadow-sm"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Add Company
-                        </button>
+                        {canCreate && (
+                            <button
+                                type="button"
+                                onClick={() => navigate("/college/create-company")}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition shadow-sm"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Company
+                            </button>
+                        )}
                     </div>
 
                     {/* â”€â”€ Filters bar â”€â”€ */}
@@ -467,7 +472,7 @@ const ViewCompanies = () => {
                                         <td colSpan={6}>
                                             <EmptyState
                                                 hasFilters={hasFilters}
-                                                onAdd={() => navigate("/college/create-company")}
+                                                onAdd={canCreate ? () => navigate("/college/create-company") : undefined}
                                             />
                                         </td>
                                     </tr>

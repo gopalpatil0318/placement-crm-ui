@@ -32,6 +32,14 @@ export type DashboardOverview = Readonly<{
     unplaced_count: number;
     total_companies: number;
     total_job_postings: number;
+    // Quota / subscription fields (from quota_info CTE)
+    student_quota: number | null;
+    subscription_status: string | null;
+    allowed_passout_years: number[] | null;
+    valid_to: string | null;
+    trial_ends_at: string | null;
+    total_students_all_years: number;
+    students_remaining: number | null;
 }>;
 
 export type PackageSlabs = Readonly<{
@@ -62,10 +70,18 @@ export type InternshipStats = Readonly<{
     with_stipend_count: number;
 }>;
 
+export type CampusBreakdown = Readonly<{
+    on_campus: number;
+    off_campus: number;
+    pool_campus: number;
+}>;
+
 export type PlacementStats = Readonly<{
     package_slabs: PackageSlabs;
     offer_breakdown: OfferBreakdown;
     internship_stats: InternshipStats;
+    campus_breakdown: CampusBreakdown;
+    self_report_pending: number;
 }>;
 
 export type ApplicationFunnel = Readonly<{

@@ -7,7 +7,7 @@ interface EditCollegeFormProps {
   onItemLoaded?: (name: string) => void
 }
 
-export default function EditCollegeForm({ onItemLoaded }: EditCollegeFormProps) {
+export default function EditCollegeForm({ onItemLoaded }: Readonly<EditCollegeFormProps>) {
   const navigate = useNavigate()
   const {
     loading,
@@ -34,7 +34,7 @@ export default function EditCollegeForm({ onItemLoaded }: EditCollegeFormProps) 
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="space-y-2">
+                <div key={`edit-skel-a-${String(i)}`} className="space-y-2">
                   <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
                   <div className="h-11 bg-gray-200 dark:bg-gray-700 rounded-xl" />
                 </div>
@@ -52,7 +52,7 @@ export default function EditCollegeForm({ onItemLoaded }: EditCollegeFormProps) 
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="space-y-2">
+                <div key={`edit-skel-b-${String(i)}`} className="space-y-2">
                   <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
                   <div className="h-11 bg-gray-200 dark:bg-gray-700 rounded-xl" />
                 </div>

@@ -4,6 +4,7 @@ import {
     Search, ShieldAlert, ShieldCheck, Filter, ArrowUpDown, ArrowUp, ArrowDown,
     ChevronLeft, ChevronRight,
 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { AnimatedTableBody, AnimatedRow } from "@/components/ui/AnimatedList";
 import { useViewRestrictions } from "@/hooks/collegeadmin/student_management/restrictions/useViewRestrictions";
 import {
@@ -125,6 +126,8 @@ function getPageNumbers(currentPage: number, totalPages: number): (number | stri
 
 export default function RestrictionListView() {
     const shouldReduce = useReducedMotion();
+    const { hasPermission } = usePermissions();
+    const canCreate = hasPermission("restrictions.create");
 
     const {
         restrictions, loading, error, pagination,
@@ -200,7 +203,7 @@ export default function RestrictionListView() {
                         ? "Try adjusting your search or filter criteria"
                         : "No students have been restricted yet"}
                 </p>
-                {!(search || typeFilter) && (
+                {!(search || typeFilter) && canCreate && (
                     <button
                         type="button"
                         onClick={() => setShowAddModal(true)}
@@ -235,14 +238,16 @@ export default function RestrictionListView() {
                             <p className="text-xs text-gray-500 dark:text-gray-400">Manage student placement restrictions</p>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setShowAddModal(true)}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition shadow-sm cursor-pointer"
-                    >
-                        <ShieldAlert className="h-4 w-4" />
-                        Add Restriction
-                    </button>
+                    {canCreate && (
+                        <button
+                            type="button"
+                            onClick={() => setShowAddModal(true)}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition shadow-sm cursor-pointer"
+                        >
+                            <ShieldAlert className="h-4 w-4" />
+                            Add Restriction
+                        </button>
+                    )}
                 </div>
 
                 {/* Status Tabs */}

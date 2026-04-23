@@ -5,9 +5,9 @@ import Sidebar from "./Sidebar"
 const LG_BREAKPOINT = 1024
 
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < LG_BREAKPOINT)
+  const [isMobile, setIsMobile] = useState(() => globalThis.innerWidth < LG_BREAKPOINT)
   useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${LG_BREAKPOINT - 1}px)`)
+    const mql = globalThis.matchMedia(`(max-width: ${LG_BREAKPOINT - 1}px)`)
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
     mql.addEventListener("change", handler)
     return () => mql.removeEventListener("change", handler)
@@ -17,9 +17,9 @@ function useIsMobile() {
 
 export default function DashboardLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   const isMobile = useIsMobile()
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 

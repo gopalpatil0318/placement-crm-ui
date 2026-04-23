@@ -20,6 +20,7 @@ import ModalWrapper from "@/components/ui/ModalWrapper";
 import { useViewTrainingProgram } from "@/hooks/collegeadmin/training_programs/useViewTrainingProgram";
 import { useToggleTrainingStatus } from "@/hooks/collegeadmin/training_programs/useToggleTrainingStatus";
 import { useToggleEnrollmentAccess } from "@/hooks/collegeadmin/training_programs/useToggleEnrollmentAccess";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     PROGRAM_STATUS_COLORS,
     PROGRAM_STATUS_LABELS,
@@ -39,6 +40,8 @@ interface TrainingProgramDetailViewProps {
 
 const TrainingProgramDetailView = ({ programId, onProgramLoaded }: Readonly<TrainingProgramDetailViewProps>) => {
     const { program, loading, error, refetch } = useViewTrainingProgram(programId);
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("training.manage");
 
     // Notify parent of program name for breadcrumbs
     const notifiedRef = useRef(false);
@@ -162,7 +165,7 @@ const TrainingProgramDetailView = ({ programId, onProgramLoaded }: Readonly<Trai
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
-                        {!isCancelled && (
+                        {canManage && !isCancelled && (
                             <Link
                                 to={`/college/training-program/${programId}/edit`}
                                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
@@ -170,8 +173,8 @@ const TrainingProgramDetailView = ({ programId, onProgramLoaded }: Readonly<Trai
                                 <Edit className="h-4 w-4" /> Edit
                             </Link>
                         )}
-                        <EnrollmentToggleButton programId={programId} currentStatus={program.program_status} allowEnrollments={program.allow_enrollments ?? false} />
-                        <StatusToggleDropdown programId={programId} currentStatus={program.program_status} />
+                        {canManage && <EnrollmentToggleButton programId={programId} currentStatus={program.program_status} allowEnrollments={program.allow_enrollments ?? false} />}
+                        {canManage && <StatusToggleDropdown programId={programId} currentStatus={program.program_status} />}
                     </div>
                 </div>
 

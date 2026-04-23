@@ -10,7 +10,6 @@ import {
     Check,
     X,
     Loader2,
-    ExternalLink,
     Briefcase,
     Trophy,
     Award,
@@ -22,6 +21,7 @@ import {
     Clock,
     Hash,
 } from "lucide-react";
+import { DocumentPreview } from "@/components/ui/DocumentPreview";
 import type {
     PendingExperience,
     PendingAchievement,
@@ -51,20 +51,6 @@ const formatDuration = (exp: PendingExperience): string => {
     const dur = months ? ` · ${months} mo` : "";
     return `${start} → ${end}${dur}`;
 };
-
-function DocLink({ href, label }: Readonly<{ href: string | null | undefined; label: string }>) {
-    if (!href) return null;
-    return (
-        <a
-            href={href}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
-        >
-            <ExternalLink className="h-3 w-3" /> {label}
-        </a>
-    );
-}
 
 function DetailRow({ label, value }: Readonly<{ label: string; value: React.ReactNode }>) {
     if (value === null || value === undefined || value === "" || value === "—") return null;
@@ -186,8 +172,8 @@ function ExperienceDetails({ item }: Readonly<{ item: PendingExperience }>) {
                         <FileText className="h-3 w-3" /> Documents
                     </p>
                     <div className="flex flex-wrap gap-2">
-                        <DocLink href={item.offer_letter_url} label="Offer Letter" />
-                        <DocLink href={item.completion_certificate_url} label="Completion Certificate" />
+                        {item.offer_letter_url && <DocumentPreview value={item.offer_letter_url} bucket="placenex-private" label="Offer Letter" variant="inline" />}
+                        {item.completion_certificate_url && <DocumentPreview value={item.completion_certificate_url} bucket="placenex-private" label="Completion Certificate" variant="inline" />}
                     </div>
                 </div>
             )}
@@ -240,8 +226,8 @@ function AchievementDetails({ item }: Readonly<{ item: PendingAchievement }>) {
                         <FileText className="h-3 w-3" /> Documents
                     </p>
                     <div className="flex flex-wrap gap-2">
-                        <DocLink href={item.certificate_url} label="Certificate" />
-                        <DocLink href={item.proof_url} label="Proof" />
+                        {item.certificate_url && <DocumentPreview value={item.certificate_url} bucket="placenex-private" label="Certificate" variant="inline" />}
+                        {item.proof_url && <DocumentPreview value={item.proof_url} bucket="placenex-private" label="Proof" variant="inline" />}
                     </div>
                 </div>
             )}
@@ -319,7 +305,7 @@ function CertificateDetails({ item }: Readonly<{ item: PendingCertificate }>) {
                         <FileText className="h-3 w-3" /> Documents
                     </p>
                     <div className="flex flex-wrap gap-2">
-                        <DocLink href={item.certificate_url} label="View Certificate" />
+                        <DocumentPreview value={item.certificate_url} bucket="placenex-private" label="View Certificate" variant="inline" />
                     </div>
                 </div>
             )}
@@ -363,8 +349,8 @@ interface PendingItemSheetProps {
     onClose: () => void;
     item: PendingItem | null;
     category: VerificationCategory;
-    onApprove: (id: string) => void;
-    onReject: (id: string) => void;
+    onApprove?: (id: string) => void;
+    onReject?: (id: string) => void;
     isApproving: boolean;
     isRejecting: boolean;
     processingId: string | null;
@@ -417,34 +403,40 @@ export default function PendingItemSheet({
                 </div>
 
                 {/* Action footer */}
-                <SheetFooter className="border-t border-gray-100 dark:border-gray-800 pt-3 flex-row gap-3">
-                    <button
-                        type="button"
-                        onClick={() => onApprove(itemId)}
-                        disabled={isProcessingThis}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                        {isProcessingThis && isApproving ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Check className="h-4 w-4" />
+                {(onApprove || onReject) && (
+                    <SheetFooter className="border-t border-gray-100 dark:border-gray-800 pt-3 flex-row gap-3">
+                        {onApprove && (
+                            <button
+                                type="button"
+                                onClick={() => onApprove(itemId)}
+                                disabled={isProcessingThis}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 cursor-pointer"
+                            >
+                                {isProcessingThis && isApproving ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Check className="h-4 w-4" />
+                                )}
+                                Approve
+                            </button>
                         )}
-                        Approve
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onReject(itemId)}
-                        disabled={isProcessingThis}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                        {isProcessingThis && isRejecting ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <X className="h-4 w-4" />
-                        )}
+                        {onReject && (
+                            <button
+                                type="button"
+                                onClick={() => onReject(itemId)}
+                                disabled={isProcessingThis}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 cursor-pointer"
+                            >
+                                {isProcessingThis && isRejecting ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <X className="h-4 w-4" />
+                                )}
                         Reject
-                    </button>
-                </SheetFooter>
+                            </button>
+                        )}
+                    </SheetFooter>
+                )}
             </SheetContent>
         </Sheet>
     );

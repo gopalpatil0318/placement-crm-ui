@@ -94,13 +94,9 @@ export const PLACEMENT_STATUS_TRANSITIONS: Record<PlacementStatus, PlacementStat
 // ZOD SCHEMAS
 // ========================
 
-const urlOptional = z
+const filePathOptional = z
     .string()
-    .max(2000, "URL cannot exceed 2000 characters")
-    .refine(
-        (val) => val === "" || /^https?:\/\/.+/i.test(val),
-        "Must be a valid URL starting with http:// or https://",
-    )
+    .max(2000, "File path cannot exceed 2000 characters")
     .optional()
     .or(z.literal(""));
 
@@ -133,7 +129,7 @@ export const createPlacementSchema = z
             .optional()
             .or(z.literal("")),
         internship_start_date: z.string().optional().or(z.literal("")),
-        offer_letter_url: urlOptional,
+        offer_letter_url: filePathOptional,
     })
     .refine(
         (data) => {
@@ -199,7 +195,7 @@ export const updatePlacementSchema = z
             .optional()
             .or(z.literal("")),
         internship_start_date: z.string().optional().or(z.literal("")),
-        offer_letter_url: urlOptional,
+        offer_letter_url: filePathOptional,
     })
     .refine(
         (data) => {

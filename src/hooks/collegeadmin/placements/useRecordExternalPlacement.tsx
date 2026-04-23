@@ -13,6 +13,7 @@ import { queryKeys } from "@/lib/queryKeys";
 export interface ExternalPlacementForm {
     student_id: string;
     company_id: string;
+    job_id: string;
     job_title: string;
     job_location: string;
     drive_type: string;
@@ -25,6 +26,7 @@ export interface ExternalPlacementForm {
     internship_start_date: string;
     offer_letter_url: string;
     remarks: string;
+    passout_year: string;
 }
 
 type FormErrors = Partial<Record<keyof ExternalPlacementForm, string>>;
@@ -32,6 +34,7 @@ type FormErrors = Partial<Record<keyof ExternalPlacementForm, string>>;
 const INITIAL_FORM: ExternalPlacementForm = {
     student_id: "",
     company_id: "",
+    job_id: "",
     job_title: "",
     job_location: "",
     drive_type: "off_campus",
@@ -44,6 +47,7 @@ const INITIAL_FORM: ExternalPlacementForm = {
     internship_start_date: "",
     offer_letter_url: "",
     remarks: "",
+    passout_year: "",
 };
 
 // ========================
@@ -82,6 +86,9 @@ function buildPayload(formData: ExternalPlacementForm): Record<string, unknown> 
 
     addTrimmedField(payload, "offer_letter_url", formData.offer_letter_url);
     addTrimmedField(payload, "remarks", formData.remarks);
+
+    if (formData.job_id) payload.job_id = formData.job_id;
+    if (formData.passout_year) payload.passout_year = Number(formData.passout_year);
 
     return payload;
 }

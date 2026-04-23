@@ -19,6 +19,7 @@ export interface PlacementSettings {
     exclude_placed_by_default: boolean;
     auto_reject_on_round_fail: boolean;
     allow_reapply_after_withdrawal: boolean;
+    max_active_applications: number | null;
     created_by: string | null;
     created_at: string | null;
     updated_at: string | null;
@@ -57,6 +58,7 @@ export function useUpsertPlacementSettings(onSuccess?: () => void) {
             exclude_placed_by_default?: boolean;
             auto_reject_on_round_fail?: boolean;
             allow_reapply_after_withdrawal?: boolean;
+            max_active_applications?: number | null;
         }) => CollegeAdminService.upsertPlacementSettings(data),
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ["placementSettings"] });

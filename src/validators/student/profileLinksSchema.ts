@@ -1,12 +1,13 @@
 import { z } from "zod";
 
-const optionalUrl = z.string().url("Must be a valid URL").max(500).or(z.literal("")).optional();
+const optionalUrl = z.url({ message: "Must be a valid URL" }).max(500).or(z.literal("")).optional();
+const optionalFilePath = z.string().max(500).or(z.literal("")).optional();
 
 export const profileLinksSchema = z.object({
     // Portfolio & Resume
     personal_portfolio_url: optionalUrl,
-    resume_url: optionalUrl,
-    profile_image_url: optionalUrl,
+    resume_url: optionalFilePath,
+    profile_image_url: optionalFilePath,
 
     // Professional
     github_url: optionalUrl,

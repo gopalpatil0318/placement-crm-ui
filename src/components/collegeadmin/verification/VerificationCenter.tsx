@@ -30,6 +30,7 @@ import {
     CATEGORY_LABELS,
 } from "@/validators/VerificationSchema";
 import PendingItemSheet from "./PendingItemSheet";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // ========================
 // CONSTANTS
@@ -636,6 +637,8 @@ function Pagination({
 export default function VerificationCenter() {
     const navigate = useNavigate();
     const shouldReduce = useReducedMotion();
+    const { hasPermission } = usePermissions();
+    const canVerify = hasPermission("verification.verify");
 
     // ─── Verification Settings (hide bypassed categories) ──────────────
     const settingsQuery = useQuery<{ data: { bypass: Record<string, boolean> } }>({
@@ -1286,7 +1289,7 @@ export default function VerificationCenter() {
 
                     {/* ═══════════════ Bulk Action Bar ═══════════════ */}
                     <AnimatePresence>
-                        {selectedIds.size > 0 && (
+                        {canVerify && selectedIds.size > 0 && (
                             <BulkActionBar
                                 selectedCount={selectedIds.size}
                                 onApprove={handleBulkApprove}
@@ -1318,8 +1321,8 @@ export default function VerificationCenter() {
                 onClose={closeSheet}
                 item={sheetItem}
                 category={activeCategory}
-                onApprove={handleSheetApprove}
-                onReject={handleSheetReject}
+                onApprove={canVerify ? handleSheetApprove : undefined}
+                onReject={canVerify ? handleSheetReject : undefined}
                 isApproving={isApproving}
                 isRejecting={isRejecting}
                 processingId={processingId}

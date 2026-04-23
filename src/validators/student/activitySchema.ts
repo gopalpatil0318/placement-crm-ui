@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const optionalUrl = z.string().url("Must be a valid URL").max(500).or(z.literal("")).optional();
+const optionalFilePath = z.string().max(500).or(z.literal("")).optional();
 
 export const activitySchema = z
     .object({
@@ -20,14 +20,14 @@ export const activitySchema = z
         hours_contributed: z
             .union([z.number(), z.string()])
             .transform((val) => (val === "" ? undefined : Number(val)))
-            .refine((val) => val === undefined || (!isNaN(val) && val >= 1 && val <= 10000), {
+            .refine((val) => val === undefined || (!Number.isNaN(val) && val >= 1 && val <= 10000), {
                 message: "Hours must be between 1 and 10,000",
             })
             .optional(),
-        certificate_url: optionalUrl,
+        certificate_url: optionalFilePath,
         proof_urls: z
-            .array(z.string().url("Must be a valid URL").max(500))
-            .max(5, "Maximum 5 proof URLs")
+            .array(z.string().max(500))
+            .max(5, "Maximum 5 proof files")
             .default([]),
     })
     .refine(

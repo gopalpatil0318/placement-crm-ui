@@ -1,7 +1,11 @@
 import { useProfileLinks } from "@/hooks/student/useProfileLinks";
+import { useStudentAuth } from "@/hooks/student/useStudentAuth";
+import { useFileUpload } from "@/hooks/useFileUpload";
 import { X } from "lucide-react";
 import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
+import { ImageUpload } from "@/components/ui/ImageUpload";
+import { FileUpload } from "@/components/ui/FileUpload";
 
 const ProfileLinksForm = () => {
     const {
@@ -9,6 +13,39 @@ const ProfileLinksForm = () => {
         interestInput, setInterestInput,
         handleChange, addInterest, removeInterest, handleSubmit,
     } = useProfileLinks();
+
+    const { user } = useStudentAuth();
+    const avatarUpload = useFileUpload();
+    const resumeUpload = useFileUpload();
+
+    const handleAvatarSelect = async (file: File | null) => {
+        if (!file || !user) return;
+        try {
+            const { storagePath } = await avatarUpload.upload(file, {
+                bucket: "placenex-public",
+                category: "photos",
+                entityId: `stu_${user.id}`,
+                maxSizeBytes: 2 * 1024 * 1024,
+                allowedTypes: ["image/jpeg", "image/png", "image/webp"],
+            });
+            handleChange({ target: { name: "profile_image_url", value: storagePath } } as React.ChangeEvent<HTMLInputElement>);
+        } catch { /* error is in avatarUpload.error */ }
+    };
+
+    const handleResumeSelect = async (file: File | null) => {
+        if (!file || !user) return;
+        try {
+            const { storagePath } = await resumeUpload.upload(file, {
+                bucket: "placenex-private",
+                category: "resumes",
+                entityId: `stu_${user.id}`,
+                maxSizeBytes: 5 * 1024 * 1024,
+                allowedTypes: ["application/pdf"],
+                compressImages: false,
+            });
+            handleChange({ target: { name: "resume_url", value: storagePath } } as React.ChangeEvent<HTMLInputElement>);
+        } catch { /* error is in resumeUpload.error */ }
+    };
 
     if (loading) {
         return (
@@ -103,10 +140,44 @@ const ProfileLinksForm = () => {
                 {/* ================= 🔗 Portfolio & Resume ================= */}
                 <div>
                     <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">🔗 Portfolio & Resume</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FloatingInput label="Portfolio" name="personal_portfolio_url" value={formData.personal_portfolio_url} onChange={handleChange} error={errors.personal_portfolio_url} inputMode="url" placeholder="https://yoursite.dev" />
-                        <FloatingInput label="Resume" name="resume_url" value={formData.resume_url} onChange={handleChange} error={errors.resume_url} inputMode="url" placeholder="https://drive.google.com/..." />
-                        <FloatingInput label="Profile Image URL" name="profile_image_url" value={formData.profile_image_url} onChange={handleChange} error={errors.profile_image_url} inputMode="url" placeholder="https://drive.google.com/..." />
+
+                    <div className="flex flex-col sm:flex-row gap-8 mb-6">
+                        {/* Profile Image Upload */}
+                        <div className="flex flex-col items-center gap-1">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Profile Photo</p>
+                            <ImageUpload
+                                value={formData.profile_image_url || null}
+                                onFileSelect={handleAvatarSelect}
+                                progress={avatarUpload.progress}
+                                isUploading={avatarUpload.isUploading}
+                                error={avatarUpload.error || errors.profile_image_url}
+                                variant="avatar"
+                                size={112}
+                                initials={user ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}` : undefined}
+                                label="Upload profile photo"
+                            />
+                        </div>
+
+                        <div className="flex-1 space-y-6">
+                            {/* Resume Upload */}
+                            <div>
+                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Resume (PDF)</p>
+                                <FileUpload
+                                    value={formData.resume_url || null}
+                                    onFileSelect={handleResumeSelect}
+                                    progress={resumeUpload.progress}
+                                    isUploading={resumeUpload.isUploading}
+                                    error={resumeUpload.error || errors.resume_url}
+                                    accept=".pdf,application/pdf"
+                                    maxSizeBytes={5 * 1024 * 1024}
+                                    label="Upload resume"
+                                    hint="PDF only, max 5 MB"
+                                />
+                            </div>
+
+                            {/* Portfolio URL */}
+                            <FloatingInput label="Portfolio" name="personal_portfolio_url" value={formData.personal_portfolio_url} onChange={handleChange} error={errors.personal_portfolio_url} inputMode="url" placeholder="https://yoursite.dev" />
+                        </div>
                     </div>
                 </div>
 

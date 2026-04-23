@@ -11,6 +11,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { useViewFeedback } from "@/hooks/collegeadmin/feedback/useViewFeedback";
 import { useApproveFeedback } from "@/hooks/collegeadmin/feedback/useApproveFeedback";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     APPROVAL_STATUS_OPTIONS,
     APPROVAL_STATUS_LABELS,
@@ -160,8 +161,8 @@ function FeedbackCard({
     item: Feedback;
     isSelected: boolean;
     onToggleSelect: (id: string) => void;
-    onApprove: (id: string) => void;
-    onReject: (id: string) => void;
+    onApprove?: (id: string) => void;
+    onReject?: (id: string) => void;
     isProcessing: boolean;
 }>) {
     const [expanded, setExpanded] = useState(false);
@@ -255,7 +256,7 @@ function FeedbackCard({
                         <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                     ) : (
                         <>
-                            {!item.is_approved && (
+                            {!item.is_approved && onApprove && (
                                 <button
                                     type="button"
                                     aria-label="Approve feedback"
@@ -265,6 +266,7 @@ function FeedbackCard({
                                     <Check className="h-4 w-4" />
                                 </button>
                             )}
+                            {onReject && (
                             <button
                                 type="button"
                                 aria-label={item.is_approved ? "Revoke approval" : "Reject feedback"}
@@ -273,6 +275,7 @@ function FeedbackCard({
                             >
                                 <X className="h-4 w-4" />
                             </button>
+                            )}
                         </>
                     )}
                 </div>
@@ -434,6 +437,8 @@ function PaginationBar({
 // ========================
 
 export default function FeedbackManager() {
+    const { hasPermission } = usePermissions();
+    const canApprove = hasPermission("feedback.approve");
     const {
         feedback,
         isLoading,
@@ -680,8 +685,8 @@ export default function FeedbackManager() {
                                 item={item}
                                 isSelected={selectedIds.has(item.feedback_id)}
                                 onToggleSelect={toggleSelect}
-                                onApprove={approve}
-                                onReject={reject}
+                                onApprove={canApprove ? approve : undefined}
+                                onReject={canApprove ? reject : undefined}
                                 isProcessing={processingId === item.feedback_id}
                             />
                         ))}
@@ -701,7 +706,7 @@ export default function FeedbackManager() {
 
             {/* Bulk action bar */}
             <AnimatePresence>
-                {selectedIds.size > 0 && (
+                {canApprove && selectedIds.size > 0 && (
                     <BulkActionBar
                         selectedCount={selectedIds.size}
                         onBulkApprove={handleBulkApprove}

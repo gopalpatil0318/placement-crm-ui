@@ -3,12 +3,16 @@ import { motion, useReducedMotion } from "framer-motion";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { useActivities, VALID_ACTIVITY_TYPES, ACTIVITY_TYPE_LABELS } from "@/hooks/student/useActivities";
 import type { ActivityData } from "@/services/student/activity.service";
-import { Plus, X, Pencil, Trash2, Activity, CheckCircle, ExternalLink, Calendar, Clock, ChevronDown, Link as LinkIcon } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Activity, CheckCircle, Calendar, Clock, ChevronDown } from "lucide-react";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingSelect from "@/components/ui/FloatingSelect";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
+import { FileUpload } from "@/components/ui/FileUpload";
+import { DocumentPreview } from "@/components/ui/DocumentPreview";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { useStudentAuth } from "@/hooks/student/useStudentAuth";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -49,10 +53,38 @@ const ActivitiesForm = () => {
     const {
         activities, loading, saving, deleting,
         isFormOpen, editingId, formData, errors,
-        proofInput, setProofInput,
+
         maxActivities, openAddForm, openEditForm, closeForm,
         handleChange, addProofUrl, removeProofUrl, handleSubmit, handleDelete,
     } = useActivities();
+
+    const { user } = useStudentAuth();
+    const certUpload = useFileUpload();
+    const proofUpload = useFileUpload();
+
+    const handleCertSelect = async (file: File | null) => {
+        if (!file || !user) return;
+        try {
+            const { storagePath } = await certUpload.upload(file, {
+                bucket: "placenex-private",
+                category: "certs",
+                entityId: `act_${user.id}`,
+            });
+            handleChange({ target: { name: "certificate_url", value: storagePath } } as React.ChangeEvent<HTMLInputElement>);
+        } catch { /* error in certUpload.error */ }
+    };
+
+    const handleProofFileSelect = async (file: File | null) => {
+        if (!file || !user) return;
+        try {
+            const { storagePath } = await proofUpload.upload(file, {
+                bucket: "placenex-private",
+                category: "certs",
+                entityId: `act_${user.id}`,
+            });
+            addProofUrl(storagePath);
+        } catch { /* error in proofUpload.error */ }
+    };
 
     const shouldReduce = useReducedMotion();
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -175,26 +207,40 @@ const ActivitiesForm = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FloatingInput label="Hours Contributed" name="hours_contributed" value={formData.hours_contributed} onChange={handleChange} error={errors.hours_contributed} type="number" inputMode="numeric" placeholder="e.g. 120" />
-                                <FloatingInput label="Certificate URL" name="certificate_url" value={formData.certificate_url} onChange={handleChange} error={errors.certificate_url} inputMode="url" placeholder="https://..." />
+                                <FileUpload
+                                    value={formData.certificate_url || null}
+                                    onFileSelect={handleCertSelect}
+                                    progress={certUpload.progress}
+                                    isUploading={certUpload.isUploading}
+                                    error={certUpload.error || errors.certificate_url}
+                                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                    maxSizeBytes={5 * 1024 * 1024}
+                                    label="Certificate"
+                                    hint="PDF or image, max 5 MB"
+                                />
                             </div>
 
-                            {/* Proof URLs */}
+                            {/* Proof Files */}
                             <div>
-                                <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Proof URLs (max 5)</p>
-                                <div className="flex gap-2">
-                                    <input value={proofInput} onChange={(e) => setProofInput(e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addProofUrl(); } }}
-                                        inputMode="url"
-                                        placeholder="Paste URL & press Enter"
-                                        className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-4 py-2.5 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20" />
-                                    <button type="button" onClick={addProofUrl}
-                                        className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition cursor-pointer">Add</button>
-                                </div>
+                                <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Proof Files (max 5)</p>
+                                {formData.proof_urls.length < 5 && (
+                                    <FileUpload
+                                        value={null}
+                                        onFileSelect={handleProofFileSelect}
+                                        progress={proofUpload.progress}
+                                        isUploading={proofUpload.isUploading}
+                                        error={proofUpload.error}
+                                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                        maxSizeBytes={5 * 1024 * 1024}
+                                        label="Add proof file"
+                                        hint="PDF or image, max 5 MB"
+                                    />
+                                )}
                                 {formData.proof_urls.length > 0 && (
                                     <ul className="mt-2 space-y-1">
-                                        {formData.proof_urls.map((url) => (
+                                        {formData.proof_urls.map((url, idx) => (
                                             <li key={url} className="flex items-center justify-between text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg">
-                                                <span className="truncate mr-2"><LinkIcon size={12} className="inline -mt-0.5 mr-1" />{url}</span>
+                                                <span className="truncate mr-2">Proof {idx + 1}: {url.split("/").pop()}</span>
                                                 <button type="button" onClick={() => removeProofUrl(url)} className="text-red-400 hover:text-red-600 cursor-pointer flex-shrink-0"><X className="h-3 w-3" /></button>
                                             </li>
                                         ))}
@@ -313,16 +359,10 @@ const ActivityCard = memo(function ActivityCard({
                 {/* Links + Verified */}
                 <div className="flex items-center gap-3 flex-wrap pt-3 border-t border-gray-100 dark:border-gray-700">
                     {act.certificate_url && (
-                        <a href={act.certificate_url} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <ExternalLink className="h-3.5 w-3.5" /> Certificate
-                        </a>
+                        <DocumentPreview value={act.certificate_url} bucket="placenex-private" label="Certificate" variant="inline" />
                     )}
                     {visibleProofs.map((url: string, idx: number) => (
-                        <a key={url} href={url} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <LinkIcon className="h-3.5 w-3.5" /> Proof {idx + 1}
-                        </a>
+                        <DocumentPreview key={url} value={url} bucket="placenex-private" label={`Proof ${idx + 1}`} variant="inline" />
                     ))}
                     {hiddenProofCount > 0 && (
                         <span className="text-xs text-gray-400 dark:text-gray-500">+{hiddenProofCount} more</span>

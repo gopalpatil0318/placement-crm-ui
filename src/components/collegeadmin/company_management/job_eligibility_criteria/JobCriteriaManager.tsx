@@ -1,7 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSetJobCriteria } from "@/hooks/collegeadmin/company_management/Job_eligibility_criteria/useSetJobCriteria";
 import { useAuth } from "@/hooks/collegeadmin/useAuth";
-import { ShieldCheck, Loader2, AlertTriangle } from "lucide-react";
+import {
+    ShieldCheck, Loader2, AlertTriangle, Lightbulb, Info, GraduationCap,
+    Briefcase, Users, Sparkles, Search, Plus, X,
+} from "lucide-react";
+import { CRITERIA_CONFIG, CRITERIA_GROUPS, type CriteriaConfigItem } from "@/constants/criteriaConfig";
+import { SKILL_CATEGORY_LABELS, SKILL_CATEGORY_GROUPED_OPTIONS } from "@/constants/skillCategories";
+import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import ModalWrapper from "@/components/ui/ModalWrapper";
 
 // ========================
 // TYPES
@@ -12,6 +19,13 @@ interface Department {
     dept_name: string;
 }
 
+interface CatalogSkill {
+    skill_id: string;
+    skill_name: string;
+    skill_category: string;
+    student_count: number;
+}
+
 interface JobCriteriaManagerProps {
     jobId: string;
     jobStatus?: string;
@@ -19,11 +33,32 @@ interface JobCriteriaManagerProps {
     onSuccess: () => void;
 }
 
+// ========================
+// CONSTANTS
+// ========================
+
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
 const GAP_OPTIONS = [
     { value: "no_gap", label: "No Gap" },
     { value: "gap", label: "Gap" },
 ];
+
+const GROUP_ICONS = { GraduationCap, Briefcase, Users, Sparkles } as const;
+
+const PLACEHOLDER_MAP: Record<string, string> = {
+    min_overall_cgpa: "e.g. 7.0",
+    max_live_kts: "e.g. 0",
+    min_skill_match_percentage: "e.g. 60",
+};
+
+function getPlaceholder(key: string): string {
+    return PLACEHOLDER_MAP[key] || "e.g. 60";
+}
+
+function getSubmitLabel(isLoading: boolean, isUpdate: boolean): string {
+    if (isLoading) return isUpdate ? "Updating..." : "Setting...";
+    return isUpdate ? "Update Criteria" : "Set Criteria";
+}
 
 // ========================
 // STYLE HELPERS
@@ -35,9 +70,324 @@ function getChipClass(isDisabled: boolean, isSelected: boolean): string {
     return "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/30 dark:hover:bg-blue-900/10";
 }
 
-function getButtonLabel(isLoading: boolean, isUpdate: boolean): string {
-    if (isLoading) return isUpdate ? "Updating..." : "Setting...";
-    return isUpdate ? "Update Criteria" : "Set Criteria";
+function getInputClass(enabled: boolean, error?: string): string {
+    const base = "w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition";
+    if (enabled && error) return `${base} border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/10 text-gray-900 dark:text-gray-100`;
+    if (enabled) return `${base} border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500`;
+    return `${base} bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed`;
+}
+
+function getCriteriaCardClass(disabled: boolean | undefined, enabled: boolean): string {
+    if (disabled) return "bg-gray-50/50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 opacity-60";
+    if (enabled) return "bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-800 shadow-sm ring-1 ring-blue-100 dark:ring-blue-900/30";
+    return "bg-gray-50/50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600";
+}
+
+// ========================
+// CRITERIA CARD COMPONENT
+// ========================
+
+function CriteriaCard({
+    config, enabled, onToggle, error, disabled, children,
+}: Readonly<{
+    config: CriteriaConfigItem;
+    enabled: boolean;
+    onToggle: () => void;
+    error?: string;
+    disabled?: boolean;
+    children: React.ReactNode;
+}>) {
+    const isActive = enabled && !disabled;
+
+    return (
+        <div className={`p-5 rounded-xl border transition-all duration-200 ${getCriteriaCardClass(disabled, enabled)}`}>
+            {/* Header: Label + Toggle */}
+            <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold transition-colors ${isActive ? "text-gray-800 dark:text-gray-100" : "text-gray-400 dark:text-gray-500"}`}>
+                        {config.label}
+                        {config.unit && isActive && (
+                            <span className="ml-1.5 text-xs font-normal text-gray-400 dark:text-gray-500">({config.unit})</span>
+                        )}
+                    </p>
+                    <p className={`text-xs mt-1 leading-relaxed transition-colors ${isActive ? "text-gray-500 dark:text-gray-400" : "text-gray-300 dark:text-gray-600"}`}>
+                        {config.description}
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={onToggle}
+                    disabled={disabled}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 ${
+                        enabled ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
+                    }`}
+                    aria-label={`Toggle ${config.label}`}
+                >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${enabled ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+            </div>
+
+            {/* Example Box */}
+            <div className={`flex items-start gap-2 px-3 py-2 rounded-lg mb-3 transition-colors ${isActive ? "bg-blue-50 dark:bg-blue-950/30" : "bg-gray-50 dark:bg-gray-800/60"}`}>
+                <Lightbulb className={`h-3.5 w-3.5 flex-shrink-0 mt-0.5 ${isActive ? "text-blue-500" : "text-gray-300 dark:text-gray-600"}`} />
+                <p className={`text-xs leading-relaxed ${isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-400 dark:text-gray-500"}`}>
+                    {config.example}
+                </p>
+            </div>
+
+            {/* Help Box — contextual */}
+            {isActive && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-lg mb-3 bg-emerald-50 dark:bg-emerald-950/30">
+                    <Info className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-emerald-500" />
+                    <p className="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">
+                        <span className="font-medium">What happens: </span>{config.helpWhenEnabled}
+                    </p>
+                </div>
+            )}
+            {!enabled && !disabled && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 italic mb-3">{config.helpWhenDisabled}</p>
+            )}
+
+            {/* Input */}
+            <div className={`transition-opacity ${isActive ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
+                {children}
+            </div>
+            {error && <p className="text-xs text-red-500 dark:text-red-400 mt-2">{error}</p>}
+        </div>
+    );
+}
+
+// ========================
+// SKILL SELECTOR COMPONENT
+// ========================
+
+function SkillSelector({
+    selectedSkills, onAdd, onRemove, enabled, disabled,
+}: Readonly<{
+    selectedSkills: { skill_id: string; skill_name?: string; skill_category?: string }[];
+    onAdd: (skill: CatalogSkill) => void;
+    onRemove: (skillId: string) => void;
+    enabled: boolean;
+    disabled?: boolean;
+}>) {
+    const [search, setSearch] = useState("");
+    const [categoryFilter, setCategoryFilter] = useState("");
+    const [catalog, setCatalog] = useState<CatalogSkill[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [showAll, setShowAll] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newSkillName, setNewSkillName] = useState("");
+    const [newSkillCategory, setNewSkillCategory] = useState("");
+    const [addingSkill, setAddingSkill] = useState(false);
+
+    const isActive = enabled && !disabled;
+    const selectedIds = useMemo(() => new Set(selectedSkills.map((s) => s.skill_id)), [selectedSkills]);
+
+    const fetchCatalog = useCallback(async () => {
+        setLoading(true);
+        try {
+            const result = await CollegeAdminService.getAllSkills({
+                search: search || undefined,
+                skill_category: categoryFilter || undefined,
+                limit: 100,
+            });
+            setCatalog(result.data?.skills || []);
+        } catch {
+            setCatalog([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [search, categoryFilter]);
+
+    useEffect(() => {
+        if (!isActive) return;
+        const timer = setTimeout(fetchCatalog, 300);
+        return () => clearTimeout(timer);
+    }, [fetchCatalog, isActive]);
+
+    const displaySkills = showAll ? catalog : catalog.slice(0, 20);
+    const hasMore = catalog.length > 20 && !showAll;
+
+    const handleAddNewSkill = async () => {
+        if (!newSkillName.trim()) return;
+        setAddingSkill(true);
+        try {
+            const result = await CollegeAdminService.createSkill({
+                skill_name: newSkillName.trim(),
+                skill_category: newSkillCategory || undefined,
+            });
+            const created = result.data?.skill;
+            if (created) {
+                onAdd(created);
+                fetchCatalog();
+            }
+            setShowAddModal(false);
+            setNewSkillName("");
+            setNewSkillCategory("");
+        } catch {
+            // API error handled by interceptor
+        } finally {
+            setAddingSkill(false);
+        }
+    };
+
+    if (!isActive) return null;
+
+    return (
+        <div className="space-y-3">
+            {/* Search + Filter */}
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setShowAll(false); }}
+                        placeholder="Search skills..."
+                        className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+                <select
+                    value={categoryFilter}
+                    onChange={(e) => { setCategoryFilter(e.target.value); setShowAll(false); }}
+                    className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[160px]"
+                >
+                    <option value="">All Categories</option>
+                    {SKILL_CATEGORY_GROUPED_OPTIONS.map((group) => (
+                        <optgroup key={group.group} label={group.group}>
+                            {group.options.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </optgroup>
+                    ))}
+                </select>
+                <button
+                    type="button"
+                    onClick={() => setShowAddModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                >
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">New</span>
+                </button>
+            </div>
+
+            {/* Catalog Grid */}
+            <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 p-2">
+                {loading ? (
+                    <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                    </div>
+                ) : catalog.length === 0 ? ( // NOSONAR - ternary is readable for loading states
+                    <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-6">No skills found. Try a different search or add a new skill.</p>
+                ) : (
+                    <>
+                        <div className="flex flex-wrap gap-1.5">
+                            {displaySkills.map((skill) => {
+                                const isSelected = selectedIds.has(skill.skill_id);
+                                return (
+                                    <button
+                                        key={skill.skill_id}
+                                        type="button"
+                                        onClick={() => isSelected ? onRemove(skill.skill_id) : onAdd(skill)}
+                                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                            isSelected
+                                                ? "bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                                                : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/10"
+                                        }`}
+                                    >
+                                        {isSelected && <span className="text-blue-500">✓</span>}
+                                        {skill.skill_name}
+                                        {skill.skill_category && (
+                                            <span className="text-[10px] opacity-60 ml-0.5">
+                                                {SKILL_CATEGORY_LABELS[skill.skill_category] || skill.skill_category}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {hasMore && (
+                            <button type="button" onClick={() => setShowAll(true)} className="w-full mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                                Show all {catalog.length} skills
+                            </button>
+                        )}
+                    </>
+                )}
+            </div>
+
+            {/* Selected Skills Chips */}
+            {selectedSkills.length > 0 && (
+                <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium">
+                        Selected ({selectedSkills.length}/50):
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                        {selectedSkills.map((skill) => (
+                            <span key={skill.skill_id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                {skill.skill_name || skill.skill_id.slice(0, 8)}
+                                <button type="button" onClick={() => onRemove(skill.skill_id)} className="hover:text-red-500 transition-colors">
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Add New Skill Modal */}
+            {showAddModal && (
+                <ModalWrapper isOpen onClose={() => setShowAddModal(false)} title="Add New Skill">
+                    <div className="space-y-4 p-1">
+                        <div>
+                            <label htmlFor="new-skill-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Skill Name</label>
+                            <input
+                                id="new-skill-name"
+                                type="text"
+                                value={newSkillName}
+                                onChange={(e) => setNewSkillName(e.target.value)}
+                                placeholder="e.g. React, Python, SQL"
+                                className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                maxLength={100}
+                                autoFocus
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="new-skill-category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category (optional)</label>
+                            <select
+                                id="new-skill-category"
+                                value={newSkillCategory}
+                                onChange={(e) => setNewSkillCategory(e.target.value)}
+                                className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="">Select category</option>
+                                {SKILL_CATEGORY_GROUPED_OPTIONS.map((group) => (
+                                    <optgroup key={group.group} label={group.group}>
+                                        {group.options.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </optgroup>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleAddNewSkill}
+                                disabled={!newSkillName.trim() || addingSkill}
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                            >
+                                {addingSkill && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                Add Skill
+                            </button>
+                        </div>
+                    </div>
+                </ModalWrapper>
+            )}
+        </div>
+    );
 }
 
 // ========================
@@ -46,35 +396,123 @@ function getButtonLabel(isLoading: boolean, isUpdate: boolean): string {
 
 const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: JobCriteriaManagerProps) => {
     const {
-        formData,
-        toggles,
-        errors,
-        loading,
-        isUpdate,
-        handleChange,
-        handleToggle,
-        handleMultiSelect,
-        handleSubmit,
-        loadExisting,
+        formData, toggles, errors, loading, isUpdate,
+        handleChange, handleToggle, handleMultiSelect, handleSubmit,
+        loadExisting, addSkill, removeSkill,
     } = useSetJobCriteria(jobId, onSuccess);
 
-    // Use departments from auth context (already loaded at login)
     const { user } = useAuth();
     const departments: Department[] = user?.departments ?? [];
-
     const isCancelled = jobStatus === "cancelled";
 
-    // Load existing criteria if available
     useEffect(() => {
-        if (existingCriteria) {
-            loadExisting(existingCriteria);
-        }
+        if (existingCriteria) loadExisting(existingCriteria);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [existingCriteria]);
 
+    const renderInput = (config: CriteriaConfigItem) => {
+        const key = config.key;
+        const isActive = toggles[key as keyof typeof toggles] && !isCancelled;
+
+        if (config.inputType === "number") return renderNumberInput(key, config, isActive);
+        if (config.inputType === "boolean") return renderBooleanInput(key, isActive);
+        if (config.inputType === "multiselect") return renderMultiSelect(key, isActive);
+        if (config.inputType === "skills") {
+            return (
+                <SkillSelector
+                    selectedSkills={formData.required_skills}
+                    onAdd={addSkill}
+                    onRemove={removeSkill}
+                    enabled={toggles.required_skills}
+                    disabled={isCancelled}
+                />
+            );
+        }
+        return null;
+    };
+
+    const renderNumberInput = (key: string, config: CriteriaConfigItem, isActive: boolean) => (
+        <div className="relative">
+            <input
+                type="number"
+                name={key}
+                value={formData[key as keyof typeof formData] as number | ""}
+                onChange={handleChange}
+                min={config.min}
+                max={config.max}
+                step={config.step}
+                inputMode={config.step && config.step < 1 ? "decimal" : "numeric"}
+                disabled={!isActive}
+                placeholder={getPlaceholder(key)}
+                className={getInputClass(isActive, errors[key])}
+            />
+            {config.unit && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-gray-500 pointer-events-none">
+                    {config.unit}
+                </span>
+            )}
+        </div>
+    );
+
+    const renderBooleanInput = (key: string, isActive: boolean) => (
+        <label className="flex items-center gap-3 mt-1">
+            <input
+                type="checkbox"
+                name={key}
+                checked={formData[key as keyof typeof formData] as boolean}
+                onChange={handleChange}
+                disabled={!isActive}
+                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40"
+            />
+            <span className={`text-sm ${isActive ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"}`}>
+                Yes, exclude placed students
+            </span>
+        </label>
+    );
+                                
+    const renderMultiSelect = (key: string, isActive: boolean) => {
+        if (key === "allowed_genders") {
+            return (
+                <div className="flex flex-wrap gap-2 mt-1">
+                    {GENDER_OPTIONS.map((g) => (
+                        <label key={g} className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${getChipClass(!isActive, formData.allowed_genders.includes(g))}`}>
+                            <input type="checkbox" checked={formData.allowed_genders.includes(g)} onChange={() => handleMultiSelect("allowed_genders", g)} disabled={!isActive} className="sr-only" />
+                            {g}
+                        </label>
+                    ))}
+                </div>
+            );
+        }
+        if (key === "allowed_gap_statuses") {
+            return (
+                <div className="flex flex-wrap gap-2 mt-1">
+                    {GAP_OPTIONS.map((g) => (
+                        <label key={g.value} className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${getChipClass(!isActive, formData.allowed_gap_statuses.includes(g.value))}`}>
+                            <input type="checkbox" checked={formData.allowed_gap_statuses.includes(g.value)} onChange={() => handleMultiSelect("allowed_gap_statuses", g.value)} disabled={!isActive} className="sr-only" />
+                            {g.label}
+                        </label>
+                    ))}
+                </div>
+            );
+        }
+        if (key === "allowed_departments") {
+            return (
+                <div className="flex flex-wrap gap-2 mt-1 max-h-40 overflow-y-auto">
+                    {departments.map((d) => (
+                        <label key={d.dept_id} className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${getChipClass(!isActive, formData.allowed_departments.includes(d.dept_name))}`}>
+                            <input type="checkbox" checked={formData.allowed_departments.includes(d.dept_name)} onChange={() => handleMultiSelect("allowed_departments", d.dept_name)} disabled={!isActive} className="sr-only" />
+                            {d.dept_name}
+                        </label>
+                    ))}
+                    {departments.length === 0 && <p className="text-xs text-gray-400 dark:text-gray-500">No departments found</p>}
+                </div>
+            );
+        }
+        return null;
+    };
+
     return (
-        <div className="space-y-6">
-            {/* Cancelled Job Banner */}
+        <div className="space-y-8">
             {isCancelled && (
                 <div className="flex items-center gap-3 px-5 py-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
                     <div className="h-9 w-9 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
@@ -87,7 +525,6 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                 </div>
             )}
 
-            {/* Section Header */}
             <div className="flex items-center gap-4">
                 <div className="h-11 w-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center flex-shrink-0">
                     <ShieldCheck className="h-5.5 w-5.5 text-emerald-600 dark:text-emerald-400" />
@@ -97,297 +534,43 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         {isUpdate ? "Update Eligibility Criteria" : "Set Eligibility Criteria"}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                        Toggle criteria on/off. Only enabled criteria will be applied as filters.
+                        Toggle criteria on/off. Only enabled criteria will filter students.
                     </p>
                 </div>
             </div>
 
-            {/* Criteria Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Min Overall CGPA */}
-                <CriteriaField
-                    label="Minimum Overall CGPA"
-                    description="Students with CGPA ≥ this value"
-                    enabled={toggles.min_overall_cgpa}
-                    onToggle={() => handleToggle("min_overall_cgpa")}
-                    error={errors.min_overall_cgpa}
-                    disabled={isCancelled}
-                >
-                    <input
-                        type="number"
-                        name="min_overall_cgpa"
-                        value={formData.min_overall_cgpa}
-                        onChange={handleChange}
-                        min={0}
-                        max={10}
-                        step={0.1}
-                        inputMode="decimal"
-                        disabled={!toggles.min_overall_cgpa || isCancelled}
-                        placeholder="e.g. 7.0"
-                        className={inputClass(toggles.min_overall_cgpa && !isCancelled, errors.min_overall_cgpa)}
-                    />
-                </CriteriaField>
+            {CRITERIA_GROUPS.map((group) => {
+                const Icon = GROUP_ICONS[group.icon];
+                const configs = Object.values(CRITERIA_CONFIG).filter((c) => c.group === group.key);
+                if (configs.length === 0) return null;
+                const isSkillGroup = group.key === "skills";
 
-                {/* Max Live KTs */}
-                <CriteriaField
-                    label="Maximum Live KTs"
-                    description="Students with active backlogs ≤ this value"
-                    enabled={toggles.max_live_kts}
-                    onToggle={() => handleToggle("max_live_kts")}
-                    error={errors.max_live_kts}
-                    disabled={isCancelled}
-                >
-                    <input
-                        type="number"
-                        name="max_live_kts"
-                        value={formData.max_live_kts}
-                        onChange={handleChange}
-                        min={0}
-                        max={20}
-                        inputMode="numeric"
-                        disabled={!toggles.max_live_kts || isCancelled}
-                        placeholder="e.g. 0"
-                        className={inputClass(toggles.max_live_kts && !isCancelled, errors.max_live_kts)}
-                    />
-                </CriteriaField>
-
-                {/* Min 10th Percentage */}
-                <CriteriaField
-                    label="Minimum 10th Percentage"
-                    description="Students with 10th % ≥ this value"
-                    enabled={toggles.min_tenth_percentage}
-                    onToggle={() => handleToggle("min_tenth_percentage")}
-                    error={errors.min_tenth_percentage}
-                    disabled={isCancelled}
-                >
-                    <input
-                        type="number"
-                        name="min_tenth_percentage"
-                        value={formData.min_tenth_percentage}
-                        onChange={handleChange}
-                        min={0}
-                        max={100}
-                        inputMode="decimal"
-                        disabled={!toggles.min_tenth_percentage || isCancelled}
-                        placeholder="e.g. 60"
-                        className={inputClass(toggles.min_tenth_percentage && !isCancelled, errors.min_tenth_percentage)}
-                    />
-                </CriteriaField>
-
-                {/* Min 12th Percentage */}
-                <CriteriaField
-                    label="Minimum 12th Percentage"
-                    description="Applied only to 12th students"
-                    enabled={toggles.min_twelfth_percentage}
-                    onToggle={() => handleToggle("min_twelfth_percentage")}
-                    error={errors.min_twelfth_percentage}
-                    disabled={isCancelled}
-                >
-                    <input
-                        type="number"
-                        name="min_twelfth_percentage"
-                        value={formData.min_twelfth_percentage}
-                        onChange={handleChange}
-                        min={0}
-                        max={100}
-                        inputMode="decimal"
-                        disabled={!toggles.min_twelfth_percentage || isCancelled}
-                        placeholder="e.g. 55"
-                        className={inputClass(toggles.min_twelfth_percentage && !isCancelled, errors.min_twelfth_percentage)}
-                    />
-                </CriteriaField>
-
-                {/* Min Diploma Percentage */}
-                <CriteriaField
-                    label="Minimum Diploma Percentage"
-                    description="Applied only to diploma students"
-                    enabled={toggles.min_diploma_percentage}
-                    onToggle={() => handleToggle("min_diploma_percentage")}
-                    error={errors.min_diploma_percentage}
-                    disabled={isCancelled}
-                >
-                    <input
-                        type="number"
-                        name="min_diploma_percentage"
-                        value={formData.min_diploma_percentage}
-                        onChange={handleChange}
-                        min={0}
-                        max={100}
-                        inputMode="decimal"
-                        disabled={!toggles.min_diploma_percentage || isCancelled}
-                        placeholder="e.g. 60"
-                        className={inputClass(toggles.min_diploma_percentage && !isCancelled, errors.min_diploma_percentage)}
-                    />
-                </CriteriaField>
-
-                {/* Min Existing Package */}
-                <CriteriaField
-                    label="Minimum Existing Package (₹)"
-                    description="Students with existing CTC ≥ this value"
-                    enabled={toggles.min_existing_package}
-                    onToggle={() => handleToggle("min_existing_package")}
-                    error={errors.min_existing_package}
-                    disabled={isCancelled}
-                >
-                    <input
-                        type="number"
-                        name="min_existing_package"
-                        value={formData.min_existing_package}
-                        onChange={handleChange}
-                        min={0}
-                        inputMode="numeric"
-                        disabled={!toggles.min_existing_package || isCancelled}
-                        placeholder="e.g. 300000"
-                        className={inputClass(toggles.min_existing_package && !isCancelled, errors.min_existing_package)}
-                    />
-                </CriteriaField>
-
-                {/* Max Existing Package */}
-                <CriteriaField
-                    label="Maximum Existing Package (₹)"
-                    description="Students with existing CTC ≤ this value"
-                    enabled={toggles.max_existing_package}
-                    onToggle={() => handleToggle("max_existing_package")}
-                    error={errors.max_existing_package}
-                    disabled={isCancelled}
-                >
-                    <input
-                        type="number"
-                        name="max_existing_package"
-                        value={formData.max_existing_package}
-                        onChange={handleChange}
-                        min={0}
-                        inputMode="numeric"
-                        disabled={!toggles.max_existing_package || isCancelled}
-                        placeholder="e.g. 800000"
-                        className={inputClass(toggles.max_existing_package && !isCancelled, errors.max_existing_package)}
-                    />
-                </CriteriaField>
-
-                {/* Exclude Already Placed */}
-                <CriteriaField
-                    label="Exclude Already Placed"
-                    description="Exclude students who already have a 'selected' status"
-                    enabled={toggles.exclude_already_placed}
-                    onToggle={() => handleToggle("exclude_already_placed")}
-                    disabled={isCancelled}
-                >
-                    <label className="flex items-center gap-3 mt-1">
-                        <input
-                            type="checkbox"
-                            name="exclude_already_placed"
-                            checked={formData.exclude_already_placed}
-                            onChange={handleChange}
-                            disabled={!toggles.exclude_already_placed || isCancelled}
-                            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40"
-                        />
-                        <span className={`text-sm ${toggles.exclude_already_placed && !isCancelled ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"}`}>
-                            Yes, exclude placed students
-                        </span>
-                    </label>
-                </CriteriaField>
-            </div>
-
-            {/* Multi-Select Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {/* Allowed Genders */}
-                <CriteriaField
-                    label="Allowed Genders"
-                    description="Only these genders will be eligible"
-                    enabled={toggles.allowed_genders}
-                    onToggle={() => handleToggle("allowed_genders")}
-                    error={errors.allowed_genders}
-                    disabled={isCancelled}
-                >
-                    <div className="flex flex-wrap gap-2 mt-1">
-                        {GENDER_OPTIONS.map((g) => (
-                            <label
-                                key={g}
-                                className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${getChipClass(
-                                    !toggles.allowed_genders || isCancelled,
-                                    formData.allowed_genders.includes(g)
-                                )}`}
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={formData.allowed_genders.includes(g)}
-                                    onChange={() => handleMultiSelect("allowed_genders", g)}
-                                    disabled={!toggles.allowed_genders || isCancelled}
-                                    className="sr-only"
-                                />
-                                {g}
-                            </label>
-                        ))}
-                    </div>
-                </CriteriaField>
-
-                {/* Allowed Gap Statuses */}
-                <CriteriaField
-                    label="Allowed Gap Statuses"
-                    description="Filter by education gap status"
-                    enabled={toggles.allowed_gap_statuses}
-                    onToggle={() => handleToggle("allowed_gap_statuses")}
-                    error={errors.allowed_gap_statuses}
-                    disabled={isCancelled}
-                >
-                    <div className="flex flex-wrap gap-2 mt-1">
-                        {GAP_OPTIONS.map((g) => (
-                            <label
-                                key={g.value}
-                                className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${getChipClass(
-                                    !toggles.allowed_gap_statuses || isCancelled,
-                                    formData.allowed_gap_statuses.includes(g.value)
-                                )}`}
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={formData.allowed_gap_statuses.includes(g.value)}
-                                    onChange={() => handleMultiSelect("allowed_gap_statuses", g.value)}
-                                    disabled={!toggles.allowed_gap_statuses || isCancelled}
-                                    className="sr-only"
-                                />
-                                {g.label}
-                            </label>
-                        ))}
-                    </div>
-                </CriteriaField>
-
-                {/* Allowed Departments */}
-                <CriteriaField
-                    label="Allowed Departments"
-                    description="Only selected departments are eligible"
-                    enabled={toggles.allowed_departments}
-                    onToggle={() => handleToggle("allowed_departments")}
-                    error={errors.allowed_departments}
-                    disabled={isCancelled}
-                >
-                    <div className="flex flex-wrap gap-2 mt-1 max-h-40 overflow-y-auto">
-                        {departments.map((d) => (
-                                <label
-                                    key={d.dept_id}
-                                    className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-lg border text-sm cursor-pointer transition-all ${getChipClass(
-                                        !toggles.allowed_departments || isCancelled,
-                                        formData.allowed_departments.includes(d.dept_name)
-                                    )}`}
+                return (
+                    <div key={group.key}>
+                        <div className="flex items-center gap-2.5 mb-4">
+                            <Icon className="h-4.5 w-4.5 text-gray-400 dark:text-gray-500" />
+                            <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                                {group.label}
+                            </h4>
+                        </div>
+                        <div className={isSkillGroup ? "space-y-4" : "grid grid-cols-1 md:grid-cols-2 gap-4"}>
+                            {configs.map((config) => (
+                                <CriteriaCard
+                                    key={config.key}
+                                    config={config}
+                                    enabled={toggles[config.key as keyof typeof toggles]}
+                                    onToggle={() => handleToggle(config.key as keyof typeof toggles)}
+                                    error={errors[config.key]}
+                                    disabled={isCancelled}
                                 >
-                                <input
-                                    type="checkbox"
-                                    checked={formData.allowed_departments.includes(d.dept_name)}
-                                    onChange={() => handleMultiSelect("allowed_departments", d.dept_name)}
-                                    disabled={!toggles.allowed_departments || isCancelled}
-                                    className="sr-only"
-                                />
-                                {d.dept_name}
-                            </label>
-                        ))}
-                        {departments.length === 0 && (
-                            <p className="text-xs text-gray-400 dark:text-gray-500">No departments found</p>
-                        )}
+                                    {renderInput(config)}
+                                </CriteriaCard>
+                            ))}
+                        </div>
                     </div>
-                </CriteriaField>
-            </div>
+                );
+            })}
 
-            {/* Submit Button — hidden when cancelled */}
             {!isCancelled && (
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                     <button
@@ -397,79 +580,12 @@ const JobCriteriaManager = ({ jobId, jobStatus, existingCriteria, onSuccess }: J
                         className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all active:scale-[0.98] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {getButtonLabel(loading, isUpdate)}
+                        {getSubmitLabel(loading, isUpdate)}
                     </button>
                 </div>
             )}
         </div>
     );
 };
-
-// ========================
-// CRITERIA FIELD WRAPPER
-// ========================
-
-function getCriteriaFieldClass(disabled: boolean | undefined, enabled: boolean): string {
-    if (disabled) return "bg-gray-50/50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 opacity-60";
-    if (enabled) return "bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-800 shadow-sm";
-    return "bg-gray-50/50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600";
-}
-
-const CriteriaField = ({
-    label,
-    description,
-    enabled,
-    onToggle,
-    error,
-    disabled,
-    children,
-}: {
-    label: string;
-    description: string;
-    enabled: boolean;
-    onToggle: () => void;
-    error?: string;
-    disabled?: boolean;
-    children: React.ReactNode;
-}) => (
-    <div className={`p-4 rounded-xl border transition-all duration-200 ${getCriteriaFieldClass(disabled, enabled)}`}>
-        <div className="flex items-start justify-between mb-2">
-            <div>
-                <p className={`text-sm font-semibold transition-colors ${enabled && !disabled ? "text-gray-800 dark:text-gray-100" : "text-gray-400 dark:text-gray-500"}`}>{label}</p>
-                <p className={`text-xs mt-0.5 transition-colors ${enabled && !disabled ? "text-gray-500 dark:text-gray-400" : "text-gray-300 dark:text-gray-600"}`}>{description}</p>
-            </div>
-            <button
-                type="button"
-                onClick={onToggle}
-                disabled={disabled}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 ${
-                    enabled ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 hover:bg-gray-400"
-                }`}
-                aria-label={`Toggle ${label}`}
-            >
-                <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                        enabled ? "translate-x-6" : "translate-x-1"
-                    }`}
-                />
-            </button>
-        </div>
-        {children}
-        {error && <p className="text-xs text-red-500 dark:text-red-400 mt-1.5">{error}</p>}
-    </div>
-);
-
-// ========================
-// HELPER
-// ========================
-
-function getInputClass(enabled: boolean, error?: string): string {
-    const base = "w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition";
-    if (enabled && error) return `${base} border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/10 text-gray-900 dark:text-gray-100`;
-    if (enabled) return `${base} border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500`;
-    return `${base} bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed`;
-}
-
-const inputClass = getInputClass;
 
 export default JobCriteriaManager;

@@ -25,6 +25,8 @@ import {
   AlertTriangle,
   Share2,
   ListOrdered,
+  Zap,
+  Lightbulb,
   type LucideIcon,
 } from "lucide-react"
 import { fadeInUp, staggerContainer, staggerItem } from "@/lib/animations"
@@ -221,6 +223,161 @@ function EligibilityBanner({ state }: Readonly<{ state: EligibilityState }>) {
   )
 }
 
+// ─── Skill Comparison Section ────────────────────────────────────────────────
+
+function getSkillMatchColor(pct: number): string {
+  if (pct >= 80) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+  if (pct >= 50) return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+  return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+}
+
+function getSkillMatchSummaryColor(pct: number, threshold: number | null): string {
+  if (threshold == null || pct >= threshold) return "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300"
+  return "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300"
+}
+
+const SKILL_CATEGORY_COLORS: Record<string, string> = {
+  technical: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  soft: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  tools: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
+  domain: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  other: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+}
+
+function SkillComparisonSection({ skillMatch, minMatchPct }: Readonly<{
+  skillMatch: NonNullable<EligibilityResponse["eligibility"]["skill_match"]>
+  minMatchPct: number | null
+}>) {
+  const { skill_match_percentage, skill_details } = skillMatch
+  const matched = skill_details.filter((s) => s.matched).length
+  const total = skill_details.length
+  const hasThreshold = minMatchPct != null && minMatchPct > 0
+  const meetsThreshold = hasThreshold ? skill_match_percentage >= minMatchPct : true
+
+  const thresholdLabel = (() => {
+    if (!hasThreshold) return ""
+    return meetsThreshold ? " — Meets the threshold" : ` — Below ${minMatchPct}% threshold`
+  })()
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 overflow-hidden">
+      <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between flex-wrap gap-2">
+        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+          <Zap className="h-4 w-4 text-indigo-500" />
+          Required Skills{hasThreshold ? ` (Min Match: ${minMatchPct}%)` : ""}
+        </h4>
+        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${getSkillMatchColor(skill_match_percentage)}`}>
+          Your Match: {skill_match_percentage}%
+        </span>
+      </div>
+
+      {/* Skill table */}
+      <div className="hidden md:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 dark:border-gray-800">
+              <th scope="col" className="px-5 py-2.5 text-left font-medium text-gray-500 dark:text-gray-400">Skill Name</th>
+              <th scope="col" className="px-5 py-2.5 text-center font-medium text-gray-500 dark:text-gray-400">Category</th>
+              <th scope="col" className="px-5 py-2.5 text-center font-medium text-gray-500 dark:text-gray-400">You Have It</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            {skill_details.map((skill) => (
+              <tr key={skill.skill_name} className={skill.matched ? "" : "bg-amber-50/50 dark:bg-amber-950/10"}>
+                <td className="px-5 py-3 text-gray-900 dark:text-gray-100 font-medium">{skill.skill_name}</td>
+                <td className="px-5 py-3 text-center">
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${SKILL_CATEGORY_COLORS[skill.skill_category] ?? SKILL_CATEGORY_COLORS.other}`}>
+                    {skill.skill_category}
+                  </span>
+                </td>
+                <td className="px-5 py-3 text-center">
+                  {skill.matched ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-500 mx-auto" />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile: card layout */}
+      <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+        {skill_details.map((skill) => (
+          <div key={skill.skill_name} className={`px-5 py-3 flex items-center justify-between ${skill.matched ? "" : "bg-amber-50/50 dark:bg-amber-950/10"}`}>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{skill.skill_name}</p>
+              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${SKILL_CATEGORY_COLORS[skill.skill_category] ?? SKILL_CATEGORY_COLORS.other}`}>
+                {skill.skill_category}
+              </span>
+            </div>
+            <span className="ml-3 shrink-0">
+              {skill.matched ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              ) : (
+                <XCircle className="h-5 w-5 text-red-500" />
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Summary bar */}
+      <div className={`px-5 py-3 border-t text-sm font-medium ${getSkillMatchSummaryColor(skill_match_percentage, minMatchPct)}`}>
+        {matched} of {total} skills matched ({skill_match_percentage}%)
+        {thresholdLabel}
+      </div>
+
+      {/* Missing skills: link to profile */}
+      {skill_details.some((s) => !s.matched) && (
+        <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Missing skills:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {skill_details.filter((s) => !s.matched).map((skill) => (
+              <Link
+                key={skill.skill_name}
+                to="/student/profile"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/20 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition"
+              >
+                {skill.skill_name}
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Actionable Issue Suggestions ────────────────────────────────────────────
+
+const ISSUE_SUGGESTIONS: Array<{ pattern: RegExp; suggestion: string }> = [
+  { pattern: /CGPA/i, suggestion: "If your CGPA has been updated recently, check your profile and ask your department to verify." },
+  { pattern: /backlog|live.*kt/i, suggestion: "Clear your backlogs to become eligible for this job." },
+  { pattern: /10th|12th|diploma.*percent/i, suggestion: "This is based on your board results and cannot be changed." },
+  { pattern: /department/i, suggestion: "This job is limited to specific departments. You may request an eligibility override." },
+  { pattern: /gender/i, suggestion: "This job has a gender-specific requirement. You may request an eligibility override." },
+  { pattern: /gap/i, suggestion: "This job requires no education gaps. You may request an eligibility override." },
+  { pattern: /existing package.*required|minimum.*package/i, suggestion: "Based on your current placement package. This job is for dream upgrade students with higher existing packages." },
+  { pattern: /existing package.*allowed|maximum.*package/i, suggestion: "This job is reserved for unplaced or lower-package students." },
+  { pattern: /already placed/i, suggestion: "This job is only for unplaced students. You may request an eligibility override if special circumstances apply." },
+  { pattern: /skill match/i, suggestion: "Add missing skills to your profile to improve your match percentage." },
+]
+
+function IssueSuggestion({ issue }: Readonly<{ issue: string }>) {
+  const match = ISSUE_SUGGESTIONS.find((s) => s.pattern.test(issue))
+  if (!match) return null
+  return (
+    <div className="ml-5 mt-1.5 flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40 px-3 py-2">
+      <Lightbulb className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
+      <p className="text-xs text-blue-700 dark:text-blue-300">{match.suggestion}</p>
+    </div>
+  )
+}
+
 // ─── Eligibility Tab (extracted to reduce parent complexity) ─────────────────
 
 function EligibilityTab({
@@ -378,17 +535,28 @@ function EligibilityTab({
         </div>
       )}
 
-      {/* Issues */}
+      {/* Skill Comparison Section */}
+      {data.eligibility.skill_match && data.eligibility.skill_match.skill_details.length > 0 && (
+        <SkillComparisonSection
+          skillMatch={data.eligibility.skill_match}
+          minMatchPct={data.eligibility.criteria?.min_skill_match_percentage ?? null}
+        />
+      )}
+
+      {/* Issues with actionable suggestions */}
       {data.eligibility.issues.length > 0 && (
-        <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 p-4 space-y-2">
+        <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 p-4 space-y-3">
           <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
             <AlertCircle className="h-4 w-4" />
-            Issues
+            Issues ({data.eligibility.issues.length})
           </h4>
           {data.eligibility.issues.map((issue) => (
-            <p key={issue} className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
-              <CircleDot className="h-3.5 w-3.5 shrink-0" /> {issue}
-            </p>
+            <div key={issue}>
+              <p className="text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                <CircleDot className="h-3.5 w-3.5 shrink-0 mt-0.5" /> {issue}
+              </p>
+              <IssueSuggestion issue={issue} />
+            </div>
           ))}
         </div>
       )}
@@ -1142,23 +1310,18 @@ interface CriteriaRow {
   pass: boolean
 }
 
-function formatPercentOrNA(value: number | null, suffix = "%"): string {
-  return value == null ? "N/A" : `${value}${suffix}`
+function formatPercentOrNA(value: number | null, suffix = "%", prefix = ""): string {
+  return value == null ? "N/A" : `${prefix}${value}${suffix}`
 }
 
-function buildCriteriaRows(data: EligibilityResponse): CriteriaRow[] {
-  const c = data.eligibility.criteria
-  const s = data.student_snapshot
-  if (!c) return []
-
-  const rows: CriteriaRow[] = []
-
-  const numericChecks: Array<{
+function buildNumericRows(c: NonNullable<EligibilityResponse["eligibility"]["criteria"]>, s: EligibilityResponse["student_snapshot"]): CriteriaRow[] {
+  const checks: Array<{
     threshold: number | null
     label: string
     required: string
     value: number | null
     suffix?: string
+    prefix?: string
     compareFn?: (v: number, t: number) => boolean
   }> = [
     { threshold: c.min_overall_cgpa, label: "Min CGPA", required: String(c.min_overall_cgpa ?? ""), value: s.overall_cgpa, suffix: "" },
@@ -1166,30 +1329,46 @@ function buildCriteriaRows(data: EligibilityResponse): CriteriaRow[] {
     { threshold: c.min_tenth_percentage, label: "Min 10th %", required: `${c.min_tenth_percentage}%`, value: s.tenth_percentage },
   ]
 
-  // Show only the relevant education criterion based on student's track
   if (s.twelfth_or_diploma === "Diploma") {
-    numericChecks.push({ threshold: c.min_diploma_percentage, label: "Min Diploma %", required: `${c.min_diploma_percentage}%`, value: s.diploma_percentage })
+    checks.push({ threshold: c.min_diploma_percentage, label: "Min Diploma %", required: `${c.min_diploma_percentage}%`, value: s.diploma_percentage })
   } else {
-    numericChecks.push({ threshold: c.min_twelfth_percentage, label: "Min 12th %", required: `${c.min_twelfth_percentage}%`, value: s.twelfth_percentage })
+    checks.push({ threshold: c.min_twelfth_percentage, label: "Min 12th %", required: `${c.min_twelfth_percentage}%`, value: s.twelfth_percentage })
   }
 
-  for (const check of numericChecks) {
+  if (c.min_existing_package != null) {
+    checks.push({ threshold: c.min_existing_package, label: "Min Existing Package", required: `₹${c.min_existing_package} LPA`, value: s.existing_package, suffix: " LPA", prefix: "₹" })
+  }
+  if (c.max_existing_package != null) {
+    checks.push({ threshold: c.max_existing_package, label: "Max Existing Package", required: `≤ ₹${c.max_existing_package} LPA`, value: s.existing_package, suffix: " LPA", prefix: "₹", compareFn: (v, t) => v <= t })
+  }
+
+  const rows: CriteriaRow[] = []
+  for (const check of checks) {
     if (check.threshold == null) continue
     const compare = check.compareFn ?? ((v: number, t: number) => v >= t)
     rows.push({
       label: check.label,
       required: check.required,
-      yours: formatPercentOrNA(check.value, check.suffix ?? "%"),
+      yours: formatPercentOrNA(check.value, check.suffix ?? "%", check.prefix ?? ""),
       pass: check.value != null && compare(check.value, check.threshold),
     })
   }
+  return rows
+}
+
+function buildCriteriaRows(data: EligibilityResponse): CriteriaRow[] {
+  const c = data.eligibility.criteria
+  const s = data.student_snapshot
+  if (!c) return []
+
+  const rows: CriteriaRow[] = [...buildNumericRows(c, s)]
 
   if (c.allowed_departments?.length) {
     rows.push({
       label: "Department",
       required: c.allowed_departments.join(", "),
-      yours: s.dept_name,
-      pass: c.allowed_departments.some(
+      yours: s.dept_name ?? "N/A",
+      pass: s.dept_name != null && c.allowed_departments.some(
         (d) => d.toLowerCase() === s.dept_name.toLowerCase(),
       ),
     })
@@ -1198,8 +1377,8 @@ function buildCriteriaRows(data: EligibilityResponse): CriteriaRow[] {
     rows.push({
       label: "Gender",
       required: c.allowed_genders.join(", "),
-      yours: s.gender,
-      pass: c.allowed_genders.some(
+      yours: s.gender ?? "N/A",
+      pass: s.gender != null && c.allowed_genders.some(
         (g) => g.toLowerCase() === s.gender.toLowerCase(),
       ),
     })
@@ -1211,6 +1390,15 @@ function buildCriteriaRows(data: EligibilityResponse): CriteriaRow[] {
       required: c.allowed_gap_statuses.map((g) => gapLabels[g] ?? g).join(", "),
       yours: gapLabels[s.gap_status] ?? s.gap_status,
       pass: c.allowed_gap_statuses.includes(s.gap_status),
+    })
+  }
+
+  if (c.exclude_already_placed) {
+    rows.push({
+      label: "Exclude Already Placed",
+      required: "Not placed",
+      yours: s.is_placed ? "Placed" : "Not placed",
+      pass: !s.is_placed,
     })
   }
 

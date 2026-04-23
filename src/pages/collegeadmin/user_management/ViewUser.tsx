@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     Plus, ChevronLeft, ChevronRight, Search, Users, UserPlus, Filter,
     AlertCircle, RefreshCw,
@@ -75,7 +76,7 @@ const UserAvatar = ({ user }: { user: User }) => {
         "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
         "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300",
     ] as const;
-    const color = COLORS[user.user_name.charCodeAt(0) % COLORS.length];
+    const color = COLORS[(user.user_name.codePointAt(0) ?? 0) % COLORS.length];
     return (
         <div className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${color}`}>
             {initials}
@@ -91,13 +92,13 @@ const PaginationNav = ({
 }) => {
     if (totalPages <= 1) return null;
 
-    const pages: (number | "ellipsis")[] = [];
+    const pages: (number | string)[] = [];
     const add = (p: number) => { if (!pages.includes(p)) pages.push(p); };
 
     add(1);
-    if (page > 3) pages.push("ellipsis");
+    if (page > 3) pages.push("ellipsis-start");
     for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) add(i);
-    if (page < totalPages - 2) pages.push("ellipsis");
+    if (page < totalPages - 2) pages.push("ellipsis-end");
     if (totalPages > 1) add(totalPages);
 
     return (
@@ -111,9 +112,9 @@ const PaginationNav = ({
             >
                 <ChevronLeft className="h-4 w-4" />
             </button>
-            {pages.map((p, idx) =>
-                p === "ellipsis" ? (
-                    <span key={`e-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
+            {pages.map((p) =>
+                typeof p === "string" ? (
+                    <span key={p} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
                 ) : (
                     <button
                         key={p}
@@ -144,7 +145,7 @@ const PaginationNav = ({
 };
 
 /** Empty state */
-const EmptyState = ({ hasFilters, onReset, onAdd }: { hasFilters: boolean; onReset?: () => void; onAdd: () => void }) => (
+const EmptyState = ({ hasFilters, onReset, onAdd }: { hasFilters: boolean; onReset?: () => void; onAdd?: () => void }) => (
     <div className="py-16 text-center">
         <div className="mx-auto h-14 w-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
             {hasFilters ? (
@@ -161,32 +162,36 @@ const EmptyState = ({ hasFilters, onReset, onAdd }: { hasFilters: boolean; onRes
                 ? "Try adjusting your search or filter criteria."
                 : "Create your first user to get started with the platform."}
         </p>
-        {hasFilters ? (
-            <button
-                type="button"
-                onClick={onReset}
-                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-            >
-                Clear all filters
-            </button>
-        ) : (
-            <button
-                type="button"
-                onClick={onAdd}
-                className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
-            >
-                <UserPlus className="h-4 w-4" />
-                Add New User
-            </button>
-        )}
+        {(() => {
+            if (hasFilters) return (
+                <button
+                    type="button"
+                    onClick={onReset}
+                    className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                    Clear all filters
+                </button>
+            );
+            if (onAdd) return (
+                <button
+                    type="button"
+                    onClick={onAdd}
+                    className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
+                >
+                    <UserPlus className="h-4 w-4" />
+                    Add New User
+                </button>
+            );
+            return null;
+        })()}
     </div>
 );
 
 /** Skeleton table rows */
 const SkeletonRows = () => (
     <>
-        {Array.from({ length: 6 }).map((_, i) => (
-            <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
+        {["sk-0", "sk-1", "sk-2", "sk-3", "sk-4", "sk-5"].map((key) => (
+            <tr key={key} className="border-b border-gray-100 dark:border-gray-800">
                 {/* Name + Avatar */}
                 <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
@@ -210,12 +215,188 @@ const SkeletonRows = () => (
     </>
 );
 
+/** Desktop table body — loading / empty / data states */
+const UsersTableBody = ({
+    loading, users, isFetching, hasActiveFilters, canManage, clearFilters, navigate,
+}: {
+    loading: boolean; users: User[]; isFetching: boolean; hasActiveFilters: boolean;
+    canManage: boolean; clearFilters: () => void; navigate: (path: string) => void;
+}) => {
+    if (loading) return <tbody><SkeletonRows /></tbody>;
+    if (users.length === 0) {
+        return (
+            <tbody>
+                <tr>
+                    <td colSpan={5}>
+                        <EmptyState
+                            hasFilters={hasActiveFilters}
+                            onReset={clearFilters}
+                            onAdd={canManage ? () => navigate("/college/create-user") : undefined}
+                        />
+                    </td>
+                </tr>
+            </tbody>
+        );
+    }
+    return (
+        <AnimatedTableBody>
+            {users.map((user) => {
+                const roleBadge = ROLE_BADGE_MAP[user.user_role] || ROLE_BADGE_MAP.teacher;
+                const isActive = user.user_status === "active";
+                return (
+                    <AnimatedRow
+                        key={user.user_id}
+                        onClick={() => navigate(`/college/user/${user.user_id}`)}
+                        className={`border-b border-gray-100 dark:border-gray-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 text-sm cursor-pointer transition-colors ${
+                            isFetching ? "opacity-60" : ""
+                        }`}
+                    >
+                        {/* User (avatar + name + email) */}
+                        <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-3">
+                                <UserAvatar user={user} />
+                                <div className="min-w-0">
+                                    <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                        {user.user_name}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                        {user.user_email}
+                                    </p>
+                                </div>
+                            </div>
+                        </td>
+
+                        {/* Role */}
+                        <td className="px-4 py-3.5">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${roleBadge.color}`}>
+                                {roleBadge.label}
+                            </span>
+                        </td>
+
+                        {/* Department */}
+                        <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400">
+                            {user.dept_name || (
+                                <span className="text-gray-400 dark:text-gray-600 italic">—</span>
+                            )}
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-3.5">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                isActive
+                                    ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
+                                    : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
+                            }`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-red-500"}`} />
+                                {isActive ? "Active" : "Inactive"}
+                            </span>
+                        </td>
+
+                        {/* Created */}
+                        <td className="px-4 py-3.5 text-xs text-gray-500 dark:text-gray-400">
+                            {formatDate(user.created_at)}
+                        </td>
+                    </AnimatedRow>
+                );
+            })}
+        </AnimatedTableBody>
+    );
+};
+
+/** Mobile user list — loading / empty / data states */
+const MobileUserList = ({
+    loading, users, isFetching, hasActiveFilters, canManage, clearFilters, navigate,
+}: {
+    loading: boolean; users: User[]; isFetching: boolean; hasActiveFilters: boolean;
+    canManage: boolean; clearFilters: () => void; navigate: (path: string) => void;
+}) => {
+    if (loading) {
+        return (
+            <>
+                {["msk-0", "msk-1", "msk-2", "msk-3", "msk-4", "msk-5"].map((key) => (
+                    <div key={key} className="p-4 space-y-3 animate-pulse">
+                        <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700" />
+                            <div className="flex-1 space-y-1.5">
+                                <div className="h-3.5 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+                                <div className="h-3 w-44 bg-gray-100 dark:bg-gray-800 rounded" />
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                            <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                        </div>
+                    </div>
+                ))}
+            </>
+        );
+    }
+    if (users.length === 0) {
+        return (
+            <EmptyState
+                hasFilters={hasActiveFilters}
+                onReset={clearFilters}
+                onAdd={canManage ? () => navigate("/college/create-user") : undefined}
+            />
+        );
+    }
+    return (
+        <>
+            {users.map((user) => {
+                const roleBadge = ROLE_BADGE_MAP[user.user_role] || ROLE_BADGE_MAP.teacher;
+                const isActive = user.user_status === "active";
+                return (
+                    <button
+                        type="button"
+                        key={user.user_id}
+                        onClick={() => navigate(`/college/user/${user.user_id}`)}
+                        className={`w-full text-left p-4 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors active:bg-blue-50 dark:active:bg-blue-900/20 ${
+                            isFetching ? "opacity-60" : ""
+                        }`}
+                    >
+                        <div className="flex items-center gap-3 mb-2">
+                            <UserAvatar user={user} />
+                            <div className="min-w-0 flex-1">
+                                <p className="font-medium text-gray-900 dark:text-gray-100 truncate text-sm">
+                                    {user.user_name}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {user.user_email}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleBadge.color}`}>
+                                {roleBadge.label}
+                            </span>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                isActive
+                                    ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
+                                    : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
+                            }`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-red-500"}`} />
+                                {isActive ? "Active" : "Inactive"}
+                            </span>
+                            {user.dept_name && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">{user.dept_name}</span>
+                            )}
+                            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{formatDate(user.created_at)}</span>
+                        </div>
+                    </button>
+                );
+            })}
+        </>
+    );
+};
+
 // ========================
 // MAIN COMPONENT
 // ========================
 
 const ViewUsers = () => {
     const navigate = useNavigate();
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("users.manage");
     const {
         users, loading, isFetching, error, pagination, search, roleFilter, statusFilter,
         handleSearchChange, handlePageChange, handleLimitChange,
@@ -272,14 +453,16 @@ const ViewUsers = () => {
                                     </span>
                                 )}
                             </h2>
-                            <button
-                                type="button"
-                                onClick={() => navigate("/college/create-user")}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition shadow-sm"
-                            >
-                                <Plus className="h-4 w-4" />
-                                Add New User
-                            </button>
+                            {canManage && (
+                                <button
+                                    type="button"
+                                    onClick={() => navigate("/college/create-user")}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition shadow-sm"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    Add New User
+                                </button>
+                            )}
                         </div>
 
                         {/* Filters */}
@@ -320,7 +503,7 @@ const ViewUsers = () => {
 
                             {/* Page size */}
                             <div className="text-sm text-gray-600 dark:text-gray-400 font-medium ml-auto flex items-center gap-2">
-                                Show
+                                {"Show "}
                                 <select
                                     value={pagination.limit}
                                     onChange={(e) => handleLimitChange(Number(e.target.value))}
@@ -330,7 +513,7 @@ const ViewUsers = () => {
                                         <option key={s} value={s}>{s}</option>
                                     ))}
                                 </select>
-                                entries
+                                {" entries"}
                             </div>
                         </div>
                     </div>
@@ -348,165 +531,40 @@ const ViewUsers = () => {
                                 </tr>
                             </thead>
 
-                            {loading ? (
-                                <tbody><SkeletonRows /></tbody>
-                            ) : users.length === 0 ? (
-                                <tbody>
-                                    <tr>
-                                        <td colSpan={5}>
-                                            <EmptyState
-                                                hasFilters={hasActiveFilters}
-                                                onReset={clearFilters}
-                                                onAdd={() => navigate("/college/create-user")}
-                                            />
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            ) : (
-                                <AnimatedTableBody>
-                                    {users.map((user) => {
-                                        const roleBadge = ROLE_BADGE_MAP[user.user_role] || ROLE_BADGE_MAP.teacher;
-                                        const isActive = user.user_status === "active";
-
-                                        return (
-                                            <AnimatedRow
-                                                key={user.user_id}
-                                                onClick={() => navigate(`/college/user/${user.user_id}`)}
-                                                className={`border-b border-gray-100 dark:border-gray-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 text-sm cursor-pointer transition-colors ${
-                                                    isFetching ? "opacity-60" : ""
-                                                }`}
-                                            >
-                                                {/* User (avatar + name + email) */}
-                                                <td className="px-4 py-3.5">
-                                                    <div className="flex items-center gap-3">
-                                                        <UserAvatar user={user} />
-                                                        <div className="min-w-0">
-                                                            <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                                                                {user.user_name}
-                                                            </p>
-                                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                                {user.user_email}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-
-                                                {/* Role */}
-                                                <td className="px-4 py-3.5">
-                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${roleBadge.color}`}>
-                                                        {roleBadge.label}
-                                                    </span>
-                                                </td>
-
-                                                {/* Department */}
-                                                <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400">
-                                                    {user.dept_name || (
-                                                        <span className="text-gray-400 dark:text-gray-600 italic">—</span>
-                                                    )}
-                                                </td>
-
-                                                {/* Status */}
-                                                <td className="px-4 py-3.5">
-                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                                        isActive
-                                                            ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
-                                                            : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
-                                                    }`}>
-                                                        <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-red-500"}`} />
-                                                        {isActive ? "Active" : "Inactive"}
-                                                    </span>
-                                                </td>
-
-                                                {/* Created */}
-                                                <td className="px-4 py-3.5 text-xs text-gray-500 dark:text-gray-400">
-                                                    {formatDate(user.created_at)}
-                                                </td>
-                                            </AnimatedRow>
-                                        );
-                                    })}
-                                </AnimatedTableBody>
-                            )}
+                            <UsersTableBody
+                                loading={loading}
+                                users={users}
+                                isFetching={isFetching}
+                                hasActiveFilters={hasActiveFilters}
+                                canManage={canManage}
+                                clearFilters={clearFilters}
+                                navigate={navigate}
+                            />
                         </table>
                     </div>
 
                     {/* Mobile Cards */}
                     <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
-                        {loading ? (
-                            Array.from({ length: 6 }).map((_, i) => (
-                                <div key={i} className="p-4 space-y-3 animate-pulse">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700" />
-                                        <div className="flex-1 space-y-1.5">
-                                            <div className="h-3.5 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
-                                            <div className="h-3 w-44 bg-gray-100 dark:bg-gray-800 rounded" />
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
-                                        <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
-                                    </div>
-                                </div>
-                            ))
-                        ) : users.length === 0 ? (
-                            <EmptyState
-                                hasFilters={hasActiveFilters}
-                                onReset={clearFilters}
-                                onAdd={() => navigate("/college/create-user")}
-                            />
-                        ) : (
-                            users.map((user) => {
-                                const roleBadge = ROLE_BADGE_MAP[user.user_role] || ROLE_BADGE_MAP.teacher;
-                                const isActive = user.user_status === "active";
-                                return (
-                                    <div
-                                        key={user.user_id}
-                                        onClick={() => navigate(`/college/user/${user.user_id}`)}
-                                        className={`p-4 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors active:bg-blue-50 dark:active:bg-blue-900/20 ${
-                                            isFetching ? "opacity-60" : ""
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <UserAvatar user={user} />
-                                            <div className="min-w-0 flex-1">
-                                                <p className="font-medium text-gray-900 dark:text-gray-100 truncate text-sm">
-                                                    {user.user_name}
-                                                </p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                    {user.user_email}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleBadge.color}`}>
-                                                {roleBadge.label}
-                                            </span>
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                                                isActive
-                                                    ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
-                                                    : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
-                                            }`}>
-                                                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-red-500"}`} />
-                                                {isActive ? "Active" : "Inactive"}
-                                            </span>
-                                            {user.dept_name && (
-                                                <span className="text-xs text-gray-500 dark:text-gray-400">{user.dept_name}</span>
-                                            )}
-                                            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{formatDate(user.created_at)}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        )}
+                        <MobileUserList
+                            loading={loading}
+                            users={users}
+                            isFetching={isFetching}
+                            hasActiveFilters={hasActiveFilters}
+                            canManage={canManage}
+                            clearFilters={clearFilters}
+                            navigate={navigate}
+                        />
                     </div>
 
                     {/* Pagination Footer */}
                     {pagination.total > 0 && (
                         <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                                Showing <span className="font-semibold text-gray-700 dark:text-gray-300">{startEntry}</span>
-                                {" "}to{" "}
+                                Showing{" "}
+                                <span className="font-semibold text-gray-700 dark:text-gray-300">{startEntry}</span>
+                                {" to "}
                                 <span className="font-semibold text-gray-700 dark:text-gray-300">{endEntry}</span>
-                                {" "}of{" "}
+                                {" of "}
                                 <span className="font-semibold text-gray-700 dark:text-gray-300">{pagination.total}</span>
                                 {" "}entries
                             </p>

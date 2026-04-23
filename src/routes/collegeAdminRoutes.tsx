@@ -4,6 +4,7 @@ import { ProtectedRoute } from "@/components/routes/ProtectedRoute";
 import { PublicRoute } from "@/components/routes/PublicRoute";
 import { COLLEGE_ROLES } from "@/types/auth";
 import CollegeAdminLayout from "@/components/collegeadmin/CollegeAdminLayout";
+import SmartRedirect from "@/components/routes/SmartRedirect";
 
 // Public pages (combined login)
 const CollegeLogin = lazy(() => import("@/pages/login/CollegeLogin"));
@@ -81,9 +82,16 @@ const ViewRestrictions = lazy(() => import("@/pages/collegeadmin/student_managem
 const ViewOverrides = lazy(() => import("@/pages/collegeadmin/job_overrides/ViewOverrides"));
 const ViewPlacements = lazy(() => import("@/pages/collegeadmin/placements/ViewPlacements"));
 const ViewPlacementPolicies = lazy(() => import("@/pages/collegeadmin/placements/ViewPlacementPolicies"));
+const SelfReportReview = lazy(() => import("@/pages/collegeadmin/placements/SelfReportReview"));
 
 // Audit Trail
 const ViewAuditLogs = lazy(() => import("@/pages/collegeadmin/ViewAuditLogs"));
+
+// Permission Manager
+const PermissionManager = lazy(() => import("@/pages/collegeadmin/permissions/PermissionManager"));
+
+// Profile
+const MyProfile = lazy(() => import("@/pages/collegeadmin/profile/MyProfile"));
 
 export const collegeAdminRoutes = (
     <>
@@ -99,25 +107,26 @@ export const collegeAdminRoutes = (
 
         {/* Protected (shared DashboardLayout via CollegeAdminLayout) */}
         <Route element={<ProtectedRoute allowedRoles={COLLEGE_ROLES}><CollegeAdminLayout /></ProtectedRoute>}>
+            <Route path="/college" element={<SmartRedirect />} />
             <Route path="/college/dashboard" element={<CollegeDashboard />} />
             <Route path="/college/change-password" element={<ChangePassword />} />
-            <Route path="/college/verification-settings" element={<ProtectedRoute allowedRoles={["collegeadmin"]}><VerificationSettingsPage /></ProtectedRoute>} />
-            <Route path="/college/company-tiers" element={<ProtectedRoute allowedRoles={["collegeadmin"]}><CompanyTierManager /></ProtectedRoute>} />
-            <Route path="/college/placement-settings" element={<ProtectedRoute allowedRoles={["collegeadmin"]}><PlacementSettingsPage /></ProtectedRoute>} />
+            <Route path="/college/verification-settings" element={<VerificationSettingsPage />} />
+            <Route path="/college/company-tiers" element={<CompanyTierManager />} />
+            <Route path="/college/placement-settings" element={<PlacementSettingsPage />} />
 
-            {/* Users — collegeadmin only */}
-            <Route path="/college/view-users" element={<ProtectedRoute allowedRoles={["collegeadmin"]}><ViewUser /></ProtectedRoute>} />
-            <Route path="/college/create-user" element={<ProtectedRoute allowedRoles={["collegeadmin"]}><CreateUser /></ProtectedRoute>} />
-            <Route path="/college/update-user/:userId" element={<ProtectedRoute allowedRoles={["collegeadmin"]}><UpdateUser /></ProtectedRoute>} />
-            <Route path="/college/user/:userId" element={<ProtectedRoute allowedRoles={["collegeadmin"]}><UserDetail /></ProtectedRoute>} />
+            {/* Users */}
+            <Route path="/college/view-users" element={<ViewUser />} />
+            <Route path="/college/create-user" element={<CreateUser />} />
+            <Route path="/college/update-user/:userId" element={<UpdateUser />} />
+            <Route path="/college/user/:userId" element={<UserDetail />} />
 
-            {/* Students — view: all roles; create/bulk: collegeadmin only */}
+            {/* Students */}
             <Route path="/college/students" element={<DepartmentCards />} />
             <Route path="/college/students/:deptId" element={<StudentList />} />
             <Route path="/college/student/:studentId" element={<StudentDetail />} />
-            <Route path="/college/student/:studentId/edit" element={<ProtectedRoute allowedRoles={["collegeadmin"]}><EditStudent /></ProtectedRoute>} />
-            <Route path="/college/bulk-register" element={<ProtectedRoute allowedRoles={["collegeadmin"]}><BulkRegister /></ProtectedRoute>} />
-            <Route path="/college/create-student" element={<ProtectedRoute allowedRoles={["collegeadmin"]}><StudentRegister /></ProtectedRoute>} />
+            <Route path="/college/student/:studentId/edit" element={<EditStudent />} />
+            <Route path="/college/bulk-register" element={<BulkRegister />} />
+            <Route path="/college/create-student" element={<StudentRegister />} />
 
             {/* Departments */}
             <Route path="/college/departments" element={<ViewDepartments />} />
@@ -131,8 +140,8 @@ export const collegeAdminRoutes = (
             {/* Verification Center */}
             <Route path="/college/verifications" element={<ViewVerifications />} />
 
-            {/* Student Restrictions — collegeadmin + tpo only */}
-            <Route path="/college/restrictions" element={<ProtectedRoute allowedRoles={["collegeadmin", "tpo"]}><ViewRestrictions /></ProtectedRoute>} />
+            {/* Student Restrictions */}
+            <Route path="/college/restrictions" element={<ViewRestrictions />} />
 
             {/* Companies */}
             <Route path="/college/companies" element={<ViewCompanies />} />
@@ -140,13 +149,13 @@ export const collegeAdminRoutes = (
             <Route path="/college/update-company/:companyId" element={<UpdateCompany />} />
             <Route path="/college/company/:companyId" element={<CompanyDetail />} />
 
-            {/* Jobs — collegeadmin + tpo + tpc */}
-            <Route path="/college/jobs" element={<ProtectedRoute allowedRoles={["collegeadmin", "tpo", "tpc"]}><ViewJobs /></ProtectedRoute>} />
-            <Route path="/college/create-job" element={<ProtectedRoute allowedRoles={["collegeadmin", "tpo", "tpc"]}><CreateJob /></ProtectedRoute>} />
-            <Route path="/college/job/:jobId" element={<ProtectedRoute allowedRoles={["collegeadmin", "tpo", "tpc"]}><JobDetail /></ProtectedRoute>} />
-            <Route path="/college/job/:jobId/edit" element={<ProtectedRoute allowedRoles={["collegeadmin", "tpo", "tpc"]}><UpdateJob /></ProtectedRoute>} />
-            <Route path="/college/job/:jobId/application/:applicationId" element={<ProtectedRoute allowedRoles={["collegeadmin", "tpo", "tpc"]}><ApplicationDetail /></ProtectedRoute>} />
-            <Route path="/college/job/:jobId/round/:roundId/results" element={<ProtectedRoute allowedRoles={["collegeadmin", "tpo"]}><RoundResults /></ProtectedRoute>} />
+            {/* Jobs */}
+            <Route path="/college/jobs" element={<ViewJobs />} />
+            <Route path="/college/create-job" element={<CreateJob />} />
+            <Route path="/college/job/:jobId" element={<JobDetail />} />
+            <Route path="/college/job/:jobId/edit" element={<UpdateJob />} />
+            <Route path="/college/job/:jobId/application/:applicationId" element={<ApplicationDetail />} />
+            <Route path="/college/job/:jobId/round/:roundId/results" element={<RoundResults />} />
 
             {/* Training Programs */}
             <Route path="/college/training-programs" element={<ViewTrainingPrograms />} />
@@ -161,17 +170,24 @@ export const collegeAdminRoutes = (
             <Route path="/college/feedback" element={<ViewFeedback />} />
             <Route path="/college/interview-questions" element={<ViewInterviewQuestions />} />
 
-            {/* Notifications — collegeadmin + tpo only */}
-            <Route path="/college/send-notification" element={<ProtectedRoute allowedRoles={["collegeadmin", "tpo"]}><SendNotification /></ProtectedRoute>} />
+            {/* Notifications */}
+            <Route path="/college/send-notification" element={<SendNotification />} />
             <Route path="/college/notification-history" element={<NotificationHistory />} />
 
-            {/* Overrides & Placements — collegeadmin + tpo only */}
+            {/* Overrides & Placements */}
             <Route path="/college/overrides" element={<ViewOverrides />} />
-            <Route path="/college/placements" element={<ProtectedRoute allowedRoles={["collegeadmin", "tpo"]}><ViewPlacements /></ProtectedRoute>} />
-            <Route path="/college/placement-policies" element={<ProtectedRoute allowedRoles={["collegeadmin", "tpo"]}><ViewPlacementPolicies /></ProtectedRoute>} />
+            <Route path="/college/placements" element={<ViewPlacements />} />
+            <Route path="/college/placement-policies" element={<ViewPlacementPolicies />} />
+            <Route path="/college/self-reports" element={<SelfReportReview />} />
 
-            {/* Audit Trail — collegeadmin only */}
-            <Route path="/college/audit-logs" element={<ProtectedRoute allowedRoles={["collegeadmin"]}><ViewAuditLogs /></ProtectedRoute>} />
+            {/* Audit Trail */}
+            <Route path="/college/audit-logs" element={<ViewAuditLogs />} />
+
+            {/* Permission Manager */}
+            <Route path="/college/permissions" element={<PermissionManager />} />
+
+            {/* Profile — any college user */}
+            <Route path="/college/my-profile" element={<MyProfile />} />
         </Route>
     </>
 );

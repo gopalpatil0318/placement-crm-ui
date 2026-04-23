@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Loader2, Search, User, ShieldAlert } from "lucide-react";
+import { Loader2, Search, User, ShieldAlert, Building2 } from "lucide-react";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingSelect from "@/components/ui/FloatingSelect";
@@ -28,6 +28,12 @@ interface StudentSearchResult {
     student_passout_year: number;
 }
 
+interface CompanySearchResult {
+    company_id: string;
+    company_name: string;
+    industry: string | null;
+}
+
 const RESTRICTION_OPTIONS = RESTRICTION_TYPE_OPTIONS.map((type) => ({
     value: type,
     label: RESTRICTION_TYPE_LABELS[type],
@@ -51,6 +57,15 @@ export default function AddRestrictionModal({
 
     const { formData, errors, loading, handleChange, handleSubmit, resetForm } = useAddRestriction(onSuccess);
 
+    // Company search state (only used when restriction_type = bar_from_company)
+    const [companySearch, setCompanySearch] = useState("");
+    const [companyResults, setCompanyResults] = useState<CompanySearchResult[]>([]);
+    const [searchingCompany, setSearchingCompany] = useState(false);
+    const [selectedCompany, setSelectedCompany] = useState<CompanySearchResult | null>(null);
+    const companySearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const isBarFromCompany = formData.restriction_type === "bar_from_company";
+
     const isDirty = !!(formData.restriction_type || formData.reason || formData.details || formData.valid_until);
 
     const handleClose = useCallback(() => {
@@ -64,9 +79,21 @@ export default function AddRestrictionModal({
             setStudentSearch("");
             setSearchResults([]);
             setSelectedStudent(null);
+            setCompanySearch("");
+            setCompanyResults([]);
+            setSelectedCompany(null);
             resetForm();
         }
     }, [isOpen, resetForm]);
+
+    // Clear company selection when restriction type changes away from bar_from_company
+    useEffect(() => {
+        if (!isBarFromCompany) {
+            setSelectedCompany(null);
+            setCompanySearch("");
+            setCompanyResults([]);
+        }
+    }, [isBarFromCompany]);
 
     // Debounced student search
     const handleStudentSearch = useCallback((value: string) => {
@@ -96,14 +123,45 @@ export default function AddRestrictionModal({
         setSearchResults([]);
     }, []);
 
+    // Debounced company search
+    const handleCompanySearch = useCallback((value: string) => {
+        setCompanySearch(value);
+        if (companySearchTimerRef.current) clearTimeout(companySearchTimerRef.current);
+        if (!value.trim()) {
+            setCompanyResults([]);
+            return;
+        }
+        companySearchTimerRef.current = setTimeout(async () => {
+            setSearchingCompany(true);
+            try {
+                const res = await CollegeAdminService.getAllCompanies({ search: value, limit: 10 });
+                const companies = Array.isArray(res?.data) ? res.data : [];
+                setCompanyResults(companies);
+            } catch {
+                setCompanyResults([]);
+            } finally {
+                setSearchingCompany(false);
+            }
+        }, 300);
+    }, []);
+
+    const handleSelectCompany = useCallback((company: CompanySearchResult) => {
+        setSelectedCompany(company);
+        setCompanySearch("");
+        setCompanyResults([]);
+        // Sync company_id to formData via a synthetic-like change
+        handleChange({ target: { name: "company_id", value: company.company_id } } as React.ChangeEvent<HTMLInputElement>);
+    }, [handleChange]);
+
     const handleFormSubmit = useCallback(
         (e: React.FormEvent<HTMLFormElement>) => {
             e.preventDefault();
             const targetId = preSelectedStudentId || selectedStudent?.student_id;
             if (!targetId) return;
+            if (isBarFromCompany && !selectedCompany) return;
             handleSubmit(targetId);
         },
-        [preSelectedStudentId, selectedStudent, handleSubmit],
+        [preSelectedStudentId, selectedStudent, isBarFromCompany, selectedCompany, handleSubmit],
     );
 
     const resolvedStudentId = preSelectedStudentId || selectedStudent?.student_id;
@@ -219,6 +277,92 @@ export default function AddRestrictionModal({
                                 required
                             />
 
+                            {/* Company selector — only for bar_from_company */}
+                            {isBarFromCompany && (
+                                <div>
+                                    <label htmlFor="company-search-input" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                        Select Company <span className="text-red-500">*</span>
+                                    </label>
+                                    {selectedCompany ? (
+                                        <div className="flex items-center gap-3 p-3 rounded-xl bg-orange-50 dark:bg-orange-900/15 border border-orange-100 dark:border-orange-800">
+                                            <div className="h-9 w-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                                                <Building2 className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{selectedCompany.company_name}</p>
+                                                {selectedCompany.industry && (
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400">{selectedCompany.industry}</p>
+                                                )}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedCompany(null);
+                                                    handleChange({ target: { name: "company_id", value: "" } } as React.ChangeEvent<HTMLInputElement>);
+                                                }}
+                                                className="text-xs font-medium text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 transition cursor-pointer"
+                                            >
+                                                Change
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                                                <input
+                                                    id="company-search-input"
+                                                    type="text"
+                                                    value={companySearch}
+                                                    onChange={(e) => handleCompanySearch(e.target.value)}
+                                                    placeholder="Search company by name..."
+                                                    className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition"
+                                                />
+                                            </div>
+                                            {searchingCompany && (
+                                                <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                    Searching...
+                                                </div>
+                                            )}
+                                            {companyResults.length > 0 && (
+                                                <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg">
+                                                    {companyResults.map((c) => (
+                                                        <button
+                                                            key={c.company_id}
+                                                            type="button"
+                                                            onClick={() => handleSelectCompany(c)}
+                                                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-colors cursor-pointer border-b border-gray-50 dark:border-gray-800 last:border-0"
+                                                        >
+                                                            <div className="h-8 w-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
+                                                                <Building2 className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                                                    {c.company_name}
+                                                                </p>
+                                                                {c.industry && (
+                                                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                                        {c.industry}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {companySearch && !searchingCompany && companyResults.length === 0 && (
+                                                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                                    No companies found matching &ldquo;{companySearch}&rdquo;
+                                                </p>
+                                            )}
+                                        </>
+                                    )}
+                                    {errors.company_id && (
+                                        <p className="mt-1 text-xs text-red-500">{errors.company_id}</p>
+                                    )}
+                                </div>
+                            )}
+
                             <FloatingTextarea
                                 label="Reason"
                                 name="reason"
@@ -271,7 +415,7 @@ export default function AddRestrictionModal({
                     </button>
                     <button
                         type="submit"
-                        disabled={loading || !resolvedStudentId}
+                        disabled={loading || !resolvedStudentId || (isBarFromCompany && !selectedCompany)}
                         className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                     >
                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}

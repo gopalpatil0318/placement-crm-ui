@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useNavigate } from "react-router-dom";
 import {
     ArrowLeft,
@@ -625,6 +626,8 @@ const DetailSkeleton = () => (
 
 const ApplicationDetailView = ({ applicationId, jobId, onApplicationLoaded }: ApplicationDetailViewProps) => {
     const navigate = useNavigate();
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("applications.manage");
     const { application, loading, error, refresh } = useViewApplication(applicationId);
     const [activeTab, setActiveTab] = useState<DetailTab>("answers");
 
@@ -749,7 +752,7 @@ const ApplicationDetailView = ({ applicationId, jobId, onApplicationLoaded }: Ap
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
                 {/* Tab selector */}
                 <div className="flex border-b border-gray-100 dark:border-gray-800 overflow-x-auto" role="tablist">
-                    {TABS.map((tab) => {
+                    {TABS.filter((tab) => tab.key !== "actions" || canManage).map((tab) => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.key;
 
@@ -789,7 +792,7 @@ const ApplicationDetailView = ({ applicationId, jobId, onApplicationLoaded }: Ap
                 <div className="p-6">
                     {activeTab === "answers" && <AnswersTab answers={app.answers} />}
                     {activeTab === "rounds" && <RoundResultsTab results={app.round_results} />}
-                    {activeTab === "actions" && <StatusActionsTab application={app} jobId={jobId} onRefresh={refresh} />}
+                    {activeTab === "actions" && canManage && <StatusActionsTab application={app} jobId={jobId} onRefresh={refresh} />}
                 </div>
             </div>
         </div>

@@ -3,6 +3,8 @@ import { Building2, MapPin, User, Loader2, Eye, EyeOff, Globe } from "lucide-rea
 import FloatingInput from "@/components/ui/FloatingInput"
 import FloatingSelect from "@/components/ui/FloatingSelect"
 import FloatingTextarea from "@/components/ui/FloatingTextarea"
+import { ImageUpload } from "@/components/ui/ImageUpload"
+import { useFileUpload } from "@/hooks/useFileUpload"
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -142,6 +144,23 @@ export default function CollegeForm({
 }: CollegeFormProps) {
   const f = F[mode]
   const isCreate = mode === "create"
+
+  const logoUpload = useFileUpload()
+
+  const handleLogoSelect = async (file: File | null) => {
+    if (!file) return
+    try {
+      const entityId = formData[f.subdomain] || formData[f.name] || "college"
+      const { storagePath } = await logoUpload.upload(file, {
+        bucket: "placenex-public",
+        category: "logos",
+        entityId: `col_${entityId}`,
+        maxSizeBytes: 2 * 1024 * 1024,
+        allowedTypes: ["image/jpeg", "image/png", "image/webp"],
+      })
+      handleChange({ target: { name: f.logoUrl, value: storagePath } } as React.ChangeEvent<HTMLInputElement>)
+    } catch { /* error in logoUpload.error */ }
+  }
 
   const submitLabel = getSubmitLabel(isCreate, loading)
 
@@ -305,45 +324,51 @@ export default function CollegeForm({
             description="Logo, website, and affiliation details shown on the college portal"
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <FloatingInput
-              label="Logo URL"
-              name={f.logoUrl}
-              value={formData[f.logoUrl] || ""}
-              onChange={handleChange}
-              error={errors[f.logoUrl]}
-              placeholder="https://res.cloudinary.com/.../logo.png"
-              type="url"
-              disabled={loading}
-            />
-            <FloatingInput
-              label="Website"
-              name={f.website}
-              value={formData[f.website] || ""}
-              onChange={handleChange}
-              error={errors[f.website]}
-              placeholder="https://www.college.ac.in"
-              type="url"
-              disabled={loading}
-            />
-            <FloatingInput
-              label="Affiliation"
-              name={f.affiliation}
-              value={formData[f.affiliation] || ""}
-              onChange={handleChange}
-              error={errors[f.affiliation]}
-              placeholder="e.g. SPPU, Pune"
-              disabled={loading}
-            />
-            <FloatingInput
-              label="Established Year"
-              name={f.establishedYear}
-              value={formData[f.establishedYear] || ""}
-              onChange={handleChange}
-              error={errors[f.establishedYear]}
-              placeholder="e.g. 1996"
-              maxLength={4}
-              disabled={loading}
-            />
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">College Logo</p>
+              <ImageUpload
+                value={formData[f.logoUrl] || null}
+                onFileSelect={handleLogoSelect}
+                progress={logoUpload.progress}
+                isUploading={logoUpload.isUploading}
+                error={logoUpload.error || errors[f.logoUrl]}
+                variant="logo"
+                size={96}
+                initials={formData[f.name]?.slice(0, 2)?.toUpperCase()}
+                label="Upload college logo"
+              />
+            </div>
+            <div className="space-y-5">
+              <FloatingInput
+                label="Website"
+                name={f.website}
+                value={formData[f.website] || ""}
+                onChange={handleChange}
+                error={errors[f.website]}
+                placeholder="https://www.college.ac.in"
+                type="url"
+                disabled={loading}
+              />
+              <FloatingInput
+                label="Affiliation"
+                name={f.affiliation}
+                value={formData[f.affiliation] || ""}
+                onChange={handleChange}
+                error={errors[f.affiliation]}
+                placeholder="e.g. SPPU, Pune"
+                disabled={loading}
+              />
+              <FloatingInput
+                label="Established Year"
+                name={f.establishedYear}
+                value={formData[f.establishedYear] || ""}
+                onChange={handleChange}
+                error={errors[f.establishedYear]}
+                placeholder="e.g. 1996"
+                maxLength={4}
+                disabled={loading}
+              />
+            </div>
           </div>
           <div className="mt-5">
             <FloatingTextarea

@@ -18,6 +18,7 @@ import {
     Loader2,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePermissions } from "@/hooks/usePermissions";
 import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
 import AnimatedTabContent from "@/components/ui/AnimatedTabContent";
@@ -68,7 +69,7 @@ const AVATAR_COLORS = [
 ] as const;
 
 const getAvatarGradient = (name: string) =>
-    AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+    AVATAR_COLORS[(name.codePointAt(0) ?? 0) % AVATAR_COLORS.length];
 
 const formatDate = (dateStr: string | undefined | null) => {
     if (!dateStr) return "â€”";
@@ -281,6 +282,8 @@ const CompanyDetail = () => {
     const navigate = useNavigate();
     const shouldReduce = useReducedMotion();
     const queryClient = useQueryClient();
+    const { hasPermission } = usePermissions();
+    const canUpdate = hasPermission("companies.update");
     const { company, loading, error, refresh } = useViewCompany(companyId);
     const [activeTab, setActiveTab] = useState<TabKey>("overview");
     const [showConfirm, setShowConfirm] = useState(false);
@@ -418,29 +421,31 @@ const CompanyDetail = () => {
                             </div>
 
                             {/* Right: Action buttons */}
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => navigate(`/college/update-company/${company.company_id}`)}
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm"
-                                >
-                                    <Pencil className="h-4 w-4" />
-                                    Edit
-                                </button>
+                            {canUpdate && (
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate(`/college/update-company/${company.company_id}`)}
+                                        className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm"
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                        Edit
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfirm(true)}
-                                    className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition shadow-sm ${
-                                        isActive
-                                            ? "bg-red-600 hover:bg-red-700 text-white"
-                                            : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                    }`}
-                                >
-                                    <Power className="h-4 w-4" />
-                                    {isActive ? "Deactivate" : "Activate"}
-                                </button>
-                            </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirm(true)}
+                                        className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition shadow-sm ${
+                                            isActive
+                                                ? "bg-red-600 hover:bg-red-700 text-white"
+                                                : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        }`}
+                                    >
+                                        <Power className="h-4 w-4" />
+                                        {isActive ? "Deactivate" : "Activate"}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -555,11 +560,12 @@ const CompanyDetail = () => {
                         Are you sure you want to{" "}
                         <span className="font-semibold">
                             {isActive ? "deactivate" : "activate"}
-                        </span>{" "}
+                        </span>
+                        {" "}
                         <span className="font-semibold text-gray-800 dark:text-gray-100">
                             {company.company_name}
                         </span>
-                        ?
+                        {"?"}
                     </p>
 
                     {isActive && (
@@ -607,7 +613,8 @@ const CompanyDetail = () => {
                         }`}
                     >
                         {toggleMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {toggleMutation.isPending ? "Updating..." : isActive ? "Deactivate" : "Activate"}
+                        {toggleMutation.isPending && "Updating..."}
+                        {!toggleMutation.isPending && (isActive ? "Deactivate" : "Activate")}
                     </button>
                 </div>
             </ModalWrapper>

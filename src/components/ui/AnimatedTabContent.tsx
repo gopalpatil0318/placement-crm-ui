@@ -56,6 +56,14 @@ export default function AnimatedTabContent({
         animate="animate"
         exit="exit"
         className={className}
+        onAnimationComplete={(definition) => {
+          if (definition === "animate") {
+            // Clear transform so descendant sticky elements work
+            const el = document.querySelector(`[data-tab-key="${activeTab}"]`)
+            if (el instanceof HTMLElement) el.style.transform = "none"
+          }
+        }}
+        data-tab-key={activeTab}
       >
         {children}
       </motion.div>

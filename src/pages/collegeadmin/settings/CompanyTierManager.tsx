@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react"
+import { usePermissions } from "@/hooks/usePermissions"
 import {
     Plus, Pencil, Trash2, Layers, AlertTriangle,
 } from "lucide-react"
@@ -52,6 +53,8 @@ const INITIAL_FORM = {
 // ========================
 
 export default function CompanyTierManager() {
+    const { hasPermission } = usePermissions()
+    const canManage = hasPermission("settings.manage")
     const { selectedYear } = useYearFilter()
     const { data: tiers = [], isLoading } = useCompanyTiers(selectedYear)
 
@@ -155,9 +158,11 @@ export default function CompanyTierManager() {
                         />
                         <p className="text-sm text-muted-foreground mt-1">Define salary-based tiers for classifying job drives</p>
                     </div>
+                    {canManage && (
                     <Button onClick={handleOpenCreate} size="sm">
                         <Plus className="mr-1.5 h-4 w-4" /> Add Tier
                     </Button>
+                    )}
                 </div>
 
                 {/* Tier Table */}
@@ -202,6 +207,7 @@ export default function CompanyTierManager() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-right">
+                                            {canManage && (
                                             <div className="flex items-center justify-end gap-1">
                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEdit(tier)}>
                                                     <Pencil className="h-3.5 w-3.5" />
@@ -210,6 +216,7 @@ export default function CompanyTierManager() {
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
+                                            )}
                                         </td>
                                     </AnimatedRow>
                                 ))}

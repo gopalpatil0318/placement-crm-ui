@@ -3,12 +3,16 @@ import { motion, useReducedMotion } from "framer-motion";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { useCertificates, VALID_CERTIFICATE_TYPES, CERTIFICATE_TYPE_LABELS } from "@/hooks/student/useCertificates";
 import type { CertificateData } from "@/services/student/certificate.service";
-import { Plus, X, Pencil, Trash2, Award, CheckCircle, ExternalLink, Link as LinkIcon, AlertCircle, XCircle, Clock, Calendar, Infinity as InfinityIcon, ChevronDown } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Award, CheckCircle, Link as LinkIcon, AlertCircle, XCircle, Clock, Calendar, Infinity as InfinityIcon, ChevronDown } from "lucide-react";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingSelect from "@/components/ui/FloatingSelect";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
+import { FileUpload } from "@/components/ui/FileUpload";
+import { DocumentPreview } from "@/components/ui/DocumentPreview";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { useStudentAuth } from "@/hooks/student/useStudentAuth";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -62,6 +66,21 @@ const CertificatesForm = () => {
         maxCertificates, openAddForm, openEditForm, closeForm,
         handleChange, addSkill, removeSkill, handleSubmit, handleDelete,
     } = useCertificates();
+
+    const { user } = useStudentAuth();
+    const certFileUpload = useFileUpload();
+
+    const handleCertFileSelect = async (file: File | null) => {
+        if (!file || !user) return;
+        try {
+            const { storagePath } = await certFileUpload.upload(file, {
+                bucket: "placenex-private",
+                category: "certs",
+                entityId: `cert_${user.id}`,
+            });
+            handleChange({ target: { name: "certificate_url", value: storagePath } } as React.ChangeEvent<HTMLInputElement>);
+        } catch { /* error in certFileUpload.error */ }
+    };
 
     const shouldReduce = useReducedMotion();
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -211,7 +230,17 @@ const CertificatesForm = () => {
                                 {errors.skills_covered && <p className="text-xs text-red-500 mt-1">{errors.skills_covered}</p>}
                             </div>
 
-                            <FloatingInput label="Certificate File URL" name="certificate_url" value={formData.certificate_url} onChange={handleChange} error={errors.certificate_url} inputMode="url" placeholder="https://drive.google.com/..." />
+                            <FileUpload
+                                value={formData.certificate_url || null}
+                                onFileSelect={handleCertFileSelect}
+                                progress={certFileUpload.progress}
+                                isUploading={certFileUpload.isUploading}
+                                error={certFileUpload.error || errors.certificate_url}
+                                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                maxSizeBytes={5 * 1024 * 1024}
+                                label="Certificate File"
+                                hint="PDF or image, max 5 MB"
+                            />
                         </div>
             </ModalWrapper>
 
@@ -346,10 +375,7 @@ const CertificateCard = memo(function CertificateCard({
                         </a>
                     )}
                     {cert.certificate_url && (
-                        <a href={cert.certificate_url} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <ExternalLink className="h-3.5 w-3.5" /> View Certificate
-                        </a>
+                        <DocumentPreview value={cert.certificate_url} bucket="placenex-private" label="View Certificate" variant="inline" />
                     )}
                     {cert.verification_status === "approved" && (
                         <output className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">

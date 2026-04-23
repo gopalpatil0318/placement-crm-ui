@@ -13,6 +13,7 @@ import AnimatedTabContent from "@/components/ui/AnimatedTabContent";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import { useStudentDetail } from "@/hooks/collegeadmin/student_management/useStudentDetail";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { usePermissions } from "@/hooks/usePermissions";
 import { ApiError } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { getCurrentYear, formatYearLabel } from "@/lib/utils";
@@ -321,6 +322,174 @@ const ReviewRejectModal = ({ isOpen, onClose, reason, onReasonChange, onSubmit }
 );
 
 // ========================
+// EXTRACTED SUB-COMPONENTS (cognitive complexity reduction)
+// ========================
+
+const HeroActionButtons = ({ student, canUpdate, canApprove, onEdit, onChangeStatus, onTrainingReport, onApprove, onRevoke }: Readonly<{
+    student: { profile_complete: boolean; profile_is_approved: boolean };
+    canUpdate: boolean;
+    canApprove: boolean;
+    onEdit: () => void;
+    onChangeStatus: () => void;
+    onTrainingReport: () => void;
+    onApprove: () => void;
+    onRevoke: () => void;
+}>) => (
+    <div className="flex flex-wrap items-center gap-3">
+        {canUpdate && (
+            <button type="button" onClick={onEdit} className="inline-flex items-center gap-2 px-5 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm">
+                <Pencil className="h-4 w-4" />
+                Edit
+            </button>
+        )}
+        {canUpdate && (
+            <button type="button" onClick={onChangeStatus} className="inline-flex items-center gap-2 px-5 py-2 bg-gray-700 dark:bg-gray-600 text-white rounded-xl text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-500 transition shadow-sm">
+                <Power className="h-4 w-4" />
+                Change Status
+            </button>
+        )}
+        <button type="button" onClick={onTrainingReport} className="inline-flex items-center gap-2 px-5 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm">
+            <BookOpen className="h-4 w-4" />
+            Training Report
+        </button>
+        {canApprove && student.profile_complete && !student.profile_is_approved && (
+            <button type="button" onClick={onApprove} className="inline-flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition shadow-sm">
+                <CheckCircle className="h-4 w-4" />
+                Approve
+            </button>
+        )}
+        {canApprove && student.profile_is_approved && (
+            <button type="button" onClick={onRevoke} className="inline-flex items-center gap-2 px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition shadow-sm">
+                <XCircle className="h-4 w-4" />
+                Revoke
+            </button>
+        )}
+        {!student.profile_complete && (
+            <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800">
+                Profile must be complete before approval
+            </span>
+        )}
+    </div>
+);
+
+const ProfileTabContent = ({ studentId, reviewLoading, profileData, canVerify, profileApproval, expVerify, achVerify, certVerify, onOpenRejectModal, onRefetch }: Readonly<{
+    studentId: string;
+    reviewLoading: boolean;
+    profileData: ReturnType<typeof useStudentReviewProfile>["profileData"];
+    canVerify: boolean;
+    profileApproval: ReturnType<typeof useApproveStudentProfile>;
+    expVerify: ReturnType<typeof useVerifyItem>;
+    achVerify: ReturnType<typeof useVerifyItem>;
+    certVerify: ReturnType<typeof useVerifyItem>;
+    onOpenRejectModal: (category: "experiences" | "achievements" | "certificates" | "profile", id: string) => void;
+    onRefetch: () => void;
+}>) => {
+    if (reviewLoading) {
+        return (
+            <div className="space-y-4 animate-pulse">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={`profile-skel-${String(i)}`} className="h-32 rounded-xl bg-gray-100 dark:bg-gray-800" />
+                ))}
+            </div>
+        );
+    }
+    if (!profileData) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12">
+                <AlertCircle className="h-10 w-10 text-red-400 mb-3" />
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Unable to load profile data</p>
+                <button type="button" onClick={onRefetch} className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer">
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Try Again
+                </button>
+            </div>
+        );
+    }
+    return (
+        <div className="space-y-8">
+            {profileData.verification_summary && (
+                <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        Verification Summary
+                    </h4>
+                    <div className="grid grid-cols-3 gap-3">
+                        {(["experience", "achievements", "certificates"] as const).map((key) => {
+                            const summary = profileData.verification_summary[key];
+                            return (
+                                <div key={key} className="bg-white dark:bg-gray-900 rounded-lg p-3 border border-gray-100 dark:border-gray-800">
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 capitalize mb-1">{key}</p>
+                                    <div className="flex items-center gap-3">
+                                        {summary.pending > 0 && (
+                                            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                                {summary.pending} pending
+                                            </span>
+                                        )}
+                                        {summary.rejected > 0 && (
+                                            <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                                                {summary.rejected} rejected
+                                            </span>
+                                        )}
+                                        {summary.pending === 0 && summary.rejected === 0 && (
+                                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                                All verified
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {canVerify && profileData.student.profile_approval_status === "pending" && profileData.student.profile_complete && (
+                        <div className="mt-4 flex items-center gap-3 pt-3 border-t border-blue-100 dark:border-blue-800">
+                            <p className="text-xs text-gray-600 dark:text-gray-400 flex-1">
+                                Approving the profile will auto-approve all pending items.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={profileApproval.approve}
+                                disabled={profileApproval.isApproving}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 cursor-pointer"
+                            >
+                                {profileApproval.isApproving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                Approve Profile
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onOpenRejectModal("profile", studentId)}
+                                disabled={profileApproval.isRejecting}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50 cursor-pointer"
+                            >
+                                Reject Profile
+                            </button>
+                        </div>
+                    )}
+                    {profileData.student.profile_approval_status === "rejected" && profileData.student.profile_rejection_reason && (
+                        <div className="mt-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800">
+                            <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-0.5">Profile Rejected</p>
+                            <p className="text-xs text-red-500 dark:text-red-400">{profileData.student.profile_rejection_reason}</p>
+                        </div>
+                    )}
+                </div>
+            )}
+            <StudentProfile
+                viewMode="college"
+                studentId={studentId}
+                onApproveExperience={canVerify ? expVerify.approve : undefined}
+                onRejectExperience={canVerify ? (id) => onOpenRejectModal("experiences", id) : undefined}
+                processingExpId={expVerify.processingId}
+                onApproveAchievement={canVerify ? achVerify.approve : undefined}
+                onRejectAchievement={canVerify ? (id) => onOpenRejectModal("achievements", id) : undefined}
+                processingAchId={achVerify.processingId}
+                onApproveCertificate={canVerify ? certVerify.approve : undefined}
+                onRejectCertificate={canVerify ? (id) => onOpenRejectModal("certificates", id) : undefined}
+                processingCertId={certVerify.processingId}
+            />
+        </div>
+    );
+};
+
+// ========================
 // MAIN COMPONENT
 // ========================
 
@@ -332,6 +501,10 @@ export default function StudentDetail() {
     const queryClient = useQueryClient();
     const isReviewMode = searchParams.get("review") === "true";
     const { student, loading, error, refresh } = useStudentDetail(studentId || "");
+    const { hasPermission } = usePermissions();
+    const canUpdate = hasPermission("students.update");
+    const canApprove = hasPermission("students.approve");
+    const canVerify = hasPermission("verification.verify");
 
     const [activeTab, setActiveTab] = useState<typeof TAB_KEYS[number]>(isReviewMode ? "profile" : "overview");
 
@@ -489,38 +662,16 @@ export default function StudentDetail() {
                                 </div>
                             </div>
 
-                            {/* Action buttons */}
-                            <div className="flex flex-wrap items-center gap-3">
-                                <button type="button" onClick={() => navigate(`/college/student/${student.student_id}/edit`)} className="inline-flex items-center gap-2 px-5 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm">
-                                    <Pencil className="h-4 w-4" />
-                                    Edit
-                                </button>
-                                <button type="button" onClick={handleOpenStatusModal} className="inline-flex items-center gap-2 px-5 py-2 bg-gray-700 dark:bg-gray-600 text-white rounded-xl text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-500 transition shadow-sm">
-                                    <Power className="h-4 w-4" />
-                                    Change Status
-                                </button>
-                                <button type="button" onClick={() => navigate(`/college/student/${student.student_id}/training-report`)} className="inline-flex items-center gap-2 px-5 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm">
-                                    <BookOpen className="h-4 w-4" />
-                                    Training Report
-                                </button>
-                                {student.profile_complete && !student.profile_is_approved && (
-                                    <button type="button" onClick={() => { setApproveAction(true); setShowApproveModal(true); }} className="inline-flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition shadow-sm">
-                                        <CheckCircle className="h-4 w-4" />
-                                        Approve
-                                    </button>
-                                )}
-                                {student.profile_is_approved && (
-                                    <button type="button" onClick={() => { setApproveAction(false); setShowApproveModal(true); }} className="inline-flex items-center gap-2 px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition shadow-sm">
-                                        <XCircle className="h-4 w-4" />
-                                        Revoke
-                                    </button>
-                                )}
-                                {!student.profile_complete && (
-                                    <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800">
-                                        Profile must be complete before approval
-                                    </span>
-                                )}
-                            </div>
+                            <HeroActionButtons
+                                student={student}
+                                canUpdate={canUpdate}
+                                canApprove={canApprove}
+                                onEdit={() => navigate(`/college/student/${student.student_id}/edit`)}
+                                onChangeStatus={handleOpenStatusModal}
+                                onTrainingReport={() => navigate(`/college/student/${student.student_id}/training-report`)}
+                                onApprove={() => { setApproveAction(true); setShowApproveModal(true); }}
+                                onRevoke={() => { setApproveAction(false); setShowApproveModal(true); }}
+                            />
                         </div>
                     </div>
 
@@ -587,118 +738,21 @@ export default function StudentDetail() {
                             )}
                             {activeTab === "profile" && (
                                 <div className="p-8">
-                                    {reviewLoading && (
-                                        <div className="space-y-4 animate-pulse">
-                                            {Array.from({ length: 4 }).map((_, i) => (
-                                                <div key={`profile-skel-${String(i)}`} className="h-32 rounded-xl bg-gray-100 dark:bg-gray-800" />
-                                            ))}
-                                        </div>
-                                    )}
-                                    {!reviewLoading && profileData && (
-                                        <div className="space-y-8">
-                                            {/* Verification Summary Banner */}
-                                            {profileData.verification_summary && (
-                                                <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800">
-                                                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                                                        <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                                        Verification Summary
-                                                    </h4>
-                                                    <div className="grid grid-cols-3 gap-3">
-                                                        {(["experience", "achievements", "certificates"] as const).map((key) => {
-                                                            const summary = profileData.verification_summary[key];
-                                                            return (
-                                                                <div key={key} className="bg-white dark:bg-gray-900 rounded-lg p-3 border border-gray-100 dark:border-gray-800">
-                                                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 capitalize mb-1">{key}</p>
-                                                                    <div className="flex items-center gap-3">
-                                                                        {summary.pending > 0 && (
-                                                                            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                                                                                {summary.pending} pending
-                                                                            </span>
-                                                                        )}
-                                                                        {summary.rejected > 0 && (
-                                                                            <span className="text-xs font-semibold text-red-600 dark:text-red-400">
-                                                                                {summary.rejected} rejected
-                                                                            </span>
-                                                                        )}
-                                                                        {summary.pending === 0 && summary.rejected === 0 && (
-                                                                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                                                                                All verified
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-
-                                                    {/* Profile-level approve/reject */}
-                                                    {profileData.student.profile_approval_status === "pending" && profileData.student.profile_complete && (
-                                                        <div className="mt-4 flex items-center gap-3 pt-3 border-t border-blue-100 dark:border-blue-800">
-                                                            <p className="text-xs text-gray-600 dark:text-gray-400 flex-1">
-                                                                Approving the profile will auto-approve all pending items.
-                                                            </p>
-                                                            <button
-                                                                type="button"
-                                                                onClick={profileApproval.approve}
-                                                                disabled={profileApproval.isApproving}
-                                                                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 cursor-pointer"
-                                                            >
-                                                                {profileApproval.isApproving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                                                                Approve Profile
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setReviewRejectTarget({ category: "profile", id: studentId || "" });
-                                                                    setReviewRejectOpen(true);
-                                                                }}
-                                                                disabled={profileApproval.isRejecting}
-                                                                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50 cursor-pointer"
-                                                            >
-                                                                Reject Profile
-                                                            </button>
-                                                        </div>
-                                                    )}
-
-                                                    {profileData.student.profile_approval_status === "rejected" && profileData.student.profile_rejection_reason && (
-                                                        <div className="mt-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800">
-                                                            <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-0.5">Profile Rejected</p>
-                                                            <p className="text-xs text-red-500 dark:text-red-400">{profileData.student.profile_rejection_reason}</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Verification Items with Status Badges — rendered via embedded StudentProfile */}
-                                            <StudentProfile
-                                                viewMode="college"
-                                                studentId={studentId}
-                                                onApproveExperience={expVerify.approve}
-                                                onRejectExperience={(id) => { setReviewRejectTarget({ category: "experiences", id }); setReviewRejectOpen(true); }}
-                                                processingExpId={expVerify.processingId}
-                                                onApproveAchievement={achVerify.approve}
-                                                onRejectAchievement={(id) => { setReviewRejectTarget({ category: "achievements", id }); setReviewRejectOpen(true); }}
-                                                processingAchId={achVerify.processingId}
-                                                onApproveCertificate={certVerify.approve}
-                                                onRejectCertificate={(id) => { setReviewRejectTarget({ category: "certificates", id }); setReviewRejectOpen(true); }}
-                                                processingCertId={certVerify.processingId}
-                                            />
-                                        </div>
-                                    )}
-                                    {!reviewLoading && !profileData && (
-                                        <div className="flex flex-col items-center justify-center py-12">
-                                            <AlertCircle className="h-10 w-10 text-red-400 mb-3" />
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Unable to load profile data</p>
-                                            <button
-                                                type="button"
-                                                onClick={() => refetchProfile()}
-                                                className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
-                                            >
-                                                <RefreshCw className="h-3.5 w-3.5" />
-                                                Try Again
-                                            </button>
-                                        </div>
-                                    )}
+                                    <ProfileTabContent
+                                        studentId={studentId || ""}
+                                        reviewLoading={reviewLoading}
+                                        profileData={profileData}
+                                        canVerify={canVerify}
+                                        profileApproval={profileApproval}
+                                        expVerify={expVerify}
+                                        achVerify={achVerify}
+                                        certVerify={certVerify}
+                                        onOpenRejectModal={(category, id) => {
+                                            setReviewRejectTarget({ category, id });
+                                            setReviewRejectOpen(true);
+                                        }}
+                                        onRefetch={() => refetchProfile()}
+                                    />
                                 </div>
                             )}
                             {activeTab === "restrictions" && (

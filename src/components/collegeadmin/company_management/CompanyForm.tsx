@@ -1,10 +1,12 @@
-import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
+import { type ChangeEvent, type FormEvent } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Building2, Globe, FileText, ImageIcon, Loader2, CheckCircle2 } from "lucide-react";
+import { Building2, Globe, FileText, Loader2 } from "lucide-react";
 import { INDUSTRY_OPTIONS } from "@/validators/CompanySchema";
 import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
 import FloatingSelect from "@/components/ui/FloatingSelect";
+import { ImageUpload } from "@/components/ui/ImageUpload";
+import { useFileUpload } from "@/hooks/useFileUpload";
 
 // ========================
 // TYPES
@@ -64,6 +66,11 @@ const SectionHeader = ({ icon: Icon, title, subtitle }: SectionHeaderProps) => (
     </div>
 );
 
+function getButtonLabel(isLoading: boolean, formMode: "create" | "edit") {
+    if (isLoading) return formMode === "create" ? "Creating..." : "Saving..."
+    return formMode === "create" ? "Create Company" : "Save Changes"
+}
+
 // ========================
 // COMPONENT
 // ========================
@@ -79,12 +86,22 @@ const CompanyForm = ({
     handleCancel,
 }: CompanyFormProps) => {
     const shouldReduce = useReducedMotion();
-    const [logoLoadError, setLogoLoadError] = useState(false);
+    const logoUpload = useFileUpload();
 
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on prop change
-        setLogoLoadError(false);
-    }, [formData.companyLogo]);
+    const handleLogoSelect = async (file: File | null) => {
+        if (!file) return;
+        try {
+            const entityId = `comp_${formData.companyName?.replaceAll(/\s+/g, "_").slice(0, 30) || "company"}`;
+            const { storagePath } = await logoUpload.upload(file, {
+                bucket: "placenex-public",
+                category: "company-logos",
+                entityId,
+                maxSizeBytes: 2 * 1024 * 1024,
+                allowedTypes: ["image/jpeg", "image/png", "image/webp"],
+            });
+            handleChange({ target: { name: "companyLogo", value: storagePath } } as ChangeEvent<HTMLInputElement>);
+        } catch { /* error in logoUpload.error */ }
+    };
 
     return (
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
@@ -152,40 +169,19 @@ const CompanyForm = ({
                             error={errors.companyWebsite}
                             type="url"
                         />
-                        <div>
-                            <FloatingInput
-                                label="Logo URL"
-                                name="companyLogo"
-                                value={formData.companyLogo}
-                                onChange={handleChange}
-                                error={errors.companyLogo}
+                        <div className="flex flex-col items-center gap-2">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Company Logo</p>
+                            <ImageUpload
+                                value={formData.companyLogo || null}
+                                onFileSelect={handleLogoSelect}
+                                progress={logoUpload.progress}
+                                isUploading={logoUpload.isUploading}
+                                error={logoUpload.error || errors.companyLogo}
+                                variant="logo"
+                                size={80}
+                                initials={formData.companyName?.slice(0, 2)?.toUpperCase()}
+                                label="Upload company logo"
                             />
-                            {formData.companyLogo && (
-                                <div className="mt-2 flex items-center gap-3 px-3 py-2.5 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                    {logoLoadError ? (
-                                        <div className="h-10 w-10 rounded border border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 flex items-center justify-center flex-shrink-0">
-                                            <ImageIcon className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-                                        </div>
-                                    ) : (
-                                        <img
-                                            src={formData.companyLogo}
-                                            alt="Logo preview"
-                                            className="h-10 w-10 object-contain rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0"
-                                            onError={() => setLogoLoadError(true)}
-                                        />
-                                    )}
-                                    <div className="flex items-center gap-1.5">
-                                        {!logoLoadError && (
-                                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
-                                        )}
-                                        <span className="text-xs text-gray-400 dark:text-gray-500">
-                                            {logoLoadError
-                                                ? "Could not load image — verify the URL"
-                                                : "Logo preview"}
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -217,9 +213,7 @@ const CompanyForm = ({
                             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl text-sm font-medium transition shadow-sm shadow-blue-200 dark:shadow-none disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {loading
-                                ? mode === "create" ? "Creating..." : "Saving..."
-                                : mode === "create" ? "Create Company" : "Save Changes"}
+                            {getButtonLabel(loading, mode)}
                         </button>
                     ) : (
                         <motion.button
@@ -229,9 +223,7 @@ const CompanyForm = ({
                             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl text-sm font-medium transition shadow-sm shadow-blue-200 dark:shadow-none disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {loading
-                                ? mode === "create" ? "Creating..." : "Saving..."
-                                : mode === "create" ? "Create Company" : "Save Changes"}
+                            {getButtonLabel(loading, mode)}
                         </motion.button>
                     )}
                     <button

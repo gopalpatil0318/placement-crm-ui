@@ -10,6 +10,7 @@ import ModalWrapper from "@/components/ui/ModalWrapper";
 import { useUserDetail } from "@/hooks/collegeadmin/user_management/useUserDetail";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import { showToast } from "@/utils/ToastUtils";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // ========================
 // HELPERS
@@ -25,7 +26,7 @@ const AVATAR_COLORS = [
 ] as const;
 
 const getAvatarGradient = (name: string) =>
-    AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+    AVATAR_COLORS[(name.codePointAt(0) ?? 0) % AVATAR_COLORS.length];
 
 const getInitials = (name: string) => {
     const words = name.trim().split(/\s+/);
@@ -138,7 +139,7 @@ const DetailSkeleton = () => (
             {/* Stats */}
             <div className="p-8 grid grid-cols-2 md:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-xl" />
+                    <div key={`stat-skel-${String(i)}`} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-xl" />
                 ))}
             </div>
         </div>
@@ -146,7 +147,7 @@ const DetailSkeleton = () => (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex items-start gap-3">
+                    <div key={`info-skel-${String(i)}`} className="flex items-start gap-3">
                         <div className="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded-lg" />
                         <div className="space-y-1.5">
                             <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
@@ -166,6 +167,8 @@ const DetailSkeleton = () => (
 export default function UserDetail() {
     const { userId } = useParams<{ userId: string }>();
     const navigate = useNavigate();
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("users.manage");
     const { user, loading, error, refresh } = useUserDetail(userId || "");
 
     const [showToggleModal, setShowToggleModal] = useState(false);
@@ -274,7 +277,7 @@ export default function UserDetail() {
                             </div>
 
                             {/* Action buttons — hidden for collegeadmin */}
-                            {!isAdmin && (
+                            {!isAdmin && canManage && (
                                 <div className="flex items-center gap-3">
                                     <button
                                         type="button"
@@ -446,9 +449,8 @@ export default function UserDetail() {
                         }`}
                     >
                         {toggling && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {toggling
-                            ? "Updating..."
-                            : isActive ? "Deactivate" : "Activate"}
+                        {toggling && "Updating..."}
+                        {!toggling && (isActive ? "Deactivate" : "Activate")}
                     </button>
                 </div>
             </ModalWrapper>

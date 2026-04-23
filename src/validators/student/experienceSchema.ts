@@ -25,7 +25,7 @@ export const WORK_MODE_LABELS: Record<string, string> = {
 export const experienceSchema = z
     .object({
         company_name: z.string().min(1, "Company name is required").max(200),
-        company_website: z.url({ message: "Must be a valid URL" }).optional().or(z.literal("")),
+        company_website: z.url({ message: "Must be a valid URL" }).max(500).optional().or(z.literal("")),
         position_title: z.string().min(1, "Position title is required").max(200),
         employment_type: z.enum(VALID_EMPLOYMENT_TYPES, {
             message: "Please select employment type",
@@ -42,8 +42,8 @@ export const experienceSchema = z
         is_current: z.boolean(),
         duration_months: z.union([z.number(), z.string()]).transform((v) => v === "" ? undefined : Number(v)).optional(),
         stipend_amount: z.union([z.number(), z.string()]).transform((v) => v === "" ? undefined : Number(v)).optional(),
-        offer_letter_url: z.url({ message: "Must be a valid URL" }).optional().or(z.literal("")),
-        completion_certificate_url: z.url({ message: "Must be a valid URL" }).optional().or(z.literal("")),
+        offer_letter_url: z.string().max(500).optional().or(z.literal("")),
+        completion_certificate_url: z.string().max(500).optional().or(z.literal("")),
     })
     .refine(
         (data) => {

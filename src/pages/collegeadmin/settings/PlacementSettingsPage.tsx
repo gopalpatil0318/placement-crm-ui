@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react"
+import { usePermissions } from "@/hooks/usePermissions"
 import { Settings2, Info, Save } from "lucide-react"
 import PageHeader from "@/components/collegeadmin/PageHeader"
 import AnimatedPage from "@/components/ui/AnimatedPage"
@@ -64,6 +65,8 @@ function SettingRow({
 // ========================
 
 export default function PlacementSettingsPage() {
+    const { hasPermission } = usePermissions()
+    const canManage = hasPermission("settings.manage")
     const { selectedYear } = useYearFilter()
     const { data: settings, isLoading } = usePlacementSettings(selectedYear)
 
@@ -79,6 +82,7 @@ export default function PlacementSettingsPage() {
                 exclude_placed_by_default: settings.exclude_placed_by_default,
                 auto_reject_on_round_fail: settings.auto_reject_on_round_fail,
                 allow_reapply_after_withdrawal: settings.allow_reapply_after_withdrawal,
+                max_active_applications: settings.max_active_applications ?? null,
             }
         }
         return {
@@ -90,6 +94,7 @@ export default function PlacementSettingsPage() {
             exclude_placed_by_default: true,
             auto_reject_on_round_fail: true,
             allow_reapply_after_withdrawal: false,
+            max_active_applications: null as number | null,
         }
     }, [settings, selectedYear])
 
@@ -129,12 +134,14 @@ export default function PlacementSettingsPage() {
                         />
                         <p className="text-sm text-muted-foreground mt-1">{`Placement rules & policies for ${selectedYear}`}</p>
                     </div>
+                    {canManage && (
                     <Button onClick={handleSave} size="sm" disabled={upsertMutation.isPending || isLoading || !isDirty}>
                         <Save className="mr-1.5 h-4 w-4" />
                         {upsertMutation.isPending && "Saving…"}
                         {!upsertMutation.isPending && isDirty && "Save Settings"}
                         {!upsertMutation.isPending && !isDirty && "Saved"}
                     </Button>
+                    )}
                 </div>
 
                 {isLoading ? (
@@ -149,7 +156,7 @@ export default function PlacementSettingsPage() {
 
                             <SettingRow
                                 label="Max Active Offers"
-                                description="Maximum number of concurrent active placement offers a student can hold."
+                                description="Maximum concurrent on-campus / pool-campus offers a student can hold. Off-campus placements are unlimited."
                             >
                                 <Input
                                     type="number"
@@ -255,6 +262,24 @@ export default function PlacementSettingsPage() {
                                     aria-label="Allow reapply after withdrawal"
                                     checked={form.allow_reapply_after_withdrawal}
                                     onCheckedChange={(checked: boolean) => setForm((p) => ({ ...p, allow_reapply_after_withdrawal: checked }))}
+                                />
+                            </SettingRow>
+
+                            <SettingRow
+                                label="Max Active Applications"
+                                description="Maximum number of concurrent active applications per student. Leave empty for unlimited."
+                            >
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={100}
+                                    className="w-20 text-center"
+                                    placeholder="∞"
+                                    value={form.max_active_applications ?? ""}
+                                    onChange={(e) => {
+                                        const val = e.target.value === "" ? null : Math.max(1, Math.min(100, Number(e.target.value) || 1))
+                                        setForm((p) => ({ ...p, max_active_applications: val }))
+                                    }}
                                 />
                             </SettingRow>
                         </section>

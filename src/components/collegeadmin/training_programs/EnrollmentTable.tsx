@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     Search,
     ChevronLeft,
@@ -38,6 +39,8 @@ interface EnrollmentTableProps {
 }
 
 const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded, selectedIds, onToggleId, onToggleAll }: Readonly<EnrollmentTableProps>) => {
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("training.manage");
     const {
         enrollments,
         summary,
@@ -339,6 +342,7 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded, selecte
                                                 )}
                                             </td>
                                             <td className="px-5 py-3.5 text-right">
+                                                {canManage && (
                                                 <button
                                                     type="button"
                                                     onClick={() => onEditEnrollment(enrollment, totalSessions || undefined)}
@@ -346,6 +350,7 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded, selecte
                                                 >
                                                     <Edit2 className="h-3.5 w-3.5" /> Update
                                                 </button>
+                                                )}
                                             </td>
                                         </AnimatedRow>
                                     );
@@ -396,6 +401,7 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded, selecte
                                         </p>
                                     </div>
                                 </div>
+                                {canManage && (
                                 <button
                                     type="button"
                                     onClick={() => onEditEnrollment(enrollment, totalSessions || undefined)}
@@ -403,6 +409,7 @@ const EnrollmentTable = ({ programId, onEditEnrollment, onProgramLoaded, selecte
                                 >
                                     <Edit2 className="h-3.5 w-3.5" /> Update Enrollment
                                 </button>
+                                )}
                             </div>
                         );
                     })}

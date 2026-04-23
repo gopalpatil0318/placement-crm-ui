@@ -1,16 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingSelect from "@/components/ui/FloatingSelect";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
+import { CompanySearchCombobox, type CompanyOption } from "@/components/ui/CompanySearchCombobox";
 import { useRecordExternalPlacement } from "@/hooks/collegeadmin/placements/useRecordExternalPlacement";
-import { useViewCompanies } from "@/hooks/collegeadmin/company_management/useViewCompanies";
+import { useYearFilter } from "@/context/YearFilterContext";
 import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
 import {
     PLACEMENT_TYPE_OPTIONS,
     PLACEMENT_TYPE_LABELS,
 } from "@/validators/PlacementSchema";
-import { DRIVE_TYPE_OPTIONS, DRIVE_TYPE_LABELS } from "@/validators/JobPostingSchema";
+import { DRIVE_TYPE_LABELS } from "@/validators/JobPostingSchema";
 import {
     ExternalLink,
     Briefcase,
@@ -35,9 +36,11 @@ interface StudentOption {
 const StudentPicker = ({
     selectedId,
     onSelect,
+    passoutYear,
 }: {
     selectedId: string;
     onSelect: (student: StudentOption | null) => void;
+    passoutYear?: number;
 }) => {
     const [search, setSearch] = useState("");
     const [students, setStudents] = useState<StudentOption[]>([]);
@@ -58,6 +61,7 @@ const StudentPicker = ({
             try {
                 const res = await CollegeAdminService.getAllStudents({
                     search: search.trim(),
+                    ...(passoutYear ? { student_passout_year: passoutYear } : {}),
                     limit: 10,
                 });
                 setStudents(Array.isArray(res.data) ? res.data : []);
@@ -70,7 +74,7 @@ const StudentPicker = ({
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [search]);
+    }, [search, passoutYear]);
 
     if (selected || selectedId) {
         return (
@@ -169,6 +173,24 @@ const StudentPicker = ({
 };
 
 // ========================
+// TYPES for job/position dropdowns
+// ========================
+
+interface JobOption {
+    job_id: string;
+    job_title: string;
+    job_location?: string;
+    positions_count?: number;
+}
+
+interface PositionOption {
+    position_id: string;
+    position_name: string;
+    vacancies?: number;
+    position_status?: string;
+}
+
+// ========================
 // MODAL
 // ========================
 
@@ -184,13 +206,170 @@ const RecordExternalPlacementModal = ({ isOpen, onClose, onSuccess }: RecordExte
         onSuccess();
     });
 
-    const { companies: activeCompanies, loading: companiesLoading } = useViewCompanies({ limit: 200, status: "active" });
+    const { defaultYear, yearOptions } = useYearFilter();
+
+    // ─── Local state for cascading dropdowns ─────────────────────────────────
+    const [selectedPassoutYear, setSelectedPassoutYear] = useState<number>(defaultYear);
+    const [selectedCompany, setSelectedCompany] = useState<CompanyOption | null>(null);
+
+    // Sync passout_year into formData on mount
+    useEffect(() => {
+        setFormData((prev) => ({ ...prev, passout_year: String(defaultYear) }));
+    }, [defaultYear, setFormData]);
+
+    // Job dropdown state
+    const [companyJobs, setCompanyJobs] = useState<JobOption[]>([]);
+    const [jobsLoading, setJobsLoading] = useState(false);
+    const [selectedJobId, setSelectedJobId] = useState<string>(""); // "" = new job
+
+    // Position dropdown state
+    const [jobPositions, setJobPositions] = useState<PositionOption[]>([]);
+    const [positionsLoading, setPositionsLoading] = useState(false);
+    const [selectedPositionId, setSelectedPositionId] = useState<string>(""); // "" = new position
 
     const showFulltime = formData.placement_type === "full-time" || formData.placement_type === "both";
     const showInternship = formData.placement_type === "internship" || formData.placement_type === "both";
 
+    // ─── Fetch jobs when company + drive_type + passout year are set ──────────
+    const fetchJobs = useCallback(async (companyId: string, driveType: string, passoutYear: number) => {
+        setJobsLoading(true);
+        setCompanyJobs([]);
+        setSelectedJobId("");
+        setJobPositions([]);
+        setSelectedPositionId("");
+        try {
+            const res = await CollegeAdminService.getAllJobs({
+                company_id: companyId,
+                drive_type: driveType,
+                passout_year: passoutYear,
+                limit: 50,
+            });
+            const jobs: JobOption[] = res?.data?.jobs ?? res?.data ?? [];
+            setCompanyJobs(Array.isArray(jobs) ? jobs : []);
+        } catch {
+            setCompanyJobs([]);
+        } finally {
+            setJobsLoading(false);
+        }
+    }, []);
+
+    // ─── Fetch positions when existing job selected ──────────────────────────
+    const fetchPositions = useCallback(async (jobId: string) => {
+        setPositionsLoading(true);
+        setJobPositions([]);
+        setSelectedPositionId("");
+        try {
+            const res = await CollegeAdminService.getJob(jobId);
+            const positions: PositionOption[] = res?.data?.positions ?? [];
+            setJobPositions(Array.isArray(positions) ? positions : []);
+        } catch {
+            setJobPositions([]);
+        } finally {
+            setPositionsLoading(false);
+        }
+    }, []);
+
+    // ─── Trigger job fetch when company/driveType/year change ────────────────
+    useEffect(() => {
+        if (selectedCompany && formData.drive_type && selectedPassoutYear) {
+            fetchJobs(selectedCompany.company_id, formData.drive_type, selectedPassoutYear);
+        } else {
+            setCompanyJobs([]);
+            setSelectedJobId("");
+            setJobPositions([]);
+            setSelectedPositionId("");
+        }
+    }, [selectedCompany, formData.drive_type, selectedPassoutYear, fetchJobs]);
+
+    // ─── Handlers ────────────────────────────────────────────────────────────
+
+    const handlePassoutYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const year = Number(e.target.value);
+        setSelectedPassoutYear(year);
+        // Reset cascade: student → company → job → position
+        setFormData((prev) => ({ ...prev, student_id: "", company_id: "", job_id: "", job_title: "", fulltime_designation: "", passout_year: String(year) }));
+        setSelectedCompany(null);
+        setSelectedJobId("");
+        setJobPositions([]);
+        setSelectedPositionId("");
+    };
+
+    const handleCompanySelect = (company: CompanyOption | null) => {
+        setSelectedCompany(company);
+        setFormData((prev) => ({
+            ...prev,
+            company_id: company?.company_id ?? "",
+            job_id: "",
+            job_title: "",
+            fulltime_designation: "",
+        }));
+        setSelectedJobId("");
+        setJobPositions([]);
+        setSelectedPositionId("");
+    };
+
+    const handleJobSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const jobId = e.target.value;
+        setSelectedJobId(jobId);
+        setSelectedPositionId("");
+        setJobPositions([]);
+
+        if (jobId) {
+            // Existing job selected
+            const job = companyJobs.find((j) => j.job_id === jobId);
+            setFormData((prev) => ({
+                ...prev,
+                job_id: jobId,
+                job_title: job?.job_title ?? prev.job_title,
+                fulltime_designation: "",
+            }));
+            fetchPositions(jobId);
+        } else {
+            // New job
+            setFormData((prev) => ({
+                ...prev,
+                job_id: "",
+                job_title: "",
+                fulltime_designation: "",
+            }));
+        }
+    };
+
+    const handlePositionSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const posId = e.target.value;
+        setSelectedPositionId(posId);
+
+        if (posId) {
+            const pos = jobPositions.find((p) => p.position_id === posId);
+            setFormData((prev) => ({
+                ...prev,
+                fulltime_designation: pos?.position_name ?? prev.fulltime_designation,
+            }));
+        } else {
+            setFormData((prev) => ({
+                ...prev,
+                fulltime_designation: "",
+            }));
+        }
+    };
+
+    const handleDriveTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        handleChange(e);
+        // Jobs depend on drive_type — reset job/position (fetch triggered by useEffect)
+        setSelectedJobId("");
+        setJobPositions([]);
+        setSelectedPositionId("");
+        setFormData((prev) => ({ ...prev, job_id: "", job_title: "", fulltime_designation: "" }));
+    };
+
     const handleClose = () => {
         reset();
+        setSelectedPassoutYear(defaultYear);
+        setSelectedCompany(null);
+        setCompanyJobs([]);
+        setSelectedJobId("");
+        setJobPositions([]);
+        setSelectedPositionId("");
         onClose();
     };
 
@@ -214,27 +393,104 @@ const RecordExternalPlacementModal = ({ isOpen, onClose, onSuccess }: RecordExte
                     </p>
                 </div>
 
+                {/* Passout Year */}
+                <FloatingSelect
+                    label="Passout Year"
+                    name="passout_year"
+                    value={String(selectedPassoutYear)}
+                    onChange={handlePassoutYearChange}
+                    options={yearOptions.map((y) => ({ value: String(y), label: String(y) }))}
+                    disabled={loading}
+                />
+
                 {/* Student picker */}
                 <StudentPicker
-                    key={formData.student_id || "empty"}
+                    key={`${formData.student_id || "empty"}-${selectedPassoutYear}`}
                     selectedId={formData.student_id}
                     onSelect={(s) => setFormData((prev) => ({ ...prev, student_id: s?.student_id || "" }))}
+                    passoutYear={selectedPassoutYear}
                 />
                 {errors.student_id && <p className="text-xs text-red-500 -mt-2">{errors.student_id}</p>}
 
-                {/* Company */}
-                <FloatingSelect
-                    label="Company"
-                    name="company_id"
-                    value={formData.company_id}
-                    onChange={handleChange}
-                    error={errors.company_id}
-                    disabled={companiesLoading || loading}
-                    options={(activeCompanies || []).map((c) => ({ value: c.company_id, label: c.company_name }))}
-                    required
-                />
+                {/* Company — search combobox */}
+                <div className="space-y-1">
+                    <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Company <span className="text-red-500">*</span>
+                    </span>
+                    <CompanySearchCombobox
+                        selected={selectedCompany}
+                        onSelect={handleCompanySelect}
+                        disabled={loading}
+                    />
+                    {errors.company_id && <p className="text-xs text-red-500">{errors.company_id}</p>}
+                </div>
 
-                {/* Job Title + Location */}
+                {/* Drive Type + Placement Type */}
+                <div className="grid grid-cols-2 gap-3">
+                    <FloatingSelect
+                        label="Drive Type"
+                        name="drive_type"
+                        value={formData.drive_type}
+                        onChange={handleDriveTypeChange}
+                        options={(["off_campus", "pool_campus"] as const).map((t) => ({ value: t, label: DRIVE_TYPE_LABELS[t] }))}
+                        disabled={loading}
+                    />
+                    <FloatingSelect
+                        label="Placement Type"
+                        name="placement_type"
+                        value={formData.placement_type}
+                        onChange={handleChange}
+                        options={PLACEMENT_TYPE_OPTIONS.map((t) => ({ value: t, label: PLACEMENT_TYPE_LABELS[t] }))}
+                        required
+                        disabled={loading}
+                    />
+                </div>
+
+                {/* Job dropdown — shown after company selected */}
+                {selectedCompany && (
+                    <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Job {jobsLoading && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
+                        </label>
+                        <select
+                            value={selectedJobId}
+                            onChange={handleJobSelect}
+                            disabled={loading || jobsLoading}
+                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                        >
+                            <option value="">+ New Job</option>
+                            {companyJobs.map((j) => (
+                                <option key={j.job_id} value={j.job_id}>
+                                    {j.job_title}{j.positions_count ? ` (${j.positions_count} positions)` : ""}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {/* Position dropdown — shown when existing job selected */}
+                {selectedJobId && (
+                    <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Position {positionsLoading && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
+                        </label>
+                        <select
+                            value={selectedPositionId}
+                            onChange={handlePositionSelect}
+                            disabled={loading || positionsLoading}
+                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                        >
+                            <option value="">+ New Position</option>
+                            {jobPositions.map((p) => (
+                                <option key={p.position_id} value={p.position_id}>
+                                    {p.position_name}{p.vacancies !== undefined && p.vacancies !== null ? ` (vacancies: ${p.vacancies})` : ""}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {/* Job Title — editable only when new job */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <FloatingInput
                         label="Job Title"
@@ -245,7 +501,7 @@ const RecordExternalPlacementModal = ({ isOpen, onClose, onSuccess }: RecordExte
                         placeholder="e.g. Software Engineer"
                         maxLength={300}
                         required
-                        disabled={loading}
+                        disabled={loading || !!selectedJobId}
                     />
                     <FloatingInput
                         label="Location"
@@ -254,27 +510,6 @@ const RecordExternalPlacementModal = ({ isOpen, onClose, onSuccess }: RecordExte
                         onChange={handleChange}
                         placeholder="e.g. Bangalore"
                         maxLength={300}
-                        disabled={loading}
-                    />
-                </div>
-
-                {/* Drive Type + Placement Type */}
-                <div className="grid grid-cols-2 gap-3">
-                    <FloatingSelect
-                        label="Drive Type"
-                        name="drive_type"
-                        value={formData.drive_type}
-                        onChange={handleChange}
-                        options={DRIVE_TYPE_OPTIONS.map((t) => ({ value: t, label: DRIVE_TYPE_LABELS[t] }))}
-                        disabled={loading}
-                    />
-                    <FloatingSelect
-                        label="Placement Type"
-                        name="placement_type"
-                        value={formData.placement_type}
-                        onChange={handleChange}
-                        options={PLACEMENT_TYPE_OPTIONS.map((t) => ({ value: t, label: PLACEMENT_TYPE_LABELS[t] }))}
-                        required
                         disabled={loading}
                     />
                 </div>
@@ -304,7 +539,7 @@ const RecordExternalPlacementModal = ({ isOpen, onClose, onSuccess }: RecordExte
                                 value={formData.fulltime_designation}
                                 onChange={handleChange}
                                 placeholder="e.g. Software Engineer"
-                                disabled={loading}
+                                disabled={loading || !!selectedPositionId}
                             />
                         </div>
                         <FloatingInput

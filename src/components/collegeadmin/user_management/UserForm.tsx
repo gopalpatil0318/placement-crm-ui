@@ -87,6 +87,60 @@ function getPasswordStrength(password: string): { label: string; color: string; 
     return { label: "Strong", color: "text-emerald-600 dark:text-emerald-400", barColor: "bg-emerald-500", width: "100%" };
 }
 
+function getSubmitLabel(loading: boolean, isEdit: boolean): string {
+    if (loading) return isEdit ? "Saving..." : "Creating...";
+    return isEdit ? "Save Changes" : "Create User";
+}
+
+const CollegeAdminReadOnly = ({
+    formData,
+    handleCancel,
+}: {
+    formData: UserFormData;
+    handleCancel: () => void;
+}) => (
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6">
+            <div className="flex items-start gap-3">
+                <Shield className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <div>
+                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                        Protected Account
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                        College admin accounts cannot be modified. Only the system administrator can change college admin details.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">Name</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1">{formData.userName}</p>
+            </div>
+            <div>
+                <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">Email</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1">{formData.userEmail}</p>
+            </div>
+            <div>
+                <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">Role</p>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 mt-1">
+                    College Admin
+                </span>
+            </div>
+        </div>
+        <div className="mt-8 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <button
+                type="button"
+                onClick={handleCancel}
+                className="px-6 py-2.5 rounded-xl font-medium text-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            >
+                Back to Users
+            </button>
+        </div>
+    </div>
+);
+
 // ========================
 // COMPONENT
 // ========================
@@ -116,48 +170,7 @@ const UserForm = ({
 
     // College admin read-only state
     if (isEdit && isCollegeAdmin) {
-        return (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6">
-                    <div className="flex items-start gap-3">
-                        <Shield className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                        <div>
-                            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                                Protected Account
-                            </p>
-                            <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-                                College admin accounts cannot be modified. Only the system administrator can change college admin details.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">Name</p>
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1">{formData.userName}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">Email</p>
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1">{formData.userEmail}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">Role</p>
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 mt-1">
-                            College Admin
-                        </span>
-                    </div>
-                </div>
-                <div className="mt-8 pt-4 border-t border-gray-100 dark:border-gray-800">
-                    <button
-                        type="button"
-                        onClick={handleCancel}
-                        className="px-6 py-2.5 rounded-xl font-medium text-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-                    >
-                        Back to Users
-                    </button>
-                </div>
-            </div>
-        );
+        return <CollegeAdminReadOnly formData={formData} handleCancel={handleCancel} />;
     }
 
     return (
@@ -223,7 +236,7 @@ const UserForm = ({
                             required
                         />
                         <FloatingSelect
-                            label="Department"
+                            label="Primary Department"
                             name="deptId"
                             value={formData.deptId || ""}
                             onChange={handleChange}
@@ -231,12 +244,10 @@ const UserForm = ({
                             disabled={fetchingDepts}
                         />
                     </div>
-                    {(formData.userRole === "hod" || formData.userRole === "teacher") && (
-                        <div className="mt-3 flex items-start gap-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg">
-                            <Lightbulb className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                            Assigning a department is recommended for {formData.userRole === "hod" ? "HOD" : "Teacher"} roles.
-                        </div>
-                    )}
+                    <div className="mt-3 flex items-start gap-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg">
+                        <Lightbulb className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                        This sets the user's primary department. Use the Permission Manager to control which departments they can access.
+                    </div>
                 </section>
 
                 {/* Password Section (create mode only) */}
@@ -297,9 +308,7 @@ const UserForm = ({
                             className="inline-flex items-center gap-2 px-8 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl text-sm font-semibold transition shadow-sm disabled:cursor-not-allowed"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {loading
-                                ? isEdit ? "Saving..." : "Creating..."
-                                : isEdit ? "Save Changes" : "Create User"}
+                            {getSubmitLabel(loading, isEdit)}
                         </button>
                     ) : (
                         <motion.button
@@ -310,9 +319,7 @@ const UserForm = ({
                             className="inline-flex items-center gap-2 px-8 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl text-sm font-semibold transition shadow-sm disabled:cursor-not-allowed"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {loading
-                                ? isEdit ? "Saving..." : "Creating..."
-                                : isEdit ? "Save Changes" : "Create User"}
+                            {getSubmitLabel(loading, isEdit)}
                         </motion.button>
                     )}
                     <button

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
     Search,
     ChevronLeft,
@@ -51,6 +51,9 @@ import {
     type PlacementType,
 } from "@/validators/PlacementSchema";
 import RecordExternalPlacementModal from "@/components/collegeadmin/placements/RecordExternalPlacementModal";
+import { useSelfReportStats } from "@/hooks/collegeadmin/self-reports/useAdminSelfReports";
+import { useYearFilter } from "@/context/YearFilterContext";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // ========================
 // CONSTANTS
@@ -992,6 +995,8 @@ const PlacementRow = ({
     onVerifyJoining: (p: PlacementListItem) => void;
     onNavigate: (p: PlacementListItem) => void;
 }) => {
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("placements.manage");
     const transitions = PLACEMENT_STATUS_TRANSITIONS[placement.placement_status as PlacementStatus] || [];
     const isTerminal = transitions.length === 0;
 
@@ -1067,7 +1072,7 @@ const PlacementRow = ({
                 {/* Actions */}
                 <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1">
-                        {!isTerminal && (
+                        {canManage && !isTerminal && (
                             <button
                                 type="button"
                                 onClick={() => onEdit(placement)}
@@ -1120,6 +1125,8 @@ const PlacementDetailPanel = ({
     onVerifyJoining: () => void;
     onEdit: () => void;
 }) => {
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("placements.manage");
     const transitions = PLACEMENT_STATUS_TRANSITIONS[placement.placement_status as PlacementStatus] || [];
     const isTerminal = transitions.length === 0;
 
@@ -1252,49 +1259,51 @@ const PlacementDetailPanel = ({
                     )}
 
                     {/* Action buttons */}
-                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex-wrap">
-                        {!isTerminal && (
+                    {canManage && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex-wrap">
+                            {!isTerminal && (
+                                <button
+                                    type="button"
+                                    onClick={onEdit}
+                                    className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition"
+                                >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                    Edit
+                                </button>
+                            )}
                             <button
                                 type="button"
-                                onClick={onEdit}
-                                className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition"
-                            >
-                                <Pencil className="h-3.5 w-3.5" />
-                                Edit
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            onClick={onVerify}
-                            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 transition"
-                        >
-                            <ShieldCheck className="h-3.5 w-3.5" />
-                            {placement.offer_letter_verified ? "Re-verify Offer" : "Verify Offer"}
-                        </button>
-                        {["accepted", "joined"].includes(placement.placement_status) && (
-                            <button
-                                type="button"
-                                onClick={onVerifyJoining}
+                                onClick={onVerify}
                                 className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 transition"
                             >
                                 <ShieldCheck className="h-3.5 w-3.5" />
-                                {placement.joining_letter_verified ? "Re-verify Joining" : "Verify Joining"}
+                                {placement.offer_letter_verified ? "Re-verify Offer" : "Verify Offer"}
                             </button>
-                        )}
-                        {transitions.map((status) => {
-                            const colors = STATUS_ACTION_COLORS[status] || { bg: "bg-gray-100", text: "text-gray-700", hover: "hover:bg-gray-200" };
-                            return (
+                            {["accepted", "joined"].includes(placement.placement_status) && (
                                 <button
-                                    key={status}
                                     type="button"
-                                    onClick={() => onStatusChange(status)}
-                                    className={`min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${colors.bg} ${colors.text} ${colors.hover}`}
+                                    onClick={onVerifyJoining}
+                                    className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 transition"
                                 >
-                                    {PLACEMENT_STATUS_LABELS[status]}
+                                    <ShieldCheck className="h-3.5 w-3.5" />
+                                    {placement.joining_letter_verified ? "Re-verify Joining" : "Verify Joining"}
                                 </button>
-                            );
-                        })}
-                    </div>
+                            )}
+                            {transitions.map((status) => {
+                                const colors = STATUS_ACTION_COLORS[status] || { bg: "bg-gray-100", text: "text-gray-700", hover: "hover:bg-gray-200" };
+                                return (
+                                    <button
+                                        key={status}
+                                        type="button"
+                                        onClick={() => onStatusChange(status)}
+                                        className={`min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${colors.bg} ${colors.text} ${colors.hover}`}
+                                    >
+                                        {PLACEMENT_STATUS_LABELS[status]}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             </td>
         </tr>
@@ -1307,6 +1316,7 @@ const PlacementDetailPanel = ({
 
 const PlacementManager = () => {
     const navigate = useNavigate();
+    const { hasPermission } = usePermissions();
     const {
         placements,
         stats,
@@ -1338,6 +1348,9 @@ const PlacementManager = () => {
     const [verifyModal, setVerifyModal] = useState<PlacementListItem | null>(null);
     const [verifyJoiningModal, setVerifyJoiningModal] = useState<PlacementListItem | null>(null);
     const [showExternalModal, setShowExternalModal] = useState(false);
+
+    const { selectedYear } = useYearFilter();
+    const { stats: selfReportStats } = useSelfReportStats(selectedYear);
 
     const validExpandedId = expandedId && placements.some(p => p.placement_id === expandedId) ? expandedId : null;
 
@@ -1399,18 +1412,36 @@ const PlacementManager = () => {
                                 </p>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setShowExternalModal(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition shadow-sm"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Record External Placement
-                        </button>
+                        {hasPermission("placements.create") && (
+                            <button
+                                type="button"
+                                onClick={() => setShowExternalModal(true)}
+                                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition shadow-sm"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Record External Placement
+                            </button>
+                        )}
                     </div>
                     <StatsDashboard stats={stats} loading={loading} />
                 </div>
             </div>
+
+            {/* Self-report pending banner */}
+            {selfReportStats.pending > 0 && (
+                <Link
+                    to="/college/self-reports"
+                    className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 transition-colors hover:bg-amber-100 dark:border-amber-800/40 dark:bg-amber-950/20 dark:hover:bg-amber-900/30"
+                >
+                    <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                        {selfReportStats.pending} pending off-campus self-report{selfReportStats.pending > 1 ? "s" : ""} to review
+                    </span>
+                    <span className="ml-auto text-xs font-semibold text-amber-600 dark:text-amber-400">
+                        Review →
+                    </span>
+                </Link>
+            )}
 
             {/* Table card */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">

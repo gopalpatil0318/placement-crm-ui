@@ -10,6 +10,10 @@ import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingSelect from "@/components/ui/FloatingSelect";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
+import { FileUpload } from "@/components/ui/FileUpload";
+import { DocumentPreview } from "@/components/ui/DocumentPreview";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { useStudentAuth } from "@/hooks/student/useStudentAuth";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -55,6 +59,34 @@ const ExperienceForm = () => {
         handleChange, addTech, removeTech, addResp, removeResp,
         handleSubmit, handleDelete,
     } = useExperience();
+
+    const { user } = useStudentAuth();
+    const offerUpload = useFileUpload();
+    const completionUpload = useFileUpload();
+
+    const handleOfferSelect = async (file: File | null) => {
+        if (!file || !user) return;
+        try {
+            const { storagePath } = await offerUpload.upload(file, {
+                bucket: "placenex-private",
+                category: "certs",
+                entityId: `exp_${user.id}`,
+            });
+            handleChange({ target: { name: "offer_letter_url", value: storagePath } } as React.ChangeEvent<HTMLInputElement>);
+        } catch { /* error in offerUpload.error */ }
+    };
+
+    const handleCompletionSelect = async (file: File | null) => {
+        if (!file || !user) return;
+        try {
+            const { storagePath } = await completionUpload.upload(file, {
+                bucket: "placenex-private",
+                category: "certs",
+                entityId: `exp_${user.id}`,
+            });
+            handleChange({ target: { name: "completion_certificate_url", value: storagePath } } as React.ChangeEvent<HTMLInputElement>);
+        } catch { /* error in completionUpload.error */ }
+    };
 
     const shouldReduce = useReducedMotion();
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -236,8 +268,28 @@ const ExperienceForm = () => {
                             <div className="space-y-4">
                                 <FloatingInput label="Company Website" name="company_website" value={formData.company_website} onChange={handleChange} error={errors.company_website} placeholder="https://..." inputMode="url" />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FloatingInput label="Offer Letter URL" name="offer_letter_url" value={formData.offer_letter_url} onChange={handleChange} error={errors.offer_letter_url} placeholder="https://..." inputMode="url" />
-                                    <FloatingInput label="Completion Certificate URL" name="completion_certificate_url" value={formData.completion_certificate_url} onChange={handleChange} error={errors.completion_certificate_url} placeholder="https://..." inputMode="url" />
+                                    <FileUpload
+                                        value={formData.offer_letter_url || null}
+                                        onFileSelect={handleOfferSelect}
+                                        progress={offerUpload.progress}
+                                        isUploading={offerUpload.isUploading}
+                                        error={offerUpload.error || errors.offer_letter_url}
+                                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                        maxSizeBytes={5 * 1024 * 1024}
+                                        label="Offer Letter"
+                                        hint="PDF or image, max 5 MB"
+                                    />
+                                    <FileUpload
+                                        value={formData.completion_certificate_url || null}
+                                        onFileSelect={handleCompletionSelect}
+                                        progress={completionUpload.progress}
+                                        isUploading={completionUpload.isUploading}
+                                        error={completionUpload.error || errors.completion_certificate_url}
+                                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                        maxSizeBytes={5 * 1024 * 1024}
+                                        label="Completion Certificate"
+                                        hint="PDF or image, max 5 MB"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -366,16 +418,10 @@ const ExperienceCard = memo(function ExperienceCard({
                         </a>
                     )}
                     {exp.offer_letter_url && (
-                        <a href={exp.offer_letter_url} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <ExternalLink className="h-3.5 w-3.5" /> Offer Letter
-                        </a>
+                        <DocumentPreview value={exp.offer_letter_url} bucket="placenex-private" label="Offer Letter" variant="inline" />
                     )}
                     {exp.completion_certificate_url && (
-                        <a href={exp.completion_certificate_url} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <ExternalLink className="h-3.5 w-3.5" /> Certificate
-                        </a>
+                        <DocumentPreview value={exp.completion_certificate_url} bucket="placenex-private" label="Certificate" variant="inline" />
                     )}
                     {exp.verification_status === "approved" && (
                         <output className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">

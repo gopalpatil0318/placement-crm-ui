@@ -8,6 +8,12 @@ export interface Department {
   dept_code: string | null
 }
 
+export type SubscriptionStatus = "none" | "trial" | "active" | "expired" | "suspended"
+
+export type ConfigurableRole = "tpo" | "tpc" | "hod" | "teacher"
+
+export const CONFIGURABLE_ROLES: ConfigurableRole[] = ["tpo", "tpc", "hod", "teacher"]
+
 export interface User {
   id: string
   email: string
@@ -20,7 +26,12 @@ export interface User {
   deptId?: string | null
   defaultAcademicYear?: number
   collegeType?: string
+  subscriptionStatus?: SubscriptionStatus
   departments?: Department[]
+  // Dynamic permissions (populated for configurable roles: tpo/tpc/hod/teacher)
+  permissions?: string[] | null
+  deptScoped?: boolean
+  deptIds?: string[]
   // Student-specific fields (populated only when role === "student")
   firstName?: string
   middleName?: string
@@ -46,7 +57,11 @@ export interface ApiLoginResponse {
       dept_id: string | null
       default_academic_year: number | null
       college_type: string | null
+      subscription_status: string | null
       departments: Department[]
+      permissions: string[] | null
+      dept_scoped: boolean
+      dept_ids: string[]
     }
   }
 }
@@ -55,13 +70,16 @@ export interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<User | void>
   logout: () => Promise<void>
 }
 
 export type SysAdminAuthContextType = AuthContextType
 
-export type CollegeAuthContextType = AuthContextType
+export interface CollegeAuthContextType extends Omit<AuthContextType, 'login'> {
+  login: (email: string, password: string) => Promise<User>
+  refreshPermissions: () => Promise<void>
+}
 
 export interface YearFilterContextType {
   selectedYear: number

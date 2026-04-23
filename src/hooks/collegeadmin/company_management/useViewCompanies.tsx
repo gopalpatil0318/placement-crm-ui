@@ -26,11 +26,13 @@ interface Pagination {
     totalPages: number;
 }
 
+type CompanyStatus = "" | "active" | "inactive";
+
 // ========================
 // HOOK
 // ========================
 
-export const useViewCompanies = (config?: { limit?: number; status?: "" | "active" | "inactive" }) => {
+export const useViewCompanies = (config?: { limit?: number; status?: CompanyStatus }) => {
     const queryClient = useQueryClient();
 
     // ── Local filter / pagination state ──
@@ -38,7 +40,7 @@ export const useViewCompanies = (config?: { limit?: number; status?: "" | "activ
     const [limit, setLimit] = useState(config?.limit ?? 20);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">(config?.status ?? "");
+    const [statusFilter, setStatusFilter] = useState<CompanyStatus>(config?.status ?? "");
     const [industryFilter, setIndustryFilter] = useState("");
     const [sortBy, setSortBy] = useState<string>("created_at");
     const [sortOrder, setSortOrder] = useState<string>("desc");
@@ -65,7 +67,10 @@ export const useViewCompanies = (config?: { limit?: number; status?: "" | "activ
     const companies: Company[] = Array.isArray(data?.data) ? data.data : [];
     const pagination: Pagination = data?.pagination ?? { page, limit, total: 0, totalPages: 0 };
     const loading = isLoading || isFetching;
-    const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to fetch companies") : null;
+    let error: string | null = null;
+    if (queryError) {
+        error = queryError instanceof Error ? queryError.message : "Failed to fetch companies";
+    }
 
     // ── Prefetch next page for smoother pagination ──
     useEffect(() => {
@@ -98,7 +103,7 @@ export const useViewCompanies = (config?: { limit?: number; status?: "" | "activ
         setPage(1);
     }, []);
 
-    const handleStatusFilterChange = useCallback((value: "" | "active" | "inactive") => {
+    const handleStatusFilterChange = useCallback((value: CompanyStatus) => {
         setStatusFilter(value);
         setPage(1);
     }, []);

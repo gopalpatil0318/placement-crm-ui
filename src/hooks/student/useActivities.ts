@@ -99,11 +99,11 @@ export const useActivities = () => {
         });
     }, []);
 
-    const addProofUrl = () => {
-        const u = proofInput.trim();
+    const addProofUrl = (directUrl?: string) => {
+        const u = (directUrl ?? proofInput).trim();
         if (u && !formData.proof_urls.includes(u) && formData.proof_urls.length < 5) {
             setFormData((prev) => ({ ...prev, proof_urls: [...prev.proof_urls, u] }));
-            setProofInput("");
+            if (!directUrl) setProofInput("");
         }
     };
     const removeProofUrl = (url: string) => {

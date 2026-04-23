@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-const optionalUrl = z.string().url("Must be a valid URL").max(500).or(z.literal("")).optional();
+const optionalUrl = z.url({ message: "Must be a valid URL" }).max(500).or(z.literal("")).optional();
+const optionalFilePath = z.string().max(500).or(z.literal("")).optional();
 
 export const certificateSchema = z
     .object({
@@ -30,7 +31,7 @@ export const certificateSchema = z
             .array(z.string().max(50, "Max 50 chars per skill"))
             .max(20, "Maximum 20 skills")
             .default([]),
-        certificate_url: optionalUrl,
+        certificate_url: optionalFilePath,
     })
     .refine(
         (data) => {

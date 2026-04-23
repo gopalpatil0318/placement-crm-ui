@@ -173,7 +173,7 @@ export default function RestrictionDashboard() {
     ? ` ${summary.appeals_pending} appeal${appealsSuffix} pending review.`
     : " You can submit an appeal for eligible restrictions."
   const hasBlockingRestriction = restrictions.some(
-    (r) => r.is_active && (r.restriction_type === "bar_from_placements" || r.restriction_type === "temporary_suspension"),
+    (r) => r.is_active && (r.restriction_type === "bar_from_placements" || r.restriction_type === "bar_from_company" || r.restriction_type === "temporary_suspension"),
   )
 
   let contentSection: ReactNode

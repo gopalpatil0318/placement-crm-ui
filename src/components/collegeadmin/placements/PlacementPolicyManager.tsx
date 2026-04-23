@@ -40,6 +40,7 @@ import {
 import { createPlacementPolicySchema, updatePlacementPolicySchema } from "@/validators/PlacementPolicySchema";
 import { ApiError } from "@/lib/api";
 import { showToast } from "@/utils/ToastUtils";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // ========================
 // CONSTANTS
@@ -372,7 +373,7 @@ const EmptyState = ({
     onCreateClick,
 }: {
     hasFilters: boolean;
-    onCreateClick: () => void;
+    onCreateClick?: () => void;
 }) =>
     hasFilters ? (
         <div className="text-center py-16">
@@ -391,14 +392,16 @@ const EmptyState = ({
             <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-5">
                 Create your first policy to define rules and guidelines for placement drives.
             </p>
-            <button
-                type="button"
-                onClick={onCreateClick}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-sm"
-            >
-                <Plus className="h-4 w-4" />
-                Create Policy
-            </button>
+            {onCreateClick && (
+                <button
+                    type="button"
+                    onClick={onCreateClick}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-sm"
+                >
+                    <Plus className="h-4 w-4" />
+                    Create Policy
+                </button>
+            )}
         </div>
     );
 
@@ -1105,7 +1108,10 @@ const PolicyDetailPanel = ({
     onEdit: () => void;
     onToggleStatus: () => void;
     onDelete: () => void;
-}) => (
+}) => {
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("policies.manage");
+    return (
     <tr className="bg-gray-50/50 dark:bg-gray-800/30">
         <td colSpan={8} className="px-4 py-0">
             <div className="py-4 pl-6 border-l-2 border-blue-200 dark:border-blue-800 ml-4 space-y-4">
@@ -1146,48 +1152,53 @@ const PolicyDetailPanel = ({
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex-wrap">
-                    <button
-                        type="button"
-                        onClick={onEdit}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 dark:hover:text-amber-400 transition"
-                    >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Edit
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onToggleStatus}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${
-                            policy.is_active
-                                ? "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30"
-                                : "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
-                        }`}
-                    >
-                        {policy.is_active
-                            ? <><ToggleLeft className="h-3.5 w-3.5" /> Deactivate</>
-                            : <><ToggleRight className="h-3.5 w-3.5" /> Activate</>
-                        }
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onDelete}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition"
-                    >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
-                    </button>
-                </div>
+                {canManage && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex-wrap">
+                        <button
+                            type="button"
+                            onClick={onEdit}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 dark:hover:text-amber-400 transition"
+                        >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onToggleStatus}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${
+                                policy.is_active
+                                    ? "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                                    : "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+                            }`}
+                        >
+                            {policy.is_active
+                                ? <><ToggleLeft className="h-3.5 w-3.5" /> Deactivate</>
+                                : <><ToggleRight className="h-3.5 w-3.5" /> Activate</>
+                            }
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onDelete}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                        </button>
+                    </div>
+                )}
             </div>
         </td>
     </tr>
-);
+    );
+};
 
 // ========================
 // MAIN COMPONENT
 // ========================
 
 const PlacementPolicyManager = () => {
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("policies.manage");
     const {
         policies,
         summary,
@@ -1264,14 +1275,16 @@ const PlacementPolicyManager = () => {
                                 </p>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setCreateModalOpen(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-sm"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Create Policy
-                        </button>
+                        {canManage && (
+                            <button
+                                type="button"
+                                onClick={() => setCreateModalOpen(true)}
+                                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-sm"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Create Policy
+                            </button>
+                        )}
                     </div>
                     <StatsDashboard summary={summary} loading={loading} />
                 </div>
@@ -1353,7 +1366,7 @@ const PlacementPolicyManager = () => {
                             );
                         }
                         if (policies.length === 0) {
-                            return <EmptyState hasFilters={hasFilters} onCreateClick={() => setCreateModalOpen(true)} />;
+                            return <EmptyState hasFilters={hasFilters} onCreateClick={canManage ? () => setCreateModalOpen(true) : undefined} />;
                         }
                         return (
                         <div className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -1379,6 +1392,7 @@ const PlacementPolicyManager = () => {
                                         <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(p.created_at)}</span>
                                     </div>
                                     <div className="flex items-center gap-1 mt-3 ml-12">
+                                        {canManage && (<>
                                         <button type="button" onClick={() => setEditingPolicy(p)} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 dark:hover:text-amber-400 transition">
                                             <Pencil className="h-3.5 w-3.5" />
                                             Edit
@@ -1390,6 +1404,7 @@ const PlacementPolicyManager = () => {
                                             <Trash2 className="h-3.5 w-3.5" />
                                             Delete
                                         </button>
+                                        </>)}
                                     </div>
                                 </div>
                             ))}
@@ -1441,7 +1456,7 @@ const PlacementPolicyManager = () => {
                                 return (
                                     <tr>
                                         <td colSpan={8}>
-                                            <EmptyState hasFilters={hasFilters} onCreateClick={() => setCreateModalOpen(true)} />
+                                            <EmptyState hasFilters={hasFilters} onCreateClick={canManage ? () => setCreateModalOpen(true) : undefined} />
                                         </td>
                                     </tr>
                                 );

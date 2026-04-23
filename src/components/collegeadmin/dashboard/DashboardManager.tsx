@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { motion, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import { useTheme } from "next-themes";
 import { ApiError } from "@/lib/api";
@@ -60,6 +61,9 @@ import {
     type CompanyStat,
     type YearComparison,
 } from "@/hooks/collegeadmin/dashboard/useDashboard";
+import QuotaBar from "@/components/collegeadmin/QuotaBar";
+import SubscriptionBanner from "@/components/collegeadmin/SubscriptionBanner";
+import type { SubscriptionStatus } from "@/types/auth";
 
 // ========================
 // CONSTANTS
@@ -78,6 +82,8 @@ const CHART_COLORS = {
     gender: ["#3B82F6", "#EC4899", "#8B5CF6"],
     statuses: ["#3B82F6", "#10B981", "#F59E0B", "#6B7280", "#EF4444"],
 };
+
+const CAMPUS_COLORS = [CHART_COLORS.secondary, CHART_COLORS.warning, "#8B5CF6"] as const;
 
 interface TabConfig {
     key: DashboardTab;
@@ -413,6 +419,16 @@ function OverviewSection({ data, loading }: Readonly<{ data?: DashboardOverview;
                     ))}
                 </motion.div>
             )}
+
+            {/* Quota Bar — only when subscription exists */}
+            {data.student_quota !== null && data.student_quota > 0 && (
+                <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                    <QuotaBar
+                        used={data.total_students_all_years ?? 0}
+                        quota={data.student_quota}
+                    />
+                </div>
+            )}
         </div>
     );
 }
@@ -587,8 +603,31 @@ function PlacementTab({ data, year }: Readonly<{ data?: PlacementStats; year: nu
         { name: "Internship", value: data.offer_breakdown.internship_offers },
     ];
 
+    const campusTotal = data.campus_breakdown.on_campus + data.campus_breakdown.off_campus + data.campus_breakdown.pool_campus;
+    const campusPieData = [
+        { name: "On-Campus", value: data.campus_breakdown.on_campus },
+        { name: "Off-Campus", value: data.campus_breakdown.off_campus },
+        { name: "Pool Campus", value: data.campus_breakdown.pool_campus },
+    ];
+
     return (
         <div className="space-y-6">
+            {/* Self-report pending banner */}
+            {data.self_report_pending > 0 && (
+                <Link
+                    to="/college/self-reports"
+                    className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 transition-colors hover:bg-amber-100 dark:border-amber-800/40 dark:bg-amber-950/20 dark:hover:bg-amber-900/30"
+                >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-200 text-sm dark:bg-amber-800/50">📋</span>
+                    <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                        Pending Off-Campus Reports: {data.self_report_pending}
+                    </span>
+                    <span className="ml-auto text-xs font-semibold text-amber-600 dark:text-amber-400">
+                        Review →
+                    </span>
+                </Link>
+            )}
+
             <div className="grid gap-4 lg:grid-cols-5">
                 <ChartCard title="Package Distribution" className="lg:col-span-3">
                     <ResponsiveContainer width="100%" height={280}>
@@ -655,6 +694,56 @@ function PlacementTab({ data, year }: Readonly<{ data?: PlacementStats; year: nu
                     )}
                 </ChartCard>
             </div>
+
+            {/* Campus Breakdown */}
+            {campusTotal > 0 && (
+                <div className="grid gap-4 lg:grid-cols-2">
+                    <ChartCard title="Campus Breakdown">
+                        <ResponsiveContainer width="100%" height={200}>
+                            <PieChart>
+                                <Pie
+                                    data={campusPieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={55}
+                                    outerRadius={80}
+                                    paddingAngle={4}
+                                    dataKey="value"
+                                >
+                                    {campusPieData.map((_, i) => (
+                                        <Cell key={campusPieData[i].name} fill={CAMPUS_COLORS[i]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: ct.tooltipBg,
+                                        borderColor: ct.tooltipBorder,
+                                        borderRadius: 8,
+                                        fontSize: 12,
+                                    }}
+                                    formatter={(value, name) => {
+                                        const v = Number(value ?? 0);
+                                        return [
+                                            `${v} (${campusTotal > 0 ? ((v / campusTotal) * 100).toFixed(1) : 0}%)`,
+                                            name,
+                                        ];
+                                    }}
+                                />
+                                <Legend
+                                    verticalAlign="bottom"
+                                    iconType="circle"
+                                    formatter={LegendLabel}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </ChartCard>
+                    <div className="grid grid-cols-1 gap-3 content-start">
+                        <StatCard label="On-Campus" value={data.campus_breakdown?.on_campus ?? 0} color="text-sky-600 dark:text-sky-400" />
+                        <StatCard label="Off-Campus" value={data.campus_breakdown?.off_campus ?? 0} color="text-amber-600 dark:text-amber-400" />
+                        <StatCard label="Pool Campus" value={data.campus_breakdown?.pool_campus ?? 0} color="text-violet-600 dark:text-violet-400" />
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
                 <StatCard label="Accepted Offers" value={data.offer_breakdown.accepted_offers} color="text-emerald-600 dark:text-emerald-400" />
@@ -1825,6 +1914,24 @@ export default function DashboardManager() {
                     </button>
                 </div>
             </div>
+
+            {/* Subscription Banner */}
+            {dash.overview.data?.subscription_status &&
+                dash.overview.data.subscription_status !== "none" &&
+                dash.overview.data.subscription_status !== "active" && (
+                <SubscriptionBanner
+                    status={dash.overview.data.subscription_status as SubscriptionStatus}
+                    trialEndsAt={dash.overview.data.trial_ends_at}
+                    validTo={dash.overview.data.valid_to}
+                />
+            )}
+            {dash.overview.data?.subscription_status === "active" &&
+                dash.overview.data.valid_to && (
+                <SubscriptionBanner
+                    status="active"
+                    validTo={dash.overview.data.valid_to}
+                />
+            )}
 
             {/* KPI Cards */}
             <OverviewSection data={dash.overview.data} loading={dash.overview.isLoading} />

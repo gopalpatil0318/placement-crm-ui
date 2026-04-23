@@ -25,6 +25,7 @@ export default function ResolveRestrictionModal({
 
     const isBlockingType =
         restriction.restriction_type === "bar_from_placements" ||
+        restriction.restriction_type === "bar_from_company" ||
         restriction.restriction_type === "temporary_suspension";
 
     return (

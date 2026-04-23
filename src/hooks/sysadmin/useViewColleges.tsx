@@ -6,6 +6,12 @@ import { SysAdminService } from "@/services/sysadmin/sysadmin.services"
 import type { CollegeListParams } from "@/services/sysadmin/sysadmin.services"
 import { queryKeys } from "@/lib/queryKeys"
 
+function getErrorMessage(error: unknown): string | null {
+  if (error instanceof ApiError) return error.message
+  if (error) return "Failed to fetch colleges"
+  return null
+}
+
 export interface College {
   college_id: string
   college_name: string
@@ -15,6 +21,9 @@ export interface College {
   college_city: string
   college_state: string
   default_academic_year: number
+  subscription_status: string | null
+  student_quota: number | null
+  students_used: number
   created_at: string
 }
 
@@ -107,7 +116,7 @@ export const useViewColleges = () => {
     colleges,
     loading: isLoading,
     isFetching,
-    error: error instanceof ApiError ? error.message : error ? "Failed to fetch colleges" : null,
+    error: getErrorMessage(error),
     refresh: refetch,
     search,
     page,

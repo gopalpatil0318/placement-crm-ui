@@ -27,6 +27,8 @@ export interface JobListItem {
   has_applied: boolean
   has_denied: boolean
   is_eligible: boolean
+  eligibility_issues: string[] | null
+  skill_match_percentage: number | null
   tier_id: string | null
   tier_name: string | null
   tier_level: number | null
@@ -38,6 +40,7 @@ export interface JobListFilters {
   job_type?: string
   drive_type?: string
   company_name?: string
+  eligible_only?: string
   sort_by?: string
   sort_order?: string
   page?: number
@@ -119,6 +122,8 @@ export interface EligibilityCriteria {
   allowed_departments: string[] | null
   allowed_gap_statuses: string[] | null
   exclude_already_placed: boolean
+  min_skill_match_percentage: number | null
+  required_skills: { skill_id: string; skill_name: string; skill_category: string }[] | null
 }
 
 export interface JobRound {
@@ -173,6 +178,8 @@ export interface StudentSnapshot {
   gender: string
   dept_name: string
   gap_status: string
+  existing_package: number
+  is_placed: boolean
   profile_is_approved: boolean
 }
 
@@ -203,6 +210,10 @@ export interface EligibilityResponse {
     is_eligible: boolean
     issues: string[]
     criteria: EligibilityCriteria | null
+    skill_match: {
+      skill_match_percentage: number
+      skill_details: { skill_name: string; skill_category: string; matched: boolean }[]
+    } | null
   }
   student_snapshot: StudentSnapshot
   blockers: string[]

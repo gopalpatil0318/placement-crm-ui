@@ -26,11 +26,18 @@ const Notifications = lazy(() => import("@/pages/student/Notifications"));
 // Placements
 const MyPlacements = lazy(() => import("@/pages/student/MyPlacements"));
 
+// Self-Reported Placements
+const MySelfReports = lazy(() => import("@/pages/student/MySelfReports"));
+const ReportPlacement = lazy(() => import("@/pages/student/ReportPlacement"));
+
 // Training Programs
 const MyTrainings = lazy(() => import("@/pages/student/MyTrainings"));
 
 // Restrictions
 const MyRestrictions = lazy(() => import("@/pages/student/MyRestrictions"));
+
+// Placement Policies
+const PlacementPolicies = lazy(() => import("@/pages/student/PlacementPolicies"));
 
 // Override Requests
 const MyOverrides = lazy(() => import("@/pages/student/MyOverrides"));
@@ -68,11 +75,18 @@ export const studentRoutes = (
             {/* Placements */}
             <Route path="/student/placements" element={<MyPlacements />} />
 
+            {/* Self-Reported Placements */}
+            <Route path="/student/self-reports" element={<MySelfReports />} />
+            <Route path="/student/report-placement" element={<ReportPlacement />} />
+
             {/* Training Programs */}
             <Route path="/student/trainings" element={<MyTrainings />} />
 
             {/* Restrictions */}
             <Route path="/student/restrictions" element={<MyRestrictions />} />
+
+            {/* Placement Policies */}
+            <Route path="/student/placement-policies" element={<PlacementPolicies />} />
 
             {/* Override Requests */}
             <Route path="/student/overrides" element={<MyOverrides />} />

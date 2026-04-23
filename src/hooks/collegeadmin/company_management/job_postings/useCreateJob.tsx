@@ -72,13 +72,18 @@ const INITIAL_FORM_DATA: CreateJobFormData = {
 
     eligibility_criteria: {
         min_overall_cgpa: undefined,
-        max_live_kts: 0,
+        max_live_kts: undefined,
         min_tenth_percentage: undefined,
         min_twelfth_percentage: undefined,
         min_diploma_percentage: undefined,
+        min_existing_package: undefined,
+        max_existing_package: undefined,
         allowed_genders: [],
         allowed_departments: [],
+        allowed_gap_statuses: [],
         exclude_already_placed: false,
+        required_skills: [],
+        min_skill_match_percentage: undefined,
     },
 
     rounds: [],

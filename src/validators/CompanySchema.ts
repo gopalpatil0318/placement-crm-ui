@@ -31,6 +31,9 @@ const urlSchema = z
         { message: "Must be a valid URL starting with http:// or https://" }
     );
 
+// File/storage path helper — accepts storage paths or legacy URLs
+const filePathSchema = z.string().max(500);
+
 // ========================
 // CREATE SCHEMA
 // ========================
@@ -57,7 +60,7 @@ export const companyCreateSchema = z.object({
         .optional()
         .or(z.literal("")),
 
-    companyLogo: urlSchema
+    companyLogo: filePathSchema
         .optional()
         .or(z.literal("")),
 });
@@ -92,7 +95,7 @@ export const companyUpdateSchema = z.object({
         .optional()
         .or(z.literal("")),
 
-    companyLogo: urlSchema
+    companyLogo: filePathSchema
         .optional()
         .or(z.literal("")),
 });

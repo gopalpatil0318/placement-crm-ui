@@ -16,6 +16,7 @@ import { motion, LayoutGroup } from "framer-motion"
 import { useCollegeProfile } from "@/hooks/sysadmin/useCollegeProfile"
 import ModalWrapper from "@/components/ui/ModalWrapper"
 import AnimatedTabContent from "@/components/ui/AnimatedTabContent"
+import SubscriptionTab from "@/components/sysadmin/SubscriptionTab"
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ const ALL_FEATURES = [
   { key: "interview_questions", label: "Interview Questions", description: "Share interview questions across batches" },
 ]
 
-const TAB_KEYS = ["overview", "features", "admin"] as const
+const TAB_KEYS = ["overview", "features", "subscription", "admin"] as const
 
 const AVATAR_COLORS = [
   "bg-blue-600", "bg-emerald-600", "bg-violet-600", "bg-amber-600",
@@ -155,6 +156,7 @@ export default function CollegeProfile() {
 
   const isActive = college.college_status === "active"
   const toggleLabel = isActive ? "Deactivate" : "Activate"
+  const hasBranding = !!(college.college_logo_url || college.college_website || college.college_affiliation || college.college_established_year || college.college_description)
 
   return (
     <div className="space-y-6">
@@ -232,7 +234,7 @@ export default function CollegeProfile() {
         <div className="border-b border-gray-200 dark:border-gray-800 px-6">
           <LayoutGroup id="profile-tabs">
             <nav className="flex gap-6" aria-label="Profile sections">
-              {(["overview", "features", "admin"] as const).map((tab) => (
+              {(["overview", "features", "subscription", "admin"] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -292,7 +294,7 @@ export default function CollegeProfile() {
                 </div>
 
                 {/* Branding & Identity */}
-                {(college.college_logo_url || college.college_website || college.college_affiliation || college.college_established_year || college.college_description) && (
+                {hasBranding && (
                   <div className="col-span-1 lg:col-span-2 mt-4 pt-6 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex items-center gap-2 mb-5">
                       <Globe className="h-4.5 w-4.5 text-blue-500" />
@@ -377,6 +379,13 @@ export default function CollegeProfile() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeTab === "subscription" && (
+              <SubscriptionTab
+                collegeId={college.college_id}
+                collegeName={college.college_name}
+              />
             )}
 
             {activeTab === "admin" && (
@@ -603,7 +612,7 @@ function CollegeProfileSkeleton() {
       </div>
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-8">
         <div className="flex gap-6 mb-8">
-          {['skel-tab-0', 'skel-tab-1', 'skel-tab-2'].map(id => (
+          {['skel-tab-0', 'skel-tab-1', 'skel-tab-2', 'skel-tab-3'].map(id => (
             <div key={id} className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
           ))}
         </div>

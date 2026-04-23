@@ -3,12 +3,16 @@ import { motion, useReducedMotion } from "framer-motion";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { useAchievements, VALID_ACHIEVEMENT_TYPES, ACHIEVEMENT_TYPE_LABELS, VALID_ACHIEVEMENT_LEVELS, ACHIEVEMENT_LEVEL_LABELS } from "@/hooks/student/useAchievements";
 import type { AchievementData } from "@/services/student/achievement.service";
-import { Plus, Pencil, Trash2, Trophy, CheckCircle, ExternalLink, Star, AlertCircle, XCircle, Clock, Calendar, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Trophy, CheckCircle, Star, AlertCircle, XCircle, Clock, Calendar, ChevronDown } from "lucide-react";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import ModalWrapper from "@/components/ui/ModalWrapper";
 import FloatingInput from "@/components/ui/FloatingInput";
 import FloatingSelect from "@/components/ui/FloatingSelect";
 import FloatingTextarea from "@/components/ui/FloatingTextarea";
+import { FileUpload } from "@/components/ui/FileUpload";
+import { DocumentPreview } from "@/components/ui/DocumentPreview";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { useStudentAuth } from "@/hooks/student/useStudentAuth";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -77,6 +81,34 @@ const AchievementsForm = () => {
         maxAchievements, openAddForm, openEditForm, closeForm,
         handleChange, handleSubmit, handleDelete,
     } = useAchievements();
+
+    const { user } = useStudentAuth();
+    const certUpload = useFileUpload();
+    const proofUpload = useFileUpload();
+
+    const handleCertSelect = async (file: File | null) => {
+        if (!file || !user) return;
+        try {
+            const { storagePath } = await certUpload.upload(file, {
+                bucket: "placenex-private",
+                category: "certs",
+                entityId: `ach_${user.id}`,
+            });
+            handleChange({ target: { name: "certificate_url", value: storagePath } } as React.ChangeEvent<HTMLInputElement>);
+        } catch { /* error in certUpload.error */ }
+    };
+
+    const handleProofSelect = async (file: File | null) => {
+        if (!file || !user) return;
+        try {
+            const { storagePath } = await proofUpload.upload(file, {
+                bucket: "placenex-private",
+                category: "certs",
+                entityId: `ach_${user.id}`,
+            });
+            handleChange({ target: { name: "proof_url", value: storagePath } } as React.ChangeEvent<HTMLInputElement>);
+        } catch { /* error in proofUpload.error */ }
+    };
 
     const shouldReduce = useReducedMotion();
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -195,8 +227,28 @@ const AchievementsForm = () => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FloatingInput label="Certificate URL" name="certificate_url" value={formData.certificate_url} onChange={handleChange} error={errors.certificate_url} placeholder="https://..." inputMode="url" />
-                                <FloatingInput label="Proof URL" name="proof_url" value={formData.proof_url} onChange={handleChange} error={errors.proof_url} placeholder="https://..." inputMode="url" />
+                                <FileUpload
+                                    value={formData.certificate_url || null}
+                                    onFileSelect={handleCertSelect}
+                                    progress={certUpload.progress}
+                                    isUploading={certUpload.isUploading}
+                                    error={certUpload.error || errors.certificate_url}
+                                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                    maxSizeBytes={5 * 1024 * 1024}
+                                    label="Certificate"
+                                    hint="PDF or image, max 5 MB"
+                                />
+                                <FileUpload
+                                    value={formData.proof_url || null}
+                                    onFileSelect={handleProofSelect}
+                                    progress={proofUpload.progress}
+                                    isUploading={proofUpload.isUploading}
+                                    error={proofUpload.error || errors.proof_url}
+                                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                    maxSizeBytes={5 * 1024 * 1024}
+                                    label="Proof"
+                                    hint="PDF or image, max 5 MB"
+                                />
                             </div>
 
                             {/* Featured + Display Order */}
@@ -324,16 +376,10 @@ const AchievementCard = memo(function AchievementCard({
                 {/* Links + Verified */}
                 <div className="flex items-center gap-3 flex-wrap pt-3 border-t border-gray-100 dark:border-gray-700">
                     {ach.certificate_url && (
-                        <a href={ach.certificate_url} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <ExternalLink className="h-3.5 w-3.5" /> Certificate
-                        </a>
+                        <DocumentPreview value={ach.certificate_url} bucket="placenex-private" label="Certificate" variant="inline" />
                     )}
                     {ach.proof_url && (
-                        <a href={ach.proof_url} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <ExternalLink className="h-3.5 w-3.5" /> Proof
-                        </a>
+                        <DocumentPreview value={ach.proof_url} bucket="placenex-private" label="Proof" variant="inline" />
                     )}
                     {ach.verification_status === "approved" && (
                         <output className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">

@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useParams } from "react-router-dom";
 import EnrollmentTable from "@/components/collegeadmin/training_programs/EnrollmentTable";
 import UpdateEnrollmentModal from "@/components/collegeadmin/training_programs/UpdateEnrollmentModal";
@@ -10,6 +11,8 @@ import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
 
 const TrainingEnrollments = () => {
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("training.manage");
     const { programId } = useParams<{ programId: string }>();
     const [programName, setProgramName] = useState("");
     const [editingStudent, setEditingStudent] = useState<{ name: string; email: string; totalSessions?: number } | null>(null);
@@ -54,12 +57,14 @@ const TrainingEnrollments = () => {
                     onToggleAll={bulk.toggleAll}
                 />
 
+                {canManage && (
                 <BulkActionBar
                     selectedCount={bulk.selectedIds.size}
                     isUpdating={bulk.isBulkUpdating}
                     onApply={bulk.applyBulkAction}
                     onClear={bulk.clearSelection}
                 />
+                )}
 
                 <UpdateEnrollmentModal
                     isOpen={enrollment.isOpen}

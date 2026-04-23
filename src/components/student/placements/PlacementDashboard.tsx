@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback, memo } from "react"
 import { motion, useReducedMotion } from "framer-motion"
+import { Link } from "react-router-dom"
 import {
   AlertCircle,
   ArrowUpDown,
@@ -18,6 +19,7 @@ import {
   Trophy,
   Upload,
   XCircle,
+  ArrowRight,
 } from "lucide-react"
 import { staggerContainer, staggerItem } from "@/lib/animations"
 import { useMyPlacements } from "@/hooks/student/placements/useMyPlacements"
@@ -151,6 +153,27 @@ export default function PlacementDashboard() {
           </p>
         </div>
       </div>
+
+      {/* ── Off-Campus CTA ── */}
+      <Link
+        to="/student/report-placement"
+        className="group flex items-center justify-between rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-4 shadow-sm transition-all hover:shadow-md hover:border-blue-300 dark:border-blue-800/50 dark:from-blue-950/30 dark:to-indigo-950/30 dark:hover:border-blue-700"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+            <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+              Got placed off-campus?
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              Report it here for college verification
+            </p>
+          </div>
+        </div>
+        <ArrowRight className="h-5 w-5 text-blue-500 transition-transform group-hover:translate-x-1" />
+      </Link>
 
       {/* ── Summary Cards ── */}
       {isLoading && (

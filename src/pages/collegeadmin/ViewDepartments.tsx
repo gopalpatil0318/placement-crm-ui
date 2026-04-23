@@ -1,5 +1,6 @@
 ﻿import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     Plus,
     ChevronLeft,
@@ -45,7 +46,7 @@ const DeptAvatar = ({ dept }: { dept: Department }) => {
         "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
         "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300",
     ] as const;
-    const color = COLORS[dept.dept_name.charCodeAt(0) % COLORS.length];
+    const color = COLORS[(dept.dept_name.codePointAt(0) ?? 0) % COLORS.length];
 
     return (
         <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold uppercase ${color}`}>
@@ -90,7 +91,7 @@ const PaginationNav = ({
             </button>
             {pages.map((p, idx) =>
                 p === "ellipsis" ? (
-                    <span key={`ellipsis-${idx}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
+                    <span key={`ellipsis-${idx < pages.length / 2 ? "start" : "end"}`} className="px-1.5 text-gray-400 dark:text-gray-500 text-sm select-none">...</span>
                 ) : (
                     <button
                         key={p}
@@ -121,7 +122,7 @@ const PaginationNav = ({
 };
 
 /** Empty state */
-const EmptyState = ({ hasFilters, onAdd }: { hasFilters: boolean; onAdd: () => void }) => (
+const EmptyState = ({ hasFilters, onAdd }: { hasFilters: boolean; onAdd?: () => void }) => (
     <div className="flex flex-col items-center py-16 text-center">
         <div className="h-16 w-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-5">
             <Building2 className="h-8 w-8 text-gray-400 dark:text-gray-500" />
@@ -134,7 +135,7 @@ const EmptyState = ({ hasFilters, onAdd }: { hasFilters: boolean; onAdd: () => v
                 ? "Try adjusting your search or filters to find what you're looking for."
                 : "Get started by creating your first department. You can add students and users later."}
         </p>
-        {!hasFilters && (
+        {!hasFilters && onAdd && (
             <button
                 type="button"
                 onClick={onAdd}
@@ -153,6 +154,8 @@ const EmptyState = ({ hasFilters, onAdd }: { hasFilters: boolean; onAdd: () => v
 
 const ViewDepartments = () => {
     const navigate = useNavigate();
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("departments.manage");
     const {
         departments,
         loading,
@@ -175,7 +178,7 @@ const ViewDepartments = () => {
     const skeletonRows = useMemo(
         () =>
             Array.from({ length: 5 }).map((_, i) => (
-                <tr key={`skel-${i}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
+                <tr key={`skel-desk-${String(i)}`} className="border-b border-gray-50 dark:border-gray-800 animate-pulse">
                     <td className="px-4 py-3.5"><div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-6" /></td>
                     <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
@@ -240,14 +243,16 @@ const ViewDepartments = () => {
                             </div>
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={() => navigate("/college/create-department")}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition shadow-sm"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Add Department
-                        </button>
+                        {canManage && (
+                            <button
+                                type="button"
+                                onClick={() => navigate("/college/create-department")}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition shadow-sm"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Department
+                            </button>
+                        )}
                     </div>
 
                     {/* ── Filters bar ── */}
@@ -307,9 +312,25 @@ const ViewDepartments = () => {
                                 </tr>
                             </thead>
 
-                            {loading ? (
-                                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">{skeletonRows}</tbody>
-                            ) : departments.length > 0 ? (
+                            {(() => {
+                                if (loading) {
+                                    return <tbody className="divide-y divide-gray-50 dark:divide-gray-800">{skeletonRows}</tbody>;
+                                }
+                                if (departments.length === 0) {
+                                    return (
+                                        <tbody>
+                                            <tr>
+                                                <td colSpan={7}>
+                                                    <EmptyState
+                                                        hasFilters={hasFilters}
+                                                        onAdd={canManage ? () => navigate("/college/create-department") : undefined}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    );
+                                }
+                                return (
                                 <AnimatedTableBody className="divide-y divide-gray-50 dark:divide-gray-800">
                                     {departments.map((dept, index) => (
                                         <AnimatedRow
@@ -383,39 +404,41 @@ const ViewDepartments = () => {
                                         </AnimatedRow>
                                     ))}
                                 </AnimatedTableBody>
-                            ) : (
-                                <tbody>
-                                    <tr>
-                                        <td colSpan={7}>
-                                            <EmptyState
-                                                hasFilters={hasFilters}
-                                                onAdd={() => navigate("/college/create-department")}
-                                            />
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            )}
+                                );
+                            })()}
                         </table>
                     </div>
 
                     {/* ── Mobile Card Layout (<md) ── */}
                     <div className="md:hidden">
-                        {loading ? (
-                            <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                                {Array.from({ length: 5 }).map((_, i) => (
-                                    <div key={`skel-m-${i}`} className="px-4 py-4 animate-pulse space-y-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800" />
-                                            <div className="flex-1 space-y-1.5">
-                                                <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-40" />
-                                                <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-16" />
+                        {(() => {
+                            if (loading) {
+                                return (
+                                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                            <div key={`skel-mob-${String(i)}`} className="px-4 py-4 animate-pulse space-y-2">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800" />
+                                                    <div className="flex-1 space-y-1.5">
+                                                        <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-40" />
+                                                        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-16" />
+                                                    </div>
+                                                    <div className="h-5 w-14 bg-gray-100 dark:bg-gray-800 rounded-full" />
+                                                </div>
                                             </div>
-                                            <div className="h-5 w-14 bg-gray-100 dark:bg-gray-800 rounded-full" />
-                                        </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        ) : departments.length > 0 ? (
+                                );
+                            }
+                            if (departments.length === 0) {
+                                return (
+                                    <EmptyState
+                                        hasFilters={hasFilters}
+                                        onAdd={canManage ? () => navigate("/college/create-department") : undefined}
+                                    />
+                                );
+                            }
+                            return (
                             <div className="divide-y divide-gray-100 dark:divide-gray-800">
                                 {departments.map((dept) => (
                                     <button
@@ -468,20 +491,19 @@ const ViewDepartments = () => {
                                     </button>
                                 ))}
                             </div>
-                        ) : (
-                            <EmptyState
-                                hasFilters={hasFilters}
-                                onAdd={() => navigate("/college/create-department")}
-                            />
-                        )}
+                            );
+                        })()}
                     </div>
 
                     {/* ── Pagination footer ── */}
                     {!loading && departments.length > 0 && (
                         <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-500 dark:text-gray-400">
                             <span>
-                                Showing <span className="font-medium text-gray-700 dark:text-gray-300">{startEntry}</span>–
-                                <span className="font-medium text-gray-700 dark:text-gray-300">{endEntry}</span> of{" "}
+                                Showing{" "}
+                                <span className="font-medium text-gray-700 dark:text-gray-300">{startEntry}</span>
+                                {"–"}
+                                <span className="font-medium text-gray-700 dark:text-gray-300">{endEntry}</span>
+                                {" of "}
                                 <span className="font-medium text-gray-700 dark:text-gray-300">{pagination.total}</span>
                             </span>
 

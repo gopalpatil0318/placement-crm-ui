@@ -6,6 +6,9 @@ import {
   User as UserIcon,
   Building2,
   Settings,
+  CreditCard,
+  GraduationCap,
+  MessageCircle,
 } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
@@ -50,6 +53,26 @@ const navItems: NavSection[] = [
           { label: "All Colleges", path: "/sysadmin/colleges" },
           { label: "Register College", path: "/sysadmin/colleges/create" },
         ],
+      },
+      {
+        icon: CreditCard,
+        label: "Billing",
+        path: "/sysadmin/billing",
+      },
+    ],
+  },
+  {
+    section: "Leads & Inquiries",
+    items: [
+      {
+        icon: GraduationCap,
+        label: "Demo Requests",
+        path: "/sysadmin/demo-requests",
+      },
+      {
+        icon: MessageCircle,
+        label: "Contact Inquiries",
+        path: "/sysadmin/contact-inquiries",
       },
     ],
   },

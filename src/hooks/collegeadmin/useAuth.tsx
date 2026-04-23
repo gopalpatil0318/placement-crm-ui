@@ -15,7 +15,7 @@ export const useAuth = () => {
     throw new Error("useAuth must be used within a CollegeAuthProvider")
   }
 
-  const { user, isAuthenticated, isLoading, login, logout } = context
+  const { user, isAuthenticated, isLoading, login, logout, refreshPermissions } = context
 
   /**
    * Helper function to verify specific roles.
@@ -31,6 +31,7 @@ export const useAuth = () => {
     isLoading,
     login,
     logout,
+    refreshPermissions,
     hasRole,
     isCollegeUser,
   }

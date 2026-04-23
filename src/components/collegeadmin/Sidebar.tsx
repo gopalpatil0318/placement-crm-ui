@@ -17,12 +17,15 @@ import {
   Bell,
   ShieldAlert,
   ScrollText,
+  Shield,
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { useAuth } from "@/hooks/collegeadmin/useAuth"
+import { usePermissions } from "@/hooks/usePermissions"
 import { useCollegeTenant } from "@/context/CollegeTenantContext"
 import { sanitizeImageUrl } from "@/utils/sanitize"
+import { NAV_PERMISSIONS, SUB_ITEM_PERMISSIONS } from "@/constants/permissionMap"
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -60,7 +63,6 @@ const navItems: NavSection[] = [
       {
         icon: Building2,
         label: "Companies",
-        allowedRoles: ["collegeadmin", "tpo", "tpc"],
         subItems: [
           { label: "All Companies", path: "/college/companies" },
           { label: "Add Company", path: "/college/create-company" },
@@ -69,7 +71,6 @@ const navItems: NavSection[] = [
       {
         icon: BriefcaseBusiness,
         label: "Job Postings",
-        allowedRoles: ["collegeadmin", "tpo", "tpc"],
         subItems: [
           { label: "All Jobs", path: "/college/jobs" },
           { label: "Create Job", path: "/college/create-job" },
@@ -79,10 +80,10 @@ const navItems: NavSection[] = [
       {
         icon: BriefcaseBusiness,
         label: "Placements",
-        allowedRoles: ["collegeadmin", "tpo", "tpc"],
         subItems: [
           { label: "All Placements", path: "/college/placements" },
           { label: "Placement Stats", path: "/college/placements/stats" },
+          { label: "Self-Report Review", path: "/college/self-reports" },
         ],
       },
     ],
@@ -109,7 +110,6 @@ const navItems: NavSection[] = [
       {
         icon: BookOpen,
         label: "Departments",
-        allowedRoles: ["collegeadmin"],
         subItems: [
           { label: "All Departments", path: "/college/departments" },
           { label: "Create Department", path: "/college/create-department" },
@@ -127,7 +127,6 @@ const navItems: NavSection[] = [
       {
         icon: FileText,
         label: "Policies",
-        allowedRoles: ["collegeadmin", "tpo"],
         subItems: [
           { label: "All Policies", path: "/college/placement-policies" },
         ],
@@ -168,6 +167,12 @@ const navItems: NavSection[] = [
         ],
       },
       {
+        icon: Shield,
+        label: "Permissions",
+        path: "/college/permissions",
+        allowedRoles: ["collegeadmin"],
+      },
+      {
         icon: ScrollText,
         label: "Audit Trail",
         path: "/college/audit-logs",
@@ -189,14 +194,36 @@ const navItems: NavSection[] = [
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
-function getFilteredNavItems(role: string | undefined): NavSection[] {
+function getFilteredNavItems(
+  role: string | undefined,
+  hasPermission: (key: string) => boolean,
+  hasAnyPermission: (...keys: string[]) => boolean,
+): NavSection[] {
   if (!role) return []
   return navItems
     .map((section) => ({
       ...section,
-      items: section.items.filter(
-        (item) => !item.allowedRoles || item.allowedRoles.includes(role),
-      ),
+      items: section.items
+        .filter((item) => {
+          // 1. Role gate (admin-only items like Users, Permissions, Audit)
+          if (item.allowedRoles && !item.allowedRoles.includes(role)) return false
+          // 2. Permission gate (dynamic permissions for configurable roles)
+          const permKey = NAV_PERMISSIONS[item.label]
+          if (!permKey) return true // No permission mapped → always visible
+          if (Array.isArray(permKey)) return hasAnyPermission(...permKey)
+          return hasPermission(permKey)
+        })
+        .map((item) => {
+          // Filter sub-items by permission
+          if (!item.subItems) return item
+          const filteredSubs = item.subItems.filter((sub) => {
+            const subPerm = SUB_ITEM_PERMISSIONS[sub.path]
+            if (subPerm === undefined || subPerm === "") return true
+            return hasPermission(subPerm)
+          })
+          return { ...item, subItems: filteredSubs }
+        })
+        .filter((item) => !item.subItems || item.subItems.length > 0),
     }))
     .filter((section) => section.items.length > 0)
 }
@@ -219,10 +246,11 @@ function getSidebarWidth(isMobile: boolean, isOpen: boolean): number {
 export default function Sidebar({ isOpen, onClose, isMobile = false }: Readonly<SidebarProps>) {
   const location = useLocation()
   const { user, logout } = useAuth()
+  const { hasPermission, hasAnyPermission } = usePermissions()
   const { college } = useCollegeTenant()
   const shouldReduce = useReducedMotion()
   const [logoError, setLogoError] = useState(false)
-  const filteredNav = getFilteredNavItems(user?.role)
+  const filteredNav = getFilteredNavItems(user?.role, hasPermission, hasAnyPermission)
 
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
     const activeSection = filteredNav

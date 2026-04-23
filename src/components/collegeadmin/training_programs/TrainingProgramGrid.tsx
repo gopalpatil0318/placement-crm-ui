@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
     Search,
     Plus,
@@ -41,6 +42,8 @@ const SORT_OPTIONS = [
 // ========================
 
 const TrainingProgramGrid = () => {
+    const { hasPermission } = usePermissions();
+    const canManage = hasPermission("training.manage");
     const {
         programs,
         loading,
@@ -88,13 +91,15 @@ const TrainingProgramGrid = () => {
                         {pagination.total} program{pagination.total === 1 ? "" : "s"} total
                     </p>
                 </div>
-                <Link
-                    to="/college/create-training-program"
-                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition shadow-sm shadow-blue-200 dark:shadow-none"
-                >
-                    <Plus className="h-4 w-4" />
-                    Create Program
-                </Link>
+                {canManage && (
+                    <Link
+                        to="/college/create-training-program"
+                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition shadow-sm shadow-blue-200 dark:shadow-none"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Create Program
+                    </Link>
+                )}
             </div>
 
             {/* ── Status Tabs ── */}
@@ -248,7 +253,7 @@ const TrainingProgramGrid = () => {
                             ? "Try adjusting your search or filters"
                             : "Create your first training program to get started"}
                     </p>
-                    {!search && !hasActiveFilters && (
+                    {!search && !hasActiveFilters && canManage && (
                         <Link
                             to="/college/create-training-program"
                             className="mt-4 inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"

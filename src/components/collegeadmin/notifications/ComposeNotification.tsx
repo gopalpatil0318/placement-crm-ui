@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -739,6 +740,8 @@ function StepPreview({
     onSubmit: () => void;
     onBack: () => void;
 }>) {
+    const { hasPermission } = usePermissions();
+    const canSend = hasPermission("notifications.send");
     const shouldReduce = useReducedMotion();
     const motionProps = shouldReduce ? {} : fadeInUp;
     const typeColors = formData.notification_type ? NOTIFICATION_TYPE_COLORS[formData.notification_type] : null;
@@ -829,7 +832,7 @@ function StepPreview({
                 <button
                     type="button"
                     onClick={onSubmit}
-                    disabled={isSending}
+                    disabled={isSending || !canSend}
                     className="inline-flex items-center gap-2 px-6 py-2.5 min-h-[44px] rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-70"
                 >
                     {isSending ? (

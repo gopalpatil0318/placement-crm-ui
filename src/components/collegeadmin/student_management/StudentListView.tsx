@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Search, Plus, Users, GraduationCap, Filter } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import PageHeader from "@/components/collegeadmin/PageHeader";
 import AnimatedPage from "@/components/ui/AnimatedPage";
 import { AnimatedTableBody, AnimatedRow } from "@/components/ui/AnimatedList";
@@ -101,7 +102,7 @@ const PaginationNav = ({
 };
 
 /** Empty state */
-const EmptyState = ({ hasFilters, onReset, onAdd }: { hasFilters: boolean; onReset?: () => void; onAdd: () => void }) => (
+const EmptyState = ({ hasFilters, onReset, onAdd }: { hasFilters: boolean; onReset?: () => void; onAdd?: () => void }) => (
     <div className="py-16 text-center">
         <div className="mx-auto h-14 w-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
             {hasFilters ? <Filter className="h-6 w-6 text-gray-400 dark:text-gray-500" /> : <GraduationCap className="h-6 w-6 text-gray-400 dark:text-gray-500" />}
@@ -110,14 +111,18 @@ const EmptyState = ({ hasFilters, onReset, onAdd }: { hasFilters: boolean; onRes
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 max-w-xs mx-auto">
             {hasFilters ? "Try adjusting your search or filter criteria." : "Register your first student to get started."}
         </p>
-        {hasFilters ? (
-            <button type="button" onClick={onReset} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Clear all filters</button>
-        ) : (
-            <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
-                <Plus className="h-4 w-4" />
-                Register Student
-            </button>
-        )}
+        {(() => {
+            if (hasFilters) return (
+                <button type="button" onClick={onReset} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Clear all filters</button>
+            );
+            if (onAdd) return (
+                <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
+                    <Plus className="h-4 w-4" />
+                    Register Student
+                </button>
+            );
+            return null;
+        })()}
     </div>
 );
 
@@ -164,6 +169,8 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
         updateFilters, handleSearchChange, handleLimitChange, handlePageChange,
     } = useStudentList({ initialDeptId: deptId, initialStatus });
 
+    const { hasPermission } = usePermissions();
+    const canCreate = hasPermission("students.create");
     const currentDept = deptId ? departments.find((d) => d.dept_id === deptId) : null;
     const showDeptCol = !deptId;
     const hasActiveFilters = !!(filters.search || filters.status || filters.deptId || filters.profileComplete || filters.profileApproved);
@@ -197,16 +204,18 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                                 {currentDept ? `${currentDept.dept_name} Students` : "Manage Students"}
                                 {pagination.total > 0 && <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">({pagination.total})</span>}
                             </h2>
-                            <div className="flex items-center gap-3">
-                                <button type="button" onClick={() => navigate("/college/create-student")} className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition shadow-sm">
-                                    <Plus className="h-4 w-4" />
-                                    Register Student
-                                </button>
-                                <button type="button" onClick={() => navigate("/college/bulk-register")} className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                    <Users className="h-4 w-4" />
-                                    Bulk Register
-                                </button>
-                            </div>
+                            {canCreate && (
+                                <div className="flex items-center gap-3">
+                                    <button type="button" onClick={() => navigate("/college/create-student")} className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition shadow-sm">
+                                        <Plus className="h-4 w-4" />
+                                        Register Student
+                                    </button>
+                                    <button type="button" onClick={() => navigate("/college/bulk-register")} className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                        <Users className="h-4 w-4" />
+                                        Bulk Register
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Filters */}
@@ -287,7 +296,7 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                                     return (
                                         <tbody>
                                             <tr><td colSpan={showDeptCol ? 7 : 6}>
-                                                <EmptyState hasFilters={hasActiveFilters} onReset={clearFilters} onAdd={() => navigate("/college/create-student")} />
+                                                <EmptyState hasFilters={hasActiveFilters} onReset={clearFilters} onAdd={canCreate ? () => navigate("/college/create-student") : undefined} />
                                             </td></tr>
                                         </tbody>
                                     );
@@ -387,7 +396,7 @@ const StudentListView: React.FC<StudentListViewProps> = ({ deptId, initialStatus
                                 );
                             }
                             if (students.length === 0) {
-                                return <EmptyState hasFilters={hasActiveFilters} onReset={clearFilters} onAdd={() => navigate("/college/create-student")} />;
+                                return <EmptyState hasFilters={hasActiveFilters} onReset={clearFilters} onAdd={canCreate ? () => navigate("/college/create-student") : undefined} />;
                             }
                             return (
                             <div className={`divide-y divide-gray-100 dark:divide-gray-800 ${isFetching ? "opacity-60" : ""}`}>

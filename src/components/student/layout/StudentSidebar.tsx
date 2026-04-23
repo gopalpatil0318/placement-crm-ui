@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   MessageSquare,
   HelpCircle,
+  ScrollText,
+  ClipboardPenLine,
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
@@ -58,7 +60,9 @@ const navSections: NavSection[] = [
       { icon: Briefcase, label: "Browse Jobs", path: "/student/jobs" },
       { icon: FileText, label: "My Applications", path: "/student/applications" },
       { icon: Trophy, label: "My Placements", path: "/student/placements" },
+      { icon: ClipboardPenLine, label: "Self-Report", path: "/student/self-reports" },
       { icon: ShieldAlert, label: "My Restrictions", path: "/student/restrictions" },
+      { icon: ScrollText, label: "Placement Policies", path: "/student/placement-policies" },
       { icon: ShieldCheck, label: "Override Requests", path: "/student/overrides" },
     ],
   },

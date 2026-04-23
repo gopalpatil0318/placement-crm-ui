@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import TierBadge from "@/components/collegeadmin/TierBadge";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import AnimatedTabContent from "@/components/ui/AnimatedTabContent";
@@ -25,9 +26,13 @@ import {
     Ban,
     ShieldAlert,
     Award,
+    History,
+    ChevronDown,
+    ChevronUp,
 } from "lucide-react";
 import { useViewJob, type JobDetail } from "@/hooks/collegeadmin/company_management/job_postings/useViewJob";
 import { useUpdateJobStatus } from "@/hooks/collegeadmin/company_management/job_postings/useUpdateJobStatus";
+import { usePermissions } from "@/hooks/usePermissions";
 import PositionManager from "@/components/collegeadmin/company_management/job_positions/PositionManager";
 import RoundManager from "@/components/collegeadmin/company_management/job_rounds/RoundManager";
 import JobCriteriaManager from "@/components/collegeadmin/company_management/job_eligibility_criteria/JobCriteriaManager";
@@ -40,6 +45,9 @@ import JobPlacementsTab from "@/components/collegeadmin/company_management/job_p
 import { useEligibleStudents } from "@/hooks/collegeadmin/company_management/Job_eligibility_criteria/useEligibleStudents";
 import { useAuth } from "@/hooks/collegeadmin/useAuth";
 import ModalWrapper from "@/components/ui/ModalWrapper";
+import { CollegeAdminService } from "@/services/collegeadmin/collegeadmin.services";
+import { queryKeys } from "@/lib/queryKeys";
+import { CRITERIA_CONFIG } from "@/constants/criteriaConfig";
 
 // ========================
 // STATUS BADGE CONFIG
@@ -451,6 +459,9 @@ interface JobDetailViewProps {
 
 const JobDetailView = ({ jobId, onJobLoaded }: JobDetailViewProps) => {
     const navigate = useNavigate();
+    const { hasPermission } = usePermissions();
+    const canEdit = hasPermission("jobs.update");
+    const canManageStatus = hasPermission("jobs.manage_status");
     const { job, loading, error, refresh } = useViewJob(jobId);
     const { updateStatus, loading: statusLoading } = useUpdateJobStatus(refresh);
     const [activeTab, setActiveTab] = useState<TabKey>("info");
@@ -504,7 +515,7 @@ const JobDetailView = ({ jobId, onJobLoaded }: JobDetailViewProps) => {
 
     return (
         <>
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-clip">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
                 {/* ======================== HERO HEADER ======================== */}
                 <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800">
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
@@ -546,7 +557,7 @@ const JobDetailView = ({ jobId, onJobLoaded }: JobDetailViewProps) => {
 
                         {/* Action buttons */}
                         <div className="flex items-center gap-3 flex-shrink-0">
-                            {job.job_status !== "cancelled" && (
+                            {canEdit && job.job_status !== "cancelled" && (
                                 <button
                                     type="button"
                                     onClick={() => navigate(`/college/job/${job.job_id}/edit`)}
@@ -556,7 +567,7 @@ const JobDetailView = ({ jobId, onJobLoaded }: JobDetailViewProps) => {
                                     <Pencil size={15} /> Edit
                                 </button>
                             )}
-                            {statusActions.map((action) => {
+                            {canManageStatus && statusActions.map((action) => {
                                 const ActionIcon = action.icon;
                                 return (
                                     <button
@@ -783,6 +794,9 @@ const EligibilityTab = ({ job, onRefresh }: { job: JobDetail; onRefresh: () => v
                 }}
             />
 
+            {/* Change History */}
+            <CriteriaHistoryPanel jobId={job.job_id} />
+
             {/* Divider */}
             <div className="border-t border-gray-200 dark:border-gray-700" />
 
@@ -801,6 +815,214 @@ const EligibilityTab = ({ job, onRefresh }: { job: JobDetail; onRefresh: () => v
         </div>
     );
 };
+
+// ========================
+// CRITERIA HISTORY PANEL
+// ========================
+
+interface HistoryEntry {
+    audit_id: string;
+    user_name: string;
+    user_role: string;
+    action: string;
+    old_value: Record<string, unknown> | null;
+    new_value: Record<string, unknown> | null;
+    summary: string;
+    created_at: string;
+}
+
+function getFieldLabel(key: string): string {
+    return CRITERIA_CONFIG[key]?.label || key.replaceAll("_", " ").replaceAll(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatFieldValue(_key: string, value: unknown): string {
+    if (value == null) return "—";
+    if (Array.isArray(value)) {
+        if (value.length === 0) return "None";
+        // Skills array
+        if (value[0]?.skill_name) return value.map((s: { skill_name: string }) => s.skill_name).join(", ");
+        return value.join(", ");
+    }
+    if (typeof value === "boolean") return value ? "Yes" : "No";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value as string | number);
+}
+
+function getRoleBadgeClass(role: string): string {
+    switch (role) {
+        case "collegeadmin": return "bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300";
+        case "tpo": return "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300";
+        default: return "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400";
+    }
+}
+
+function DiffCard({ fieldKey, oldVal, newVal }: Readonly<{ fieldKey: string; oldVal: unknown; newVal: unknown }>) {
+    const label = getFieldLabel(fieldKey);
+    const isArray = Array.isArray(oldVal) || Array.isArray(newVal);
+
+    if (isArray) {
+        const oldArr = Array.isArray(oldVal) ? oldVal : [];
+        const newArr = Array.isArray(newVal) ? newVal : [];
+        const getLabel = (v: unknown) => (typeof v === "object" && v && "skill_name" in v) ? (v as { skill_name: string }).skill_name : String(v);
+        const oldLabels = oldArr.map(getLabel);
+        const newLabels = newArr.map(getLabel);
+        const added = newLabels.filter((l) => !oldLabels.includes(l));
+        const removed = oldLabels.filter((l) => !newLabels.includes(l));
+
+        if (added.length === 0 && removed.length === 0) return null;
+
+        return (
+            <div className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">{label}</p>
+                <div className="flex flex-wrap gap-1">
+                    {removed.map((v) => (
+                        <span key={`r-${v}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 line-through">
+                            {v}
+                        </span>
+                    ))}
+                    {added.map((v) => (
+                        <span key={`a-${v}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                            + {v}
+                        </span>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+            <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{label}</p>
+            <div className="flex items-center gap-2 text-xs">
+                <span className="px-2 py-0.5 rounded bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 line-through">
+                    {formatFieldValue(fieldKey, oldVal)}
+                </span>
+                <span className="text-gray-400">→</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-medium">
+                    {formatFieldValue(fieldKey, newVal)}
+                </span>
+            </div>
+        </div>
+    );
+}
+
+function CriteriaHistoryPanel({ jobId }: Readonly<{ jobId: string }>) {
+    const [expanded, setExpanded] = useState(false);
+
+    const { data, isLoading } = useQuery({
+        queryKey: queryKeys.jobs.criteriaHistory(jobId),
+        queryFn: () => CollegeAdminService.getCriteriaHistory(jobId),
+        enabled: expanded,
+        staleTime: 60_000,
+    });
+
+    const entries: HistoryEntry[] = data?.data?.history || [];
+
+    return (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {/* Header — always visible */}
+            <button
+                type="button"
+                onClick={() => setExpanded(!expanded)}
+                className="w-full flex items-center justify-between px-5 py-3.5 bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/50 dark:hover:bg-gray-800/80 transition-colors"
+            >
+                <div className="flex items-center gap-2.5">
+                    <History className="h-4.5 w-4.5 text-gray-400" />
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Change History</span>
+                    {entries.length > 0 && (
+                        <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                            {entries.length}
+                        </span>
+                    )}
+                </div>
+                {expanded ? (
+                    <ChevronUp className="h-4 w-4 text-gray-400" />
+                ) : (
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                )}
+            </button>
+
+            {/* Content */}
+            {expanded && (
+                <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                        </div>
+                    ) : entries.length === 0 ? ( // NOSONAR - ternary readable for loading states
+                        <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">
+                            No changes recorded yet.
+                        </p>
+                    ) : (
+                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                            {entries.map((entry) => {
+                                const oldVal = entry.old_value || {};
+                                const newVal = entry.new_value || {};
+                                const allKeys = [...new Set([...Object.keys(oldVal), ...Object.keys(newVal)])];
+                                const changedKeys = allKeys.filter((k) => JSON.stringify(oldVal[k]) !== JSON.stringify(newVal[k]));
+                                const date = new Date(entry.created_at);
+                                const timeAgo = getRelativeTime(date);
+
+                                return (
+                                    <div key={entry.audit_id} className="p-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700">
+                                        {/* Entry Header */}
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="h-7 w-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300">
+                                                    {(entry.user_name || "?").charAt(0).toUpperCase()}
+                                                </span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                                                        {entry.user_name || "Unknown"}
+                                                    </span>
+                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${getRoleBadgeClass(entry.user_role)}`}>
+                                                        {entry.user_role === "collegeadmin" ? "Admin" : entry.user_role?.toUpperCase() || "?"}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                                                    {timeAgo} · {date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} at {date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                                                </p>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${entry.action === "create" ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"}`}>
+                                                {entry.action}
+                                            </span>
+                                        </div>
+
+                                        {/* Diff Cards */}
+                                        {changedKeys.length > 0 ? (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {changedKeys.map((k) => (
+                                                    <DiffCard key={k} fieldKey={k} oldVal={oldVal[k]} newVal={newVal[k]} />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-gray-400 italic">{entry.summary}</p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function getRelativeTime(date: Date): string {
+    const now = Date.now();
+    const diffMs = now - date.getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return `${Math.floor(days / 30)}mo ago`;
+}
 
 // ========================
 // ELIGIBLE STUDENTS CTA (no criteria / ready to preview)
